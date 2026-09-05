@@ -15,7 +15,7 @@ onMounted(() => {
 function kindLabel(row: Record<string, unknown>): string {
   const kind = (row as unknown as TrashEntry).kind
   if (kind === 'vault') return '笔记库'
-  if (kind === 'dir') return '子目录'
+  if (kind === 'dir') return '文件夹'
   return '笔记'
 }
 

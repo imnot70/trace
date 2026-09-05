@@ -179,7 +179,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
                         解除关联
                       </el-dropdown-item>
                       <el-dropdown-item command="rename" divided>重命名</el-dropdown-item>
-                      <el-dropdown-item command="delete">删除笔记库</el-dropdown-item>
+                      <el-dropdown-item command="delete" class="danger-item">删除笔记库</el-dropdown-item>
                     </el-dropdown-menu>
                   </template>
                 </el-dropdown>
@@ -189,7 +189,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
                   </button>
                   <template #dropdown>
                     <el-dropdown-menu>
-                      <el-dropdown-item command="dir">创建子目录</el-dropdown-item>
+                      <el-dropdown-item command="dir">新建文件夹</el-dropdown-item>
                       <el-dropdown-item command="note">创建笔记</el-dropdown-item>
                     </el-dropdown-menu>
                   </template>

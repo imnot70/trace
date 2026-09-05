@@ -365,6 +365,13 @@ body {
   color: var(--text-primary);
 }
 
+.toolbar-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border-color);
+  margin: 0 6px;
+}
+
 .editor-body {
   flex: 1;
   display: flex;
@@ -513,6 +520,17 @@ body {
 .git-badge {
   color: var(--accent);
   display: inline-flex;
+}
+
+/* 下拉菜单中的删除操作：红色警示 */
+.el-dropdown-menu__item.danger-item {
+  color: var(--danger);
+}
+
+.el-dropdown-menu__item.danger-item:not(.is-disabled):hover,
+.el-dropdown-menu__item.danger-item:not(.is-disabled):focus {
+  color: var(--danger);
+  background-color: rgba(211, 72, 80, 0.08);
 }
 
 .dropdown-trigger {

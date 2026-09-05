@@ -154,6 +154,13 @@ watch(
 
     <!-- 工具栏 -->
     <div class="editor-toolbar">
+      <button class="tool-btn" title="撤销 (Ctrl+Z)" @click="editorRef?.undo()">
+        <el-icon><RefreshLeft /></el-icon>
+      </button>
+      <button class="tool-btn" title="重做 (Ctrl+Shift+Z)" @click="editorRef?.redo()">
+        <el-icon><RefreshRight /></el-icon>
+      </button>
+      <span class="toolbar-sep"></span>
       <button class="tool-btn" title="加粗" @click="toolbarInsert('**', '**', '加粗文字')">
         <strong>B</strong>
       </button>

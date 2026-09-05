@@ -5,6 +5,7 @@ import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
+import { undo, redo } from '@codemirror/commands'
 
 const props = defineProps<{
   modelValue: string
@@ -144,7 +145,15 @@ function onDrop(e: DragEvent): void {
   }
 }
 
-defineExpose({ insertText })
+defineExpose({
+  insertText,
+  undo: () => {
+    if (view) undo(view)
+  },
+  redo: () => {
+    if (view) redo(view)
+  }
+})
 </script>
 
 <template>

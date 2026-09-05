@@ -78,7 +78,7 @@ export function useNoteActions() {
   // ---------- 目录 ----------
   function createDir(vault: string, parentPath = ''): void {
     dialog.open({
-      title: '创建子目录',
+      title: '新建文件夹',
       kind: 'dir',
       placeholder: '目录名称',
       action: async (name) => {
@@ -94,7 +94,7 @@ export function useNoteActions() {
 
   function renameDir(vault: string, path: string, oldName: string): void {
     dialog.open({
-      title: '重命名子目录',
+      title: '重命名文件夹',
       kind: 'dir',
       initialValue: oldName,
       action: async (name) => {
@@ -113,8 +113,8 @@ export function useNoteActions() {
   async function deleteDir(vault: string, path: string, name: string): Promise<void> {
     try {
       await ElMessageBox.confirm(
-        `确定删除子目录「${name}」吗？其中的全部内容将一并移入回收站。`,
-        '删除子目录',
+        `确定删除文件夹「${name}」吗？其中的全部内容将一并移入回收站。`,
+        '删除文件夹',
         { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
       )
     } catch {

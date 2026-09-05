@@ -50,7 +50,7 @@ function handlePlusCommand(cmd: string): void {
     <div
       class="tree-row"
       :class="{ active }"
-      :style="{ paddingLeft: `${16 + depth * 16}px` }"
+      :style="{ paddingLeft: `${24 + depth * 16}px` }"
       @click="onRowClick"
     >
       <span class="chevron" :class="{ open: isDir && expanded }">
@@ -72,7 +72,7 @@ function handlePlusCommand(cmd: string): void {
           </button>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="dir">创建子目录</el-dropdown-item>
+              <el-dropdown-item command="dir">新建文件夹</el-dropdown-item>
               <el-dropdown-item command="note">创建笔记</el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -85,11 +85,11 @@ function handlePlusCommand(cmd: string): void {
             <el-dropdown-menu>
               <template v-if="isDir">
                 <el-dropdown-item command="rename">重命名</el-dropdown-item>
-                <el-dropdown-item command="delete">删除子目录</el-dropdown-item>
+                <el-dropdown-item command="delete" class="danger-item">删除文件夹</el-dropdown-item>
               </template>
               <template v-else>
                 <el-dropdown-item command="rename">重命名</el-dropdown-item>
-                <el-dropdown-item command="delete">删除笔记</el-dropdown-item>
+                <el-dropdown-item command="delete" class="danger-item">删除笔记</el-dropdown-item>
                 <el-dropdown-item command="favorite" divided>收藏笔记</el-dropdown-item>
               </template>
             </el-dropdown-menu>
