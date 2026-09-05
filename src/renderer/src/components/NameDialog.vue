@@ -1,0 +1,54 @@
+<script setup lang="ts">
+import { watch, nextTick, ref } from 'vue'
+import { useNameDialog } from '../stores/nameDialog'
+
+const dialog = useNameDialog()
+const inputRef = ref<{ focus: () => void } | null>(null)
+
+watch(
+  () => dialog.visible,
+  async (visible) => {
+    if (visible) {
+      await nextTick()
+      inputRef.value?.focus()
+    }
+  }
+)
+
+function onKeydown(e: Event): void {
+  if ((e as KeyboardEvent).key === 'Enter') void dialog.confirm()
+}
+</script>
+
+<template>
+  <el-dialog
+    v-model="dialog.visible"
+    :title="dialog.title"
+    width="420px"
+    :close-on-click-modal="false"
+    append-to-body
+  >
+    <el-input
+      ref="inputRef"
+      v-model="dialog.inputValue"
+      :placeholder="dialog.placeholder"
+      :disabled="dialog.busy"
+      maxlength="120"
+      clearable
+      @keydown="onKeydown"
+    />
+    <div v-if="dialog.error" class="dialog-error">{{ dialog.error }}</div>
+    <template #footer>
+      <el-button @click="dialog.visible = false">取消</el-button>
+      <el-button type="primary" :loading="dialog.busy" @click="dialog.confirm()">确定</el-button>
+    </template>
+  </el-dialog>
+</template>
+
+<style scoped>
+.dialog-error {
+  color: var(--danger);
+  font-size: 12px;
+  margin-top: 8px;
+}
+</style>

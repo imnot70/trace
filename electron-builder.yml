@@ -1,0 +1,47 @@
+appId: com.trace.notes
+productName: Trace
+copyright: Copyright © 2026 Trace
+
+directories:
+  buildResources: build
+  output: dist
+
+files:
+  - out/**
+  - "!resources/**"
+
+extraResources:
+  - from: resources/sample-plugin
+    to: sample-plugin
+
+asar: true
+
+linux:
+  icon: build/icon.png
+  category: Utility
+  maintainer: trace
+  target:
+    - target: deb
+      arch:
+        - x64
+    - target: AppImage
+      arch:
+        - x64
+
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+
+mac:
+  icon: build/icon.png
+  category: public.app-category.productivity
+  target:
+    - dmg

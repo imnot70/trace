@@ -1,0 +1,8 @@
+{
+  "id": "sample",
+  "name": "示例插件",
+  "version": "1.0.0",
+  "description": "演示插件结构的最小示例：激活时弹出一条通知。可作为开发插件的模板。",
+  "main": "main.js",
+  "permissions": []
+}

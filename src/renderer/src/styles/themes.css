@@ -1,0 +1,35 @@
+/* 主题与 Element Plus 的变量对接 */
+
+:root {
+  --el-color-primary: var(--accent);
+  --el-border-color: var(--border-color);
+  --el-border-color-light: var(--border-color);
+  --el-border-color-lighter: var(--border-color);
+  --el-fill-color-light: var(--bg-hover);
+  --el-fill-color-blank: var(--bg-primary);
+  --el-bg-color: var(--bg-primary);
+  --el-bg-color-page: var(--bg-secondary);
+  --el-bg-color-overlay: var(--bg-primary);
+  --el-text-color-primary: var(--text-primary);
+  --el-text-color-regular: var(--text-primary);
+  --el-text-color-secondary: var(--text-secondary);
+  --el-text-color-placeholder: var(--text-tertiary);
+  --el-font-family:
+    'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', system-ui, -apple-system, sans-serif;
+}
+
+html {
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+/* 深色模式下弹层背景 */
+html.dark {
+  --el-color-primary: var(--accent);
+}
+
+/* el-tabs 样式微调（设置页） */
+.el-tabs__item {
+  font-size: 14px;
+}
