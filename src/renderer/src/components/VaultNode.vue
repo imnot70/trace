@@ -17,10 +17,7 @@ const actions = useNoteActions()
 
 const isDir = computed(() => props.node.kind === 'dir')
 const expanded = computed(() => tree.isExpanded(props.vault, props.node.path))
-const active = computed(
-  () =>
-    editor.current?.vault === props.vault && editor.current?.path === props.node.path
-)
+const active = computed(() => editor.activeKey === `${props.vault}::${props.node.path}`)
 
 function onRowClick(): void {
   if (isDir.value) tree.toggleExpand(props.vault, props.node.path)

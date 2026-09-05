@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { useAppStore } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
@@ -17,7 +17,6 @@ const actions = useNoteActions()
 const expandedSections = ref<Record<string, boolean>>({
   recents: true,
   favorites: true,
-  trash: true,
   vaults: true
 })
 
@@ -25,9 +24,6 @@ function toggleSection(key: string): void {
   expandedSections.value[key] = !expandedSections.value[key]
 }
 
-const editorKey = computed(() =>
-  editor.current ? `${editor.current.vault}::${editor.current.path}` : ''
-)
 
 function handleVaultCommand(cmd: string, vault: string): void {
   if (cmd === 'sync') void git.sync(vault)
@@ -70,7 +66,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
             v-for="item in tree.recents"
             :key="`${item.vault}::${item.path}`"
             class="side-row"
-            :class="{ active: editorKey === `${item.vault}::${item.path}` }"
+            :class="{ active: editor.activeKey === `${item.vault}::${item.path}` }"
             :title="`${item.vault} / ${item.path}`"
             @click="actions.openNote(item.vault, item.path, item.name)"
           >
@@ -97,7 +93,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
             v-for="item in tree.favorites"
             :key="item.id"
             class="side-row"
-            :class="{ active: editorKey === `${item.vault}::${item.path}` }"
+            :class="{ active: editor.activeKey === `${item.vault}::${item.path}` }"
             :title="`${item.vault} / ${item.path}`"
             @click="actions.openNote(item.vault, item.path, item.name)"
           >
@@ -107,27 +103,17 @@ defineProps<{ vaults?: VaultInfo[] }>()
         </template>
       </div>
 
-      <!-- 回收站 -->
+      <!-- 回收站：点击标题直接进入 -->
       <div class="side-section">
         <div
           class="side-section-header"
-          :class="{ collapsed: !expandedSections.trash }"
-          @click="toggleSection('trash')"
+          :class="{ active: app.view.name === 'trash' }"
+          title="打开回收站"
+          @click="app.view = { name: 'trash' }"
         >
-          <el-icon class="chevron"><CaretBottom /></el-icon>
           <el-icon><Delete /></el-icon>
           <span>回收站</span>
         </div>
-        <template v-if="expandedSections.trash">
-          <div
-            class="side-row"
-            :class="{ active: app.view.name === 'trash' }"
-            @click="app.view = { name: 'trash' }"
-          >
-            <el-icon class="node-icon"><FolderOpened /></el-icon>
-            <span class="row-name">查看回收站</span>
-          </div>
-        </template>
       </div>
 
       <!-- 笔记库 -->

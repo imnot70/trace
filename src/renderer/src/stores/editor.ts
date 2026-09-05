@@ -25,6 +25,11 @@ export const useEditorStore = defineStore('editor', {
   getters: {
     dirty(state): boolean {
       return state.current !== null && state.content !== state._diskContent
+    },
+    /** 侧栏高亮键：仅当正处于编辑视图时返回 `vault::path`，其余视图返回空串（不高亮任何行） */
+    activeKey(state): string {
+      if (state.current === null || useAppStore().view.name !== 'editor') return ''
+      return `${state.current.vault}::${state.current.path}`
     }
   },
   actions: {

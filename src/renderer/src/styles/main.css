@@ -151,6 +151,11 @@ body {
   background: var(--bg-hover);
 }
 
+.side-section-header.active {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+
 .side-section-header .el-icon {
   transition: transform 0.15s;
 }
