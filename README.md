@@ -1,69 +1,170 @@
 # Trace 笔迹
 
-轻量级 Markdown 笔记应用。数据以纯 Markdown 文件保存在本地，通过 Git 仓库多端同步，支持 LaTeX 公式、主题与插件。
+轻量级 Markdown 笔记应用。数据以纯 Markdown 文件保存在本地，通过 Git 仓库在多台设备间同步，支持 LaTeX 公式、图片粘贴、浅色/深色主题与插件。
 
-> 当前版本 v0.1.0（M0–M6 全部里程碑已完成），支持 Windows / macOS / Linux（Ubuntu、Debian 系为主）。
+- 跨平台：Windows / macOS / Linux（Ubuntu、Debian 系为主）
+- 数据完全本地：笔记就是 `.md` 文件，没有私有格式，随时可以用其他编辑器打开
+- 开源协议：MIT
 
-## 功能特性
+![技术栈](https://img.shields.io/badge/Electron-44-47848f) ![Vue](https://img.shields.io/badge/Vue-3-42b883) ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6)
 
-- **笔记库 → 子目录 → 笔记** 三层结构管理，子目录最多 6 层；创建/重命名/删除全程重名校验（大小写不敏感，兼容 Windows 非法字符）
-- **编辑器**：CodeMirror 6 源码编辑 + 实时分栏预览；`$...$` 行内公式、`$$...$$` 块级公式（KaTeX）；代码高亮；1 秒防抖自动保存，外部修改检测防覆盖
-- **图片粘贴 / 拖入**：自动存入库内 `attachments/`，预览通过 `trace-vault://` 自定义协议加载相对路径图片
-- **Git 同步**：每个笔记库 = 一个独立 git 仓库。GitHub PAT 登录（令牌存系统加密存储），从仓库列表选择或直接新建远程仓库；一键「同步」= 提交本地变更 → rebase 拉取 → 推送；冲突时列出冲突文件并保持本地内容不变
-- **常用 / 收藏 / 回收站**：最近打开、收藏笔记快速访问；删除内容全部进入应用级回收站（工作区 `.trash/`），支持还原与彻底删除
-- **主题**：浅色 / 深色 / 跟随系统，全部颜色基于 CSS 变量
-- **插件（骨架）**：`manifest.json` 清单规范 + 加载器 + 设置页管理；示例插件位于 `resources/sample-plugin/`
-- **本地菜单中文化**、单实例运行、`Ctrl+S` 手动保存
+## 功能说明
 
-## 技术栈
+### 笔记库 / 目录 / 笔记
 
-Electron 44 · Vue 3 · TypeScript · Pinia · Element Plus · CodeMirror 6 · markdown-it + KaTeX · simple-git + 系统 git · octokit · electron-vite · electron-builder · Vitest
+- 按主题创建**笔记库**，库内可建多级**子目录**（最多 6 层），最底层是**笔记**（Markdown 文件）。
+- 库、目录、笔记均支持创建 / 重命名 / 删除；全程重名校验（大小写不敏感）与 Windows 非法字符过滤。
+- 侧边栏从上至下：**常用**（最近打开）、**收藏**、**回收站**、**笔记库**，左下角齿轮打开设置。
+- 悬浮在库 / 目录 / 笔记行上会出现操作按钮：齿轮或 `⋮`（设置菜单）、`+`（新建子目录 / 笔记）。
 
-## 开发
+### 编辑器与预览
+
+- 左侧源码编辑（CodeMirror 6），右侧实时渲染预览，中间分隔条可拖拽调整比例，滚动联动。
+- 完整 Markdown 支持 + **LaTeX 公式**：行内 `$e^{i\pi}+1=0$`、块级 `$$...$$`，代码块语法高亮。
+- 工具栏一键插入加粗、斜体、标题、引用、代码、链接、公式等。
+- **自动保存**：编辑后 1 秒写盘（可在设置关闭），`Ctrl+S` / `Cmd+S` 手动保存。
+- **外部修改保护**：git 拉取或其他编辑器改动文件后自动感知——无冲突静默重载，有未保存改动时给出选择，绝不悄悄覆盖。
+
+### 图片
+
+- 直接**粘贴或拖入**图片，自动保存到库的 `attachments/` 目录，笔记中以相对路径引用。
+- 预览通过应用内自定义协议加载，无需关心路径问题。
+
+### Git 云同步（GitHub）
+
+每个笔记库就是一个独立的 git 仓库：
+
+1. **登录**：设置 → 账号 → 粘贴 [GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new)（勾选仓库读写权限）。令牌保存在系统级加密存储中，只在 git 调用时注入请求头，绝不写入 `.git/config`。
+2. **关联**：笔记库的齿轮菜单 → 关联 Git 仓库 → 从你的仓库列表选择，或直接新建一个（可设私有）。远端有内容会自动拉取，本地有内容会自动推送。
+3. **同步**：点击「同步」按钮即完成 提交本地变更 → 拉取远端 → 推送 三步。出现冲突时列出冲突文件并保持本地内容不变，解决后再次同步即可。
+
+在多台设备上安装 Trace 并关联同一个远程仓库，即可实现笔记同步。
+
+### 收藏 / 常用 / 回收站
+
+- **收藏**：笔记 `⋮` 菜单中收藏，侧栏收藏区直达；重命名、移动后自动跟随。
+- **常用**：自动记录最近打开的笔记（最多 20 条）。
+- **回收站**：删除的库 / 目录 / 笔记全部进入回收站（不污染 git 仓库），支持还原、彻底删除、清空。
+
+### 主题
+
+浅色 / 深色 / 跟随系统三种模式，设置页一键切换，全界面统一配色。
+
+### 插件（实验性）
+
+设置 → 插件中开启。插件为带 `manifest.json` 清单的目录，应用首次运行会自带一个示例插件作为开发模板（见[插件开发](#插件开发)）。插件系统当前为骨架阶段，完整 API 与市场在规划中。
+
+## 安装
+
+### 安装包（推荐）
+
+在 [Releases](../../releases) 下载对应平台的安装包：
+
+| 平台 | 文件 | 安装方式 |
+| --- | --- | --- |
+| Ubuntu / Debian | `trace_x.y.z_amd64.deb` | `sudo dpkg -i trace_*.deb` 或 `sudo apt install ./trace_*.deb` |
+| 其他 Linux | `Trace-x.y.z.AppImage` | `chmod +x Trace-*.AppImage && ./Trace-*.AppImage`（需 FUSE，或 `--appimage-extract` 后运行） |
+| Windows | `Trace Setup x.y.z.exe` | 双击安装，可选择安装目录 |
+| macOS | `Trace-x.y.z.dmg` | 打开 DMG，拖入「应用程序」 |
+
+> 同步功能依赖系统 git（`sudo apt install git` / [Windows 下载](https://git-scm.com/download/win) / `xcode-select --install`）。未安装 git 时其余功能不受影响。
+
+### 从源码构建
+
+环境要求：Node.js ≥ 20、npm ≥ 10、git。
 
 ```bash
-npm install          # 安装依赖（需要 Node 20+ 与本机 git）
-npm run dev          # 启动开发模式（渲染进程热更新）
-npm run typecheck    # 主进程 + 渲染进程类型检查
-npm test             # 单元测试（服务层 + git 同步集成测试）
+git clone <本仓库地址> trace
+cd trace
+npm install          # 安装依赖
+npm run dev          # 开发模式启动（渲染进程热更新）
+```
+
+构建与打包：
+
+```bash
+npm run build        # 构建到 out/（不打包安装程序）
+npm run dist         # 按当前平台打包安装程序
+npm run dist:deb     # 只打 Ubuntu/Debian deb 包
+```
+
+产物输出在 `dist/` 目录（如 `trace_0.1.0_amd64.deb`、`Trace-0.1.0.AppImage`）。Windows/macOS 安装包需在对应平台上执行 `npm run dist`。
+
+其他开发命令：
+
+```bash
+npm test             # 单元测试
+npm run typecheck    # 类型检查（主进程 + 渲染进程）
 npm run lint         # ESLint
-npm run build        # 构建三端 bundle 到 out/
+npm run icon         # 重新生成应用图标
 ```
 
-调试渲染进程：`TRACE_CDP=9222 npm run dev`，然后访问 `http://127.0.0.1:9222`。
+调试技巧：`TRACE_CDP=9222 npm run dev` 后访问 `http://127.0.0.1:9222`，可通过 DevTools 协议连接渲染进程。
 
-## 打包
+## 使用指南
 
-```bash
-npm run dist         # 按当前平台打包（NSIS / DMG / deb + AppImage）
-npm run dist:deb     # Ubuntu/Debian deb 包
-npm run icon         # 重新生成应用图标 build/icon.png
+### 首次启动
+
+应用会创建默认工作区 `~/Trace`（所有笔记库的父目录）。想换位置：设置 → 通用 → 工作区 → 选择目录 → 应用。
+
+### 基本流程
+
+1. 侧栏「笔记库」区右上角 `+` → 输入名称创建笔记库（例如「工作笔记」）；
+2. 库行上的 `+` → 创建子目录 / 创建笔记；
+3. 点击笔记开始编辑，右侧实时预览；公式、代码块、表格、图片直接按 Markdown 语法书写；
+4. 笔记的 `⋮` 菜单可重命名、删除、收藏。
+
+### 数据保存在哪里
+
 ```
-
-## 数据存储
-
-```
-~/Trace/                    # 默认工作区（设置中可更换）
- ├─ <笔记库>/               # 每个库一个独立 git 仓库
+~/Trace/                      # 工作区（可更换）
+ ├─ <笔记库>/                 # 每个库 = 一个独立 git 仓库
  │  ├─ 子目录/笔记.md
- │  └─ attachments/         # 图片附件
- └─ .trash/                 # 应用级回收站（索引 + 条目本体）
+ │  └─ attachments/           # 图片附件
+ └─ .trash/                   # 应用级回收站
 
-~/.config/Trace/            # 应用数据（Linux）
- ├─ settings.json           # 设置（工作区路径、主题、插件开关等）
- ├─ favorites.json / recents.json
- ├─ account.bin             # GitHub PAT（系统加密存储，Linux 缺 keyring 时降级明文并警告）
- └─ plugins/                # 已安装插件
+Linux    ~/.config/Trace/     # 应用数据（设置、收藏、插件等）
+Windows  %APPDATA%\Trace\
+macOS    ~/Library/Application Support/Trace/
 ```
 
-## Git 同步说明
+备份整个工作区目录（或直接推送各库的 git 远程）即可备份全部笔记。
 
-1. 设置 → 账号 → 创建并粘贴 [Personal Access Token](https://github.com/settings/personal-access-tokens/new)（需要仓库读写权限）
-2. 笔记库齿轮菜单 → 关联 Git 仓库 → 选择已有仓库或新建
-3. 以后通过库上的「立即同步」或编辑页「同步」按钮完成 双向同步
+### 插件开发
 
-令牌仅在每次 git 调用时以 HTTP 头注入，不写入 `.git/config`；日志统一脱敏。
+在应用数据目录 `plugins/<你的插件id>/` 下放两个文件：
 
-## 路线图（二期）
+`manifest.json`：
 
-全局搜索 · 所见即所得模式 · 图形化冲突解决 · 定时自动同步 · 自定义主题包 · 插件完整 API 与市场 · 标签 · 多窗口
+```json
+{
+  "id": "hello",
+  "name": "Hello 插件",
+  "version": "1.0.0",
+  "description": "示例",
+  "main": "main.js",
+  "permissions": []
+}
+```
+
+`main.js`（CommonJS）：
+
+```js
+exports.activate = function (ctx) {
+  ctx.notify('插件已激活！')
+  ctx.logger.info('hello plugin loaded')
+  return function deactivate() {
+    // 清理资源（可选）
+  }
+}
+```
+
+设置 → 插件 → 打开「启用插件」并启用你的插件即可。当前可用能力：`ctx.notify(message)` 弹出通知、`ctx.logger` 写日志；完整 API 在后续版本开放。
+
+## 路线图
+
+全局搜索 · 所见即所得模式 · 图形化冲突解决 · 自动同步 · 自定义主题包 · 插件完整 API 与市场 · 标签 · 多窗口 · 导出 PDF/HTML
+
+## 许可证
+
+[MIT](LICENSE)
