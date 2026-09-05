@@ -1,3 +1,5 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import { simpleGit, type SimpleGit } from 'simple-git'
 import { logger } from '../lib/logger'
 import type { GitStatus } from '@shared/types'
@@ -23,8 +25,9 @@ export interface SyncOutcome {
 export class GitService {
   constructor(private deps: GitDeps) {}
 
-  isRepo(vaultPath: string): Promise<boolean> {
-    return simpleGit(vaultPath).checkIsRepo().catch(() => false)
+  /** 是否已初始化为 git 仓库。直接检查 .git，避免依赖 checkIsRepo 的英文错误匹配（中文 locale 下会误抛异常） */
+  isRepo(vaultPath: string): boolean {
+    return fs.existsSync(path.join(vaultPath, '.git'))
   }
 
   private git(vaultPath: string): SimpleGit {
@@ -52,7 +55,7 @@ export class GitService {
     }
     try {
       const git = this.git(vaultPath)
-      if (!(await git.checkIsRepo())) return base
+      if (!this.isRepo(vaultPath)) return base
       const origin = (await git.getRemotes(true)).find((r) => r.name === 'origin')
       const remoteUrl = origin?.refs?.fetch ?? null
       let branch: string | null = null
@@ -90,7 +93,7 @@ export class GitService {
   /** 关联远程仓库并完成首次同步（远端有内容则拉取，否则推送本地内容） */
   async associate(vaultPath: string, remoteUrl: string): Promise<SyncOutcome> {
     const git = this.git(vaultPath)
-    if (!(await this.isRepo(vaultPath))) {
+    if (!this.isRepo(vaultPath)) {
       try {
         await git.init(['--initial-branch=main'])
       } catch {
@@ -117,7 +120,7 @@ export class GitService {
    */
   async sync(vaultPath: string): Promise<SyncOutcome> {
     const git = this.git(vaultPath)
-    if (!(await this.isRepo(vaultPath))) return { ok: false, error: '该笔记库尚未初始化 git 仓库' }
+    if (!this.isRepo(vaultPath)) return { ok: false, error: '该笔记库尚未初始化 git 仓库' }
     const remotes = await git.getRemotes(true)
     if (!remotes.some((r) => r.name === 'origin')) return { ok: false, error: '尚未关联远程仓库' }
 
