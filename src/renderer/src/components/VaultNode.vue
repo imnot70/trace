@@ -50,7 +50,7 @@ function handlePlusCommand(cmd: string): void {
     <div
       class="tree-row"
       :class="{ active }"
-      :style="{ paddingLeft: `${24 + depth * 16}px` }"
+      :style="{ paddingLeft: `${40 + depth * 16}px` }"
       @click="onRowClick"
     >
       <span class="chevron" :class="{ open: isDir && expanded }">
