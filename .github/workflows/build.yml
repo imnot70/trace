@@ -17,8 +17,7 @@ jobs:
             platform: linux
           - os: windows-latest
             platform: win
-          - os: macos-latest
-            platform: mac
+        # macOS 不提供预构建安装包，用户需自行从源码构建（见 README）
 
     runs-on: ${{ matrix.os }}
 
@@ -46,15 +45,6 @@ jobs:
       - name: Build for ${{ matrix.platform }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # 未配置 macOS 证书时跳过签名自检
-          CSC_IDENTITY_AUTO_DISCOVERY: false
-          # macOS 代码签名（可选，按需配置）
-          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          # Apple 公证（可选，按需配置）
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: npx electron-builder --${{ matrix.platform }} --publish never
 
       # 5. 上传构建产物（每次构建都会保存，方便下载测试）
