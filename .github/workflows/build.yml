@@ -38,10 +38,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # 4. 构建对应平台的安装包
+      # 4. 构建应用产物（electron-vite → out/，out/ 不入库，必须在此生成）
+      - name: Build app bundles
+        run: npm run build
+
+      # 5. 打包对应平台的安装包
       - name: Build for ${{ matrix.platform }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 未配置 macOS 证书时跳过签名自检
+          CSC_IDENTITY_AUTO_DISCOVERY: false
           # macOS 代码签名（可选，按需配置）
           CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
