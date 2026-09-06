@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
   editorFontSize: 15,
   autoSave: true,
+  attachmentsDir: 'attachments',
   enablePlugins: false,
   pluginEnabled: {}
 }

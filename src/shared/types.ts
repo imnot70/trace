@@ -64,6 +64,8 @@ export interface AppSettings {
   theme: ThemeOption
   editorFontSize: number
   autoSave: boolean
+  /** 图片附件保存目录（相对库根，支持多级，如 media/image） */
+  attachmentsDir: string
   enablePlugins: boolean
   /** 插件 id -> 是否启用 */
   pluginEnabled: Record<string, boolean>

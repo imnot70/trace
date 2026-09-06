@@ -2,9 +2,11 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import {
+  DEFAULT_ATTACH_DIR,
   MAX_DIR_DEPTH,
   checkNameFormat,
   checkDuplicate,
+  normalizeAttachDir,
   noteFileName,
   noteDisplayName,
   relDepth
@@ -148,22 +150,25 @@ export class FsTreeService {
     }
   }
 
-  /** 保存粘贴/拖入的图片到 库/attachments/，返回相对笔记的引用路径 */
+  /** 保存粘贴/拖入的图片到库内附件目录（可配置多级），返回相对笔记的引用路径 */
   saveImage(
     vault: string,
     notePath: string,
     fileName: string,
-    base64: string
+    base64: string,
+    attachDir = DEFAULT_ATTACH_DIR
   ): { ok: boolean; error?: string; reference?: string } {
     try {
+      const dir = normalizeAttachDir(attachDir)
+      if (!dir.ok) return { ok: false, error: dir.error }
       const vaultPath = this.getVaultPath(vault)
-      const attachDir = path.join(vaultPath, 'attachments')
-      fs.mkdirSync(attachDir, { recursive: true })
+      const attachAbs = resolveWithin(vaultPath, dir.dir)
+      fs.mkdirSync(attachAbs, { recursive: true })
       const ext = path.extname(fileName) || '.png'
       const base = path.basename(fileName, ext).replace(/[\\/:*?"<>|\u0000-\u001F]/g, '_').slice(0, 60) || 'image'
       const unique = `${Date.now()}-${base}${ext.toLowerCase()}`
-      fs.writeFileSync(path.join(attachDir, unique), Buffer.from(base64, 'base64'))
-      return { ok: true, reference: relReference(notePath, `attachments/${unique}`) }
+      fs.writeFileSync(path.join(attachAbs, unique), Buffer.from(base64, 'base64'))
+      return { ok: true, reference: relReference(notePath, `${dir.dir}/${unique}`) }
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) }
     }

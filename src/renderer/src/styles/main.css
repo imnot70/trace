@@ -382,6 +382,9 @@ body {
   display: flex;
   overflow: hidden;
   position: relative;
+  /* 灰色画布 + 统一 10px 间距，两张圆角卡片（编辑器/预览）浮在上面 */
+  background: var(--bg-secondary);
+  padding: 10px;
 }
 
 .editor-pane {
@@ -396,24 +399,44 @@ body {
   height: 100%;
 }
 
+/* 面板卡片圆角 */
+.editor-pane-wrap,
+.preview-wrap {
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+/* 分栏拖拽区：透明间隙，悬停时显示居中细条 */
 .split-divider {
-  width: 5px;
+  width: 12px;
   cursor: col-resize;
-  background: var(--border-color);
+  background: transparent;
   flex-shrink: 0;
+  position: relative;
+}
+
+.split-divider::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 2px;
+  background: transparent;
   transition: background 0.15s;
 }
 
-.split-divider:hover,
-.split-divider.dragging {
-  background: var(--accent);
+.split-divider:hover::after,
+.split-divider.dragging::after {
+  background: var(--border-color);
 }
 
 .preview-pane {
   height: 100%;
   overflow-y: auto;
   background: var(--bg-primary);
-  border-left: 1px solid var(--border-color);
 }
 
 .external-banner {

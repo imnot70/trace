@@ -41,6 +41,11 @@ const MIME_TYPES: Record<string, string> = {
   '.ico': 'image/x-icon'
 }
 
+// 测试隔离：TRACE_TEST_USERDATA=1 时使用临时 userData，可与正式实例并行运行
+if (process.env['TRACE_TEST_USERDATA']) {
+  app.setPath('userData', path.join(app.getPath('temp'), 'trace-test-userdata'))
+}
+
 // 单实例运行
 if (!app.requestSingleInstanceLock()) {
   app.quit()
@@ -106,6 +111,7 @@ app.whenReady().then(() => {
     theme: 'system',
     editorFontSize: 15,
     autoSave: true,
+    attachmentsDir: 'attachments',
     enablePlugins: false,
     pluginEnabled: {}
   })

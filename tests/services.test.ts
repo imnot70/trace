@@ -23,6 +23,7 @@ function buildStack() {
     theme: 'system',
     editorFontSize: 15,
     autoSave: true,
+    attachmentsDir: 'attachments',
     enablePlugins: false,
     pluginEnabled: {}
   })
@@ -162,6 +163,18 @@ describe('目录与笔记', () => {
     // 库根的笔记用 ./attachments/...
     const r2 = fsTree.saveImage('库', 'root.md', 'x.png', Buffer.from('x').toString('base64'))
     expect(r2.reference).toMatch(/^\.\/attachments\/.+\.png$/)
+  })
+
+  it('图片可保存到自定义多级附件目录', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    const r = fsTree.saveImage('库', 'n.md', 'a.png', Buffer.from('x').toString('base64'), 'media/image')
+    expect(r.ok).toBe(true)
+    expect(r.reference).toMatch(/^\.\/media\/image\/.+\.png$/)
+    expect(fs.existsSync(path.join(vaults.vaultPath('库'), 'media', 'image'))).toBe(true)
+    // 非法目录被拒绝
+    expect(fsTree.saveImage('库', 'n.md', 'a.png', Buffer.from('x').toString('base64'), '../evil').ok).toBe(false)
+    expect(fsTree.saveImage('库', 'n.md', 'a.png', Buffer.from('x').toString('base64'), 'a/b/c/d/e').ok).toBe(false)
   })
 })
 

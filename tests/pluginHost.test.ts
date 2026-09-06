@@ -40,6 +40,7 @@ beforeEach(() => {
     theme: 'system',
     editorFontSize: 15,
     autoSave: true,
+    attachmentsDir: 'attachments',
     enablePlugins: false,
     pluginEnabled: {}
   })

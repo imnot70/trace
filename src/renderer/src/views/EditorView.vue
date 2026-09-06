@@ -214,7 +214,7 @@ watch(
         :class="{ dragging }"
         @mousedown.prevent="startDrag"
       ></div>
-      <div style="flex: 1; overflow: hidden">
+      <div class="preview-wrap">
         <MarkdownPreview
           v-if="editor.current"
           ref="previewRef"
@@ -234,5 +234,10 @@ watch(
   overflow: hidden;
   flex-shrink: 0;
   flex-grow: 0;
+}
+
+.preview-wrap {
+  flex: 1;
+  min-width: 0;
 }
 </style>

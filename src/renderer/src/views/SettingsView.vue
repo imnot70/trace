@@ -6,6 +6,7 @@ import { useGitStore } from '../stores/git'
 import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
 import type { ThemeOption } from '@shared/types'
+import { normalizeAttachDir } from '@shared/validate'
 
 const app = useAppStore()
 const git = useGitStore()
@@ -45,9 +46,11 @@ async function login(): Promise<void> {
 
 // ---------- 通用 ----------
 const workspaceInput = ref('')
+const attachmentsDirInput = ref('')
 
 onMounted(() => {
   workspaceInput.value = app.workspaceRoot
+  attachmentsDirInput.value = app.settings.attachmentsDir
   void git.refreshAccount()
   if (git.account.loggedIn) void tree.refreshAll()
 })
@@ -58,6 +61,19 @@ watch(
     workspaceInput.value = value
   }
 )
+
+async function applyAttachmentsDir(): Promise<void> {
+  const normalized = normalizeAttachDir(attachmentsDirInput.value)
+  if (!normalized.ok) {
+    ElMessage.error(normalized.error)
+    attachmentsDirInput.value = app.settings.attachmentsDir
+    return
+  }
+  attachmentsDirInput.value = normalized.dir
+  if (normalized.dir === app.settings.attachmentsDir) return
+  await app.updateSettings({ attachmentsDir: normalized.dir })
+  ElMessage.success(`附件目录已设为 ${normalized.dir}，对之后粘贴的图片生效`)
+}
 
 async function chooseWorkspace(): Promise<void> {
   const dir = await window.trace.chooseDirectory(workspaceInput.value)
@@ -275,6 +291,19 @@ const themeOptions: { label: string; value: 'light' | 'dark' | 'system' }[] = [
             />
             <span class="settings-desc" style="margin: 0">编辑后 1 秒自动写入文件（Ctrl+S 可手动保存）</span>
           </div>
+          <div class="setting-row">
+            <span class="setting-label">附件目录</span>
+            <el-input
+              v-model="attachmentsDirInput"
+              style="flex: 1"
+              placeholder="粘贴图片的保存目录，可多级，如 media/image"
+              @blur="applyAttachmentsDir"
+              @keydown.enter="($event.target as HTMLInputElement).blur()"
+            />
+          </div>
+          <p class="settings-desc" style="margin: 0 0 0 102px">
+            相对于笔记库根目录，修改后只对之后粘贴的图片生效；已有图片的引用不受影响。
+          </p>
         </div>
 
         <div class="settings-block">

@@ -140,7 +140,7 @@ export function registerIpc(deps: IpcDeps): void {
       deps.fsTree.writeNote(vault, relPath, content, expectedHash)
   )
   handle('note:saveImage', (vault: string, notePath: string, fileName: string, base64: string) =>
-    deps.fsTree.saveImage(vault, notePath, fileName, base64)
+    deps.fsTree.saveImage(vault, notePath, fileName, base64, deps.settings.get().attachmentsDir)
   )
 
   // ---------- 收藏 / 常用 ----------

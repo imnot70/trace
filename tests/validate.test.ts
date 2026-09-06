@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  DEFAULT_ATTACH_DIR,
   MAX_DIR_DEPTH,
+  normalizeAttachDir,
   checkDuplicate,
   checkNameFormat,
   noteDisplayName,
@@ -60,5 +62,26 @@ describe('名称校验', () => {
     expect(MAX_DIR_DEPTH).toBe(6)
     expect(relDepth('')).toBe(0)
     expect(relDepth('a/b/c')).toBe(3)
+  })
+})
+
+describe('附件目录规范化', () => {
+  it('空值回退默认目录', () => {
+    expect(normalizeAttachDir('')).toEqual({ ok: true, dir: DEFAULT_ATTACH_DIR })
+    expect(normalizeAttachDir('  ')).toEqual({ ok: true, dir: DEFAULT_ATTACH_DIR })
+    expect(normalizeAttachDir('/')).toEqual({ ok: true, dir: DEFAULT_ATTACH_DIR })
+  })
+
+  it('多级路径规范化（去首尾斜杠、去空段）', () => {
+    expect(normalizeAttachDir('media/image')).toEqual({ ok: true, dir: 'media/image' })
+    expect(normalizeAttachDir('/media//image/')).toEqual({ ok: true, dir: 'media/image' })
+    expect(normalizeAttachDir(' assets ')).toEqual({ ok: true, dir: 'assets' })
+  })
+
+  it('非法输入拒绝', () => {
+    expect(normalizeAttachDir('../evil').ok).toBe(false)
+    expect(normalizeAttachDir('a/./b').ok).toBe(false)
+    expect(normalizeAttachDir('a/b/c/d/e').ok).toBe(false) // 超过 4 层
+    expect(normalizeAttachDir('a/b?:c').ok).toBe(false)
   })
 })

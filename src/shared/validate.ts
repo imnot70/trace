@@ -64,3 +64,28 @@ export function relDepth(relPath: string): number {
   if (!relPath) return 0
   return relPath.split('/').filter(Boolean).length
 }
+
+/**
+ * 附件目录设置：多级 POSIX 相对路径（如 media/image），逐段校验。
+ * 返回规范化目录（无首尾斜杠）；空输入回退默认值 attachments。
+ */
+export const DEFAULT_ATTACH_DIR = 'attachments'
+
+export function normalizeAttachDir(
+  input: string,
+  maxDepth = 4
+): { ok: true; dir: string } | { ok: false; error: string } {
+  const segs = (input ?? '')
+    .trim()
+    .replace(/^\/+|\/+$/g, '')
+    .split('/')
+    .filter(Boolean)
+  if (segs.length === 0) return { ok: true, dir: DEFAULT_ATTACH_DIR }
+  if (segs.length > maxDepth) return { ok: false, error: `附件目录最多 ${maxDepth} 层` }
+  for (const seg of segs) {
+    if (seg === '.' || seg === '..') return { ok: false, error: '目录中不能包含 . 或 ..' }
+    const invalid = checkNameFormat(seg, 'dir')
+    if (invalid) return { ok: false, error: `「${seg}」${invalid}` }
+  }
+  return { ok: true, dir: segs.join('/') }
+}
