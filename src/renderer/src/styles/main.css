@@ -88,12 +88,12 @@ body {
   background: var(--bg-primary);
 }
 
-/* 主区卡片流：编辑卡 + 预览卡（或单张页面卡） */
+/* 主区卡片流：编辑卡 + 分栏间隙 + 预览卡（或单张页面卡）。
+   间隙由 split-divider(10px) 提供，不再叠加 gap，保证与画布全局 10px 一致 */
 .main-cards {
   flex: 1;
   min-width: 0;
   display: flex;
-  gap: 10px;
 }
 
 /* 非编辑视图（欢迎/回收站/设置）的整页卡片 */
@@ -409,7 +409,7 @@ body {
 
 /* 分栏拖拽区：透明间隙，悬停时显示居中细条 */
 .split-divider {
-  width: 12px;
+  width: 10px;
   cursor: col-resize;
   background: transparent;
   flex-shrink: 0;
@@ -419,7 +419,7 @@ body {
 .split-divider::after {
   content: '';
   position: absolute;
-  left: 4px;
+  left: 3px;
   top: 0;
   bottom: 0;
   width: 4px;

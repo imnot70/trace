@@ -30,19 +30,23 @@ export const useAppStore = defineStore('app', {
     version: '',
     /** 编辑视图：是否显示预览卡片（localStorage 持久化） */
     previewVisible: true,
-    /** 专注模式：隐藏侧栏与预览，只留编辑卡片（localStorage 持久化） */
-    zenMode: false
+    /** 专注模式：隐藏侧栏，只留编辑卡片（localStorage 持久化） */
+    zenMode: false,
+    /** 悬浮预览卡片（长按预览按钮触发，会话级不持久化） */
+    floatingPreview: false
   }),
   getters: {
     isDark(state): boolean {
       return state.settings.theme === 'dark' || (state.settings.theme === 'system' && prefersDark())
-    },
-    /** 预览卡片当前是否实际显示 */
-    previewShown(state): boolean {
-      return state.previewVisible && !state.zenMode
     }
   },
   actions: {
+    openFloatingPreview(): void {
+      this.floatingPreview = true
+    },
+    closeFloatingPreview(): void {
+      this.floatingPreview = false
+    },
     loadUiPrefs(): void {
       try {
         this.previewVisible = localStorage.getItem('trace.previewVisible') !== '0'

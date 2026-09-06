@@ -68,11 +68,40 @@ function startDrag(): void {
   window.addEventListener('mouseup', up)
 }
 
-// Ctrl/Cmd+S 手动保存
+/** 预览按钮：点击切换固定预览，长按（500ms）打开悬浮预览 */
+let pressTimer: ReturnType<typeof setTimeout> | null = null
+
+function onPreviewBtnDown(): void {
+  pressTimer = setTimeout(() => {
+    pressTimer = null
+    app.openFloatingPreview()
+  }, 500)
+}
+
+function onPreviewBtnUp(): void {
+  if (pressTimer === null) return
+  clearTimeout(pressTimer)
+  pressTimer = null
+  // 未达到长按时长，按普通点击处理
+  if (app.floatingPreview) app.closeFloatingPreview()
+  else app.togglePreview()
+}
+
+function onPreviewBtnLeave(): void {
+  if (pressTimer !== null) {
+    clearTimeout(pressTimer)
+    pressTimer = null
+  }
+}
+
+// Ctrl/Cmd+S 手动保存；Esc 关闭悬浮预览
 function onKeydown(e: KeyboardEvent): void {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault()
     void editor.flushSave().then(() => ElMessage.success('已保存'))
+  }
+  if (e.key === 'Escape' && app.floatingPreview) {
+    app.closeFloatingPreview()
   }
 }
 
@@ -108,7 +137,7 @@ watch(
     ref="editorCardRef"
     class="editor-card"
     :style="{
-      flexBasis: app.previewShown ? `${splitPercent}%` : '100%'
+      flexBasis: app.previewVisible ? `${splitPercent}%` : '100%'
     }"
   >
     <!-- 顶部：路径 + git 状态 + 视图开关 -->
@@ -150,9 +179,18 @@ watch(
       </el-button>
 
       <span class="toolbar-sep"></span>
-      <el-tooltip :content="app.previewShown ? '隐藏预览' : '显示预览'" placement="bottom">
-        <button class="tool-btn" @click="app.togglePreview()">
-          <el-icon><Expand v-if="!app.previewShown" /><Fold v-else /></el-icon>
+      <el-tooltip
+        content="点击：显示/隐藏预览；长按：悬浮预览"
+        placement="bottom"
+        :hide-after="0"
+      >
+        <button
+          class="tool-btn"
+          @pointerdown="onPreviewBtnDown"
+          @pointerup="onPreviewBtnUp"
+          @pointerleave="onPreviewBtnLeave"
+        >
+          <el-icon><Expand v-if="!app.previewVisible && !app.floatingPreview" /><Fold v-else /></el-icon>
         </button>
       </el-tooltip>
       <el-tooltip :content="app.zenMode ? '退出专注模式' : '专注模式（隐藏侧栏与预览）'" placement="bottom">
@@ -227,14 +265,14 @@ watch(
 
   <!-- 分栏拖拽间隙（预览隐藏时一并隐藏） -->
   <div
-    v-if="app.previewShown"
+    v-if="app.previewVisible"
     class="split-divider"
     :class="{ dragging }"
     @mousedown.prevent="startDrag"
   ></div>
 
   <!-- 预览卡片 -->
-  <div v-if="app.previewShown" class="preview-card">
+  <div v-if="app.previewVisible" class="preview-card">
     <MarkdownPreview
       v-if="editor.current"
       ref="previewRef"
@@ -244,6 +282,27 @@ watch(
       :font-size="app.settings.editorFontSize"
     />
   </div>
+
+  <!-- 悬浮预览（长按预览按钮呼出，Esc 或关闭按钮收起） -->
+  <Transition name="float-preview">
+    <div v-if="app.floatingPreview" class="floating-preview">
+      <div class="floating-preview-header">
+        <span class="floating-preview-title">预览</span>
+        <button class="tool-btn" title="关闭 (Esc)" @click="app.closeFloatingPreview()">
+          <el-icon><Close /></el-icon>
+        </button>
+      </div>
+      <div class="floating-preview-body">
+        <MarkdownPreview
+          v-if="editor.current"
+          :content="editor.content"
+          :vault="vaultName"
+          :note-path="editor.current.path"
+          :font-size="app.settings.editorFontSize"
+        />
+      </div>
+    </div>
+  </Transition>
 </template>
 
 <style scoped>
@@ -273,5 +332,56 @@ watch(
   border-radius: 8px;
   overflow: hidden;
   background: var(--bg-primary);
+}
+
+/* 悬浮预览卡片：覆盖在编辑区右侧，不挤压布局 */
+.floating-preview {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  bottom: 20px;
+  width: min(45vw, 720px);
+  border-radius: 10px;
+  background: var(--bg-primary);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.18),
+    0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.floating-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 4px 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.floating-preview-title {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+.floating-preview-body {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* 滑入/滑出动画 */
+.float-preview-enter-active,
+.float-preview-leave-active {
+  transition:
+    transform 0.22s ease,
+    opacity 0.22s ease;
+}
+
+.float-preview-enter-from,
+.float-preview-leave-to {
+  transform: translateX(48px);
+  opacity: 0;
 }
 </style>
