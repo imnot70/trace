@@ -23,7 +23,8 @@ const tab = computed<'account' | 'plugins' | 'general'>({
 const tokenInput = ref('')
 const tokenError = ref('')
 const loggingIn = ref(false)
-const PAT_URL = 'https://github.com/settings/personal-access-tokens/new'
+// 经典令牌创建页：scopes=repo 自动勾选仓库权限，description 自动填备注，对普通用户最省事
+const PAT_URL = 'https://github.com/settings/tokens/new?scopes=repo&description=Trace%20%E7%AC%94%E8%AE%B0'
 
 async function login(): Promise<void> {
   if (!tokenInput.value.trim()) {
@@ -130,7 +131,7 @@ const themeOptions: { label: string; value: 'light' | 'dark' | 'system' }[] = [
                 v-model="tokenInput"
                 type="password"
                 show-password
-                placeholder="粘贴 Personal Access Token"
+                placeholder="粘贴以 ghp_ 开头的令牌"
                 style="flex: 1"
               />
               <el-button type="primary" :loading="loggingIn" @click="login">登录</el-button>
@@ -138,11 +139,38 @@ const themeOptions: { label: string; value: 'light' | 'dark' | 'system' }[] = [
             <div v-if="tokenError" style="color: var(--danger); font-size: 12px; margin: 4px 0 0 102px">
               {{ tokenError }}
             </div>
-            <p class="settings-desc" style="margin-top: 10px">
-              还没有令牌？
-              <a :href="PAT_URL" target="_blank" style="color: var(--accent)">点击创建（勾选仓库读写权限）</a>
-              ，创建后粘贴到上方输入框。
-            </p>
+
+            <el-collapse class="pat-guide">
+              <el-collapse-item title="第一次使用？查看获取令牌的步骤（约 1 分钟）" name="guide">
+                <ol class="pat-guide-steps">
+                  <li>
+                    点击
+                    <a :href="PAT_URL" target="_blank" rel="noreferrer">
+                      <el-button size="small" type="primary" plain style="vertical-align: middle">
+                        打开 GitHub 令牌创建页面
+                      </el-button>
+                    </a>
+                    （需要先在浏览器里登录 GitHub）
+                  </li>
+                  <li>打开的页面已经自动填好备注、勾选好所需权限，不用改任何选项，直接拉到页面最底部</li>
+                  <li>点击绿色的 <strong>Generate token</strong>（生成令牌）按钮</li>
+                  <li>
+                    页面最上方会出现一串以 <code>ghp_</code> 开头的字符——这就是你的令牌，
+                    <strong>只显示这一次</strong>，点击它旁边的复制按钮复制
+                  </li>
+                  <li>回到 Trace，把令牌粘贴到上方输入框，点击「登录」，看到你的用户名就成功了</li>
+                </ol>
+                <div class="pat-guide-tips">
+                  <p>· 令牌相当于你仓库的钥匙：Trace 只申请仓库读写权限，令牌只保存在本机的系统加密存储中，不会上传</p>
+                  <p>· 请不要把令牌告诉别人；想作废时到 GitHub → Settings → Developer settings → Personal access tokens 里删除即可</p>
+                  <p>
+                    · 如果你熟悉 GitHub 新版的细粒度令牌（Fine-grained tokens）也可以使用：需将
+                    Repository access 设为 All repositories，并在 Permissions 中把 Contents 设为
+                    Read and write
+                  </p>
+                </div>
+              </el-collapse-item>
+            </el-collapse>
           </template>
 
           <template v-else>
@@ -260,3 +288,50 @@ const themeOptions: { label: string; value: 'light' | 'dark' | 'system' }[] = [
     </el-tabs>
   </div>
 </template>
+
+<style scoped>
+/* 获取令牌步骤说明 */
+.pat-guide {
+  margin-top: 14px;
+  border-top: none;
+}
+
+.pat-guide :deep(.el-collapse-item__header) {
+  color: var(--accent);
+  font-size: 13px;
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  padding: 0 10px;
+}
+
+.pat-guide :deep(.el-collapse-item__content) {
+  padding: 12px 10px 4px;
+  color: var(--text-secondary);
+}
+
+.pat-guide-steps {
+  margin: 0;
+  padding-left: 22px;
+  line-height: 2;
+}
+
+.pat-guide-steps code {
+  background: var(--code-bg);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 12px;
+}
+
+.pat-guide-tips {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.pat-guide-tips p {
+  margin: 2px 0;
+}
+</style>
