@@ -55,16 +55,14 @@ async function confirmAssociate(): Promise<void> {
       return
     }
     busy.value = true
-    const error = await repos.create(newName.value.trim(), newPrivate.value)
+    const created = await repos.create(newName.value.trim(), newPrivate.value)
     busy.value = false
-    if (error) {
-      ElMessage.error(error)
+    if (!created.ok) {
+      ElMessage.error(created.error ?? '创建仓库失败')
       return
     }
-    fullName = newName.value.trim()
-    // 若以 owner/ 前缀创建过，优先用列表里最新的同名项
-    const hit = repos.repos.find((r) => r.fullName.toLowerCase().endsWith(`/${fullName!.toLowerCase()}`))
-    if (hit) fullName = hit.fullName
+    // GitHub 返回的 full_name（owner/repo）即为规范名称
+    fullName = created.fullName ?? newName.value.trim()
   }
   if (!fullName) {
     ElMessage.warning('请选择一个仓库或新建仓库')

@@ -63,13 +63,13 @@ export const useRemoteRepos = defineStore('remoteRepos', {
         this.loading = false
       }
     },
-    async create(name: string, isPrivate: boolean): Promise<string | null> {
+    async create(name: string, isPrivate: boolean): Promise<{ ok: boolean; fullName?: string; error?: string }> {
       const result = await window.trace.createRemoteRepo(name, isPrivate)
       if (result.ok && result.fullName) {
         await this.load()
-        return result.fullName
+        return { ok: true, fullName: result.fullName }
       }
-      return result.error ?? '创建失败'
+      return { ok: false, error: result.error ?? '创建失败' }
     }
   }
 })
