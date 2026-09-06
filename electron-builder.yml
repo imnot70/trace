@@ -20,6 +20,7 @@ linux:
   icon: build/icon.png
   category: Utility
   maintainer: trace
+  artifactName: linux-v${version}-x64.${ext}
   target:
     - target: deb
       arch:
@@ -30,6 +31,7 @@ linux:
 
 win:
   icon: build/icon.png
+  artifactName: win-v${version}-x64.${ext}
   target:
     - target: nsis
       arch:

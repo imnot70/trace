@@ -64,9 +64,9 @@
 
 | 平台 | 文件 | 安装方式 |
 | --- | --- | --- |
-| Ubuntu / Debian | `trace_x.y.z_amd64.deb` | `sudo dpkg -i trace_*.deb` 或 `sudo apt install ./trace_*.deb` |
-| 其他 Linux | `Trace-x.y.z.AppImage` | `chmod +x Trace-*.AppImage && ./Trace-*.AppImage`（需 FUSE，或 `--appimage-extract` 后运行） |
-| Windows | `Trace Setup x.y.z.exe` | 双击安装，可选择安装目录 |
+| Ubuntu / Debian | `linux-v0.2.0-x64.deb` | `sudo dpkg -i linux-v*.deb` 或 `sudo apt install ./linux-v*.deb` |
+| 其他 Linux | `linux-v0.2.0-x64.AppImage` | `chmod +x linux-v*.AppImage && ./linux-v*.AppImage`（需 FUSE，或 `--appimage-extract` 后运行） |
+| Windows | `win-v0.2.0-x64.exe` | 双击安装，可选择安装目录 |
 | macOS | 暂不提供安装包 | 请自行从源码构建（见下方说明） |
 
 > macOS 需要自行构建：安装 Node.js ≥ 20 与 git 后，执行下面的「从源码构建」，在 macOS 机器上运行 `npm run dist` 即可得到 `Trace-x.y.z.dmg`（首次构建前建议先执行 `xcode-select --install` 安装命令行工具）。
@@ -92,7 +92,7 @@ npm run dist         # 按当前平台打包安装程序
 npm run dist:deb     # 只打 Ubuntu/Debian deb 包
 ```
 
-产物输出在 `dist/` 目录（如 `trace_0.2.0_amd64.deb`、`Trace-0.2.0.AppImage`）。
+产物输出在 `dist/` 目录，命名规范为「平台-v版本-架构.扩展名」（如 `linux-v0.2.0-x64.deb`、`win-v0.2.0-x64.exe`）。
 
 > Windows / macOS 安装包需在对应平台上执行 `npm run dist`。macOS 没有预构建安装包，Mac 用户请通过本节自行构建 DMG。
 

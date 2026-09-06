@@ -15,8 +15,10 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: linux
+            arch: x64
           - os: windows-latest
             platform: win
+            arch: x64
         # macOS 不提供预构建安装包，用户需自行从源码构建（见 README）
 
     runs-on: ${{ matrix.os }}
@@ -47,20 +49,21 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --${{ matrix.platform }} --publish never
 
-      # 5. 上传构建产物（每次构建都会保存，方便下载测试）
+      # 6. 读取应用版本号（供工件命名）
+      - name: Read app version
+        id: app_version
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      # 7. 上传构建产物（命名规范：平台-v版本-架构；下载时由 GitHub 打包为 zip）
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.platform }}-build
+          name: ${{ matrix.platform }}-v${{ steps.app_version.outputs.version }}-${{ matrix.arch }}
           path: |
             dist/*.exe
-            dist/*.msi
-            dist/*.dmg
-            dist/*.zip
-            dist/*.AppImage
             dist/*.deb
-            dist/*.rpm
-            dist/*.tar.gz
+            dist/*.AppImage
             dist/*.yml
             dist/*.blockmap
 
