@@ -202,6 +202,15 @@ defineProps<{ vaults?: VaultInfo[] }>()
           <el-icon><Setting /></el-icon>
         </button>
       </el-tooltip>
+      <el-tooltip
+        v-if="app.view.name === 'editor'"
+        :content="app.zenMode ? '退出专注模式' : '专注模式（隐藏侧栏与预览，专注编辑）'"
+        placement="top"
+      >
+        <button class="row-btn" :class="{ 'zen-on': app.zenMode }" @click="app.toggleZen()">
+          <el-icon><FullScreen /></el-icon>
+        </button>
+      </el-tooltip>
     </div>
   </div>
 </template>

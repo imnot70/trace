@@ -27,15 +27,48 @@ export const useAppStore = defineStore('app', {
     defaultRoot: '',
     view: { name: 'welcome' } as ActiveView,
     settings: { ...DEFAULT_SETTINGS } as AppSettings,
-    version: ''
+    version: '',
+    /** 编辑视图：是否显示预览卡片（localStorage 持久化） */
+    previewVisible: true,
+    /** 专注模式：隐藏侧栏与预览，只留编辑卡片（localStorage 持久化） */
+    zenMode: false
   }),
   getters: {
     isDark(state): boolean {
       return state.settings.theme === 'dark' || (state.settings.theme === 'system' && prefersDark())
+    },
+    /** 预览卡片当前是否实际显示 */
+    previewShown(state): boolean {
+      return state.previewVisible && !state.zenMode
     }
   },
   actions: {
+    loadUiPrefs(): void {
+      try {
+        this.previewVisible = localStorage.getItem('trace.previewVisible') !== '0'
+        this.zenMode = localStorage.getItem('trace.zenMode') === '1'
+      } catch {
+        /* localStorage 不可用时保持默认 */
+      }
+    },
+    togglePreview(): void {
+      this.previewVisible = !this.previewVisible
+      try {
+        localStorage.setItem('trace.previewVisible', this.previewVisible ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+    },
+    toggleZen(): void {
+      this.zenMode = !this.zenMode
+      try {
+        localStorage.setItem('trace.zenMode', this.zenMode ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+    },
     async init(): Promise<void> {
+      this.loadUiPrefs()
       const [ws, settings, version] = await Promise.all([
         window.trace.getWorkspace(),
         window.trace.getSettings(),

@@ -16,10 +16,10 @@ const app = useAppStore()
 const tree = useTreeStore()
 const editor = useEditorStore()
 
+// 编辑视图的卡片（编辑卡 + 预览卡）由 EditorView 以多根节点输出，
+// 其余视图统一包进一张 page-card。
 const mainView = computed(() => {
   switch (app.view.name) {
-    case 'editor':
-      return EditorView
     case 'trash':
       return TrashView
     case 'settings':
@@ -55,21 +55,15 @@ onMounted(async () => {
 </script>
 
 <template>
-  <el-container class="app-shell">
-    <el-aside width="272px" class="app-aside">
-      <SideBar />
-    </el-aside>
-    <el-main class="app-main">
-      <component :is="mainView" />
-    </el-main>
-  </el-container>
+  <div class="app-shell">
+    <SideBar v-if="!app.zenMode" class="sidebar-card" />
+    <div class="main-cards">
+      <EditorView v-if="app.view.name === 'editor'" />
+      <div v-else class="page-card">
+        <component :is="mainView" />
+      </div>
+    </div>
+  </div>
   <NameDialog />
   <GitAssociateDialog />
 </template>
-
-<style scoped>
-.app-aside {
-  border-right: 1px solid var(--border-color);
-  overflow: hidden;
-}
-</style>

@@ -49,13 +49,13 @@ function bindEditorScroll(): void {
 }
 
 // 拖动分隔条
-const editorBody = ref<HTMLElement | null>(null)
+const editorCardRef = ref<HTMLElement | null>(null)
 const editorWrapRef = ref<HTMLElement | null>(null)
 
 function startDrag(): void {
   dragging.value = true
   const move = (ev: MouseEvent): void => {
-    const rect = editorBody.value?.getBoundingClientRect()
+    const rect = editorCardRef.value?.getBoundingClientRect()
     if (!rect) return
     splitPercent.value = Math.min(80, Math.max(20, ((ev.clientX - rect.left) / rect.width) * 100))
   }
@@ -103,8 +103,15 @@ watch(
 </script>
 
 <template>
-  <div class="editor-view">
-    <!-- 顶部：路径 + git 状态 -->
+  <!-- 编辑卡片：面包屑 + 工具栏 + 编辑器 -->
+  <div
+    ref="editorCardRef"
+    class="editor-card"
+    :style="{
+      flexBasis: app.previewShown ? `${splitPercent}%` : '100%'
+    }"
+  >
+    <!-- 顶部：路径 + git 状态 + 视图开关 -->
     <div class="editor-topbar">
       <div class="breadcrumb">
         <template v-if="editor.current">
@@ -141,6 +148,18 @@ watch(
       >
         同步
       </el-button>
+
+      <span class="toolbar-sep"></span>
+      <el-tooltip :content="app.previewShown ? '隐藏预览' : '显示预览'" placement="bottom">
+        <button class="tool-btn" @click="app.togglePreview()">
+          <el-icon><Expand v-if="!app.previewShown" /><Fold v-else /></el-icon>
+        </button>
+      </el-tooltip>
+      <el-tooltip :content="app.zenMode ? '退出专注模式' : '专注模式（隐藏侧栏与预览）'" placement="bottom">
+        <button class="tool-btn" :class="{ 'zen-on': app.zenMode }" @click="app.toggleZen()">
+          <el-icon><FullScreen /></el-icon>
+        </button>
+      </el-tooltip>
     </div>
 
     <!-- 外部修改提示 -->
@@ -192,52 +211,67 @@ watch(
       </button>
     </div>
 
-    <!-- 编辑 + 预览 -->
-    <div ref="editorBody" class="editor-body">
-      <div
-        ref="editorWrapRef"
-        class="editor-pane-wrap"
-        :style="{ flexBasis: `${splitPercent}%` }"
-      >
-        <MarkdownEditor
-          v-if="editor.current"
-          ref="editorRef"
-          :model-value="editor.content"
-          :font-size="app.settings.editorFontSize"
-          @update:model-value="editor.setContent"
-          @save="editor.flushSave()"
-          @image="(name: string, b64: string) => onImage(name, b64)"
-        />
-      </div>
-      <div
-        class="split-divider"
-        :class="{ dragging }"
-        @mousedown.prevent="startDrag"
-      ></div>
-      <div class="preview-wrap">
-        <MarkdownPreview
-          v-if="editor.current"
-          ref="previewRef"
-          :content="editor.content"
-          :vault="vaultName"
-          :note-path="editor.current.path"
-          :font-size="app.settings.editorFontSize"
-        />
-      </div>
+    <!-- 编辑器主体（填满卡片剩余空间） -->
+    <div ref="editorWrapRef" class="editor-cm">
+      <MarkdownEditor
+        v-if="editor.current"
+        ref="editorRef"
+        :model-value="editor.content"
+        :font-size="app.settings.editorFontSize"
+        @update:model-value="editor.setContent"
+        @save="editor.flushSave()"
+        @image="(name: string, b64: string) => onImage(name, b64)"
+      />
     </div>
+  </div>
+
+  <!-- 分栏拖拽间隙（预览隐藏时一并隐藏） -->
+  <div
+    v-if="app.previewShown"
+    class="split-divider"
+    :class="{ dragging }"
+    @mousedown.prevent="startDrag"
+  ></div>
+
+  <!-- 预览卡片 -->
+  <div v-if="app.previewShown" class="preview-card">
+    <MarkdownPreview
+      v-if="editor.current"
+      ref="previewRef"
+      :content="editor.content"
+      :vault="vaultName"
+      :note-path="editor.current.path"
+      :font-size="app.settings.editorFontSize"
+    />
   </div>
 </template>
 
 <style scoped>
-.editor-pane-wrap {
+.editor-card {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  border-radius: 8px;
   overflow: hidden;
+  min-width: 0;
   flex-shrink: 0;
   flex-grow: 0;
 }
 
-.preview-wrap {
+.editor-cm {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-card {
   flex: 1;
   min-width: 0;
+  height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-primary);
 }
 </style>
