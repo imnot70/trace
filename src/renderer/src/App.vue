@@ -10,6 +10,7 @@ import WelcomeView from './views/WelcomeView.vue'
 import EditorView from './views/EditorView.vue'
 import TrashView from './views/TrashView.vue'
 import SettingsView from './views/SettingsView.vue'
+import NoteGridView from './views/NoteGridView.vue'
 import { ElMessage } from 'element-plus'
 
 const app = useAppStore()
@@ -24,6 +25,8 @@ const mainView = computed(() => {
       return TrashView
     case 'settings':
       return SettingsView
+    case 'grid':
+      return NoteGridView
     default:
       return WelcomeView
   }

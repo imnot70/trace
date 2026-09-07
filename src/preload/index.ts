@@ -37,6 +37,7 @@ const api: TraceApi = {
   removeFavorite: (vault, path) => ipcRenderer.invoke('favorite:remove', vault, path),
   listRecents: () => ipcRenderer.invoke('recent:list'),
   addRecent: (vault, path, name) => ipcRenderer.invoke('recent:add', vault, path, name),
+  removeRecent: (vault, path) => ipcRenderer.invoke('recent:remove', vault, path),
 
   listTrash: () => ipcRenderer.invoke('trash:list'),
   restoreTrash: (id) => ipcRenderer.invoke('trash:restore', id),

@@ -199,6 +199,14 @@ export function useNoteActions() {
     if (result.ok) await tree.loadFavorites()
   }
 
+  // ---------- 常用 ----------
+  /** 从「常用」列表移除（不删除笔记文件）。防菜单锚点失效的等待由调用方（卡片菜单）负责 */
+  async function removeRecent(vault: string, path: string): Promise<void> {
+    const result = await window.trace.removeRecent(vault, path)
+    if (result.ok) await tree.loadRecents()
+    else ElMessage.error(result.error ?? '移除失败')
+  }
+
   // ---------- 打开 ----------
   async function openNote(vault: string, path: string, name: string): Promise<void> {
     await editor.openNote(vault, path, name)
@@ -216,6 +224,7 @@ export function useNoteActions() {
     renameNote,
     deleteNote,
     toggleFavorite,
+    removeRecent,
     openNote,
     refreshVault
   }

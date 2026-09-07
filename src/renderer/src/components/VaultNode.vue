@@ -18,6 +18,9 @@ const actions = useNoteActions()
 const isDir = computed(() => props.node.kind === 'dir')
 const expanded = computed(() => tree.isExpanded(props.vault, props.node.path))
 const active = computed(() => editor.activeKey === `${props.vault}::${props.node.path}`)
+const favorited = computed(() =>
+  tree.favorites.some((f) => f.vault === props.vault && f.path === props.node.path)
+)
 
 function onRowClick(): void {
   if (isDir.value) tree.toggleExpand(props.vault, props.node.path)
@@ -51,7 +54,7 @@ function handlePlusCommand(cmd: string): void {
       @click="onRowClick"
     >
       <span class="chevron" :class="{ open: isDir && expanded }">
-        <el-icon v-if="isDir"><CaretRight /></el-icon>
+        <el-icon v-if="isDir"><ArrowRight /></el-icon>
       </span>
       <el-icon class="node-icon">
         <Folder v-if="isDir" />
@@ -82,12 +85,13 @@ function handlePlusCommand(cmd: string): void {
             <el-dropdown-menu>
               <template v-if="isDir">
                 <el-dropdown-item command="rename">重命名</el-dropdown-item>
-                <el-dropdown-item command="delete" class="danger-item">删除文件夹</el-dropdown-item>
+                <el-dropdown-item command="delete" divided class="danger-item">删除文件夹</el-dropdown-item>
               </template>
               <template v-else>
                 <el-dropdown-item command="rename">重命名</el-dropdown-item>
-                <el-dropdown-item command="delete" class="danger-item">删除笔记</el-dropdown-item>
-                <el-dropdown-item command="favorite" divided>收藏笔记</el-dropdown-item>
+                <el-dropdown-item v-if="favorited" command="unfavorite" divided>取消收藏</el-dropdown-item>
+                <el-dropdown-item v-else command="favorite" divided>收藏笔记</el-dropdown-item>
+                <el-dropdown-item command="delete" divided class="danger-item">删除笔记</el-dropdown-item>
               </template>
             </el-dropdown-menu>
           </template>

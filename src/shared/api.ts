@@ -47,6 +47,7 @@ export interface TraceApi {
   removeFavorite(vault: string, path: string): Promise<OpResult>
   listRecents(): Promise<OpResult & { items?: RecentItem[] }>
   addRecent(vault: string, path: string, name: string): Promise<OpResult>
+  removeRecent(vault: string, path: string): Promise<OpResult>
 
   // ---- 回收站 ----
   listTrash(): Promise<OpResult & { entries?: TrashEntry[] }>

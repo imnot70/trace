@@ -2,7 +2,6 @@
 import { ref } from 'vue'
 import { useAppStore } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
-import { useEditorStore } from '../stores/editor'
 import { useNoteActions } from '../composables/actions'
 import { useGitStore } from '../stores/git'
 import type { VaultInfo } from '@shared/types'
@@ -10,18 +9,25 @@ import VaultNode from './VaultNode.vue'
 
 const app = useAppStore()
 const tree = useTreeStore()
-const editor = useEditorStore()
 const git = useGitStore()
 const actions = useNoteActions()
 
 const expandedSections = ref<Record<string, boolean>>({
-  recents: true,
-  favorites: true,
   vaults: true
 })
 
 function toggleSection(key: string): void {
   expandedSections.value[key] = !expandedSections.value[key]
+}
+
+/** 点击「常用 / 收藏」标题：在主区域打开对应卡片网格；再点一次关闭 */
+function toggleGrid(section: 'recents' | 'favorites'): void {
+  if (app.view.name === 'grid' && app.view.section === section) app.view = { name: 'welcome' }
+  else app.view = { name: 'grid', section }
+}
+
+function isGridOpen(section: 'recents' | 'favorites'): boolean {
+  return app.view.name === 'grid' && app.view.section === section
 }
 
 
@@ -49,61 +55,35 @@ defineProps<{ vaults?: VaultInfo[] }>()
     </div>
 
     <div class="sidebar-scroll">
-      <!-- 常用 -->
+      <!-- 常用：点击标题在主区域打开卡片网格 -->
       <div class="side-section">
         <div
           class="side-section-header"
-          :class="{ collapsed: !expandedSections.recents }"
-          @click="toggleSection('recents')"
+          :class="{ active: isGridOpen('recents') }"
+          title="查看常用笔记"
+          @click="toggleGrid('recents')"
         >
-          <el-icon class="chevron"><CaretBottom /></el-icon>
           <el-icon><Clock /></el-icon>
           <span>常用</span>
+          <span v-if="tree.recents.length" class="side-section-count">{{ tree.recents.length }}</span>
         </div>
-        <template v-if="expandedSections.recents">
-          <div v-if="tree.recents.length === 0" class="empty-hint">最近打开的笔记会显示在这里</div>
-          <div
-            v-for="item in tree.recents"
-            :key="`${item.vault}::${item.path}`"
-            class="side-row"
-            :class="{ active: editor.activeKey === `${item.vault}::${item.path}` }"
-            :title="`${item.vault} / ${item.path}`"
-            @click="actions.openNote(item.vault, item.path, item.name)"
-          >
-            <el-icon class="node-icon"><Document /></el-icon>
-            <span class="row-name">{{ item.name }}</span>
-          </div>
-        </template>
       </div>
 
-      <!-- 收藏 -->
+      <!-- 收藏：点击标题在主区域打开卡片网格 -->
       <div class="side-section">
         <div
           class="side-section-header"
-          :class="{ collapsed: !expandedSections.favorites }"
-          @click="toggleSection('favorites')"
+          :class="{ active: isGridOpen('favorites') }"
+          title="查看收藏笔记"
+          @click="toggleGrid('favorites')"
         >
-          <el-icon class="chevron"><CaretBottom /></el-icon>
           <el-icon><Star /></el-icon>
           <span>收藏</span>
+          <span v-if="tree.favorites.length" class="side-section-count">{{ tree.favorites.length }}</span>
         </div>
-        <template v-if="expandedSections.favorites">
-          <div v-if="tree.favorites.length === 0" class="empty-hint">收藏的笔记会显示在这里</div>
-          <div
-            v-for="item in tree.favorites"
-            :key="item.id"
-            class="side-row"
-            :class="{ active: editor.activeKey === `${item.vault}::${item.path}` }"
-            :title="`${item.vault} / ${item.path}`"
-            @click="actions.openNote(item.vault, item.path, item.name)"
-          >
-            <el-icon class="node-icon"><Document /></el-icon>
-            <span class="row-name">{{ item.name }}</span>
-          </div>
-        </template>
       </div>
 
-      <!-- 回收站：点击标题直接进入 -->
+      <!-- 回收站：点击标题直接进入（占位对齐其他区块的展开箭头） -->
       <div class="side-section">
         <div
           class="side-section-header"
@@ -123,8 +103,9 @@ defineProps<{ vaults?: VaultInfo[] }>()
           :class="{ collapsed: !expandedSections.vaults }"
           @click="toggleSection('vaults')"
         >
-          <el-icon class="chevron"><CaretBottom /></el-icon>
-          <el-icon><Collection /></el-icon>
+          <span class="chevron-hit">
+            <el-icon class="chevron"><ArrowDown /></el-icon>
+          </span>
           <span>笔记库</span>
           <span style="flex: 1"></span>
           <el-tooltip content="创建笔记库" placement="top">
@@ -141,7 +122,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
               @click="tree.toggleVault(vault.name)"
             >
               <el-icon class="chevron" :class="{ open: tree.isVaultExpanded(vault.name) }">
-                <CaretRight />
+                <ArrowRight />
               </el-icon>
               <el-icon class="node-icon"><Folder /></el-icon>
               <span class="row-name">{{ vault.name }}</span>

@@ -190,16 +190,52 @@ body {
 }
 
 .side-section-header .el-icon {
-  transition: transform 0.15s;
+  transition: transform 0.2s ease;
 }
 
 .side-section-header.collapsed .chevron {
   transform: rotate(-90deg);
 }
 
+/* 展开箭头的点击热区（带悬停反馈的小圆角块），与其他区块标题的前导图标同宽对齐 */
+.chevron-hit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  color: var(--text-tertiary);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.chevron-hit:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* 区块标题前导图标与 chevron-hit 同宽，保证各标题文字列对齐 */
+.side-section-header > .el-icon:not(.chevron) {
+  width: 18px;
+  justify-content: center;
+}
+
+/* 区块标题右侧数量角标（常用 / 收藏列表移入主区域后在此显示数量） */
+.side-section-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 0 6px;
+  min-width: 18px;
+  text-align: center;
+}
+
 .side-row .chevron,
 .tree-row .chevron {
-  transition: transform 0.15s;
+  transition: transform 0.2s ease;
+  color: var(--text-tertiary);
 }
 
 .side-row .chevron.open,

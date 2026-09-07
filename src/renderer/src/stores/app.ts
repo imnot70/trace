@@ -5,6 +5,8 @@ export type ActiveView =
   | { name: 'welcome' }
   | { name: 'editor' }
   | { name: 'trash' }
+  /** 常用 / 收藏 的卡片网格视图（在主区域展示，预览卡片自然收起） */
+  | { name: 'grid'; section: 'recents' | 'favorites' }
   | { name: 'settings'; tab: 'account' | 'plugins' | 'general' }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -30,6 +32,8 @@ export const useAppStore = defineStore('app', {
     version: '',
     /** 编辑视图：是否显示预览卡片（localStorage 持久化） */
     previewVisible: true,
+    /** 进入专注模式前的预览状态，退出专注时恢复（会话级不持久化） */
+    previewBeforeZen: true,
     /** 专注模式：隐藏侧栏，只留编辑卡片（localStorage 持久化） */
     zenMode: false,
     /** 悬浮预览卡片（长按预览按钮触发，会话级不持久化） */
@@ -54,6 +58,11 @@ export const useAppStore = defineStore('app', {
       } catch {
         /* localStorage 不可用时保持默认 */
       }
+      // 上次退出时仍在专注模式：启动即隐藏预览（保持专注语义一致）
+      if (this.zenMode) {
+        this.previewBeforeZen = this.previewVisible
+        this.previewVisible = false
+      }
     },
     togglePreview(): void {
       this.previewVisible = !this.previewVisible
@@ -65,6 +74,13 @@ export const useAppStore = defineStore('app', {
     },
     toggleZen(): void {
       this.zenMode = !this.zenMode
+      if (this.zenMode) {
+        // 进入专注：隐藏预览（预览按钮仍可呼出），记住进入前状态
+        this.previewBeforeZen = this.previewVisible
+        this.previewVisible = false
+      } else {
+        this.previewVisible = this.previewBeforeZen
+      }
       try {
         localStorage.setItem('trace.zenMode', this.zenMode ? '1' : '0')
       } catch {

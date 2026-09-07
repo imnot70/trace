@@ -137,7 +137,7 @@ watch(
     ref="editorCardRef"
     class="editor-card"
     :style="{
-      flexBasis: app.previewVisible ? `${splitPercent}%` : '100%'
+      flexBasis: app.previewVisible ? (app.zenMode ? '50%' : `${splitPercent}%`) : '100%'
     }"
   >
     <!-- 顶部：路径 + git 状态 + 视图开关 -->

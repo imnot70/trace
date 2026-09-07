@@ -154,6 +154,10 @@ export function registerIpc(deps: IpcDeps): void {
     deps.recents.add(vault, relPath, name)
     return { ok: true }
   })
+  handle('recent:remove', (vault: string, relPath: string) => {
+    deps.recents.remove(vault, relPath)
+    return { ok: true }
+  })
 
   // ---------- 回收站 ----------
   handle('trash:list', () => ({ ok: true, entries: deps.trash.list() }))
