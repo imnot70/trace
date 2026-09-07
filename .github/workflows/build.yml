@@ -59,7 +59,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.platform }}-v${{ steps.app_version.outputs.version }}-${{ matrix.arch }}
+          name: Trace-${{ matrix.platform }}-${{ github.ref_name }}-${{ matrix.arch }}
           path: |
             dist/*.exe
             dist/*.deb
