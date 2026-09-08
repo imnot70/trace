@@ -8,8 +8,9 @@ export type ActiveView =
   | { name: 'welcome' }
   | { name: 'editor' }
   | { name: 'trash' }
-  /** 常用 / 收藏 / 笔记库 的卡片网格视图（在主区域展示，预览卡片自然收起） */
-  | { name: 'grid'; section: GridSection }
+  /** 常用 / 收藏 / 笔记库 的卡片网格视图（在主区域展示，预览卡片自然收起）；
+   *  笔记库区可携带钻入路径（POSIX 相对路径，首段为库名；缺省 = 库列表级） */
+  | { name: 'grid'; section: GridSection; vaultPath?: string }
   | { name: 'settings'; tab: 'account' | 'plugins' | 'general' }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -53,6 +54,22 @@ export const useAppStore = defineStore('app', {
     }
   },
   actions: {
+    /** 库网格：钻入库 / 文件夹（vaultPath = '库名' 或 '库名/文件夹/…'） */
+    drillIn(vaultPath: string): void {
+      if (this.view.name === 'grid' && this.view.section === 'vaults') {
+        this.view = { name: 'grid', section: 'vaults', vaultPath }
+      }
+    },
+    /** 库网格：回退上一级（已在库列表级时无操作） */
+    drillOut(): void {
+      if (this.view.name === 'grid' && this.view.section === 'vaults' && this.view.vaultPath) {
+        const segs = this.view.vaultPath.split('/').filter(Boolean)
+        segs.pop()
+        this.view = segs.length
+          ? { name: 'grid', section: 'vaults', vaultPath: segs.join('/') }
+          : { name: 'grid', section: 'vaults' }
+      }
+    },
     openFloatingPreview(): void {
       this.floatingPreview = true
     },
