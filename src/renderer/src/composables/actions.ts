@@ -2,6 +2,7 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 import { useNameDialog } from '../stores/nameDialog'
 import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
+import { useTrashStore } from '../stores/trash'
 import { useAppStore } from '../stores/app'
 
 /** 侧栏与树节点的全部操作（创建/重命名/删除/收藏/git） */
@@ -9,6 +10,7 @@ export function useNoteActions() {
   const dialog = useNameDialog()
   const tree = useTreeStore()
   const editor = useEditorStore()
+  const trash = useTrashStore()
   const app = useAppStore()
 
   async function refreshVault(vault: string): Promise<void> {
@@ -70,6 +72,7 @@ export function useNoteActions() {
       await tree.loadVaults()
       await tree.loadFavorites()
       await tree.loadRecents()
+      void trash.load() // 回收站计数
       ElMessage.success('已移入回收站')
     } else {
       ElMessage.error(result.error ?? '删除失败')
@@ -127,6 +130,7 @@ export function useNoteActions() {
       await refreshVault(vault)
       await tree.loadFavorites()
       await tree.loadRecents()
+      void trash.load() // 回收站计数
       ElMessage.success('已移入回收站')
     } else {
       ElMessage.error(result.error ?? '删除失败')
@@ -186,6 +190,7 @@ export function useNoteActions() {
       await refreshVault(vault)
       await tree.loadFavorites()
       await tree.loadRecents()
+      void trash.load() // 回收站计数
       ElMessage.success('已移入回收站')
     } else {
       ElMessage.error(result.error ?? '删除失败')

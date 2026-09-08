@@ -292,6 +292,14 @@ const themeOptions: { label: string; value: 'light' | 'dark' | 'system' }[] = [
             <span class="settings-desc" style="margin: 0">编辑后 1 秒自动写入文件（Ctrl+S 可手动保存）</span>
           </div>
           <div class="setting-row">
+            <span class="setting-label">专注模式隐藏顶栏</span>
+            <el-switch
+              :model-value="app.settings.zenHideTopbar"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ zenHideTopbar: Boolean(v) })"
+            />
+            <span class="settings-desc" style="margin: 0">专注时隐藏顶栏与格式工具栏，鼠标移到编辑卡顶部可整体唤出</span>
+          </div>
+          <div class="setting-row">
             <span class="setting-label">附件目录</span>
             <el-input
               v-model="attachmentsDirInput"

@@ -60,16 +60,20 @@ function handlePlusCommand(cmd: string): void {
         <Folder v-if="isDir" />
         <Document v-else />
       </el-icon>
-      <span class="row-name" :title="node.name">{{ node.name }}</span>
+      <el-tooltip :content="node.name" placement="right" :show-after="400">
+        <span class="row-name">{{ node.name }}</span>
+      </el-tooltip>
       <span class="side-row-actions">
         <el-dropdown
           v-if="isDir"
           trigger="click"
           @command="handlePlusCommand"
         >
-          <button class="row-btn" title="新建" @click.stop>
-            <el-icon><Plus /></el-icon>
-          </button>
+          <el-tooltip content="新建文件夹 / 笔记" placement="top" :show-after="400">
+            <button class="row-btn" @click.stop>
+              <el-icon><Plus /></el-icon>
+            </button>
+          </el-tooltip>
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="dir">新建文件夹</el-dropdown-item>
@@ -78,9 +82,11 @@ function handlePlusCommand(cmd: string): void {
           </template>
         </el-dropdown>
         <el-dropdown trigger="click" @command="handleMenuCommand">
-          <button class="row-btn" title="更多操作" @click.stop>
-            <el-icon><MoreFilled /></el-icon>
-          </button>
+          <el-tooltip content="更多操作" placement="top" :show-after="400">
+            <button class="row-btn" @click.stop>
+              <el-icon><MoreFilled /></el-icon>
+            </button>
+          </el-tooltip>
           <template #dropdown>
             <el-dropdown-menu>
               <template v-if="isDir">

@@ -66,6 +66,8 @@ export interface AppSettings {
   theme: ThemeOption
   editorFontSize: number
   autoSave: boolean
+  /** 专注模式下隐藏顶部信息栏（面包屑 / Git 状态 / 视图开关，悬停编辑卡顶部可临时显示） */
+  zenHideTopbar: boolean
   /** 图片附件保存目录（相对库根，支持多级，如 media/image） */
   attachmentsDir: string
   enablePlugins: boolean

@@ -17,6 +17,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
   editorFontSize: 15,
   autoSave: true,
+  zenHideTopbar: false,
   attachmentsDir: 'attachments',
   enablePlugins: false,
   pluginEnabled: {}
@@ -39,6 +40,10 @@ export const useAppStore = defineStore('app', {
     previewBeforeZen: true,
     /** 专注模式：隐藏侧栏，只留编辑卡片（localStorage 持久化） */
     zenMode: false,
+    /** 侧栏显示（手动收起/呼出，localStorage 持久化；专注模式强制隐藏与此独立） */
+    sidebarVisible: true,
+    /** 专注模式下临时浮出的侧栏（浮层，会话级） */
+    zenSidebarOverlay: false,
     /** 悬浮预览卡片（长按预览按钮触发，会话级不持久化） */
     floatingPreview: false
   }),
@@ -58,6 +63,7 @@ export const useAppStore = defineStore('app', {
       try {
         this.previewVisible = localStorage.getItem('trace.previewVisible') !== '0'
         this.zenMode = localStorage.getItem('trace.zenMode') === '1'
+        this.sidebarVisible = localStorage.getItem('trace.sidebarVisible') !== '0'
       } catch {
         /* localStorage 不可用时保持默认 */
       }
@@ -89,6 +95,20 @@ export const useAppStore = defineStore('app', {
       } catch {
         /* ignore */
       }
+    },
+    toggleSidebar(): void {
+      this.sidebarVisible = !this.sidebarVisible
+      try {
+        localStorage.setItem('trace.sidebarVisible', this.sidebarVisible ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+    },
+    toggleZenSidebar(): void {
+      this.zenSidebarOverlay = !this.zenSidebarOverlay
+    },
+    closeZenSidebar(): void {
+      this.zenSidebarOverlay = false
     },
     async init(): Promise<void> {
       this.loadUiPrefs()

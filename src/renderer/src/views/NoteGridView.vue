@@ -209,72 +209,80 @@ watch(section, () => {
 
     <!-- 库卡片网格 -->
     <div v-else-if="isVaults" class="grid-body">
-      <div
+      <el-tooltip
         v-for="card in vaultCards"
         :key="card.name"
-        class="note-card vault-card"
-        :title="card.description ? `${card.name}：${card.description}` : card.name"
+        :content="card.description ? `${card.name}：${card.description}` : card.name"
+        placement="bottom"
+        :show-after="400"
       >
-        <div class="note-card-actions">
-          <el-dropdown trigger="click" @command="(cmd: string) => onVaultMenuCommand(cmd, card)">
-            <button class="row-btn" title="更多操作" @click.stop @dblclick.stop>
-              <el-icon><MoreFilled /></el-icon>
-            </button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="rename">重命名</el-dropdown-item>
-                <el-dropdown-item command="deleteVault" divided class="danger-item">删除笔记库</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+        <div class="note-card vault-card">
+          <div class="note-card-actions">
+            <el-dropdown trigger="click" @command="(cmd: string) => onVaultMenuCommand(cmd, card)">
+              <button class="row-btn" title="更多操作" @click.stop @dblclick.stop>
+                <el-icon><MoreFilled /></el-icon>
+              </button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="rename">重命名</el-dropdown-item>
+                  <el-dropdown-item command="deleteVault" divided class="danger-item">删除笔记库</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
+          <div class="note-card-title">
+            <el-icon class="note-card-icon"><Folder /></el-icon>
+            <span>{{ card.name }}</span>
+          </div>
+          <div class="note-card-excerpt">{{ card.description ?? '' }}</div>
+          <div class="note-card-meta">
+            <span>{{ tree.gitStatuses[card.name]?.associated ? '已关联 Git 仓库' : '本地笔记库' }}</span>
+          </div>
         </div>
-        <div class="note-card-title">
-          <el-icon class="note-card-icon"><Folder /></el-icon>
-          <span>{{ card.name }}</span>
-        </div>
-        <div class="note-card-excerpt">{{ card.description ?? '' }}</div>
-        <div class="note-card-meta">
-          <span>{{ tree.gitStatuses[card.name]?.associated ? '已关联 Git 仓库' : '本地笔记库' }}</span>
-        </div>
-      </div>
+      </el-tooltip>
     </div>
 
     <!-- 笔记卡片网格（常用 / 收藏） -->
     <div v-else class="grid-body">
-      <div
+      <el-tooltip
         v-for="item in items"
         :key="item.id ?? `${item.vault}::${item.path}`"
-        class="note-card"
-        :title="`${item.vault} / ${item.path}`"
-        @click="onCardClick(item)"
-        @dblclick="onCardDblClick(item)"
+        :content="`${item.vault} / ${item.path}`"
+        placement="bottom"
+        :show-after="400"
       >
-        <div class="note-card-actions">
-          <el-dropdown trigger="click" @command="(cmd: string) => onNoteMenuCommand(cmd, item)">
-            <button class="row-btn" title="更多操作" @click.stop @dblclick.stop>
-              <el-icon><MoreFilled /></el-icon>
-            </button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="favorite">
-                  {{ isFavorited(item) ? '取消收藏' : '收藏笔记' }}
-                </el-dropdown-item>
-                <el-dropdown-item v-if="section === 'recents'" command="removeRecent">移出常用</el-dropdown-item>
-                <el-dropdown-item command="delete" divided class="danger-item">删除笔记</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+        <div
+          class="note-card"
+          @click="onCardClick(item)"
+          @dblclick="onCardDblClick(item)"
+        >
+          <div class="note-card-actions">
+            <el-dropdown trigger="click" @command="(cmd: string) => onNoteMenuCommand(cmd, item)">
+              <button class="row-btn" title="更多操作" @click.stop @dblclick.stop>
+                <el-icon><MoreFilled /></el-icon>
+              </button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="favorite">
+                    {{ isFavorited(item) ? '取消收藏' : '收藏笔记' }}
+                  </el-dropdown-item>
+                  <el-dropdown-item v-if="section === 'recents'" command="removeRecent">移出常用</el-dropdown-item>
+                  <el-dropdown-item command="delete" divided class="danger-item">删除笔记</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
+          <div class="note-card-title">
+            <el-icon class="note-card-icon"><Document /></el-icon>
+            <span>{{ item.name }}</span>
+          </div>
+          <div class="note-card-excerpt">{{ excerpts[`${item.vault}::${item.path}`] ?? '' }}</div>
+          <div class="note-card-meta">
+            <span>{{ item.vault }}</span>
+            <span v-if="dirOf(item.path)">/{{ dirOf(item.path) }}</span>
+          </div>
         </div>
-        <div class="note-card-title">
-          <el-icon class="note-card-icon"><Document /></el-icon>
-          <span>{{ item.name }}</span>
-        </div>
-        <div class="note-card-excerpt">{{ excerpts[`${item.vault}::${item.path}`] ?? '' }}</div>
-        <div class="note-card-meta">
-          <span>{{ item.vault }}</span>
-          <span v-if="dirOf(item.path)">/{{ dirOf(item.path) }}</span>
-        </div>
-      </div>
+      </el-tooltip>
     </div>
 
     <!-- 悬浮预览：自右侧滑入，Esc / × 关闭 -->
@@ -300,57 +308,8 @@ watch(section, () => {
 </template>
 
 <style scoped>
-.grid-view {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.grid-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-primary);
-}
-
-.grid-title {
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.grid-count {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  background: var(--bg-tertiary);
-  border-radius: 8px;
-  padding: 1px 8px;
-}
-
-.grid-hint {
-  flex: 1;
-  text-align: right;
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
-
-.grid-empty {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  color: var(--text-tertiary);
-  font-size: 13px;
-}
-
-.grid-empty-icon {
-  font-size: 36px;
-  opacity: 0.5;
-}
+/* grid-view / grid-header / grid-title / grid-count / grid-hint / grid-empty
+   为全局样式（main.css），与回收站视图共用 */
 
 .grid-body {
   flex: 1;

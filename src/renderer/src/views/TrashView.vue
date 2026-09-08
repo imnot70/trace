@@ -67,19 +67,19 @@ async function empty(): Promise<void> {
 
 <template>
   <!-- 列表形态；「网格 / 列表切换」为规划功能（与常用 / 收藏一致） -->
-  <div class="page">
-    <div class="page-header">
-      <div class="trash-title">
-        <h2>回收站</h2>
-        <span v-if="trash.entries.length" class="trash-count">{{ trash.entries.length }}</span>
-      </div>
-      <el-button v-if="trash.entries.length" type="danger" plain @click="empty()">
+  <div class="grid-view">
+    <div class="grid-header">
+      <el-icon><Delete /></el-icon>
+      <span class="grid-title">回收站</span>
+      <span v-if="trash.entries.length" class="grid-count">{{ trash.entries.length }}</span>
+      <span class="grid-hint">还原将把项目移回原位置</span>
+      <el-button v-if="trash.entries.length" size="small" type="danger" plain @click="empty()">
         清空回收站
       </el-button>
     </div>
 
-    <div v-if="trash.entries.length === 0" class="trash-empty">
-      <el-icon class="trash-empty-icon"><Delete /></el-icon>
+    <div v-if="trash.entries.length === 0" class="grid-empty">
+      <el-icon class="grid-empty-icon"><Delete /></el-icon>
       <p>回收站是空的</p>
     </div>
 
@@ -107,44 +107,7 @@ async function empty(): Promise<void> {
 </template>
 
 <style scoped>
-.page {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.trash-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.trash-count {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  background: var(--bg-tertiary);
-  border-radius: 8px;
-  padding: 0 6px;
-  min-width: 18px;
-  text-align: center;
-}
-
-.trash-empty {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  color: var(--text-tertiary);
-  font-size: 13px;
-}
-
-.trash-empty-icon {
-  font-size: 36px;
-  opacity: 0.5;
-}
+/* 视图头部与空状态复用全局 grid-header / grid-empty 样式（main.css） */
 
 .trash-list {
   flex: 1;

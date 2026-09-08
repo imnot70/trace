@@ -77,6 +77,66 @@ body {
   padding: 10px;
   background: var(--bg-secondary);
   box-sizing: border-box;
+  position: relative;
+}
+
+/* ========== 迷你导航条：侧栏不可见时的窄条泊位（视图切换 + 侧栏呼出） ========== */
+.sidebar-rail {
+  flex: 0 0 48px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0;
+  background: var(--bg-primary);
+  border-radius: 8px;
+}
+
+.rail-btn {
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  font-size: 17px;
+}
+
+.rail-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.rail-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* 专注模式下的临时浮层侧栏（覆盖 .sidebar 的 height:100%，改由 top/bottom 撑满可视区） */
+.sidebar.sidebar-overlay {
+  height: auto;
+  position: fixed;
+  top: 10px;
+  bottom: 10px;
+  left: 68px;
+  width: 272px;
+  z-index: 180;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.2),
+    0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 170;
+  background: rgba(0, 0, 0, 0.08);
 }
 
 /* 左侧栏卡片 */
@@ -232,6 +292,13 @@ body {
   text-align: center;
 }
 
+/* 全局悬浮提示：圆角与阴影贴合应用卡片风格（6px 圆角 + 柔和投影） */
+.el-popper.is-dark,
+.el-popper.is-light {
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+}
+
 .side-row .chevron,
 .tree-row .chevron {
   transition: transform 0.2s ease;
@@ -325,6 +392,59 @@ body {
   padding: 6px 8px 6px 24px;
   color: var(--text-tertiary);
   font-size: 12px;
+}
+
+/* ========== 卡片网格视图头部（常用 / 收藏 / 笔记库 / 回收站共用） ========== */
+.grid-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.grid-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.grid-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.grid-count {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 1px 8px;
+}
+
+.grid-hint {
+  flex: 1;
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.grid-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.grid-empty-icon {
+  font-size: 36px;
+  opacity: 0.5;
 }
 
 /* ========== 欢迎页 ========== */

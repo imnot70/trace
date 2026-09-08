@@ -24,6 +24,7 @@ function buildStack() {
     theme: 'system',
     editorFontSize: 15,
     autoSave: true,
+    zenHideTopbar: false,
     attachmentsDir: 'attachments',
     enablePlugins: false,
     pluginEnabled: {}

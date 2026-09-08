@@ -129,6 +129,42 @@ watch(
     if (previewRef.value) previewRef.value.scrollTop = 0
   }
 )
+
+// ---------- 专注隐藏顶栏：热区触发 + 延迟隐藏 ----------
+// 顶栏隐藏时被 overflow:hidden 裁剪，卡片 :hover 无法稳定覆盖「隐藏的顶栏 + 移动路径」，
+// 改为显式热区（卡片顶部横条）与顶栏自身的 mouseenter/mleave 控制，离开后留 300ms 缓冲
+const concealed = computed(() => app.zenMode && app.settings.zenHideTopbar)
+const topbarPeek = ref(false)
+let topbarHideTimer: ReturnType<typeof setTimeout> | null = null
+
+function keepTopbar(): void {
+  if (topbarHideTimer) {
+    clearTimeout(topbarHideTimer)
+    topbarHideTimer = null
+  }
+  topbarPeek.value = true
+}
+
+function scheduleHideTopbar(): void {
+  if (topbarHideTimer) clearTimeout(topbarHideTimer)
+  topbarHideTimer = setTimeout(() => {
+    topbarPeek.value = false
+    topbarHideTimer = null
+  }, 300)
+}
+
+watch([concealed, () => app.zenMode], () => {
+  // 退出隐藏状态立即复位，不留计时器
+  topbarPeek.value = false
+  if (topbarHideTimer) {
+    clearTimeout(topbarHideTimer)
+    topbarHideTimer = null
+  }
+})
+
+onBeforeUnmount(() => {
+  if (topbarHideTimer) clearTimeout(topbarHideTimer)
+})
 </script>
 
 <template>
@@ -136,11 +172,25 @@ watch(
   <div
     ref="editorCardRef"
     class="editor-card"
+    :class="{ 'zen-concealed': concealed, peeking: topbarPeek }"
     :style="{
       flexBasis: app.previewVisible ? (app.zenMode ? '50%' : `${splitPercent}%`) : '100%'
     }"
   >
-    <!-- 顶部：路径 + git 状态 + 视图开关 -->
+    <!-- 专注隐藏顶栏时的悬停热区：卡片顶部横条，进入即唤出头部 -->
+    <div
+      v-if="concealed"
+      class="zen-topbar-zone"
+      @mouseenter="keepTopbar()"
+      @mouseleave="scheduleHideTopbar()"
+    ></div>
+
+    <!-- 头部：信息栏 + 格式工具栏（专注隐藏顶栏时作为整体滑出） -->
+    <div
+      class="editor-header"
+      @mouseenter="keepTopbar()"
+      @mouseleave="scheduleHideTopbar()"
+    >
     <div class="editor-topbar">
       <div class="breadcrumb">
         <template v-if="editor.current">
@@ -200,15 +250,6 @@ watch(
       </el-tooltip>
     </div>
 
-    <!-- 外部修改提示 -->
-    <div v-if="editor.externalChanged" class="external-banner">
-      <span>笔记在应用外被修改，本地还有未保存的内容。</span>
-      <el-button size="small" @click="editor.reloadFromDisk()">放弃本地修改并重载</el-button>
-      <el-button size="small" type="primary" @click="editor.externalChanged = false">
-        保留本地修改继续编辑
-      </el-button>
-    </div>
-
     <!-- 工具栏 -->
     <div class="editor-toolbar">
       <button class="tool-btn" title="撤销 (Ctrl+Z)" @click="editorRef?.undo()">
@@ -247,6 +288,16 @@ watch(
       <button class="tool-btn" title="公式块" @click="toolbarInsert('\n$$\n', '\n$$\n', '\\frac{a}{b}')">
         ∫
       </button>
+    </div>
+    </div>
+
+    <!-- 外部修改提示：常显（重要警告，不随专注隐藏） -->
+    <div v-if="editor.externalChanged" class="external-banner">
+      <span>笔记在应用外被修改，本地还有未保存的内容。</span>
+      <el-button size="small" @click="editor.reloadFromDisk()">放弃本地修改并重载</el-button>
+      <el-button size="small" type="primary" @click="editor.externalChanged = false">
+        保留本地修改继续编辑
+      </el-button>
     </div>
 
     <!-- 编辑器主体（填满卡片剩余空间） -->
@@ -316,6 +367,41 @@ watch(
   min-width: 0;
   flex-shrink: 0;
   flex-grow: 0;
+}
+
+/* 专注隐藏顶栏：头部（信息栏 + 工具栏）整体悬浮化不占布局，热区或头部悬停时滑出 */
+.editor-card.zen-concealed {
+  position: relative;
+}
+
+/* 热区：卡片顶部 44px 横条，鼠标进入即唤出头部（区域内的点击只用于唤出，不透传到编辑器） */
+.editor-card .zen-topbar-zone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 44px;
+  z-index: 25;
+}
+
+.editor-card.zen-concealed .editor-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  transform: translateY(-100%);
+  opacity: 0;
+  background: var(--bg-primary);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.editor-card.zen-concealed.peeking .editor-header {
+  transform: translateY(0);
+  opacity: 1;
 }
 
 .editor-cm {
