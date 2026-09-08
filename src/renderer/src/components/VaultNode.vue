@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { TreeNode } from '@shared/types'
 import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
@@ -14,6 +14,24 @@ const props = defineProps<{
 const tree = useTreeStore()
 const editor = useEditorStore()
 const actions = useNoteActions()
+
+/** 下拉打开期间保持按钮组可见（防 popper 失锚闪现），关闭后延迟隐藏 */
+const menuHold = ref(false)
+let menuHideTimer: ReturnType<typeof setTimeout> | null = null
+
+function onMenuVisible(visible: boolean): void {
+  if (menuHideTimer) {
+    clearTimeout(menuHideTimer)
+    menuHideTimer = null
+  }
+  if (visible) {
+    menuHold.value = true
+  } else {
+    menuHideTimer = setTimeout(() => {
+      menuHold.value = false
+    }, 300)
+  }
+}
 
 const isDir = computed(() => props.node.kind === 'dir')
 const expanded = computed(() => tree.isExpanded(props.vault, props.node.path))
@@ -49,7 +67,7 @@ function handlePlusCommand(cmd: string): void {
   <div>
     <div
       class="tree-row"
-      :class="{ active }"
+      :class="{ active, 'menu-hold': menuHold }"
       :style="{ paddingLeft: `${40 + depth * 16}px` }"
       @click="onRowClick"
     >
@@ -68,6 +86,7 @@ function handlePlusCommand(cmd: string): void {
           v-if="isDir"
           trigger="click"
           @command="handlePlusCommand"
+          @visible-change="onMenuVisible"
         >
           <!-- 下拉触发器不能用 el-tooltip 包裹（会拦截点击使菜单失效），用原生 title -->
           <button class="row-btn" title="新建文件夹 / 笔记" @click.stop>
@@ -80,7 +99,7 @@ function handlePlusCommand(cmd: string): void {
             </el-dropdown-menu>
           </template>
         </el-dropdown>
-        <el-dropdown trigger="click" @command="handleMenuCommand">
+        <el-dropdown trigger="click" @command="handleMenuCommand" @visible-change="onMenuVisible">
           <button class="row-btn" title="更多操作" @click.stop>
             <el-icon><MoreFilled /></el-icon>
           </button>
@@ -88,13 +107,19 @@ function handlePlusCommand(cmd: string): void {
             <el-dropdown-menu>
               <template v-if="isDir">
                 <el-dropdown-item command="rename">重命名</el-dropdown-item>
-                <el-dropdown-item command="delete" divided class="danger-item">删除文件夹</el-dropdown-item>
+                <el-dropdown-item command="delete" divided class="danger-item"
+                  >删除文件夹</el-dropdown-item
+                >
               </template>
               <template v-else>
                 <el-dropdown-item command="rename">重命名</el-dropdown-item>
-                <el-dropdown-item v-if="favorited" command="unfavorite" divided>取消收藏</el-dropdown-item>
+                <el-dropdown-item v-if="favorited" command="unfavorite" divided
+                  >取消收藏</el-dropdown-item
+                >
                 <el-dropdown-item v-else command="favorite" divided>收藏笔记</el-dropdown-item>
-                <el-dropdown-item command="delete" divided class="danger-item">删除笔记</el-dropdown-item>
+                <el-dropdown-item command="delete" divided class="danger-item"
+                  >删除笔记</el-dropdown-item
+                >
               </template>
             </el-dropdown-menu>
           </template>
