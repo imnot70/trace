@@ -140,7 +140,6 @@ defineProps<{ vaults?: VaultInfo[] }>()
             <div
               class="side-row vault-row"
               :class="{ 'menu-hold': openVaultMenu === vault.name }"
-              :title="vault.description || vault.name"
               @click="tree.toggleVault(vault.name)"
             >
               <el-icon class="chevron" :class="{ open: tree.isVaultExpanded(vault.name) }">

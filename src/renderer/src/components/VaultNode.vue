@@ -78,9 +78,7 @@ function handlePlusCommand(cmd: string): void {
         <Folder v-if="isDir" />
         <Document v-else />
       </el-icon>
-      <el-tooltip :content="node.name" placement="right" :show-after="400">
-        <span class="row-name">{{ node.name }}</span>
-      </el-tooltip>
+      <span class="row-name">{{ node.name }}</span>
       <span class="side-row-actions">
         <el-dropdown
           v-if="isDir"
