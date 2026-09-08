@@ -2,10 +2,9 @@ name: Build & Release Trace App
 
 on:
   push:
-    branches: [main]
     tags:
-      - 'v*.*.*'          # 推送版本标签时触发发布
-  workflow_dispatch:       # 支持手动触发
+      - 'v*.*.*'          # 推送版本标签时触发构建 + 发布
+  workflow_dispatch:       # 支持手动触发（可对任意分支构建测试安装包）
 
 jobs:
   build:
@@ -43,6 +42,7 @@ jobs:
       #     （关于页版本号与安装包文件名均源自 package.json，tag 是唯一人工环节）
       - name: Verify tag matches package.json version
         if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash            # Windows runner 默认 pwsh，bash 语法必须显式声明
         run: |
           PKG_TAG="v$(node -p "require('./package.json').version")"
           echo "package.json -> $PKG_TAG / git tag -> $GITHUB_REF_NAME"

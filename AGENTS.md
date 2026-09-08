@@ -45,7 +45,7 @@ npm run icon         # 重新生成应用图标
 
 调试：`TRACE_CDP=9222 npm run dev` 后访问 `http://127.0.0.1:9222` 连接渲染进程 DevTools；`TRACE_TEST_USERDATA=1` 以临时数据目录启动隔离实例。
 
-CI（`.github/workflows/build.yml`）：push 到 main 时构建 Windows/Linux 安装包，推送 `v*.*.*` 标签时发布 Release。注意 CI 中 electron-builder 前必须先 `npm run build` 生成 `out/`。产物命名规范：**平台-v版本-架构.扩展名**（如 `win-v0.2.0-x64.exe`、`linux-v0.2.0-x64.deb`）。
+CI（`.github/workflows/build.yml`）：**仅在推送 `v*.*.*` 标签时**构建 Windows/Linux 安装包并发布 Release（push main 不触发，需要临时测试包可手动 workflow_dispatch）；tag 触发时会校验标签与 package.json 版本一致，不一致构建失败。注意 CI 中 electron-builder 前必须先 `npm run build` 生成 `out/`；多行 bash run 步骤在 Windows runner 上必须显式 `shell: bash`（默认 pwsh 解析不了 bash 语法）。产物命名规范：**平台-v版本-架构.扩展名**（如 `win-v0.2.0-x64.exe`、`linux-v0.2.0-x64.deb`）。
 
 ## 架构
 
