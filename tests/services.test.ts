@@ -26,6 +26,7 @@ function buildStack() {
     autoSave: true,
     zenHideTopbar: false,
     attachmentsDir: 'attachments',
+    proxyUrl: '',
     enablePlugins: false,
     pluginEnabled: {}
   })

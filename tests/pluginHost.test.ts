@@ -42,6 +42,7 @@ beforeEach(() => {
     autoSave: true,
     zenHideTopbar: false,
     attachmentsDir: 'attachments',
+    proxyUrl: '',
     enablePlugins: false,
     pluginEnabled: {}
   })

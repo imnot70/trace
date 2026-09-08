@@ -112,6 +112,7 @@ app.whenReady().then(() => {
     autoSave: true,
     zenHideTopbar: false,
     attachmentsDir: 'attachments',
+    proxyUrl: '',
     enablePlugins: false,
     pluginEnabled: {}
   })
@@ -157,7 +158,8 @@ app.whenReady().then(() => {
         ? { name: username, email: `${username}@users.noreply.github.com` }
         : { name: 'Trace', email: 'trace@localhost' }
     },
-    getToken: () => account.getToken()
+    getToken: () => account.getToken(),
+    getProxyUrl: () => settingsStore.get().proxyUrl ?? ''
   })
   const watcher = new WatcherService(() => workspace.getRoot(), (payload) => {
     for (const w of BrowserWindow.getAllWindows()) w.webContents.send('fs:changed', payload)

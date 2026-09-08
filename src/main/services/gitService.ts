@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { simpleGit, type SimpleGit } from 'simple-git'
 import { logger } from '../lib/logger'
@@ -9,6 +10,8 @@ export interface GitDeps {
   getCommitter: () => { name: string; email: string }
   /** GitHub PAT，用于给 github.com 的远程注入认证头 */
   getToken: () => string | null
+  /** Git 同步的 HTTP/HTTPS 代理地址（空 = 不使用） */
+  getProxyUrl: () => string
 }
 
 export interface SyncOutcome {
@@ -38,6 +41,11 @@ export class GitService {
     if (token) {
       const basic = Buffer.from(`x-access-token:${token}`).toString('base64')
       config.push(`http.https://github.com/.extraheader=AUTHORIZATION: basic ${basic}`)
+    }
+    // 代理与令牌同策略：每次调用以 -c 注入，不写入 .git/config
+    const proxyUrl = this.deps.getProxyUrl().trim()
+    if (proxyUrl) {
+      config.push(`http.proxy=${proxyUrl}`, `https.proxy=${proxyUrl}`)
     }
     // 阻塞超时 60s：网络不通（无法访问 GitHub）时 git 会长时间挂起，
     // 同步按钮会无限转圈；本地操作（提交/状态）远用不到这么久
@@ -240,6 +248,21 @@ export class GitService {
     } catch (e) {
       logger.error('中止 rebase 失败，请手动执行 git rebase --abort', e)
     }
+  }
+
+  /**
+   * 代理连通性测试：经（可选）代理访问 github.com 列出引用——轻量请求，不涉及任何仓库。
+   * 失败时抛出原始错误，由 IPC 层的 errMessage 转为友好文案。
+   */
+  async testProxy(timeoutMs = 15_000): Promise<SyncOutcome> {
+    const proxyUrl = this.deps.getProxyUrl().trim()
+    const git = simpleGit({
+      baseDir: os.tmpdir(),
+      config: proxyUrl ? [`http.proxy=${proxyUrl}`, `https.proxy=${proxyUrl}`] : [],
+      timeout: { block: timeoutMs }
+    })
+    await git.raw(['ls-remote', 'https://github.com/git/git.git', 'HEAD'])
+    return { ok: true }
   }
 }
 

@@ -67,6 +67,7 @@ export interface TraceApi {
   associateVault(vault: string, repoFullName: string): Promise<SyncResult>
   disconnectVault(vault: string): Promise<OpResult>
   syncVault(vault: string): Promise<SyncResult>
+  testProxy(): Promise<OpResult>
 
   // ---- 设置 ----
   getSettings(): Promise<OpResult & { settings?: AppSettings }>

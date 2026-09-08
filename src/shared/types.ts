@@ -70,6 +70,8 @@ export interface AppSettings {
   zenHideTopbar: boolean
   /** 图片附件保存目录（相对库根，支持多级，如 media/image） */
   attachmentsDir: string
+  /** Git 同步的 HTTP/HTTPS 代理（如 http://127.0.0.1:7890 或含凭据 http://user:pass@host:port），空 = 不使用 */
+  proxyUrl: string
   enablePlugins: boolean
   /** 插件 id -> 是否启用 */
   pluginEnabled: Record<string, boolean>

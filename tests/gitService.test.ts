@@ -12,7 +12,8 @@ beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'trace-git-'))
   git = new GitService({
     getCommitter: () => ({ name: 'tester', email: 'tester@example.com' }),
-    getToken: () => null
+    getToken: () => null,
+    getProxyUrl: () => ''
   })
 })
 

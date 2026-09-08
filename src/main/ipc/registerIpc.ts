@@ -197,6 +197,7 @@ export function registerIpc(deps: IpcDeps): void {
     if (!token) return { ok: false, error: '尚未登录 GitHub 账号' }
     return { ok: true, repos: await deps.github.listRepos(token) }
   })
+  handle('git:testProxy', () => deps.git.testProxy())
   handle('account:createRepo', async (name: string, isPrivate: boolean) => {
     const token = deps.account.getToken()
     if (!token) return { ok: false, error: '尚未登录 GitHub 账号' }

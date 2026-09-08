@@ -89,3 +89,30 @@ export function normalizeAttachDir(
   }
   return { ok: true, dir: segs.join('/') }
 }
+
+/**
+ * 代理地址规范化与校验：http://[user:pass@]host:port（host 也可为 IP/域名）。
+ * 空/空白输入视为不使用代理（返回空串）。
+ */
+export function normalizeProxyUrl(
+  input: string
+): { ok: true; url: string } | { ok: false; error: string } {
+  const raw = (input ?? '').trim()
+  if (!raw) return { ok: true, url: '' }
+  const m = raw.match(/^(http|https):\/\/([^/]+)$/i)
+  if (!m) {
+    return { ok: false, error: '格式应为 http://[用户名:密码@]主机:端口，例如 http://127.0.0.1:7890' }
+  }
+  const hostPart = m[2]
+  // 主机:端口（凭据部分允许更多字符，取最后一段作为 host:port）
+  const lastAt = hostPart.lastIndexOf('@')
+  const hostPort = lastAt >= 0 ? hostPart.slice(lastAt + 1) : hostPart
+  const lastColon = hostPort.lastIndexOf(':')
+  const host = lastColon >= 0 ? hostPort.slice(0, lastColon) : hostPort
+  const portStr = lastColon >= 0 ? hostPort.slice(lastColon + 1) : ''
+  if (!host) return { ok: false, error: '代理主机不能为空' }
+  if (!/^\d{1,5}$/.test(portStr) || Number(portStr) < 1 || Number(portStr) > 65535) {
+    return { ok: false, error: '代理端口需为 1–65535 的数字' }
+  }
+  return { ok: true, url: raw }
+}

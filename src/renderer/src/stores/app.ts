@@ -20,6 +20,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   autoSave: true,
   zenHideTopbar: false,
   attachmentsDir: 'attachments',
+  proxyUrl: '',
   enablePlugins: false,
   pluginEnabled: {}
 }

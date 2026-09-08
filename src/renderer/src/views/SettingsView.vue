@@ -6,7 +6,7 @@ import { useGitStore } from '../stores/git'
 import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
 import type { ThemeOption } from '@shared/types'
-import { normalizeAttachDir } from '@shared/validate'
+import { normalizeAttachDir, normalizeProxyUrl } from '@shared/validate'
 
 const app = useAppStore()
 const git = useGitStore()
@@ -61,6 +61,46 @@ watch(
     workspaceInput.value = value
   }
 )
+
+// ---------- 网络代理 ----------
+const proxyInput = ref('')
+const proxyTesting = ref(false)
+const proxyResult = ref<{ ok: boolean; text: string } | null>(null)
+
+async function applyProxy(): Promise<void> {
+  const normalized = normalizeProxyUrl(proxyInput.value)
+  if (!normalized.ok) {
+    proxyResult.value = { ok: false, text: normalized.error }
+    return
+  }
+  proxyInput.value = normalized.url
+  if (normalized.url === app.settings.proxyUrl) return
+  await app.updateSettings({ proxyUrl: normalized.url })
+  proxyResult.value = {
+    ok: true,
+    text: normalized.url ? '代理已保存，Git 同步将经由该代理' : '已清除代理配置'
+  }
+}
+
+async function testProxy(): Promise<void> {
+  const normalized = normalizeProxyUrl(proxyInput.value)
+  if (!normalized.ok) {
+    proxyResult.value = { ok: false, text: normalized.error }
+    return
+  }
+  // 测试前先保存当前输入，确保测的就是所填配置
+  if (normalized.url !== app.settings.proxyUrl) {
+    await app.updateSettings({ proxyUrl: normalized.url })
+    proxyInput.value = normalized.url
+  }
+  proxyTesting.value = true
+  proxyResult.value = null
+  const result = await window.trace.testProxy()
+  proxyTesting.value = false
+  proxyResult.value = result.ok
+    ? { ok: true, text: '连接成功：可经由该代理访问 GitHub' }
+    : { ok: false, text: result.error ?? '连接失败' }
+}
 
 async function applyAttachmentsDir(): Promise<void> {
   const normalized = normalizeAttachDir(attachmentsDirInput.value)
@@ -312,6 +352,32 @@ const themeOptions: { label: string; value: 'light' | 'dark' | 'system' }[] = [
           <p class="settings-desc" style="margin: 0 0 0 102px">
             相对于笔记库根目录，修改后只对之后粘贴的图片生效；已有图片的引用不受影响。
           </p>
+        </div>
+
+        <div class="settings-block">
+          <h3>网络代理</h3>
+          <p class="settings-desc">如果你的网络无法直连 GitHub，可为 Git 同步配置代理。代理仅用于同步，不会写入笔记库。</p>
+          <div class="setting-row">
+            <span class="setting-label">代理地址</span>
+            <el-input
+              v-model="proxyInput"
+              style="flex: 1"
+              placeholder="http://127.0.0.1:7890（留空 = 不使用代理）"
+              @blur="applyProxy"
+              @keydown.enter="($event.target as HTMLInputElement).blur()"
+            />
+          </div>
+          <div class="setting-row" v-if="proxyResult" :style="{ color: proxyResult.ok ? 'var(--text-secondary)' : 'var(--danger)' }">
+            <span class="setting-label"></span>
+            <span style="font-size: 12px">{{ proxyResult.text }}</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label"></span>
+            <el-button size="small" :loading="proxyTesting" @click="testProxy">测试连接</el-button>
+            <span class="settings-desc" style="margin: 0">
+              修改或填写代理后点击「测试连接」验证可达性；测试通过后新同步立即生效。
+            </span>
+          </div>
         </div>
 
         <div class="settings-block">

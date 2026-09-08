@@ -3,6 +3,7 @@ import {
   DEFAULT_ATTACH_DIR,
   MAX_DIR_DEPTH,
   normalizeAttachDir,
+  normalizeProxyUrl,
   checkDuplicate,
   checkNameFormat,
   noteDisplayName,
@@ -83,5 +84,30 @@ describe('附件目录规范化', () => {
     expect(normalizeAttachDir('a/./b').ok).toBe(false)
     expect(normalizeAttachDir('a/b/c/d/e').ok).toBe(false) // 超过 4 层
     expect(normalizeAttachDir('a/b?:c').ok).toBe(false)
+  })
+})
+
+describe('代理地址规范化', () => {
+  it('空值 = 不使用代理', () => {
+    expect(normalizeProxyUrl('')).toEqual({ ok: true, url: '' })
+    expect(normalizeProxyUrl('  ')).toEqual({ ok: true, url: '' })
+  })
+
+  it('标准与带凭据格式', () => {
+    expect(normalizeProxyUrl('http://127.0.0.1:7890')).toEqual({ ok: true, url: 'http://127.0.0.1:7890' })
+    expect(normalizeProxyUrl('HTTP://Proxy.Local:8080')).toEqual({ ok: true, url: 'HTTP://Proxy.Local:8080' })
+    expect(normalizeProxyUrl('http://user:pass@proxy.lan:3128')).toEqual({
+      ok: true,
+      url: 'http://user:pass@proxy.lan:3128'
+    })
+  })
+
+  it('非法格式拒绝', () => {
+    expect(normalizeProxyUrl('127.0.0.1:7890').ok).toBe(false) // 缺协议
+    expect(normalizeProxyUrl('ftp://x:1').ok).toBe(false) // 协议不支持
+    expect(normalizeProxyUrl('http://host:0').ok).toBe(false) // 端口 0
+    expect(normalizeProxyUrl('http://host:99999').ok).toBe(false) // 端口越界
+    expect(normalizeProxyUrl('http://host').ok).toBe(false) // 缺端口
+    expect(normalizeProxyUrl('http://host:7890/path').ok).toBe(false) // 不应有路径
   })
 })
