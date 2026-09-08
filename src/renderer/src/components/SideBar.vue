@@ -104,56 +104,48 @@ defineProps<{ vaults?: VaultInfo[] }>()
 
       <!-- 笔记库：箭头展开树，标题打开库网格 -->
       <div class="side-section">
-        <el-tooltip content="查看全部笔记库" placement="right" :show-after="400">
-          <div
-            class="side-section-header"
-            :class="{ collapsed: !expandedSections.vaults, active: isGridOpen('vaults') }"
-            @click="toggleGrid('vaults')"
-          >
-            <el-tooltip content="展开 / 收起" placement="right" :show-after="400">
-              <span class="chevron-hit" @click.stop="toggleSection('vaults')">
-                <el-icon class="chevron"><ArrowDown /></el-icon>
-              </span>
-            </el-tooltip>
-            <span>笔记库</span>
-            <span v-if="tree.vaults.length" class="side-section-count">{{ tree.vaults.length }}</span>
-            <el-tooltip content="创建笔记库" placement="top">
-              <button class="row-btn" @click.stop="actions.createVault()">
-                <el-icon><Plus /></el-icon>
-              </button>
-            </el-tooltip>
-          </div>
-        </el-tooltip>
+        <!-- 注意：tooltip 不能包住按钮/下拉菜单（el-tooltip 会拦截子元素点击），只包纯文本 -->
+        <div
+          class="side-section-header"
+          :class="{ collapsed: !expandedSections.vaults, active: isGridOpen('vaults') }"
+          title="点击查看全部笔记库"
+          @click="toggleGrid('vaults')"
+        >
+          <span class="chevron-hit" title="展开 / 收起" @click.stop="toggleSection('vaults')">
+            <el-icon class="chevron"><ArrowDown /></el-icon>
+          </span>
+          <span>笔记库</span>
+          <span v-if="tree.vaults.length" class="side-section-count">{{ tree.vaults.length }}</span>
+          <el-tooltip content="创建笔记库" placement="top" :show-after="400">
+            <button class="row-btn" @click.stop="actions.createVault()">
+              <el-icon><Plus /></el-icon>
+            </button>
+          </el-tooltip>
+        </div>
         <template v-if="expandedSections.vaults">
           <div v-if="tree.vaults.length === 0" class="empty-hint">还没有笔记库，点击右上角 + 创建</div>
           <div v-for="vault in tree.vaults" :key="vault.name">
-            <el-tooltip
-              :content="vault.description ?? vault.name"
-              :disabled="!vault.description"
-              placement="right"
-              :show-after="400"
+            <div
+              class="side-row vault-row"
+              :title="vault.description || vault.name"
+              @click="tree.toggleVault(vault.name)"
             >
-              <div
-                class="side-row vault-row"
-                @click="tree.toggleVault(vault.name)"
-              >
-                <el-icon class="chevron" :class="{ open: tree.isVaultExpanded(vault.name) }">
-                  <ArrowRight />
+              <el-icon class="chevron" :class="{ open: tree.isVaultExpanded(vault.name) }">
+                <ArrowRight />
+              </el-icon>
+              <el-icon class="node-icon"><Folder /></el-icon>
+              <span class="row-name">{{ vault.name }}</span>
+              <el-tooltip content="已关联 Git 仓库" placement="top" :show-after="400">
+                <el-icon v-if="tree.gitStatuses[vault.name]?.associated" class="git-badge">
+                  <Connection />
                 </el-icon>
-                <el-icon class="node-icon"><Folder /></el-icon>
-                <span class="row-name">{{ vault.name }}</span>
-                <el-tooltip content="已关联 Git 仓库" placement="top" :show-after="400">
-                  <el-icon v-if="tree.gitStatuses[vault.name]?.associated" class="git-badge">
-                    <Connection />
-                  </el-icon>
-                </el-tooltip>
-                <span class="side-row-actions">
+              </el-tooltip>
+              <span class="side-row-actions">
                   <el-dropdown trigger="click" @command="(cmd: string) => handleVaultCommand(cmd, vault.name)">
-                    <el-tooltip content="笔记库设置" placement="top" :show-after="400">
-                      <button class="row-btn" @click.stop>
-                        <el-icon><Setting /></el-icon>
-                      </button>
-                    </el-tooltip>
+                    <!-- 下拉触发器不能用 el-tooltip 包裹（会拦截点击使菜单失效），用原生 title -->
+                    <button class="row-btn" title="笔记库设置" @click.stop>
+                      <el-icon><Setting /></el-icon>
+                    </button>
                   <template #dropdown>
                     <el-dropdown-menu>
                       <el-dropdown-item v-if="tree.gitStatuses[vault.name]?.associated" command="sync">
@@ -171,22 +163,19 @@ defineProps<{ vaults?: VaultInfo[] }>()
                   </template>
                 </el-dropdown>
                 <el-dropdown trigger="click" @command="(cmd: string) => handleVaultPlus(cmd, vault.name)">
-                  <el-tooltip content="新建文件夹 / 笔记" placement="top" :show-after="400">
-                    <button class="row-btn" @click.stop>
-                      <el-icon><Plus /></el-icon>
-                    </button>
-                  </el-tooltip>
+                  <button class="row-btn" title="新建文件夹 / 笔记" @click.stop>
+                    <el-icon><Plus /></el-icon>
+                  </button>
                   <template #dropdown>
                     <el-dropdown-menu>
                       <el-dropdown-item command="dir">新建文件夹</el-dropdown-item>
                       <el-dropdown-item command="note">创建笔记</el-dropdown-item>
                     </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
-              </span>
-                </div>
-            </el-tooltip>
-            <template v-if="tree.isVaultExpanded(vault.name)">
+                </template>
+              </el-dropdown>
+            </span>
+          </div>
+          <template v-if="tree.isVaultExpanded(vault.name)">
               <VaultNode
                 v-for="node in tree.trees[vault.name] ?? []"
                 :key="node.path"

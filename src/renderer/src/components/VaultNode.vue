@@ -69,11 +69,10 @@ function handlePlusCommand(cmd: string): void {
           trigger="click"
           @command="handlePlusCommand"
         >
-          <el-tooltip content="新建文件夹 / 笔记" placement="top" :show-after="400">
-            <button class="row-btn" @click.stop>
-              <el-icon><Plus /></el-icon>
-            </button>
-          </el-tooltip>
+          <!-- 下拉触发器不能用 el-tooltip 包裹（会拦截点击使菜单失效），用原生 title -->
+          <button class="row-btn" title="新建文件夹 / 笔记" @click.stop>
+            <el-icon><Plus /></el-icon>
+          </button>
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="dir">新建文件夹</el-dropdown-item>
@@ -82,11 +81,9 @@ function handlePlusCommand(cmd: string): void {
           </template>
         </el-dropdown>
         <el-dropdown trigger="click" @command="handleMenuCommand">
-          <el-tooltip content="更多操作" placement="top" :show-after="400">
-            <button class="row-btn" @click.stop>
-              <el-icon><MoreFilled /></el-icon>
-            </button>
-          </el-tooltip>
+          <button class="row-btn" title="更多操作" @click.stop>
+            <el-icon><MoreFilled /></el-icon>
+          </button>
           <template #dropdown>
             <el-dropdown-menu>
               <template v-if="isDir">
