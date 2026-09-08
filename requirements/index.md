@@ -10,7 +10,7 @@
 | [requirements.md](requirements.md) | 产品需求文档（PRD），v0.1.0 → v0.2.0 全部已实现需求的权威描述（FR-2.1~2.11 等） | ✅ 基线文档，需求已全部实现 |
 | [development-plan.md](development-plan.md) | 初版开发计划：技术选型、架构、里程碑 M0–M6、风险对策 | ✅ M0–M6 已全部完成（v1/v0.2.0 交付）；二期 Backlog 部分被后续设计文档细化 |
 | [plugin-design.md](plugin-design.md) | 插件系统 v2 设计：独立插件进程 + 能力网关 + require 白名单 + 市场分发 | 📐 设计已确认（D1–D5 拍板），**未实施** |
-| [vault-grid-navigation-design.md](vault-grid-navigation-design.md) | 笔记库网格导航设计：双击钻入库内容 + 面包屑 + 三卡片区分 | 📐 设计定稿，**未实施** |
+| [vault-grid-navigation-design.md](vault-grid-navigation-design.md) | 笔记库网格导航设计：双击钻入库内容 + 面包屑 + 三卡片区分 | 🚧 **P1 已实施**（未发布），P2 样式动效大部分顺手完成 |
 | [handoff-2026-09-07.md](handoff-2026-09-07.md) | 09-07 会话交接：技术坑（IPC 返回值、闪影竞态、CDP 排查方法等）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影新触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
@@ -69,7 +69,7 @@
 
 ### 笔记库网格导航 — [vault-grid-navigation-design.md](vault-grid-navigation-design.md)
 
-双击库卡片钻入库内容（文件夹 + 笔记卡片）、面包屑逐级回退、Esc 分级、三卡片多维区分（尺寸 / 图标 / 色彩 / 摘要）、进入动画。实施分 P1 导航骨架 → P2 样式动效。
+**P1 已实施（09-08 Linux 机会话，待发布）**：双击库/文件夹卡片钻入、面包屑逐级回退、Esc 分级、文件夹卡片（图标+名称+计数）+ 文件夹菜单新建、滑动动画。P2 剩余：库卡片双列 + 强调色浅底（三卡片多维区分强化）、库卡片笔记数统计。
 
 ---
 
