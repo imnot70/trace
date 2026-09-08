@@ -91,6 +91,7 @@ src/
 
 - 注释、文档、UI 文案、commit message 均使用**中文**（与现有代码保持一致）。
 - UI 用语：一律用「文件夹」（不用「子目录」）、「笔记库」；删除类菜单项红色警示。
+- `el-tooltip` **只允许包裹非交互元素**（图标、纯文本）。禁止：tooltip 嵌套 tooltip；tooltip 包裹按钮（点击被拦截）；tooltip 包裹 `el-dropdown` 触发器（下拉事件绑定失效，菜单弹不出）。需要给按钮/触发器加提示时用原生 `title`。任何「点击后移除下拉菜单锚点元素」的操作（删除行、收起容器等）需延迟 ≥300ms 或保持锚点可见（参考 `menu-hold` 模式），否则 popper 会在左上角闪现残影。
 - 全界面颜色必须走 CSS 变量（`--bg-*` / `--text-*` / `--accent` / `--danger` 等），新增颜色先看 `styles/themes.css` 是否已有对应变量；Element Plus 变量映射到同一套变量。
 - 代码风格由 ESLint + Prettier 约束（`.prettierrc.json`）；提交前至少跑 `npm run lint` 与 `npm run typecheck`。
 - 核心服务（gitService、trash、favorites、validate、pluginHost 等）有单元测试（`tests/`，Vitest，39 项含 git 同步/冲突集成测试）；修改这些服务时同步补充/更新测试。
