@@ -71,7 +71,6 @@ function createWindow(): void {
     minWidth: 1080,
     minHeight: 680,
     title: 'Trace 笔迹',
-    autoHideMenuBar: true,
     backgroundColor: '#f5f6f8',
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
@@ -97,12 +96,11 @@ function createWindow(): void {
   }
 }
 
-function buildAppMenu(): void {
-  // 不显示原生菜单栏：编辑相关操作已内嵌到编辑器工具栏
-  Menu.setApplicationMenu(null)
-}
-
 app.whenReady().then(() => {
+  // 移除原生菜单栏（编辑相关操作已内嵌到编辑器工具栏）。
+  // 注意必须显式设为 null：不设置时 Electron 会装配默认菜单（File/Edit/View…），
+  // 仅靠窗口 autoHideMenuBar 只是隐藏，按 Alt 仍会弹出。
+  Menu.setApplicationMenu(null)
   initLogger(path.join(app.getPath('userData'), 'logs'))
   logger.info(`Trace 启动，版本 ${app.getVersion()}`)
 
@@ -198,7 +196,6 @@ app.whenReady().then(() => {
     getWindow: () => mainWindow
   })
 
-  buildAppMenu()
   createWindow()
 
   app.on('activate', () => {

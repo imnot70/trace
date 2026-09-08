@@ -67,7 +67,9 @@ jobs:
         shell: bash
         run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
-      # 7. 上传构建产物（命名规范：平台-v版本-架构；下载时由 GitHub 打包为 zip）
+      # 7. 上传构建产物（下载时由 GitHub 打包为 zip）
+      #    只上传安装包本体——latest*.yml / *.blockmap 是 electron-builder 自动更新的
+      #    元数据，应用尚未实现自动更新，不随工件/Release 分发
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -76,8 +78,6 @@ jobs:
             dist/*.exe
             dist/*.deb
             dist/*.AppImage
-            dist/*.yml
-            dist/*.blockmap
 
   # 仅在推送版本标签时执行发布
   release:
@@ -105,14 +105,7 @@ jobs:
           generate_release_notes: true
           files: |
             artifacts/**/*.exe
-            artifacts/**/*.msi
-            artifacts/**/*.dmg
-            artifacts/**/*.zip
-            artifacts/**/*.AppImage
             artifacts/**/*.deb
-            artifacts/**/*.rpm
-            artifacts/**/*.tar.gz
-            artifacts/**/*.yml
-            artifacts/**/*.blockmap
+            artifacts/**/*.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
