@@ -27,7 +27,7 @@ export interface TraceApi {
 
   // ---- 笔记库 ----
   listVaults(): Promise<OpResult & { vaults?: VaultInfo[] }>
-  createVault(name: string): Promise<OpResult>
+  createVault(name: string, description?: string): Promise<OpResult>
   renameVault(oldName: string, newName: string): Promise<OpResult>
   deleteVault(name: string): Promise<OpResult>
 

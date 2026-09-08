@@ -37,6 +37,16 @@ function onKeydown(e: Event): void {
       clearable
       @keydown="onKeydown"
     />
+    <el-input
+      v-if="dialog.withDescription"
+      v-model="dialog.descValue"
+      class="desc-input"
+      placeholder="描述（可选）"
+      :disabled="dialog.busy"
+      maxlength="20"
+      show-word-limit
+      clearable
+    />
     <div v-if="dialog.error" class="dialog-error">{{ dialog.error }}</div>
     <template #footer>
       <el-button @click="dialog.visible = false">取消</el-button>
@@ -46,6 +56,10 @@ function onKeydown(e: Event): void {
 </template>
 
 <style scoped>
+.desc-input {
+  margin-top: 10px;
+}
+
 .dialog-error {
   color: var(--danger);
   font-size: 12px;

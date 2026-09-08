@@ -95,7 +95,7 @@ src/
 - 代码风格由 ESLint + Prettier 约束（`.prettierrc.json`）；提交前至少跑 `npm run lint` 与 `npm run typecheck`。
 - 核心服务（gitService、trash、favorites、validate、pluginHost 等）有单元测试（`tests/`，Vitest，39 项含 git 同步/冲突集成测试）；修改这些服务时同步补充/更新测试。
   ⚠️ Windows 上 `tests/gitService.test.ts` 的 6 项集成测试会因超出 Vitest 默认 5s 超时而失败：Windows 下每次 git 子进程调用约 1~1.7s（Linux 仅几十毫秒），完整关联+同步流程需 5~10s。功能本身正常（已手动复现验证），用 `npx vitest run --testTimeout=30000` 验证即可，勿误判为产品代码 bug。
-- 版本号在 `package.json`；发版流程：改版本号 → 更新 `CHANGELOG.md` → 打 `v*.*.*` 标签推送触发 Release。
+- 版本号在 `package.json`，是**唯一版本来源**：「关于 Trace」（`app.getVersion()`）、安装包文件名（electron-builder `artifactName`）、CI 工件命名全部自动读取它；git tag 必须与其一致（CI 在 tag 触发时会校验，不一致构建失败）。**发版流程**：更新 `CHANGELOG.md` → `npm version <patch|minor|major 或 x.y.z>`（自动改版本号 + commit + 打 `v` 标签，要求工作区干净；经 `postversion` 钩子自动 `git push --follow-tags` 触发 Release）。
 
 ## 已知局限（勿误判为新 bug）
 

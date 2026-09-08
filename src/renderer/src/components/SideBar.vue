@@ -20,13 +20,13 @@ function toggleSection(key: string): void {
   expandedSections.value[key] = !expandedSections.value[key]
 }
 
-/** 点击「常用 / 收藏」标题：在主区域打开对应卡片网格；再点一次关闭 */
-function toggleGrid(section: 'recents' | 'favorites'): void {
+/** 点击「常用 / 收藏 / 笔记库」标题：在主区域打开对应卡片网格；再点一次关闭 */
+function toggleGrid(section: 'recents' | 'favorites' | 'vaults'): void {
   if (app.view.name === 'grid' && app.view.section === section) app.view = { name: 'welcome' }
   else app.view = { name: 'grid', section }
 }
 
-function isGridOpen(section: 'recents' | 'favorites'): boolean {
+function isGridOpen(section: 'recents' | 'favorites' | 'vaults'): boolean {
   return app.view.name === 'grid' && app.view.section === section
 }
 
@@ -96,18 +96,19 @@ defineProps<{ vaults?: VaultInfo[] }>()
         </div>
       </div>
 
-      <!-- 笔记库 -->
+      <!-- 笔记库：箭头展开树，标题打开库网格 -->
       <div class="side-section">
         <div
           class="side-section-header"
-          :class="{ collapsed: !expandedSections.vaults }"
-          @click="toggleSection('vaults')"
+          :class="{ collapsed: !expandedSections.vaults, active: isGridOpen('vaults') }"
+          title="查看全部笔记库"
+          @click="toggleGrid('vaults')"
         >
-          <span class="chevron-hit">
+          <span class="chevron-hit" title="展开 / 收起" @click.stop="toggleSection('vaults')">
             <el-icon class="chevron"><ArrowDown /></el-icon>
           </span>
           <span>笔记库</span>
-          <span style="flex: 1"></span>
+          <span v-if="tree.vaults.length" class="side-section-count">{{ tree.vaults.length }}</span>
           <el-tooltip content="创建笔记库" placement="top">
             <button class="row-btn" @click.stop="actions.createVault()">
               <el-icon><Plus /></el-icon>
@@ -119,6 +120,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
           <div v-for="vault in tree.vaults" :key="vault.name">
             <div
               class="side-row vault-row"
+              :title="vault.description"
               @click="tree.toggleVault(vault.name)"
             >
               <el-icon class="chevron" :class="{ open: tree.isVaultExpanded(vault.name) }">

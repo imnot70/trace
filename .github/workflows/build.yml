@@ -39,6 +39,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # 3.5 版本一致性校验：tag 发布必须与 package.json 同版本
+      #     （关于页版本号与安装包文件名均源自 package.json，tag 是唯一人工环节）
+      - name: Verify tag matches package.json version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          PKG_TAG="v$(node -p "require('./package.json').version")"
+          echo "package.json -> $PKG_TAG / git tag -> $GITHUB_REF_NAME"
+          if [ "$PKG_TAG" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::标签 $GITHUB_REF_NAME 与 package.json 版本 $PKG_TAG 不一致，请先更新版本号（npm version <x.y.z>）再打标签"
+            exit 1
+          fi
+
       # 4. 构建应用产物（electron-vite → out/，out/ 不入库，必须在此生成）
       - name: Build app bundles
         run: npm run build

@@ -4,7 +4,7 @@
 
 - 跨平台：Windows / macOS / Linux（Ubuntu、Debian 系为主）
 - 数据完全本地：笔记就是 `.md` 文件，没有私有格式，随时可以用其他编辑器打开
-- 开源协议：MIT ｜ 当前版本：[v0.2.0](CHANGELOG.md)
+- 开源协议：MIT ｜ 当前版本：[v0.3.1](CHANGELOG.md)
 
 ![技术栈](https://img.shields.io/badge/Electron-44-47848f) ![Vue](https://img.shields.io/badge/Vue-3-42b883) ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6)
 
@@ -64,9 +64,9 @@
 
 | 平台 | 文件 | 安装方式 |
 | --- | --- | --- |
-| Ubuntu / Debian | `linux-v0.2.0-x64.deb` | `sudo dpkg -i linux-v*.deb` 或 `sudo apt install ./linux-v*.deb` |
-| 其他 Linux | `linux-v0.2.0-x64.AppImage` | `chmod +x linux-v*.AppImage && ./linux-v*.AppImage`（需 FUSE，或 `--appimage-extract` 后运行） |
-| Windows | `win-v0.2.0-x64.exe` | 双击安装，可选择安装目录 |
+| Ubuntu / Debian | `linux-v0.3.1-x64.deb` | `sudo dpkg -i linux-v*.deb` 或 `sudo apt install ./linux-v*.deb` |
+| 其他 Linux | `linux-v0.3.1-x64.AppImage` | `chmod +x linux-v*.AppImage && ./linux-v*.AppImage`（需 FUSE，或 `--appimage-extract` 后运行） |
+| Windows | `win-v0.3.1-x64.exe` | 双击安装，可选择安装目录 |
 | macOS | 暂不提供安装包 | 请自行从源码构建（见下方说明） |
 
 > macOS 需要自行构建：安装 Node.js ≥ 20 与 git 后，执行下面的「从源码构建」，在 macOS 机器上运行 `npm run dist` 即可得到 `Trace-x.y.z.dmg`（首次构建前建议先执行 `xcode-select --install` 安装命令行工具）。
@@ -92,7 +92,7 @@ npm run dist         # 按当前平台打包安装程序
 npm run dist:deb     # 只打 Ubuntu/Debian deb 包
 ```
 
-产物输出在 `dist/` 目录，命名规范为「平台-v版本-架构.扩展名」（如 `linux-v0.2.0-x64.deb`、`win-v0.2.0-x64.exe`）。
+产物输出在 `dist/` 目录，命名规范为「平台-v版本-架构.扩展名」（如 `linux-v0.3.1-x64.deb`、`win-v0.3.1-x64.exe`）。
 
 > Windows / macOS 安装包需在对应平台上执行 `npm run dist`。macOS 没有预构建安装包，Mac 用户请通过本节自行构建 DMG。
 

@@ -17,7 +17,7 @@ const api: TraceApi = {
   getAppVersion: () => ipcRenderer.invoke('app:version'),
 
   listVaults: () => ipcRenderer.invoke('vault:list'),
-  createVault: (name) => ipcRenderer.invoke('vault:create', name),
+  createVault: (name, description) => ipcRenderer.invoke('vault:create', name, description),
   renameVault: (oldName, newName) => ipcRenderer.invoke('vault:rename', oldName, newName),
   deleteVault: (name) => ipcRenderer.invoke('vault:delete', name),
 

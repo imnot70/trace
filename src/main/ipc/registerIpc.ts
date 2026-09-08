@@ -12,6 +12,7 @@ import type {
   RecentsService,
   SettingsService,
   TrashService,
+  VaultMetaService,
   VaultService,
   WatcherService,
   WorkspaceService
@@ -21,6 +22,7 @@ export interface IpcDeps {
   settings: SettingsService
   workspace: WorkspaceService
   vaults: VaultService
+  vaultMeta: VaultMetaService
   fsTree: FsTreeService
   trash: TrashService
   favorites: FavoritesService
@@ -87,13 +89,21 @@ export function registerIpc(deps: IpcDeps): void {
   handle('app:version', () => ({ ok: true, version: app.getVersion() }))
 
   // ---------- 笔记库 ----------
-  handle('vault:list', () => ({ ok: true, vaults: deps.vaults.list() }))
-  handle('vault:create', (name: string) => deps.vaults.create(name))
+  handle('vault:list', () => ({
+    ok: true,
+    vaults: deps.vaults.list().map((v) => ({ ...v, description: deps.vaultMeta.get(v.name) }))
+  }))
+  handle('vault:create', (name: string, description?: string) => {
+    const result = deps.vaults.create(name)
+    if (result.ok && description?.trim()) deps.vaultMeta.set(name, description.trim())
+    return result
+  })
   handle('vault:rename', (oldName: string, newName: string) => {
     const result = deps.vaults.rename(oldName, newName)
     if (result.ok) {
       deps.favorites.onVaultRename(oldName, newName)
       deps.recents.onVaultRename(oldName, newName)
+      deps.vaultMeta.rename(oldName, newName)
     }
     return result
   })
@@ -102,6 +112,7 @@ export function registerIpc(deps: IpcDeps): void {
     if (result.ok) {
       deps.favorites.onDelete(name, '', 'vault')
       deps.recents.onDelete(name, '', 'vault')
+      deps.vaultMeta.remove(name)
     }
     return result
   })

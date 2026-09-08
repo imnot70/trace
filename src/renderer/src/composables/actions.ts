@@ -23,8 +23,9 @@ export function useNoteActions() {
       title: '创建笔记库',
       kind: 'vault',
       placeholder: '按主题命名，例如：工作笔记',
-      action: async (name) => {
-        const result = await window.trace.createVault(name)
+      withDescription: true,
+      action: async (name, description) => {
+        const result = await window.trace.createVault(name, description)
         if (result.ok) await tree.loadVaults()
         return result
       }

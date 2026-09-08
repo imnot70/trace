@@ -1,7 +1,7 @@
 {
   "name": "trace",
   "productName": "Trace",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "description": "Trace（笔迹）— 轻量级 Markdown 笔记",
   "main": "./out/main/index.js",
   "author": "Trace <trace@example.com>",
@@ -19,7 +19,8 @@
     "dist:dir": "electron-vite build && electron-builder --dir",
     "lint": "eslint src tests scripts",
     "icon": "node scripts/generate-icon.js",
-    "dist:deb": "electron-vite build && electron-builder --linux deb"
+    "dist:deb": "electron-vite build && electron-builder --linux deb",
+    "postversion": "git push --follow-tags"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

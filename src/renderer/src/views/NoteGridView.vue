@@ -1,22 +1,36 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useAppStore } from '../stores/app'
+import { useAppStore, type GridSection } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import { useNoteActions } from '../composables/actions'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
 
-/** 常用 / 收藏 的卡片网格视图：单击卡片悬浮预览，双击进入编辑 */
+/** 卡片网格视图：常用 / 收藏（笔记卡片，单击预览双击编辑）、笔记库（库卡片，显示描述） */
 const app = useAppStore()
 const tree = useTreeStore()
 const actions = useNoteActions()
 
 type GridItem = { id?: string; vault: string; path: string; name: string }
+type VaultCard = { id?: string; name: string; description?: string }
 
-const section = computed(() => (app.view.name === 'grid' ? app.view.section : 'recents'))
-const title = computed(() => (section.value === 'recents' ? '常用' : '收藏'))
-const items = computed<GridItem[]>(() =>
-  section.value === 'recents' ? tree.recents : tree.favorites
+const SECTION_TITLE: Record<GridSection, string> = {
+  recents: '常用',
+  favorites: '收藏',
+  vaults: '笔记库'
+}
+
+const section = computed<GridSection>(() =>
+  app.view.name === 'grid' ? app.view.section : 'recents'
 )
+const title = computed(() => SECTION_TITLE[section.value])
+const isVaults = computed(() => section.value === 'vaults')
+const items = computed<GridItem[]>(() =>
+  section.value === 'recents' ? tree.recents : section.value === 'favorites' ? tree.favorites : []
+)
+const vaultCards = computed<VaultCard[]>(() =>
+  isVaults.value ? tree.vaults.map((v) => ({ name: v.name, description: v.description })) : []
+)
+const itemCount = computed(() => (isVaults.value ? vaultCards.value.length : items.value.length))
 
 // ---------- 卡片摘要 ----------
 const excerpts = ref<Record<string, string>>({})
@@ -68,12 +82,17 @@ function dirOf(path: string): string {
   return parts.filter(Boolean).join('/')
 }
 
-// ---------- 卡片菜单：收藏 / 移出常用 / 删除笔记 ----------
+// ---------- 卡片菜单：库卡片（重命名 / 删除笔记库）、笔记卡片（收藏 / 移出常用 / 删除笔记） ----------
 function isFavorited(item: GridItem): boolean {
   return tree.favorites.some((f) => f.vault === item.vault && f.path === item.path)
 }
 
-async function onMenuCommand(cmd: string, item: GridItem): Promise<void> {
+function onVaultMenuCommand(cmd: string, card: VaultCard): void {
+  if (cmd === 'rename') actions.renameVault(card.name)
+  else if (cmd === 'deleteVault') void actions.deleteVault(card.name)
+}
+
+async function onNoteMenuCommand(cmd: string, item: GridItem): Promise<void> {
   // 会移除当前卡片的操作（移出常用 / 收藏区取消收藏）先等 ⋮ 菜单收起动画结束：
   // 否则 teleport 到 body 的 popper 会在锚点卡片消失时对分离元素重定位，闪现到视口左上角
   const removesCard =
@@ -101,7 +120,7 @@ const preview = ref<{ vault: string; path: string; name: string; content: string
 let clickTimer: ReturnType<typeof setTimeout> | null = null
 
 function onCardClick(item: GridItem): void {
-  if (clickTimer) return // 双击的第二次 click，交给 dblclick 处理
+  if (isVaults.value || clickTimer) return // 库卡片无预览；双击的第二次 click 交给 dblclick 处理
   clickTimer = setTimeout(async () => {
     clickTimer = null
     const result = await window.trace.readNote(item.vault, item.path)
@@ -116,6 +135,7 @@ function onCardClick(item: GridItem): void {
 }
 
 function onCardDblClick(item: GridItem): void {
+  if (isVaults.value) return
   if (clickTimer) {
     clearTimeout(clickTimer)
     clickTimer = null
@@ -154,22 +174,72 @@ watch(section, () => {
   <div class="grid-view" @click="onRootClick">
     <!-- 顶栏：区块标题 + 数量 + 操作提示 -->
     <div class="grid-header">
-      <el-icon><Clock v-if="section === 'recents'" /><Star v-else /></el-icon>
+      <el-icon>
+        <Clock v-if="section === 'recents'" />
+        <Star v-else-if="section === 'favorites'" />
+        <Collection v-else />
+      </el-icon>
       <span class="grid-title">{{ title }}</span>
-      <span v-if="items.length" class="grid-count">{{ items.length }}</span>
-      <span class="grid-hint">单击预览 · 双击编辑</span>
+      <span v-if="itemCount" class="grid-count">{{ itemCount }}</span>
+      <span class="grid-hint">
+        {{ isVaults ? '管理你的笔记库' : '单击预览 · 双击编辑' }}
+      </span>
       <button class="tool-btn" title="关闭" @click="close">
         <el-icon><Close /></el-icon>
       </button>
     </div>
 
     <!-- 空状态 -->
-    <div v-if="items.length === 0" class="grid-empty">
-      <el-icon class="grid-empty-icon"><Clock v-if="section === 'recents'" /><Star v-else /></el-icon>
-      <p>{{ section === 'recents' ? '最近打开的笔记会显示在这里' : '收藏的笔记会显示在这里' }}</p>
+    <div v-if="itemCount === 0" class="grid-empty">
+      <el-icon class="grid-empty-icon">
+        <Clock v-if="section === 'recents'" />
+        <Star v-else-if="section === 'favorites'" />
+        <Collection v-else />
+      </el-icon>
+      <p>
+        {{
+          section === 'recents'
+            ? '最近打开的笔记会显示在这里'
+            : section === 'favorites'
+              ? '收藏的笔记会显示在这里'
+              : '还没有笔记库，点击侧栏「笔记库」旁的 + 创建'
+        }}
+      </p>
     </div>
 
-    <!-- 卡片网格 -->
+    <!-- 库卡片网格 -->
+    <div v-else-if="isVaults" class="grid-body">
+      <div
+        v-for="card in vaultCards"
+        :key="card.name"
+        class="note-card vault-card"
+        :title="card.description ? `${card.name}：${card.description}` : card.name"
+      >
+        <div class="note-card-actions">
+          <el-dropdown trigger="click" @command="(cmd: string) => onVaultMenuCommand(cmd, card)">
+            <button class="row-btn" title="更多操作" @click.stop @dblclick.stop>
+              <el-icon><MoreFilled /></el-icon>
+            </button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="rename">重命名</el-dropdown-item>
+                <el-dropdown-item command="deleteVault" divided class="danger-item">删除笔记库</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+        <div class="note-card-title">
+          <el-icon class="note-card-icon"><Folder /></el-icon>
+          <span>{{ card.name }}</span>
+        </div>
+        <div class="note-card-excerpt">{{ card.description ?? '' }}</div>
+        <div class="note-card-meta">
+          <span>{{ tree.gitStatuses[card.name]?.associated ? '已关联 Git 仓库' : '本地笔记库' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 笔记卡片网格（常用 / 收藏） -->
     <div v-else class="grid-body">
       <div
         v-for="item in items"
@@ -180,7 +250,7 @@ watch(section, () => {
         @dblclick="onCardDblClick(item)"
       >
         <div class="note-card-actions">
-          <el-dropdown trigger="click" @command="(cmd: string) => onMenuCommand(cmd, item)">
+          <el-dropdown trigger="click" @command="(cmd: string) => onNoteMenuCommand(cmd, item)">
             <button class="row-btn" title="更多操作" @click.stop @dblclick.stop>
               <el-icon><MoreFilled /></el-icon>
             </button>
@@ -327,6 +397,11 @@ watch(section, () => {
 .note-card:hover .note-card-actions,
 .note-card:focus-within .note-card-actions {
   opacity: 1;
+}
+
+/* 库卡片：无单击预览 / 双击编辑交互，保持默认光标 */
+.note-card.vault-card {
+  cursor: default;
 }
 
 .note-card-title {

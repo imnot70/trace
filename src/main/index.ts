@@ -16,6 +16,7 @@ import {
   RecentsService,
   SettingsService,
   TrashService,
+  VaultMetaService,
   VaultService,
   WatcherService,
   WorkspaceService
@@ -140,6 +141,9 @@ app.whenReady().then(() => {
 
   const trash = new TrashService(() => workspace.getRoot())
   const vaults = new VaultService(() => workspace.getRoot(), trash)
+  const vaultMeta = new VaultMetaService(
+    new JsonStore(path.join(userData, 'vault-meta.json'), { descs: {} })
+  )
   const fsTree = new FsTreeService((vault) => vaults.vaultPath(vault), trash)
   const favorites = new FavoritesService(
     new JsonStore(path.join(userData, 'favorites.json'), { items: [] })
@@ -180,6 +184,7 @@ app.whenReady().then(() => {
     settings,
     workspace,
     vaults,
+    vaultMeta,
     fsTree,
     trash,
     favorites,

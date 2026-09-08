@@ -26,6 +26,8 @@ export interface VaultInfo {
   name: string
   path: string
   git: GitStatus | null
+  /** 库描述（可选，应用级元数据，存 userData 不进库目录） */
+  description?: string
 }
 
 export interface TrashEntry {

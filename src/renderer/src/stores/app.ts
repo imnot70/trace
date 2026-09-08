@@ -1,12 +1,15 @@
 import { defineStore } from 'pinia'
 import type { AppSettings } from '@shared/types'
 
+/** 卡片网格视图的区块类型 */
+export type GridSection = 'recents' | 'favorites' | 'vaults'
+
 export type ActiveView =
   | { name: 'welcome' }
   | { name: 'editor' }
   | { name: 'trash' }
-  /** 常用 / 收藏 的卡片网格视图（在主区域展示，预览卡片自然收起） */
-  | { name: 'grid'; section: 'recents' | 'favorites' }
+  /** 常用 / 收藏 / 笔记库 的卡片网格视图（在主区域展示，预览卡片自然收起） */
+  | { name: 'grid'; section: GridSection }
   | { name: 'settings'; tab: 'account' | 'plugins' | 'general' }
 
 const DEFAULT_SETTINGS: AppSettings = {

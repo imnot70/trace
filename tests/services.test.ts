@@ -13,6 +13,7 @@ import { VaultService } from '../src/main/services/vaults'
 import { FsTreeService } from '../src/main/services/fsTree'
 import { TrashService } from '../src/main/services/trash'
 import { FavoritesService, RecentsService } from '../src/main/services/favorites'
+import { VaultMetaService } from '../src/main/services/vaultMeta'
 import type { AppSettings } from '../src/shared/types'
 
 let tmp: string
@@ -263,5 +264,33 @@ describe('收藏与常用', () => {
     const items = recents.list()
     expect(items).toHaveLength(20)
     expect(items[0].path).toBe('n0.md')
+  })
+})
+
+describe('笔记库元数据', () => {
+  function buildMeta(): VaultMetaService {
+    return new VaultMetaService(new JsonStore(path.join(tmp, 'vault-meta.json'), { descs: {} }))
+  }
+
+  it('描述增删改查与重命名跟随', () => {
+    const meta = buildMeta()
+    expect(meta.get('库')).toBeUndefined()
+    meta.set('库', '工作相关')
+    expect(meta.get('库')).toBe('工作相关')
+    meta.set('库', '') // 空描述 = 移除
+    expect(meta.get('库')).toBeUndefined()
+    meta.set('库', '工作相关')
+    meta.rename('库', '新库')
+    expect(meta.get('库')).toBeUndefined()
+    expect(meta.get('新库')).toBe('工作相关')
+  })
+
+  it('元数据持久化到 JSON 文件', () => {
+    const file = path.join(tmp, 'vault-meta.json')
+    const meta = new VaultMetaService(new JsonStore(file, { descs: {} }))
+    meta.set('库', '描述')
+    // 新实例从磁盘读回
+    const reloaded = new VaultMetaService(new JsonStore(file, { descs: {} }))
+    expect(reloaded.get('库')).toBe('描述')
   })
 })

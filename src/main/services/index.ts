@@ -1,5 +1,6 @@
 export { WorkspaceService } from './workspace'
 export { VaultService } from './vaults'
+export { VaultMetaService } from './vaultMeta'
 export { FsTreeService } from './fsTree'
 export { TrashService } from './trash'
 export { FavoritesService, RecentsService } from './favorites'
