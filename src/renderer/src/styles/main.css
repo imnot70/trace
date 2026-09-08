@@ -720,3 +720,11 @@ body {
 .dropdown-trigger {
   outline: none;
 }
+
+/* 下拉菜单弹出/收起均不播放过渡（瞬时显隐）：EP 的收起过渡期间 popper 会被
+   重定位一帧到视口 (0,0)，产生左上角闪影（过渡类名随版本在 fade-in-linear /
+   zoom-in-top 间变化，故对整个 popper 生命期禁用过渡） */
+.dd-instant-hide {
+  transition: none !important;
+  animation: none !important;
+}

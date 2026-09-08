@@ -155,8 +155,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
                 <el-dropdown
                   trigger="click"
                   @command="(cmd: string) => handleVaultCommand(cmd, vault.name)"
-                  @visible-change="(v: boolean) => onVaultMenuVisible(v, vault.name)"
-                >
+                  @visible-change="(v: boolean) => onVaultMenuVisible(v, vault.name)" popper-class="dd-instant-hide">
                   <!-- 下拉触发器不能用 el-tooltip 包裹（会拦截点击使菜单失效），用原生 title -->
                   <button class="row-btn" title="笔记库设置" @click.stop>
                     <el-icon><Setting /></el-icon>
@@ -193,8 +192,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
                 <el-dropdown
                   trigger="click"
                   @command="(cmd: string) => handleVaultPlus(cmd, vault.name)"
-                  @visible-change="(v: boolean) => onVaultMenuVisible(v, vault.name)"
-                >
+                  @visible-change="(v: boolean) => onVaultMenuVisible(v, vault.name)" popper-class="dd-instant-hide">
                   <button class="row-btn" title="新建文件夹 / 笔记" @click.stop>
                     <el-icon><Plus /></el-icon>
                   </button>

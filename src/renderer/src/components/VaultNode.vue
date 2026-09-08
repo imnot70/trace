@@ -86,8 +86,7 @@ function handlePlusCommand(cmd: string): void {
           v-if="isDir"
           trigger="click"
           @command="handlePlusCommand"
-          @visible-change="onMenuVisible"
-        >
+          @visible-change="onMenuVisible" popper-class="dd-instant-hide">
           <!-- 下拉触发器不能用 el-tooltip 包裹（会拦截点击使菜单失效），用原生 title -->
           <button class="row-btn" title="新建文件夹 / 笔记" @click.stop>
             <el-icon><Plus /></el-icon>
@@ -99,7 +98,7 @@ function handlePlusCommand(cmd: string): void {
             </el-dropdown-menu>
           </template>
         </el-dropdown>
-        <el-dropdown trigger="click" @command="handleMenuCommand" @visible-change="onMenuVisible">
+        <el-dropdown trigger="click" @command="handleMenuCommand" @visible-change="onMenuVisible" popper-class="dd-instant-hide">
           <button class="row-btn" title="更多操作" @click.stop>
             <el-icon><MoreFilled /></el-icon>
           </button>

@@ -338,7 +338,7 @@ watch(section, () => {
             >
               <div class="note-card vault-card" @dblclick="app.drillIn(card.name)">
                 <div class="note-card-actions">
-                  <el-dropdown trigger="click" @command="(cmd: string) => onVaultMenuCommand(cmd, card)">
+                  <el-dropdown trigger="click" @command="(cmd: string) => onVaultMenuCommand(cmd, card)" popper-class="dd-instant-hide">
                     <button class="row-btn" title="更多操作" @click.stop @dblclick.stop>
                       <el-icon><MoreFilled /></el-icon>
                     </button>
@@ -371,7 +371,7 @@ watch(section, () => {
                 @dblclick="app.drillIn(`${vaultName}/${node.path}`)"
               >
                 <div class="note-card-actions">
-                  <el-dropdown trigger="click" @command="(cmd: string) => onFolderMenuCommand(cmd, node)">
+                  <el-dropdown trigger="click" @command="(cmd: string) => onFolderMenuCommand(cmd, node)" popper-class="dd-instant-hide">
                     <button class="row-btn" title="更多操作" @click.stop @dblclick.stop>
                       <el-icon><MoreFilled /></el-icon>
                     </button>
@@ -403,8 +403,7 @@ watch(section, () => {
                 <div class="note-card-actions">
                   <el-dropdown
                     trigger="click"
-                    @command="(cmd: string) => onNoteMenuCommand(cmd, { vault: vaultName, path: node.path, name: node.name })"
-                  >
+                    @command="(cmd: string) => onNoteMenuCommand(cmd, { vault: vaultName, path: node.path, name: node.name })" popper-class="dd-instant-hide">
                     <button class="row-btn" title="更多操作" @click.stop @dblclick.stop>
                       <el-icon><MoreFilled /></el-icon>
                     </button>
@@ -448,7 +447,7 @@ watch(section, () => {
           @dblclick="onCardDblClick(item)"
         >
           <div class="note-card-actions">
-            <el-dropdown trigger="click" @command="(cmd: string) => onNoteMenuCommand(cmd, item)">
+            <el-dropdown trigger="click" @command="(cmd: string) => onNoteMenuCommand(cmd, item)" popper-class="dd-instant-hide">
               <button class="row-btn" title="更多操作" @click.stop @dblclick.stop>
                 <el-icon><MoreFilled /></el-icon>
               </button>

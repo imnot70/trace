@@ -39,7 +39,9 @@ export class GitService {
       const basic = Buffer.from(`x-access-token:${token}`).toString('base64')
       config.push(`http.https://github.com/.extraheader=AUTHORIZATION: basic ${basic}`)
     }
-    return simpleGit({ baseDir: vaultPath, config })
+    // 阻塞超时 60s：网络不通（无法访问 GitHub）时 git 会长时间挂起，
+    // 同步按钮会无限转圈；本地操作（提交/状态）远用不到这么久
+    return simpleGit({ baseDir: vaultPath, config, timeout: { block: 60_000 } })
   }
 
   /** 本地状态（不访问网络，用于界面展示） */
