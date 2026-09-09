@@ -46,6 +46,13 @@
   text-decoration: underline;
 }
 
+/* 库内笔记断链：删除线 + 弱化 */
+.markdown-body a[data-broken] {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
 .markdown-body img {
   max-width: 100%;
   border-radius: 6px;

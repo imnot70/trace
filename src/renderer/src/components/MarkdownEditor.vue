@@ -205,8 +205,31 @@ function onDrop(e: DragEvent): void {
   }
 }
 
+/** 当前可视首行（0 基源码行号）与行内像素比例，供预览侧行级同步 */
+function firstVisibleLine(): { line: number; ratio: number } | null {
+  if (!view) return null
+  const scroller = view.scrollDOM
+  const block = view.lineBlockAtHeight(scroller.scrollTop)
+  const line = view.state.doc.lineAt(block.from).number - 1
+  const ratio =
+    block.height > 0
+      ? Math.min(1, Math.max(0, (scroller.scrollTop - block.top) / block.height))
+      : 0
+  return { line, ratio }
+}
+
+/** 滚动到指定源码行（0 基），供预览→编辑器同步。
+ *  注意 scrollIntoView 接受的是文档字符偏移（pos），须先经 doc.line(n).from 换算 */
+function scrollToLine(line: number): void {
+  if (!view) return
+  const lineNo = Math.min(line + 1, view.state.doc.lines)
+  view.dispatch({ effects: EditorView.scrollIntoView(view.state.doc.line(lineNo).from, { y: 'start' }) })
+}
+
 defineExpose({
   insertText,
+  firstVisibleLine,
+  scrollToLine,
   insertSnippet,
   focus: () => {
     if (view) view.focus()

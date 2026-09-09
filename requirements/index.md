@@ -11,7 +11,7 @@
 | [development-plan.md](development-plan.md) | 初版开发计划：技术选型、架构、里程碑 M0–M6、风险对策 | ✅ M0–M6 已全部完成（v1/v0.2.0 交付）；二期 Backlog 部分被后续设计文档细化 |
 | [plugin-design.md](plugin-design.md) | 插件系统 v2 设计：独立插件进程 + 能力网关 + require 白名单 + 市场分发 | 📐 设计已确认（D1–D5 拍板），**未实施**（目标 0.4.0） |
 | [vault-grid-navigation-design.md](vault-grid-navigation-design.md) | 笔记库网格导航设计：双击钻入库内容 + 面包屑 + 三卡片区分 | ✅ **P1 + P2 全部实施**（P1 已发布 v0.3.5，P2 已随 v0.3.6 发布） |
-| [preview-enhancement-design.md](preview-enhancement-design.md) | 预览增强设计：HTML 内嵌（DOMPurify 净化）、a 标签跳转（外部 + 库内笔记）、行级双向同步滚动 | 🚧 设计已确认，**实施中**（2026-09-09 Linux 机） |
+| [preview-enhancement-design.md](preview-enhancement-design.md) | 预览增强设计：HTML 内嵌（DOMPurify 净化）、a 标签跳转（外部 + 库内笔记）、行级双向同步滚动 | ✅ **已实施**（待发布；2026-09-09 Linux 机） |
 | [handoff-2026-09-07.md](handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
@@ -72,7 +72,11 @@
 
 ---
 
-## 二、设计已确认、未实施
+## 二、已实现、待发布（工作区已完成，随下版本发布）
+
+- **预览增强三件套**（FR-2.4.1 升级 / FR-2.4.7 / FR-2.4.8）：内嵌 HTML 支持（DOMPurify 净化 + CSP form-action 兜底）、链接跳转（外部走系统浏览器 + 库内笔记应用内打开 + 断链删除线）、行级双向同步滚动（data-source-line 行号映射，修复旧比例同步从未生效的缺陷）；渲染管道抽取 lib/markdown.ts，新增 8 项渲染净化单测（jsdom）
+
+## 三、设计已确认、未实施
 
 ### 插件系统 v2（目标 0.4.0）— [plugin-design.md](plugin-design.md)
 
@@ -86,7 +90,7 @@
 
 ---
 
-## 三、规划中、未开始
+## 四、规划中、未开始
 
 ### 功能规划（已排期讨论，方案见下）
 

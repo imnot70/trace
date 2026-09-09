@@ -1,41 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import MarkdownIt from 'markdown-it'
-import texmath from 'markdown-it-texmath'
-import katex from 'katex'
-import hljs from 'highlight.js/lib/core'
-import javascript from 'highlight.js/lib/languages/javascript'
-import typescript from 'highlight.js/lib/languages/typescript'
-import python from 'highlight.js/lib/languages/python'
-import json from 'highlight.js/lib/languages/json'
-import bash from 'highlight.js/lib/languages/bash'
-import xml from 'highlight.js/lib/languages/xml'
-import css from 'highlight.js/lib/languages/css'
-import markdownLang from 'highlight.js/lib/languages/markdown'
-import java from 'highlight.js/lib/languages/java'
-import c from 'highlight.js/lib/languages/c'
-import cpp from 'highlight.js/lib/languages/cpp'
-import sql from 'highlight.js/lib/languages/sql'
-import yaml from 'highlight.js/lib/languages/yaml'
-import rust from 'highlight.js/lib/languages/rust'
-import go from 'highlight.js/lib/languages/go'
-
-hljs.registerLanguage('javascript', javascript)
-hljs.registerLanguage('typescript', typescript)
-hljs.registerLanguage('python', python)
-hljs.registerLanguage('json', json)
-hljs.registerLanguage('bash', bash)
-hljs.registerLanguage('xml', xml)
-hljs.registerLanguage('html', xml)
-hljs.registerLanguage('css', css)
-hljs.registerLanguage('markdown', markdownLang)
-hljs.registerLanguage('java', java)
-hljs.registerLanguage('c', c)
-hljs.registerLanguage('cpp', cpp)
-hljs.registerLanguage('sql', sql)
-hljs.registerLanguage('yaml', yaml)
-hljs.registerLanguage('rust', rust)
-hljs.registerLanguage('go', go)
+import { computed, nextTick, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import DOMPurify from 'dompurify'
+import { md } from '../lib/markdown'
 
 const props = defineProps<{
   content: string
@@ -46,29 +13,10 @@ const props = defineProps<{
   fontSize: number
 }>()
 
-// 代码块语法高亮：交由 highlight.js 生成 hljs-* 类名（配色见 markdown.css，随主题变量切换）
-// 未识别语言或高亮失败时回退为转义后的纯文本
-function escapeHtml(code: string): string {
-  return code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
-
-const md = new MarkdownIt({
-  html: false,
-  linkify: true,
-  breaks: false,
-  highlight(code, lang) {
-    if (lang && hljs.getLanguage(lang)) {
-      try {
-        return `<pre class="hljs"><code>${hljs.highlight(code, { language: lang, ignoreIllegals: true }).value}</code></pre>`
-      } catch {
-        /* fall through */
-      }
-    }
-    return `<pre class="hljs"><code>${escapeHtml(code)}</code></pre>`
-  }
-})
-
-md.use(texmath, { engine: katex, delimiters: 'dollars', katexOptions: { output: 'html' } })
+const emit = defineEmits<{
+  /** 库内笔记链接被点击（悬浮预览等容器负责关闭自身并打开笔记） */
+  (e: 'open-note', target: { vault: string; path: string; name: string }): void
+}>()
 
 // 外链新窗口打开
 const defaultLink =
@@ -97,6 +45,27 @@ function resolveRelRef(notePath: string, ref: string): string {
   return stack.join('/')
 }
 
+function noteName(path: string): string {
+  const base = path.split('/').pop() ?? path
+  return base.toLowerCase().endsWith('.md') ? base.slice(0, -3) : base
+}
+
+/** 相对路径 .md 链接打上 data-internal（含解析后的库内路径），点击走应用内打开 */
+function rewriteInternalLinks(html: string): string {
+  return html.replace(/<a\b[^>]*\shref="([^"]*)"[^>]*>/g, (match, href: string) => {
+    let decoded: string
+    try {
+      decoded = decodeURIComponent(href)
+    } catch {
+      decoded = href
+    }
+    if (/^[a-z][a-z0-9+.-]*:/i.test(decoded) || decoded.startsWith('/') || decoded.startsWith('#')) return match
+    if (!decoded.toLowerCase().endsWith('.md')) return match
+    const rel = resolveRelRef(props.notePath, decoded)
+    return match.replace(' href="', ` data-internal="${rel.replace(/"/g, '&quot;')}" href="`)
+  })
+}
+
 /** 相对路径图片改写为 trace-vault:// 协议 */
 function rewriteImages(html: string): string {
   return html.replace(/<img[^>]*\ssrc="([^"]*)"[^>]*>/g, (match, src: string) => {
@@ -114,17 +83,123 @@ function rewriteImages(html: string): string {
 
 const html = computed(() => {
   try {
-    return rewriteImages(md.render(props.content ?? ''))
+    // 管道顺序：markdown-it 渲染（含 KaTeX/高亮）→ DOMPurify 白名单净化 → 相对链接/图片改写。
+    // 净化剥除脚本与事件属性（默认），并显式禁用表单/样式注入/base 等视觉钓鱼与
+    // 导航劫持向量（DOMPurify 默认保留合法的 form/input，此处收紧；CSP form-action 兜底）。
+    // 笔记经 git 同步传播，内嵌 HTML 必须过净化再进 v-html。
+    const sanitized = DOMPurify.sanitize(md.render(props.content ?? ''), {
+      FORBID_TAGS: ['style', 'base', 'form', 'input', 'button', 'select', 'textarea', 'iframe', 'object', 'embed', 'meta', 'link'],
+      FORBID_ATTR: ['srcdoc', 'target']
+    })
+    return rewriteImages(rewriteInternalLinks(sanitized))
   } catch {
     return `<p style="color:var(--danger)">渲染出错，请检查 Markdown 语法</p>`
   }
 })
+
+const rootRef = ref<HTMLElement | null>(null)
+
+// ---------- 行级滚动同步：data-source-line 块索引与双向定位 ----------
+/** 有序的 [行号, offsetTop] 块索引（随渲染重建） */
+function blockIndex(): { line: number; top: number }[] {
+  const els = rootRef.value?.querySelectorAll('[data-source-line]')
+  if (!els) return []
+  return [...els].map((el) => ({
+    line: Number((el as HTMLElement).dataset.sourceLine),
+    top: (el as HTMLElement).offsetTop
+  }))
+}
+
+/** 编辑器→预览：按可视首行（0 基）与行内像素偏移设置预览滚动位置 */
+function syncToLine(line: number, lineOffsetRatio: number): void {
+  const root = rootRef.value
+  if (!root) return
+  const blocks = blockIndex()
+  if (blocks.length === 0) return
+  // 目标块 = 行号 <= line 的最后一个（最近前驱块）
+  let target = blocks[0]
+  for (const b of blocks) {
+    if (b.line <= line) target = b
+    else break
+  }
+  // 块内比例折算（一个源行可对应超高块，如长代码块）
+  const blockHeight = nextBlockHeight(blocks, target)
+  root.scrollTop = target.top + blockHeight * Math.min(1, Math.max(0, lineOffsetRatio))
+}
+
+function nextBlockHeight(blocks: { line: number; top: number }[], target: { line: number; top: number }): number {
+  const idx = blocks.indexOf(target)
+  const next = blocks[idx + 1]
+  return next ? Math.max(1, next.top - target.top) : 200
+}
+
+/** 预览→编辑器：当前滚动位置对应的源码行号（0 基），供编辑器滚动到该行 */
+function lineAtScrollTop(): number | null {
+  const root = rootRef.value
+  if (!root) return null
+  const top = root.scrollTop
+  const blocks = blockIndex()
+  if (blocks.length === 0) return null
+  let target = blocks[0]
+  for (const b of blocks) {
+    if (b.top <= top + 1) target = b
+    else break
+  }
+  return target.line
+}
+
+defineExpose({ syncToLine, lineAtScrollTop, scrollElement: rootRef })
+
+// ---------- 链接点击：统一委托，外部走系统浏览器，库内笔记走应用内打开 ----------
+
+function onPreviewClick(e: MouseEvent): void {
+  const anchor = (e.target as HTMLElement).closest?.('a')
+  if (!anchor) return
+  // 全部阻止默认：应用窗口绝不被链接导航带走
+  e.preventDefault()
+  const internal = anchor.getAttribute('data-internal')
+  if (internal) {
+    if (anchor.hasAttribute('data-broken')) {
+      ElMessage.warning(`笔记不存在：${internal}`)
+      return
+    }
+    emit('open-note', { vault: props.vault, path: internal, name: noteName(internal) })
+    return
+  }
+  const href = anchor.getAttribute('href') ?? ''
+  if (/^https?:/i.test(href)) {
+    // window.open → 主进程 setWindowOpenHandler → shell.openExternal（系统浏览器）
+    window.open(href, '_blank', 'noopener,noreferrer')
+  }
+  // 其他（#锚点、mailto: 等）本期不处理，仅阻止默认
+}
+
+// ---------- 断链校验：渲染后异步检查库内链接是否存在，不存在标记删除线 ----------
+let brokenSeq = 0
+watch(
+  html,
+  async () => {
+    await nextTick()
+    const seq = ++brokenSeq
+    const links = [...(rootRef.value?.querySelectorAll('a[data-internal]:not([data-broken])') ?? [])]
+    for (const link of links) {
+      const path = link.getAttribute('data-internal')
+      if (!path) continue
+      const result = await window.trace.readNote(props.vault, path)
+      if (seq !== brokenSeq) return // 渲染已更新，丢弃本轮结果
+      if (!result.ok) link.setAttribute('data-broken', '')
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
   <div
+    ref="rootRef"
     class="preview-pane markdown-body"
     :style="{ '--preview-font-size': `${fontSize}px` }"
     v-html="html"
+    @click="onPreviewClick"
   ></div>
 </template>

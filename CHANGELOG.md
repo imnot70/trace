@@ -2,6 +2,18 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 新功能
+
+- **内嵌 HTML 支持**（FR-2.4.7）：预览渲染笔记中的内嵌 HTML（div / table / details 等）；输出经 DOMPurify 白名单净化并显式禁用表单 / style / base / iframe 等视觉钓鱼与导航劫持向量，CSP 追加 `form-action 'none'` 兜底（笔记经 git 同步传播，投毒笔记不得借预览攻击）
+- **链接跳转**（FR-2.4.8）：预览链接统一事件委托——外部 http(s) 经系统浏览器打开；库内笔记相对链接（markdown 与原始 HTML 两种来源）在应用内直接打开；断链渲染为删除线并轻提示；悬浮预览中同样可跳转（跳转即关闭悬浮）
+- **行级双向同步滚动**（FR-2.4.1 升级）：块级元素注入源码行号（data-source-line），编辑器与预览双向按行映射对齐（Typora 式），100ms 防回环守卫，图片加载后自动重对齐；顺带修复旧版比例同步实际从未生效的问题（误将组件实例当滚动容器赋值）
+
+### 变更
+
+- markdown-it 渲染管道抽取为 `lib/markdown.ts` 独立模块（单测可直接覆盖）；texmath 类型声明移至 shared（双端可见）
+
 ## [0.3.6] - 2026-09-09
 
 ### 新功能

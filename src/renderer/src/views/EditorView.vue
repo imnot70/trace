@@ -4,6 +4,7 @@ import { useAppStore } from '../stores/app'
 import { useEditorStore } from '../stores/editor'
 import { useTreeStore } from '../stores/tree'
 import { useGitStore } from '../stores/git'
+import { useNoteActions } from '../composables/actions'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
 import TipButton from '../components/TipButton.vue'
@@ -13,9 +14,10 @@ const app = useAppStore()
 const editor = useEditorStore()
 const tree = useTreeStore()
 const git = useGitStore()
+const actions = useNoteActions()
 
 const editorRef = ref<InstanceType<typeof MarkdownEditor> | null>(null)
-const previewRef = ref<HTMLElement | null>(null)
+const previewRef = ref<InstanceType<typeof MarkdownPreview> | null>(null)
 const splitPercent = ref(50)
 const dragging = ref(false)
 
@@ -37,15 +39,52 @@ async function onImage(fileName: string, base64: string): Promise<void> {
   }
 }
 
-/** 简易滚动同步：按滚动比例联动（CodeMirror 的滚动发生在 .cm-scroller 上） */
-function bindEditorScroll(): void {
-  const scroller = editorWrapRef.value?.querySelector('.cm-scroller') as HTMLElement | null
-  scroller?.addEventListener('scroll', () => {
-    const preview = previewRef.value
-    const target = scroller
-    if (!preview || !target) return
-    const ratio = target.scrollTop / Math.max(1, target.scrollHeight - target.clientHeight)
-    preview.scrollTop = ratio * (preview.scrollHeight - preview.clientHeight)
+/**
+ * 行级双向滚动同步（编辑器 ⇄ 预览，经 data-source-line 映射）。
+ * 防回环：程序化滚动引发的对侧 scroll 事件在 100ms 守卫窗口内按来源跳过；
+ * 图片异步加载改变预览高度时按编辑器当前位置重对齐（load 事件捕获委托）。
+ */
+const syncGuard = { time: 0, source: '' as 'editor' | 'preview' | '' }
+let unbindScrollSync: (() => void) | null = null
+
+function rebindScrollSync(): void {
+  unbindScrollSync?.()
+  unbindScrollSync = null
+  void nextTick(() => {
+    const scroller = editorWrapRef.value?.querySelector('.cm-scroller') as HTMLElement | null
+    const previewEl: HTMLElement | null = previewRef.value?.scrollElement ?? null
+    if (!scroller || !previewEl) return
+
+    const onEditorScroll = (): void => {
+      if (Date.now() - syncGuard.time < 100 && syncGuard.source === 'preview') return
+      const pos = editorRef.value?.firstVisibleLine()
+      if (!pos) return
+      syncGuard.time = Date.now()
+      syncGuard.source = 'editor'
+      previewRef.value?.syncToLine(pos.line, pos.ratio)
+    }
+    const onPreviewScroll = (): void => {
+      if (Date.now() - syncGuard.time < 100 && syncGuard.source === 'editor') return
+      const line = previewRef.value?.lineAtScrollTop()
+      if (line == null) return
+      syncGuard.time = Date.now()
+      syncGuard.source = 'preview'
+      editorRef.value?.scrollToLine(line)
+    }
+    // 图片/媒体加载完成后按编辑器当前位置重对齐（捕获阶段监听 load）
+    const onLoad = (): void => {
+      const pos = editorRef.value?.firstVisibleLine()
+      if (pos) previewRef.value?.syncToLine(pos.line, pos.ratio)
+    }
+
+    scroller.addEventListener('scroll', onEditorScroll, { passive: true })
+    previewEl.addEventListener('scroll', onPreviewScroll, { passive: true })
+    previewEl.addEventListener('load', onLoad, true)
+    unbindScrollSync = () => {
+      scroller.removeEventListener('scroll', onEditorScroll)
+      previewEl.removeEventListener('scroll', onPreviewScroll)
+      previewEl.removeEventListener('load', onLoad, true)
+    }
   })
 }
 
@@ -94,6 +133,12 @@ function onPreviewBtnLeave(): void {
     clearTimeout(pressTimer)
     pressTimer = null
   }
+}
+
+/** 预览中点击库内笔记链接：悬浮预览先收回，再打开目标笔记 */
+function onPreviewOpenNote(target: { vault: string; path: string; name: string }): void {
+  if (app.floatingPreview) app.closeFloatingPreview()
+  void actions.openNote(target.vault, target.path, target.name)
 }
 
 // Ctrl/Cmd+S 手动保存；Alt+P 呼出/收起悬浮预览；Esc 收起悬浮预览
@@ -149,7 +194,7 @@ watch(
 
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
-  void nextTick(bindEditorScroll)
+  rebindScrollSync()
   // 从设置等视图返回：自动聚焦编辑器，落地即可继续输入
   if (app.focusEditorOnce) {
     app.focusEditorOnce = false
@@ -158,12 +203,17 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
+  unbindScrollSync?.()
   void editor.flushSave()
 })
 
 watch(
   () => editor.current?.vault,
-  () => void nextTick(bindEditorScroll)
+  () => rebindScrollSync()
+)
+watch(
+  () => app.previewVisible,
+  () => rebindScrollSync()
 )
 
 const vaultName = computed(() => editor.current?.vault ?? '')
@@ -175,7 +225,7 @@ watch(
     // 切换笔记：一瞥结束（新笔记内容未读过，留着只会误导）
     if (app.floatingPreview) app.closeFloatingPreview()
     await nextTick()
-    if (previewRef.value) previewRef.value.scrollTop = 0
+    if (previewRef.value?.scrollElement) previewRef.value.scrollElement.scrollTop = 0
   }
 )
 
@@ -384,6 +434,7 @@ onBeforeUnmount(() => {
       :vault="vaultName"
       :note-path="editor.current.path"
       :font-size="app.settings.editorFontSize"
+      @open-note="onPreviewOpenNote"
     />
   </div>
 
@@ -408,6 +459,7 @@ onBeforeUnmount(() => {
           :vault="vaultName"
           :note-path="editor.current.path"
           :font-size="app.settings.editorFontSize"
+          @open-note="onPreviewOpenNote"
         />
       </div>
     </div>

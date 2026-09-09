@@ -276,6 +276,12 @@ function onRootClick(e: MouseEvent): void {
   preview.value = null
 }
 
+/** 悬浮预览中点击库内笔记链接：收回预览并打开目标笔记 */
+function onPreviewOpenNote(target: { vault: string; path: string; name: string }): void {
+  preview.value = null
+  void actions.openNote(target.vault, target.path, target.name)
+}
+
 function onKeydown(e: KeyboardEvent): void {
   if (e.key !== 'Escape') return
   // Esc 分级：悬浮预览 → 关预览；库内容级 → 回上级；库列表级 → 关闭网格
@@ -548,6 +554,7 @@ watch(section, () => {
             :vault="preview.vault"
             :note-path="preview.path"
             :font-size="app.settings.editorFontSize"
+            @open-note="onPreviewOpenNote"
           />
         </div>
       </div>
