@@ -4,7 +4,7 @@
 
 - 跨平台：Windows / macOS / Linux（Ubuntu、Debian 系为主）
 - 数据完全本地：笔记就是 `.md` 文件，没有私有格式，随时可以用其他编辑器打开
-- 开源协议：MIT ｜ 当前版本：[v0.3.1](CHANGELOG.md)
+- 开源协议：MIT ｜ 当前版本：[v0.3.6](CHANGELOG.md)
 
 ![技术栈](https://img.shields.io/badge/Electron-44-47848f) ![Vue](https://img.shields.io/badge/Vue-3-42b883) ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6)
 
@@ -66,9 +66,9 @@
 
 | 平台 | 文件 | 安装方式 |
 | --- | --- | --- |
-| Ubuntu / Debian | `linux-v0.3.1-x64.deb` | `sudo dpkg -i linux-v*.deb` 或 `sudo apt install ./linux-v*.deb` |
-| 其他 Linux | `linux-v0.3.1-x64.AppImage` | `chmod +x linux-v*.AppImage && ./linux-v*.AppImage`（需 FUSE，或 `--appimage-extract` 后运行） |
-| Windows | `win-v0.3.1-x64.exe` | 双击安装，可选择安装目录 |
+| Ubuntu / Debian | `linux-v0.3.6-x64.deb` | `sudo dpkg -i linux-v*.deb` 或 `sudo apt install ./linux-v*.deb` |
+| 其他 Linux | `linux-v0.3.6-x64.AppImage` | `chmod +x linux-v*.AppImage && ./linux-v*.AppImage`（需 FUSE，或 `--appimage-extract` 后运行） |
+| Windows | `win-v0.3.6-x64.exe` | 双击安装，可选择安装目录 |
 | macOS | 暂不提供安装包 | 请自行从源码构建（见下方说明） |
 
 > macOS 需要自行构建：安装 Node.js ≥ 20 与 git 后，执行下面的「从源码构建」，在 macOS 机器上运行 `npm run dist` 即可得到 `Trace-x.y.z.dmg`（首次构建前建议先执行 `xcode-select --install` 安装命令行工具）。
@@ -94,7 +94,7 @@ npm run dist         # 按当前平台打包安装程序
 npm run dist:deb     # 只打 Ubuntu/Debian deb 包
 ```
 
-产物输出在 `dist/` 目录，命名规范为「平台-v版本-架构.扩展名」（如 `linux-v0.3.1-x64.deb`、`win-v0.3.1-x64.exe`）。
+产物输出在 `dist/` 目录，命名规范为「平台-v版本-架构.扩展名」（如 `linux-v0.3.6-x64.deb`、`win-v0.3.6-x64.exe`）。
 
 > Windows / macOS 安装包需在对应平台上执行 `npm run dist`。macOS 没有预构建安装包，Mac 用户请通过本节自行构建 DMG。
 
@@ -124,13 +124,22 @@ npm run icon         # 重新生成应用图标
 
 ### 快捷键
 
+完整速查表见应用内 设置 → 通用 → 快捷键。常用部分：
+
 | 快捷键 | 功能 |
 | --- | --- |
 | `Ctrl/Cmd + S` | 手动保存当前笔记 |
+| `Ctrl/Cmd + N` | 新建笔记（自动定位到当前上下文所在文件夹） |
+| `Alt + 1 / 2 / 3 / 4` | 打开常用 / 收藏 / 回收站 / 笔记库网格 |
+| `Alt + P` | 呼出 / 收起悬浮预览 |
+| `Alt + F` | 进入 / 退出专注模式 |
+| `Alt + B` / `Alt + V` | 显示 / 隐藏左侧栏 / 预览区 |
+| `Ctrl/Cmd + ,` | 打开设置 |
+| `Ctrl/Cmd + B` / `I` / `Shift + X` | 加粗 / 斜体 / 删除线（编辑器内） |
 | `Ctrl/Cmd + Z` / `Ctrl/Cmd + Shift + Z` | 撤销 / 重做 |
-| `Esc` | 关闭悬浮预览 |
+| `Esc` | 分级回退（关闭预览 / 返回上级 / 关闭网格） |
 
-> 提示：编辑卡右上角的 ≣ 按钮可收起预览，⟦ ⟧ 按钮进入专注模式；**长按**预览按钮可呼出悬浮预览。
+> 提示：编辑卡右上角的 ≣ 按钮可收起预览，⟦ ⟧ 按钮进入专注模式；**长按**预览按钮（或 `Alt + P`）可呼出悬浮预览。
 
 ### 数据保存在哪里
 

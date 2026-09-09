@@ -40,6 +40,37 @@ const traceTheme = EditorView.theme({
     color: 'var(--text-tertiary)',
     border: 'none'
   },
+  // 标题折叠按钮：与侧栏折叠箭头同语言——弱化常态色、圆角热区、悬停反馈
+  '.cm-foldGutter .cm-foldGutterElement': {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '18px',
+    padding: '1px 0',
+    borderRadius: '4px',
+    color: 'var(--text-tertiary)',
+    cursor: 'pointer',
+    transition: 'background 0.15s ease, color 0.15s ease'
+  },
+  '.cm-foldGutter .cm-foldGutterElement:hover': {
+    backgroundColor: 'var(--bg-tertiary)',
+    color: 'var(--text-primary)'
+  },
+  '.cm-foldGutter .cm-foldGutterElement svg': {
+    fill: 'currentColor',
+    width: '14px',
+    height: '14px'
+  },
+  // 折叠后在正文中留下的「⋯」占位符
+  '.cm-foldPlaceholder': {
+    backgroundColor: 'var(--accent-soft)',
+    color: 'var(--text-secondary)',
+    border: 'none',
+    borderRadius: '4px',
+    padding: '0 6px',
+    margin: '0 4px',
+    cursor: 'pointer'
+  },
   '.cm-activeLine': { backgroundColor: 'var(--bg-hover)' },
   '.cm-activeLineGutter': { backgroundColor: 'var(--bg-hover)' },
   '&.cm-focused': { outline: 'none' },
@@ -65,7 +96,11 @@ function createView(initialDoc: string): EditorView {
             emit('save')
             return true
           }
-        }
+        },
+        // Markdown 格式化快捷键（复用工具栏的智能插入：有选中包裹 / 无选中插占位）
+        { key: 'Mod-b', preventDefault: true, run: () => (insertSnippet('**', '**'), true) },
+        { key: 'Mod-i', preventDefault: true, run: () => (insertSnippet('*', '*'), true) },
+        { key: 'Mod-Shift-x', preventDefault: true, run: () => (insertSnippet('~~', '~~'), true) }
       ]),
       EditorView.updateListener.of((update) => {
         if (!update.docChanged) return
@@ -118,6 +153,31 @@ function insertText(text: string): void {
   view.focus()
 }
 
+/**
+ * 工具栏插入（成对标记）：
+ * - 有选中文字 → 用 before/after 包裹选中内容，保持选中
+ * - 无选中且有占位文字 → 插入 before+占位+after 并选中占位（直接打字即替换）
+ * - 无选中且无占位（如公式定界符）→ 插入标记，光标落在中间
+ */
+function insertSnippet(before: string, after = '', placeholder = ''): void {
+  if (!view) return
+  const sel = view.state.selection.main
+  if (!sel.empty) {
+    const selected = view.state.sliceDoc(sel.from, sel.to)
+    view.dispatch({
+      changes: { from: sel.from, to: sel.to, insert: `${before}${selected}${after}` },
+      selection: { anchor: sel.from + before.length, head: sel.from + before.length + selected.length }
+    })
+  } else {
+    const insert = `${before}${placeholder}${after}`
+    view.dispatch({
+      changes: { from: sel.from, insert },
+      selection: { anchor: sel.from + before.length, head: sel.from + before.length + placeholder.length }
+    })
+  }
+  view.focus()
+}
+
 /** 处理粘贴 / 拖入的图片 */
 function handleFiles(files: FileList): void {
   for (const file of Array.from(files)) {
@@ -147,6 +207,10 @@ function onDrop(e: DragEvent): void {
 
 defineExpose({
   insertText,
+  insertSnippet,
+  focus: () => {
+    if (view) view.focus()
+  },
   undo: () => {
     if (view) undo(view)
   },

@@ -329,6 +329,20 @@ body {
   background: var(--bg-active);
 }
 
+/* 定位功能的目标行：强调色浅底高亮，状态移除后淡出 */
+.side-row.located,
+.tree-row.located {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  transition: background 0.6s ease;
+}
+
+.side-row.located .row-name,
+.tree-row.located .row-name {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .side-row .row-name {
   flex: 1;
   overflow: hidden;

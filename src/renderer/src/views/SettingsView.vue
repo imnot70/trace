@@ -7,6 +7,7 @@ import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
 import type { ThemeOption } from '@shared/types'
 import { normalizeAttachDir, normalizeProxyUrl } from '@shared/validate'
+import { SHORTCUT_GROUPS } from '../config/shortcuts'
 
 const app = useAppStore()
 const git = useGitStore()
@@ -163,12 +164,29 @@ const themeOptions: { label: string; value: 'light' | 'dark' | 'system' }[] = [
   { label: '深色', value: 'dark' },
   { label: '跟随系统', value: 'system' }
 ]
+
+/** 返回编辑：保留设置入口的「回来继续写」路径 */
+function backToEditor(): void {
+  if (!editor.current) return
+  app.focusEditorOnce = true
+  app.view = { name: 'editor' }
+}
 </script>
 
 <template>
   <div class="page">
     <div class="page-header">
       <h2>设置</h2>
+      <span v-if="editor.current" class="settings-back-note">正在编辑：{{ editor.current.name }}</span>
+      <el-button
+        v-if="editor.current"
+        size="small"
+        type="primary"
+        plain
+        @click="backToEditor"
+      >
+        返回编辑
+      </el-button>
     </div>
 
     <el-tabs v-model="tab">
@@ -381,6 +399,23 @@ const themeOptions: { label: string; value: 'light' | 'dark' | 'system' }[] = [
         </div>
 
         <div class="settings-block">
+          <h3>快捷键</h3>
+          <table class="shortcut-table">
+            <tbody>
+              <template v-for="group in SHORTCUT_GROUPS" :key="group.group">
+                <tr class="shortcut-group-row">
+                  <td colspan="2">{{ group.group }}</td>
+                </tr>
+                <tr v-for="item in group.items" :key="item.keys">
+                  <td class="shortcut-keys"><kbd>{{ item.keys }}</kbd></td>
+                  <td class="shortcut-desc">{{ item.desc }}</td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="settings-block">
           <h3>关于</h3>
           <div class="setting-row">
             <span class="setting-label">Trace 笔迹</span>
@@ -436,5 +471,50 @@ const themeOptions: { label: string; value: 'light' | 'dark' | 'system' }[] = [
 
 .pat-guide-tips p {
   margin: 2px 0;
+}
+
+/* 快捷键速查表 */
+.shortcut-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.shortcut-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.shortcut-group-row td {
+  font-weight: 600;
+  color: var(--text-primary);
+  padding-top: 12px;
+  border-bottom: none;
+}
+
+.shortcut-keys {
+  width: 200px;
+  white-space: nowrap;
+}
+
+.shortcut-table kbd {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+/* 返回编辑（设置页头部） */
+.settings-back-note {
+  margin-left: 12px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.settings-back-note + .el-button {
+  margin-left: auto;
 }
 </style>

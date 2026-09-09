@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import type { AppSettings } from '@shared/types'
+import { useTreeStore } from './tree'
 
 /** 卡片网格视图的区块类型 */
 export type GridSection = 'recents' | 'favorites' | 'vaults'
@@ -46,6 +47,8 @@ export const useAppStore = defineStore('app', {
     sidebarVisible: true,
     /** 专注模式下临时浮出的侧栏（浮层，会话级） */
     zenSidebarOverlay: false,
+    /** 从设置等视图返回编辑时置位，EditorView 挂载后聚焦编辑器并清除 */
+    focusEditorOnce: false,
     /** 悬浮预览卡片（长按预览按钮触发，会话级不持久化） */
     floatingPreview: false
   }),
@@ -59,6 +62,9 @@ export const useAppStore = defineStore('app', {
     drillIn(vaultPath: string): void {
       if (this.view.name === 'grid' && this.view.section === 'vaults') {
         this.view = { name: 'grid', section: 'vaults', vaultPath }
+        // 更新位置上下文（Ctrl+N 新建笔记的目标）
+        const vault = vaultPath.split('/')[0]
+        if (vault) useTreeStore().setLocation(vault, vaultPath)
       }
     },
     /** 库网格：回退上一级（已在库列表级时无操作） */
@@ -70,6 +76,11 @@ export const useAppStore = defineStore('app', {
           ? { name: 'grid', section: 'vaults', vaultPath: segs.join('/') }
           : { name: 'grid', section: 'vaults' }
       }
+    },
+    /** 打开 / 关闭某区块的卡片网格（与侧栏标题点击行为一致） */
+    toggleGridSection(section: GridSection): void {
+      if (this.view.name === 'grid' && this.view.section === section) this.view = { name: 'welcome' }
+      else this.view = { name: 'grid', section }
     },
     openFloatingPreview(): void {
       this.floatingPreview = true
@@ -92,9 +103,12 @@ export const useAppStore = defineStore('app', {
       }
     },
     togglePreview(): void {
-      this.previewVisible = !this.previewVisible
+      this.setPreviewVisible(!this.previewVisible)
+    },
+    setPreviewVisible(v: boolean): void {
+      this.previewVisible = v
       try {
-        localStorage.setItem('trace.previewVisible', this.previewVisible ? '1' : '0')
+        localStorage.setItem('trace.previewVisible', v ? '1' : '0')
       } catch {
         /* ignore */
       }

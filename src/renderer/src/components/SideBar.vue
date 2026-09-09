@@ -14,12 +14,14 @@ const trash = useTrashStore()
 const git = useGitStore()
 const actions = useNoteActions()
 
-const expandedSections = ref<Record<string, boolean>>({
-  vaults: true
-})
+function toggleSection(): void {
+  tree.vaultSectionOpen = !tree.vaultSectionOpen
+}
 
-function toggleSection(key: string): void {
-  expandedSections.value[key] = !expandedSections.value[key]
+/** 点击库行：展开/收起，并更新位置上下文（Ctrl+N 新建目标） */
+function clickVaultRow(vault: string): void {
+  tree.toggleVault(vault)
+  tree.setLocation(vault, '')
 }
 
 /** 点击「常用 / 收藏 / 笔记库」标题：在主区域打开对应卡片网格；再点一次关闭 */
@@ -37,8 +39,7 @@ function onVaultMenuVisible(visible: boolean, vaultName: string): void {
 }
 
 function toggleGrid(section: 'recents' | 'favorites' | 'vaults'): void {
-  if (app.view.name === 'grid' && app.view.section === section) app.view = { name: 'welcome' }
-  else app.view = { name: 'grid', section }
+  app.toggleGridSection(section)
 }
 
 function isGridOpen(section: 'recents' | 'favorites' | 'vaults'): boolean {
@@ -119,11 +120,11 @@ defineProps<{ vaults?: VaultInfo[] }>()
         <!-- 注意：tooltip 不能包住按钮/下拉菜单（el-tooltip 会拦截子元素点击），只包纯文本 -->
         <div
           class="side-section-header"
-          :class="{ collapsed: !expandedSections.vaults, active: isGridOpen('vaults') }"
+          :class="{ collapsed: !tree.vaultSectionOpen, active: isGridOpen('vaults') }"
           title="点击查看全部笔记库"
           @click="toggleGrid('vaults')"
         >
-          <span class="chevron-hit" title="展开 / 收起" @click.stop="toggleSection('vaults')">
+          <span class="chevron-hit" title="展开 / 收起" @click.stop="toggleSection()">
             <el-icon class="chevron"><ArrowDown /></el-icon>
           </span>
           <span>笔记库</span>
@@ -132,15 +133,16 @@ defineProps<{ vaults?: VaultInfo[] }>()
             <el-icon><Plus /></el-icon>
           </button>
         </div>
-        <template v-if="expandedSections.vaults">
+        <template v-if="tree.vaultSectionOpen">
           <div v-if="tree.vaults.length === 0" class="empty-hint">
             还没有笔记库，点击右上角 + 创建
           </div>
           <div v-for="vault in tree.vaults" :key="vault.name">
             <div
               class="side-row vault-row"
-              :class="{ 'menu-hold': openVaultMenu === vault.name }"
-              @click="tree.toggleVault(vault.name)"
+              :class="{ 'menu-hold': openVaultMenu === vault.name, located: tree.locateKey === vault.name }"
+              :data-locate="vault.name"
+              @click="clickVaultRow(vault.name)"
             >
               <el-icon class="chevron" :class="{ open: tree.isVaultExpanded(vault.name) }">
                 <ArrowRight />

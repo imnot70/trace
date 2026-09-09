@@ -36,7 +36,8 @@ export class GitService {
   private git(vaultPath: string): SimpleGit {
     const { name, email } = this.deps.getCommitter()
     // simple-git 的 config 选项会自动为每一项加上 -c 前缀
-    const config = ['core.quotepath=false', `user.name=${name}`, `user.email=${email}`]
+    // autocrlf=false：笔记内容由应用逐字节管理（hash 防覆盖比对），git 不得转换行尾
+    const config = ['core.quotepath=false', 'core.autocrlf=false', `user.name=${name}`, `user.email=${email}`]
     const token = this.deps.getToken()
     if (token) {
       const basic = Buffer.from(`x-access-token:${token}`).toString('base64')

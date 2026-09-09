@@ -44,6 +44,7 @@ export function useNoteActions() {
         if (result.ok) {
           editor.handleVaultRenamed(oldName, name)
           delete tree.trees[oldName]
+          tree.renameLocation(oldName, name)
           await tree.loadVaults()
           await tree.loadTree(name)
           await tree.loadFavorites()
@@ -69,6 +70,7 @@ export function useNoteActions() {
       await editor.closeNote()
       app.view = { name: 'welcome' }
       delete tree.trees[name]
+      tree.clearLocationIfVault(name)
       await tree.loadVaults()
       await tree.loadFavorites()
       await tree.loadRecents()
@@ -139,8 +141,9 @@ export function useNoteActions() {
 
   // ---------- 笔记 ----------
   function createNote(vault: string, parentPath = ''): void {
+    const target = `${vault}${parentPath ? ` / ${parentPath}` : ''}`
     dialog.open({
-      title: '创建笔记',
+      title: `创建笔记 — ${target}`,
       kind: 'note',
       placeholder: '笔记名称',
       action: async (name) => {

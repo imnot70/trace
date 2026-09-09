@@ -98,6 +98,10 @@ src/
   ⚠️ Windows 上 `tests/gitService.test.ts` 的 6 项集成测试会因超出 Vitest 默认 5s 超时而失败：Windows 下每次 git 子进程调用约 1~1.7s（Linux 仅几十毫秒），完整关联+同步流程需 5~10s。功能本身正常（已手动复现验证），用 `npx vitest run --testTimeout=30000` 验证即可，勿误判为产品代码 bug。
   ⚠️ Linux（Ubuntu 24.04+，含本机 Ubuntu 26.04）重新 `npm install` 后 Electron 可能启动失败：`The SUID sandbox helper binary was found, but is not configured correctly`。原因是 AppArmor 限制非特权用户命名空间（`kernel.apparmor_restrict_unprivileged_userns=1`），npm 又总是以当前用户安装 `chrome-sandbox`（无法带 SUID 位）。修复：`sudo chown root:root node_modules/electron/dist/chrome-sandbox && sudo chmod 4755 node_modules/electron/dist/chrome-sandbox`（每次重装依赖后需重做）。
 - 版本号在 `package.json`，是**唯一版本来源**：「关于 Trace」（`app.getVersion()`）、安装包文件名（electron-builder `artifactName`）、CI 工件命名全部自动读取它；git tag 必须与其一致（CI 在 tag 触发时会校验，不一致构建失败）。**发版流程**：更新 `CHANGELOG.md` → `npm version <patch|minor|major 或 x.y.z>`（自动改版本号 + commit + 打 `v` 标签，要求工作区干净；经 `postversion` 钩子自动 `git push --follow-tags` 触发 Release）。
+- **【强制】改动完成后必须同步相关文档，代码先行、文档欠账视为改动未完成**：
+  - 行为 / 功能变更记录 → `CHANGELOG.md`（写进顶部 `[未发布]` 段，无此段则新建；发版时整段改为版本号 + 日期）；
+  - 需求追加或需求完成状态变化 → `requirements/index.md`（实施状态总览）与对应文档：新需求 / 需求语义变化进 `requirements/requirements.md`（PRD，含 FR 编号），架构级方案进 `requirements/` 下对应设计文档（如 `plugin-design.md`），设计文档需同步标注实施进度；
+  - 提交信息无法替代文档——commit message 只记录「这次改了什么」，文档记录「产品现在是什么」。
 
 ## 已知局限（勿误判为新 bug）
 

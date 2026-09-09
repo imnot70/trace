@@ -41,8 +41,13 @@ const favorited = computed(() =>
 )
 
 function onRowClick(): void {
-  if (isDir.value) tree.toggleExpand(props.vault, props.node.path)
-  else void actions.openNote(props.vault, props.node.path, props.node.name)
+  if (isDir.value) {
+    tree.toggleExpand(props.vault, props.node.path)
+    // 点击文件夹更新位置上下文（Ctrl+N 新建目标）
+    tree.setLocation(props.vault, props.node.path)
+  } else {
+    void actions.openNote(props.vault, props.node.path, props.node.name)
+  }
 }
 
 function handleMenuCommand(cmd: string): void {
@@ -67,7 +72,8 @@ function handlePlusCommand(cmd: string): void {
   <div>
     <div
       class="tree-row"
-      :class="{ active, 'menu-hold': menuHold }"
+      :class="{ active, located: tree.locateKey === `${vault}::${node.path}`, 'menu-hold': menuHold }"
+      :data-locate="`${vault}::${node.path}`"
       :style="{ paddingLeft: `${40 + depth * 16}px` }"
       @click="onRowClick"
     >

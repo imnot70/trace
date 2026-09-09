@@ -4,6 +4,8 @@ import { useAppStore } from './stores/app'
 import { useTreeStore } from './stores/tree'
 import { useEditorStore } from './stores/editor'
 import { useTrashStore } from './stores/trash'
+import { useNameDialog } from './stores/nameDialog'
+import { useNoteActions } from './composables/actions'
 import SideBar from './components/SideBar.vue'
 import NameDialog from './components/NameDialog.vue'
 import GitAssociateDialog from './components/GitAssociateDialog.vue'
@@ -38,6 +40,92 @@ function onRailKeydown(e: KeyboardEvent): void {
   if (e.key === 'Escape' && app.zenSidebarOverlay) app.closeZenSidebar()
 }
 
+// ---------- 全局快捷键（速查表见 src/renderer/src/config/shortcuts.ts 与设置 → 通用） ----------
+const nameDialog = useNameDialog()
+const noteActions = useNoteActions()
+
+/** 对话框 / 弹窗打开时跳过全局键，避免劫持输入与确认操作 */
+function hasModalOpen(): boolean {
+  return nameDialog.visible || !!document.querySelector('.el-message-box__wrapper, .el-overlay:not([style*="display: none"])')
+}
+
+function onGlobalKeydown(e: KeyboardEvent): void {
+  // Esc 交给各视图自行分级处理（浮层侧栏 / 网格 / 悬浮预览），此处只管浮层侧栏与设置返回
+  if (e.key === 'Escape') {
+    onRailKeydown(e)
+    if (app.view.name === 'settings') backFromSettings()
+    return
+  }
+  if (hasModalOpen()) return
+
+  // Alt 系：界面视图切换（与 Ctrl 系通用动作分层）
+  if (e.altKey && !e.ctrlKey && !e.metaKey) {
+    const digit: Record<string, 'recents' | 'favorites' | 'vaults'> = {
+      Digit1: 'recents',
+      Digit2: 'favorites',
+      Digit4: 'vaults'
+    }
+    if (e.code === 'Digit3') {
+      e.preventDefault()
+      app.view = { name: 'trash' }
+    } else if (digit[e.code]) {
+      e.preventDefault()
+      app.toggleGridSection(digit[e.code])
+    } else if (e.key.toLowerCase() === 'f') {
+      e.preventDefault()
+      app.toggleZen()
+    } else if (e.key.toLowerCase() === 'b') {
+      e.preventDefault()
+      app.toggleSidebar()
+    } else if (e.key.toLowerCase() === 'v') {
+      e.preventDefault()
+      app.togglePreview()
+    }
+    return
+  }
+
+  // Ctrl 系：应用通用动作
+  if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+    if (e.key === ',') {
+      e.preventDefault()
+      // 开关语义：设置页再按一次返回（编辑笔记在握时回编辑，否则回欢迎页）
+      if (app.view.name === 'settings') backFromSettings()
+      else app.view = { name: 'settings', tab: 'general' }
+      return
+    }
+    if (e.key.toLowerCase() === 'n' && !e.shiftKey) {
+      e.preventDefault()
+      void newNoteFromContext()
+    }
+  }
+}
+
+/** 从设置返回：有正在编辑的笔记则回到编辑视图并聚焦，否则回欢迎页 */
+function backFromSettings(): void {
+  if (editor.current) {
+    app.focusEditorOnce = true
+    app.view = { name: 'editor' }
+  } else {
+    app.view = { name: 'welcome' }
+  }
+}
+
+/** Ctrl+N：目标是「当前位置上下文」——最近打开的笔记 / 网格钻入 / 侧栏点击所在处；无上下文时兜底第一个库 */
+async function newNoteFromContext(): Promise<void> {
+  const loc = tree.lastLocation
+  if (loc && tree.vaults.some((v) => v.name === loc.vault)) {
+    noteActions.createNote(loc.vault, loc.dir)
+    return
+  }
+  const vault = tree.vaults[0]?.name
+  if (!vault) {
+    ElMessage.warning('请先创建笔记库')
+    app.view = { name: 'grid', section: 'vaults' }
+    return
+  }
+  noteActions.createNote(vault, '')
+}
+
 // 编辑视图的卡片（编辑卡 + 预览卡）由 EditorView 以多根节点输出，
 // 其余视图统一包进一张 page-card。
 const mainView = computed(() => {
@@ -57,7 +145,7 @@ onMounted(async () => {
   await app.init()
   await tree.refreshAll()
   void trash.load() // 侧栏回收站计数
-  window.addEventListener('keydown', onRailKeydown)
+  window.addEventListener('keydown', onGlobalKeydown)
   if (tree.vaults.length > 0) {
     await Promise.all(tree.vaults.map((v) => tree.refreshGitStatus(v.name)))
   }

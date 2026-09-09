@@ -1,19 +1,15 @@
 <script setup lang="ts">
-import { watch, nextTick, ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { useNameDialog } from '../stores/nameDialog'
 
 const dialog = useNameDialog()
 const inputRef = ref<{ focus: () => void } | null>(null)
 
-watch(
-  () => dialog.visible,
-  async (visible) => {
-    if (visible) {
-      await nextTick()
-      inputRef.value?.focus()
-    }
-  }
-)
+/** 对话框开启动画结束后聚焦输入框（visible 变化时输入框可能尚未完成挂载/可见，聚焦会失效） */
+async function onOpened(): Promise<void> {
+  await nextTick()
+  inputRef.value?.focus()
+}
 
 function onKeydown(e: Event): void {
   if ((e as KeyboardEvent).key === 'Enter') void dialog.confirm()
@@ -27,6 +23,7 @@ function onKeydown(e: Event): void {
     width="420px"
     :close-on-click-modal="false"
     append-to-body
+    @opened="onOpened"
   >
     <el-input
       ref="inputRef"

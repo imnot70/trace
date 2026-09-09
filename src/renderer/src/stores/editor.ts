@@ -42,6 +42,10 @@ export const useEditorStore = defineStore('editor', {
       this._diskContent = this.content
       this._diskHash = result.hash ?? ''
       this.externalChanged = false
+      // 更新位置上下文（Ctrl+N 新建笔记的目标）
+      const dirParts = path.split('/')
+      dirParts.pop()
+      useTreeStore().setLocation(vault, dirParts.join('/'))
       void window.trace.addRecent(vault, path, name).then(() => useTreeStore().loadRecents())
     },
     setContent(content: string): void {
@@ -96,12 +100,25 @@ export const useEditorStore = defineStore('editor', {
       this.content = ''
       this._diskContent = ''
     },
-    /** fs:changed 事件：打开的笔记被外部修改时处理 */
-    handleFsChanged(vault: string, paths: string[]): void {
+    /** fs:changed 事件：打开的笔记被外部修改时处理。
+     *  注意 chokidar 不区分写入来源——应用自己的自动保存也会触发本事件，
+     *  因此先读磁盘与 _diskContent 比对：一致即为自身保存的回声，忽略 */
+    async handleFsChanged(vault: string, paths: string[]): Promise<void> {
       if (!this.current || this.current.vault !== vault) return
       if (!paths.includes(this.current.path)) return
+      const { path } = this.current
+      const result = await window.trace.readNote(vault, path)
+      // 读取期间可能已切换/关闭笔记
+      if (!this.current || this.current.vault !== vault || this.current.path !== path) return
+      if (!result.ok) return
+      const disk = result.content ?? ''
+      if (disk === this._diskContent) return // 自身保存的回声（或磁盘内容与所知一致），无需处理
       if (this.dirty) this.externalChanged = true
-      else void this.reloadFromDisk()
+      else {
+        this.content = disk
+        this._diskContent = disk
+        this._diskHash = result.hash ?? ''
+      }
     },
     handleVaultRenamed(oldName: string, newName: string): void {
       if (this.current?.vault === oldName) this.current.vault = newName

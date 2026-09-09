@@ -6,6 +6,7 @@ import { useTreeStore } from '../stores/tree'
 import { useGitStore } from '../stores/git'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
+import TipButton from '../components/TipButton.vue'
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 
 const app = useAppStore()
@@ -21,7 +22,7 @@ const dragging = ref(false)
 const pathParts = computed(() => (editor.current ? editor.current.path.split('/') : []))
 
 function toolbarInsert(before: string, after = '', placeholder = ''): void {
-  editorRef.value?.insertText(`${before}${placeholder}${after}`)
+  editorRef.value?.insertSnippet(before, after, placeholder)
 }
 
 async function onImage(fileName: string, base64: string): Promise<void> {
@@ -85,6 +86,7 @@ function onPreviewBtnUp(): void {
   // 未达到长按时长，按普通点击处理
   if (app.floatingPreview) app.closeFloatingPreview()
   else app.togglePreview()
+  editorRef.value?.focus()
 }
 
 function onPreviewBtnLeave(): void {
@@ -94,20 +96,65 @@ function onPreviewBtnLeave(): void {
   }
 }
 
-// Ctrl/Cmd+S 手动保存；Esc 关闭悬浮预览
+// Ctrl/Cmd+S 手动保存；Alt+P 呼出/收起悬浮预览；Esc 收起悬浮预览
 function onKeydown(e: KeyboardEvent): void {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault()
     void editor.flushSave().then(() => ElMessage.success('已保存'))
+  }
+  if (e.altKey && !e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'p') {
+    e.preventDefault()
+    if (app.floatingPreview) app.closeFloatingPreview()
+    else app.openFloatingPreview()
   }
   if (e.key === 'Escape' && app.floatingPreview) {
     app.closeFloatingPreview()
   }
 }
 
+// ---------- 悬浮预览「一瞥」语义：回到写作即自动收回 ----------
+/** 编辑器有输入：一瞥结束，预览自动让路 */
+function onEditorUpdate(content: string): void {
+  if (app.floatingPreview) app.closeFloatingPreview()
+  editor.setContent(content)
+}
+
+/** 点击编辑区：回到写作，收起一瞥 */
+function onEditorBodyMousedown(): void {
+  if (app.floatingPreview) app.closeFloatingPreview()
+}
+
+/** 图钉：把一瞥转正为常驻分栏预览 */
+function pinPeek(): void {
+  app.setPreviewVisible(true)
+  app.closeFloatingPreview()
+}
+
+/** 定位：在侧栏树中展开并高亮当前笔记（专注模式下以浮层侧栏展示） */
+function locateCurrent(): void {
+  if (!editor.current) return
+  void tree.revealNode(editor.current.vault, editor.current.path, 'note')
+  editorRef.value?.focus()
+}
+
+// 悬浮预览开/关后把键盘焦点交还编辑器：预览按钮与 Alt+P 都可能让焦点滞留在按钮上，
+// 焦点不在编辑器则无法继续输入，「输入自动收回」也随之失效
+watch(
+  () => app.floatingPreview,
+  async () => {
+    await nextTick()
+    editorRef.value?.focus()
+  }
+)
+
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
   void nextTick(bindEditorScroll)
+  // 从设置等视图返回：自动聚焦编辑器，落地即可继续输入
+  if (app.focusEditorOnce) {
+    app.focusEditorOnce = false
+    void nextTick(() => editorRef.value?.focus())
+  }
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
@@ -125,6 +172,8 @@ const vaultGit = computed(() => (vaultName.value ? tree.gitStatuses[vaultName.va
 watch(
   () => editor.current?.path,
   async () => {
+    // 切换笔记：一瞥结束（新笔记内容未读过，留着只会误导）
+    if (app.floatingPreview) app.closeFloatingPreview()
     await nextTick()
     if (previewRef.value) previewRef.value.scrollTop = 0
   }
@@ -228,9 +277,13 @@ onBeforeUnmount(() => {
         同步
       </el-button>
 
+      <TipButton tip="在侧栏中定位当前笔记" @click="locateCurrent">
+        <el-icon><Aim /></el-icon>
+      </TipButton>
+
       <span class="toolbar-sep"></span>
       <el-tooltip
-        content="点击：显示/隐藏预览；长按：悬浮预览"
+        content="点击：显示/隐藏预览；长按或 Alt+P：悬浮预览"
         placement="bottom"
         :hide-after="0"
       >
@@ -244,7 +297,7 @@ onBeforeUnmount(() => {
         </button>
       </el-tooltip>
       <el-tooltip :content="app.zenMode ? '退出专注模式' : '专注模式（隐藏侧栏与预览）'" placement="bottom">
-        <button class="tool-btn" :class="{ 'zen-on': app.zenMode }" @click="app.toggleZen()">
+        <button class="tool-btn" :class="{ 'zen-on': app.zenMode }" @click="app.toggleZen(); editorRef?.focus()">
           <el-icon><FullScreen /></el-icon>
         </button>
       </el-tooltip>
@@ -252,42 +305,42 @@ onBeforeUnmount(() => {
 
     <!-- 工具栏 -->
     <div class="editor-toolbar">
-      <button class="tool-btn" title="撤销 (Ctrl+Z)" @click="editorRef?.undo()">
+      <TipButton tip="撤销 (Ctrl+Z)" @click="editorRef?.undo()">
         <el-icon><RefreshLeft /></el-icon>
-      </button>
-      <button class="tool-btn" title="重做 (Ctrl+Shift+Z)" @click="editorRef?.redo()">
+      </TipButton>
+      <TipButton tip="重做 (Ctrl+Shift+Z)" @click="editorRef?.redo()">
         <el-icon><RefreshRight /></el-icon>
-      </button>
+      </TipButton>
       <span class="toolbar-sep"></span>
-      <button class="tool-btn" title="加粗" @click="toolbarInsert('**', '**', '加粗文字')">
+      <TipButton tip="加粗 (Ctrl+B)" @click="toolbarInsert('**', '**', '加粗文字')">
         <strong>B</strong>
-      </button>
-      <button class="tool-btn" title="斜体" @click="toolbarInsert('*', '*', '斜体文字')"><i>I</i></button>
-      <button class="tool-btn" title="删除线" @click="toolbarInsert('~~', '~~', '删除线')"><s>S</s></button>
+      </TipButton>
+      <TipButton tip="斜体 (Ctrl+I)" @click="toolbarInsert('*', '*', '斜体文字')"><i>I</i></TipButton>
+      <TipButton tip="删除线 (Ctrl+Shift+X)" @click="toolbarInsert('~~', '~~', '删除线')"><s>S</s></TipButton>
       <span style="width: 8px"></span>
-      <button class="tool-btn" title="一级标题" @click="toolbarInsert('# ', '', '标题')">
+      <TipButton tip="一级标题" @click="toolbarInsert('# ', '', '标题')">
         H1
-      </button>
-      <button class="tool-btn" title="二级标题" @click="toolbarInsert('## ', '', '标题')">
+      </TipButton>
+      <TipButton tip="二级标题" @click="toolbarInsert('## ', '', '标题')">
         H2
-      </button>
-      <button class="tool-btn" title="引用" @click="toolbarInsert('> ', '', '引用内容')">❝</button>
+      </TipButton>
+      <TipButton tip="引用" @click="toolbarInsert('> ', '', '引用内容')">❝</TipButton>
       <span style="width: 8px"></span>
-      <button class="tool-btn" title="行内代码" @click="toolbarInsert('`', '`', 'code')">
+      <TipButton tip="行内代码" @click="toolbarInsert('`', '`', 'code')">
         &lt;/&gt;
-      </button>
-      <button class="tool-btn" title="代码块" @click="toolbarInsert('\n```js\n', '\n```\n', 'code')">
+      </TipButton>
+      <TipButton tip="代码块" @click="toolbarInsert('\n```js\n', '\n```\n', 'code')">
         { }
-      </button>
-      <button class="tool-btn" title="链接" @click="toolbarInsert('[', '](https://)', '链接文字')">
+      </TipButton>
+      <TipButton tip="链接" @click="toolbarInsert('[', '](https://)', '链接文字')">
         <el-icon><Link /></el-icon>
-      </button>
-      <button class="tool-btn" title="行内公式" @click="toolbarInsert('$', '$', 'E=mc^2')">
+      </TipButton>
+      <TipButton tip="行内公式" @click="toolbarInsert('$', '$')">
         ∑
-      </button>
-      <button class="tool-btn" title="公式块" @click="toolbarInsert('\n$$\n', '\n$$\n', '\\frac{a}{b}')">
+      </TipButton>
+      <TipButton tip="公式块" @click="toolbarInsert('\n$$\n', '\n$$\n')">
         ∫
-      </button>
+      </TipButton>
     </div>
     </div>
 
@@ -300,14 +353,14 @@ onBeforeUnmount(() => {
       </el-button>
     </div>
 
-    <!-- 编辑器主体（填满卡片剩余空间） -->
-    <div ref="editorWrapRef" class="editor-cm">
+    <!-- 编辑器主体（填满卡片剩余空间）；点回编辑区 = 一瞥结束 -->
+    <div ref="editorWrapRef" class="editor-cm" @mousedown="onEditorBodyMousedown">
       <MarkdownEditor
         v-if="editor.current"
         ref="editorRef"
         :model-value="editor.content"
         :font-size="app.settings.editorFontSize"
-        @update:model-value="editor.setContent"
+        @update:model-value="onEditorUpdate"
         @save="editor.flushSave()"
         @image="(name: string, b64: string) => onImage(name, b64)"
       />
@@ -337,12 +390,17 @@ onBeforeUnmount(() => {
   <!-- 悬浮预览（长按预览按钮呼出，Esc 或关闭按钮收起） -->
   <Transition name="float-preview">
     <div v-if="app.floatingPreview" class="floating-preview">
-      <div class="floating-preview-header">
-        <span class="floating-preview-title">预览</span>
-        <button class="tool-btn" title="关闭 (Esc)" @click="app.closeFloatingPreview()">
-          <el-icon><Close /></el-icon>
-        </button>
-      </div>
+        <div class="floating-preview-header">
+          <span class="floating-preview-title">预览</span>
+          <span class="floating-preview-actions">
+            <button class="tool-btn" @click="pinPeek">
+              <el-icon><Magnet /></el-icon>
+            </button>
+            <button class="tool-btn" @click="app.closeFloatingPreview()">
+              <el-icon><Close /></el-icon>
+            </button>
+          </span>
+        </div>
       <div class="floating-preview-body">
         <MarkdownPreview
           v-if="editor.current"
@@ -444,6 +502,16 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   padding: 4px 8px 4px 14px;
   border-bottom: 1px solid var(--border-color);
+}
+
+.floating-preview-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.floating-preview-actions .tool-btn {
+  font-size: 13px;
 }
 
 .floating-preview-title {

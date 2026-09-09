@@ -162,6 +162,7 @@ function isFavorited(item: GridItem): boolean {
 function onVaultMenuCommand(cmd: string, card: VaultCard): void {
   if (cmd === 'rename') actions.renameVault(card.name)
   else if (cmd === 'deleteVault') void actions.deleteVault(card.name)
+  else if (cmd === 'locate') void tree.revealNode(card.name, '', 'vault')
 }
 
 function onFolderMenuCommand(cmd: string, node: TreeNode): void {
@@ -170,6 +171,7 @@ function onFolderMenuCommand(cmd: string, node: TreeNode): void {
   else if (cmd === 'delete') void actions.deleteDir(vaultName.value, folderPath, node.name)
   else if (cmd === 'newDir') actions.createDir(vaultName.value, folderPath)
   else if (cmd === 'newNote') actions.createNote(vaultName.value, folderPath)
+  else if (cmd === 'locate') void tree.revealNode(vaultName.value, folderPath, 'dir')
 }
 
 async function onNoteMenuCommand(cmd: string, item: GridItem): Promise<void> {
@@ -187,6 +189,8 @@ async function onNoteMenuCommand(cmd: string, item: GridItem): Promise<void> {
     void actions.toggleFavorite(item.vault, item.path, item.name, isFavorited(item))
   } else if (cmd === 'removeRecent') {
     void actions.removeRecent(item.vault, item.path)
+  } else if (cmd === 'locate') {
+    void tree.revealNode(item.vault, item.path, 'note')
   }
 
   // 悬浮预览若正显示被移除的笔记，一并关闭
@@ -195,23 +199,53 @@ async function onNoteMenuCommand(cmd: string, item: GridItem): Promise<void> {
   }
 }
 
-// ---------- 卡片交互：单击预览 / 双击编辑或钻入 ----------
+// ---------- 卡片交互：单击预览 / 双击编辑或钻入；长按等同单击（手势宽容） ----------
 const preview = ref<{ vault: string; path: string; name: string; content: string } | null>(null)
 let clickTimer: ReturnType<typeof setTimeout> | null = null
+let pressTimer: ReturnType<typeof setTimeout> | null = null
+/** 长按已触发预览时吞掉其后的 click，避免二次触发 */
+let suppressClick = false
+
+async function openPreview(item: GridItem): Promise<void> {
+  const result = await window.trace.readNote(item.vault, item.path)
+  preview.value = {
+    vault: item.vault,
+    path: item.path,
+    name: item.name,
+    content:
+      result.ok && result.content != null ? result.content : `> 读取失败：${result.error ?? '未知错误'}`
+  }
+}
 
 function onCardClick(item: GridItem): void {
+  if (suppressClick) {
+    suppressClick = false
+    return
+  }
   if (clickTimer) return // 双击的第二次 click 交给 dblclick 处理
-  clickTimer = setTimeout(async () => {
+  clickTimer = setTimeout(() => {
     clickTimer = null
-    const result = await window.trace.readNote(item.vault, item.path)
-    preview.value = {
-      vault: item.vault,
-      path: item.path,
-      name: item.name,
-      content:
-        result.ok && result.content != null ? result.content : `> 读取失败：${result.error ?? '未知错误'}`
-    }
+    void openPreview(item)
   }, 220)
+}
+
+/** 长按 400ms 等同单击（呼出预览）：用户把手势习惯带过来时不再「没反应」 */
+function onCardPressStart(item: GridItem, e: PointerEvent): void {
+  // 操作按钮区域交给按钮自身，不长按
+  if ((e.target as HTMLElement).closest('.note-card-actions')) return
+  if (pressTimer) clearTimeout(pressTimer)
+  pressTimer = setTimeout(() => {
+    pressTimer = null
+    suppressClick = true
+    void openPreview(item)
+  }, 400)
+}
+
+function onCardPressEnd(): void {
+  if (pressTimer) {
+    clearTimeout(pressTimer)
+    pressTimer = null
+  }
 }
 
 function onCardDblClick(item: GridItem): void {
@@ -221,6 +255,14 @@ function onCardDblClick(item: GridItem): void {
   }
   preview.value = null
   void actions.openNote(item.vault, item.path, item.name)
+}
+
+/** 预览卡「打开」：把一瞥升级为进入编辑 */
+function openPreviewNote(): void {
+  const p = preview.value
+  if (!p) return
+  preview.value = null
+  void actions.openNote(p.vault, p.path, p.name)
 }
 
 function close(): void {
@@ -252,6 +294,7 @@ onMounted(() => window.addEventListener('keydown', onKeydown))
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
   if (clickTimer) clearTimeout(clickTimer)
+  if (pressTimer) clearTimeout(pressTimer)
 })
 
 watch(section, () => {
@@ -344,8 +387,9 @@ watch(section, () => {
                     </button>
                     <template #dropdown>
                       <el-dropdown-menu>
-                        <el-dropdown-item command="rename">重命名</el-dropdown-item>
-                        <el-dropdown-item command="deleteVault" divided class="danger-item">删除笔记库</el-dropdown-item>
+                        <el-dropdown-item command="locate">在侧栏中定位</el-dropdown-item>
+                        <el-dropdown-item command="rename" divided>重命名</el-dropdown-item>
+                        <el-dropdown-item command="deleteVault" class="danger-item">删除笔记库</el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
                   </el-dropdown>
@@ -379,7 +423,8 @@ watch(section, () => {
                       <el-dropdown-menu>
                         <el-dropdown-item command="newDir">新建文件夹</el-dropdown-item>
                         <el-dropdown-item command="newNote">创建笔记</el-dropdown-item>
-                        <el-dropdown-item command="rename" divided>重命名</el-dropdown-item>
+                        <el-dropdown-item command="locate" divided>在侧栏中定位</el-dropdown-item>
+                        <el-dropdown-item command="rename">重命名</el-dropdown-item>
                         <el-dropdown-item command="delete" class="danger-item">删除文件夹</el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
@@ -399,6 +444,9 @@ watch(section, () => {
                 class="note-card"
                 @click="onCardClick({ vault: vaultName, path: node.path, name: node.name })"
                 @dblclick="onCardDblClick({ vault: vaultName, path: node.path, name: node.name })"
+                @pointerdown="onCardPressStart({ vault: vaultName, path: node.path, name: node.name }, $event)"
+                @pointerup="onCardPressEnd"
+                @pointerleave="onCardPressEnd"
               >
                 <div class="note-card-actions">
                   <el-dropdown
@@ -412,6 +460,7 @@ watch(section, () => {
                         <el-dropdown-item command="favorite">
                           {{ isFavorited({ vault: vaultName, path: node.path, name: node.name }) ? '取消收藏' : '收藏笔记' }}
                         </el-dropdown-item>
+                        <el-dropdown-item command="locate">在侧栏中定位</el-dropdown-item>
                         <el-dropdown-item command="delete" divided class="danger-item">删除笔记</el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
@@ -445,6 +494,9 @@ watch(section, () => {
           class="note-card"
           @click="onCardClick(item)"
           @dblclick="onCardDblClick(item)"
+          @pointerdown="onCardPressStart(item, $event)"
+          @pointerup="onCardPressEnd"
+          @pointerleave="onCardPressEnd"
         >
           <div class="note-card-actions">
             <el-dropdown trigger="click" @command="(cmd: string) => onNoteMenuCommand(cmd, item)" popper-class="dd-instant-hide">
@@ -457,6 +509,7 @@ watch(section, () => {
                     {{ isFavorited(item) ? '取消收藏' : '收藏笔记' }}
                   </el-dropdown-item>
                   <el-dropdown-item v-if="section === 'recents'" command="removeRecent">移出常用</el-dropdown-item>
+                  <el-dropdown-item command="locate">在侧栏中定位</el-dropdown-item>
                   <el-dropdown-item command="delete" divided class="danger-item">删除笔记</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -480,9 +533,14 @@ watch(section, () => {
       <div v-if="preview" class="floating-preview">
         <div class="floating-preview-header">
           <span class="floating-preview-title">{{ preview.name }}</span>
-          <button class="tool-btn" title="关闭 (Esc)" @click="preview = null">
-            <el-icon><Close /></el-icon>
-          </button>
+          <span class="floating-preview-actions">
+            <button class="tool-btn" @click="openPreviewNote()">
+              <el-icon><EditPen /></el-icon>
+            </button>
+            <button class="tool-btn" @click="preview = null">
+              <el-icon><Close /></el-icon>
+            </button>
+          </span>
         </div>
         <div class="floating-preview-body">
           <MarkdownPreview
@@ -552,6 +610,28 @@ watch(section, () => {
 .note-card.vault-card,
 .note-card.folder-card {
   cursor: pointer;
+}
+
+/* 库卡片视觉强化（P2）：双列 + 强调色浅底 + 大图标大标题，与文件夹/笔记卡片形成多维区分 */
+.note-card.vault-card {
+  grid-column: span 2;
+  background: var(--accent-soft);
+  border-color: transparent;
+}
+
+/* 容器过窄放不下双列时回退单列 */
+@media (max-width: 640px) {
+  .note-card.vault-card {
+    grid-column: span 1;
+  }
+}
+
+.note-card.vault-card .note-card-icon {
+  font-size: 24px;
+}
+
+.note-card.vault-card .note-card-title {
+  font-size: 15px;
 }
 
 .note-card-title {
@@ -715,6 +795,12 @@ watch(section, () => {
   justify-content: space-between;
   padding: 4px 8px 4px 14px;
   border-bottom: 1px solid var(--border-color);
+}
+
+.floating-preview-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .floating-preview-title {

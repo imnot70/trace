@@ -46,7 +46,27 @@ const props = defineProps<{
   fontSize: number
 }>()
 
-const md = new MarkdownIt({ html: false, linkify: true, breaks: false })
+// 代码块语法高亮：交由 highlight.js 生成 hljs-* 类名（配色见 markdown.css，随主题变量切换）
+// 未识别语言或高亮失败时回退为转义后的纯文本
+function escapeHtml(code: string): string {
+  return code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+const md = new MarkdownIt({
+  html: false,
+  linkify: true,
+  breaks: false,
+  highlight(code, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return `<pre class="hljs"><code>${hljs.highlight(code, { language: lang, ignoreIllegals: true }).value}</code></pre>`
+      } catch {
+        /* fall through */
+      }
+    }
+    return `<pre class="hljs"><code>${escapeHtml(code)}</code></pre>`
+  }
+})
 
 md.use(texmath, { engine: katex, delimiters: 'dollars', katexOptions: { output: 'html' } })
 
