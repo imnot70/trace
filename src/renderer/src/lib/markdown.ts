@@ -83,6 +83,29 @@ md.renderer.rules.fence = (tokens, idx) => {
   return highlighted.replace('<pre', `<pre${lineAttr}`) + '\n'
 }
 
+// GFM 任务列表：列表项首行 [x] / [ ] 渲染为只读复选框（span 实现——不用 <input>，
+// 与 DOMPurify 禁用清单冲突；笔记是文件，复选框点击不回写，仅展示勾选态）
+md.core.ruler.push('trace_task_lists', (state) => {
+  const tokens = state.tokens
+  for (let i = 2; i < tokens.length; i++) {
+    if (tokens[i].type !== 'inline') continue
+    if (tokens[i - 1].type !== 'paragraph_open') continue
+    if (tokens[i - 2].type !== 'list_item_open') continue
+    const children = tokens[i].children ?? []
+    const first = children[0]
+    if (!first || first.type !== 'text') continue
+    const m = first.content.match(/^\[([ xX])\]\s+/)
+    if (!m) continue
+    const checked = m[1] !== ' '
+    first.content = first.content.slice(m[0].length)
+    const box = new state.Token('html_inline', '', 0)
+    box.content = `<span class="task-item-checkbox"${checked ? ' data-checked="true"' : ''}></span>`
+    children.unshift(box)
+    tokens[i - 2].attrJoin('class', 'task-list-item')
+    if (checked) tokens[i - 2].attrJoin('class', 'task-list-item-checked')
+  }
+})
+
 md.core.ruler.push('trace_source_line', (state) => {
   for (const token of state.tokens) {
     if (token.map && !token.hidden && token.nesting !== -1 && token.attrSet) {

@@ -78,3 +78,26 @@ describe('DOMPurify 净化：内嵌 HTML 安全子集', () => {
     expect(clean).not.toContain('javascript:')
   })
 })
+
+describe('GFM 任务列表', () => {
+  it('- [x] / - [ ] 渲染为勾选/未勾选复选框', () => {
+    const html = md.render('- [x] 第一节内容\n- [ ] 第二节内容\n')
+    expect(html).toContain('data-checked="true"')
+    expect(html).toContain('task-list-item-checked')
+    expect(html).toContain('第一节内容')
+    // 未勾选项：有复选框但无 data-checked
+    expect(html).toMatch(/<span class="task-item-checkbox"><\/span>\s*第二节内容/)
+    // 列表项去圆点
+    expect(html).toContain('task-list-item')
+  })
+
+  it('有序列表与嵌套同样支持', () => {
+    const html = md.render('1. [x] 已完成\n2. [ ] 待办\n')
+    expect(html).toContain('data-checked="true"')
+  })
+
+  it('非列表上下文的 [x] 不受影响', () => {
+    const html = md.render('正文中的 [x] 不是任务项\n')
+    expect(html).not.toContain('task-item-checkbox')
+  })
+})

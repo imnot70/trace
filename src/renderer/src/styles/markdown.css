@@ -46,6 +46,35 @@
   text-decoration: underline;
 }
 
+/* GFM 任务列表：只读复选框（span 实现） */
+.markdown-body li.task-list-item {
+  list-style: none;
+}
+
+.markdown-body .task-item-checkbox {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 1.5px solid var(--text-secondary);
+  border-radius: 3px;
+  vertical-align: -0.125em;
+  margin-right: 0.45em;
+  text-align: center;
+  line-height: 1;
+  font-size: 0.85em;
+  user-select: none;
+}
+
+.markdown-body .task-item-checkbox[data-checked='true'] {
+  border-color: var(--accent);
+}
+
+.markdown-body .task-item-checkbox[data-checked='true']::after {
+  content: '\2713';
+  color: var(--accent);
+  font-weight: 700;
+}
+
 /* 库内笔记断链：删除线 + 弱化 */
 .markdown-body a[data-broken] {
   color: var(--text-tertiary);
