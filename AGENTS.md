@@ -4,7 +4,7 @@
 
 ## 项目是什么
 
-**Trace（笔迹）** 是一款本地优先的轻量级 Markdown 笔记桌面应用（当前版本 v0.2.0）：
+**Trace（笔迹）** 是一款本地优先的轻量级 Markdown 笔记桌面应用（当前版本 v0.3.6）：
 
 - 笔记以纯 `.md` 文件存储，无私有格式；每个**笔记库**是一个独立 git 仓库，通过 GitHub PAT 实现多设备同步；
 - 支持 LaTeX 公式、图片粘贴、回收站、收藏/常用、浅色/深色主题与插件骨架（实验性）；
@@ -94,7 +94,7 @@ src/
 - `el-tooltip` **只允许包裹非交互元素**（图标、纯文本）。禁止：tooltip 嵌套 tooltip；tooltip 包裹按钮（点击被拦截）；tooltip 包裹 `el-dropdown` 触发器（下拉事件绑定失效，菜单弹不出）。需要给按钮/触发器加提示时用原生 `title`。任何「点击后移除下拉菜单锚点元素」的操作（删除行、收起容器等）需延迟 ≥300ms 或保持锚点可见（参考 `menu-hold` 模式），否则 popper 会在左上角闪现残影。
 - 全界面颜色必须走 CSS 变量（`--bg-*` / `--text-*` / `--accent` / `--danger` 等），新增颜色先看 `styles/themes.css` 是否已有对应变量；Element Plus 变量映射到同一套变量。
 - 代码风格由 ESLint + Prettier 约束（`.prettierrc.json`）；提交前至少跑 `npm run lint` 与 `npm run typecheck`。
-- 核心服务（gitService、trash、favorites、validate、pluginHost 等）有单元测试（`tests/`，Vitest，39 项含 git 同步/冲突集成测试）；修改这些服务时同步补充/更新测试。
+- 核心服务（gitService、trash、favorites、validate、pluginHost 等）有单元测试（`tests/`，Vitest，50+ 项含 git 同步/冲突集成测试与错误文案映射）；修改这些服务时同步补充/更新测试。
   ⚠️ Windows 上 `tests/gitService.test.ts` 的 6 项集成测试会因超出 Vitest 默认 5s 超时而失败：Windows 下每次 git 子进程调用约 1~1.7s（Linux 仅几十毫秒），完整关联+同步流程需 5~10s。功能本身正常（已手动复现验证），用 `npx vitest run --testTimeout=30000` 验证即可，勿误判为产品代码 bug。
   ⚠️ Linux（Ubuntu 24.04+，含本机 Ubuntu 26.04）重新 `npm install` 后 Electron 可能启动失败：`The SUID sandbox helper binary was found, but is not configured correctly`。原因是 AppArmor 限制非特权用户命名空间（`kernel.apparmor_restrict_unprivileged_userns=1`），npm 又总是以当前用户安装 `chrome-sandbox`（无法带 SUID 位）。修复：`sudo chown root:root node_modules/electron/dist/chrome-sandbox && sudo chmod 4755 node_modules/electron/dist/chrome-sandbox`（每次重装依赖后需重做）。
 - 版本号在 `package.json`，是**唯一版本来源**：「关于 Trace」（`app.getVersion()`）、安装包文件名（electron-builder `artifactName`）、CI 工件命名全部自动读取它；git tag 必须与其一致（CI 在 tag 触发时会校验，不一致构建失败）。**发版流程**：更新 `CHANGELOG.md` → `npm version <patch|minor|major 或 x.y.z>`（自动改版本号 + commit + 打 `v` 标签，要求工作区干净；经 `postversion` 钩子自动 `git push --follow-tags` 触发 Release）。
@@ -111,4 +111,4 @@ src/
 
 ## 二期规划（未实现，不要顺手实现）
 
-全局搜索、所见即所得模式、图形化冲突解决、定时/变更自动同步、自定义主题包、插件完整 API 与市场、标签、多窗口、导出 PDF/HTML、窗口毛玻璃效果。
+全局搜索、所见即所得模式、图形化冲突解决、定时/变更自动同步、自定义主题包、插件完整 API 与市场（v2 设计已定稿，见 `requirements/plugin-design.md`，目标 0.4.0）、标签、多窗口、导出 PDF/HTML、窗口毛玻璃效果。近期待办（已排期讨论，见 `requirements/index.md` 第三节）：文件/文件夹移动、笔记双链引用（`[[笔记名]]`）。
