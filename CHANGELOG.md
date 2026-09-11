@@ -10,7 +10,8 @@
 
 ### 设计/规划
 
-- **内置 Git 设计确认**（`requirements/bundled-git-design.md`）：路线 A（捆绑 Git 二进制）+ 系统 Git 保留 fallback；触发关联/同步时检测（不在启动时打扰）；用户选择持久化；GitHub 登录与 git 检测完全解耦。D1–D7 拍板，代码改动量约 210 行，预计 2~3 人日，待排期实施。
+- **内置 Git 设计确认**（`requirements/bundled-git-design.md`）：路线 A（捆绑 Git 二进制）+ 系统 Git 保留 fallback；触发关联/同步时检测（不在启动时打扰）；用户选择持久化；GitHub 登录与 git 检测完全解耦。D-BG1–D-BG10 拍板，待排期实施。
+- **内置 Git 设计修正**（同日）：初版体积估算严重偏低（Windows 估 10 MB / 实际 MinGit 37 MB），已换为实测数据（每平台 +33~43 MB）；**交付方式选定「随包内置」**（D-BG2），采用压缩归档 + 首次解压控制体积（Windows 安装包 125 MB → ~158 MB，+26%）；新增按需下载的风险对比（供应链安全 / 运维成本 / 弱网与企业环境）与 isomorphic-git 重新评估（SSH 理由对 Trace 不成立，但 rebase 支持不完整，仍不采用）。代码量估算 ~210 → ~325 行。
 
 ## [0.3.8] - 2026-09-09
 
