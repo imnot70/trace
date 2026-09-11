@@ -2,6 +2,16 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 新功能
+
+- **内置 Git 检测与引导**（FR-2.8.13）：用户触发笔记库关联或同步时，自动检测系统 Git 是否可用。不可用时弹窗提示安装或选择内置 Git（当前版本无内置 Git，仅提供安装引导）；检测结果持久化到设置（`gitSource`），避免重复弹窗；设置页新增「Git 信息」区块，支持重置选择。
+
+### 设计/规划
+
+- **内置 Git 设计确认**（`requirements/bundled-git-design.md`）：路线 A（捆绑 Git 二进制）+ 系统 Git 保留 fallback；触发关联/同步时检测（不在启动时打扰）；用户选择持久化；GitHub 登录与 git 检测完全解耦。D1–D7 拍板，代码改动量约 210 行，预计 2~3 人日，待排期实施。
+
 ## [0.3.8] - 2026-09-09
 
 ### 其他

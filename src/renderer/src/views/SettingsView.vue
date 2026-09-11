@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAppStore } from '../stores/app'
 import { useGitStore } from '../stores/git'
+import { resetGitAvailabilityCache } from '../stores/git'
 import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
 import type { ThemeOption } from '@shared/types'
@@ -170,6 +171,13 @@ function backToEditor(): void {
   if (!editor.current) return
   app.focusEditorOnce = true
   app.view = { name: 'editor' }
+}
+
+/** 重置 Git 来源选择：清空偏好 + 清除会话级缓存，下次触发同步时重新检测 */
+async function resetGitSource(): Promise<void> {
+  resetGitAvailabilityCache()
+  await app.updateSettings({ gitSource: null })
+  ElMessage.success('已重置，下次同步时将重新检测 Git')
 }
 </script>
 
@@ -413,6 +421,22 @@ function backToEditor(): void {
               </template>
             </tbody>
           </table>
+        </div>
+
+        <div class="settings-block">
+          <h3>Git 信息</h3>
+          <p class="settings-desc">笔记库的云端同步依赖 Git。如果系统未安装 Git，首次同步时会提示选择内置 Git 或手动安装。</p>
+          <div class="setting-row">
+            <span class="setting-label">当前来源</span>
+            <span style="color: var(--text-secondary)">
+              {{ app.settings.gitSource === 'system' ? '系统 Git' : app.settings.gitSource === 'bundled' ? '内置 Git' : '自动检测' }}
+            </span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label"></span>
+            <el-button size="small" @click="resetGitSource">重置选择</el-button>
+            <span class="settings-desc" style="margin: 0">下次同步时重新检测 Git 可用性</span>
+          </div>
         </div>
 
         <div class="settings-block">

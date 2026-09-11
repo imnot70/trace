@@ -44,7 +44,8 @@ beforeEach(() => {
     attachmentsDir: 'attachments',
     proxyUrl: '',
     enablePlugins: false,
-    pluginEnabled: {}
+    pluginEnabled: {},
+    gitSource: null
   })
   notifications = []
 })

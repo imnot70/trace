@@ -23,7 +23,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   attachmentsDir: 'attachments',
   proxyUrl: '',
   enablePlugins: false,
-  pluginEnabled: {}
+  pluginEnabled: {},
+  gitSource: null
 }
 
 function prefersDark(): boolean {

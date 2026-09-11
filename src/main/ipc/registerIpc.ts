@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron'
+import { simpleGit } from 'simple-git'
 import { errMessage } from '../lib/errMessage'
 import { logger } from '../lib/logger'
 import type { AppSettings } from '@shared/types'
@@ -196,6 +197,19 @@ export function registerIpc(deps: IpcDeps): void {
     const token = deps.account.getToken()
     if (!token) return { ok: false, error: '尚未登录 GitHub 账号' }
     return { ok: true, repos: await deps.github.listRepos(token) }
+  })
+  handle('git:checkAvailability', async () => {
+    let systemGit = false
+    try {
+      const git = simpleGit()
+      const v = await git.version()
+      systemGit = v && v.major !== undefined
+    } catch {
+      systemGit = false
+    }
+    // 内置 git 检测预留（当前版本不捆绑，始终为 false）
+    const bundledGit = false
+    return { systemGit, bundledGit }
   })
   handle('git:testProxy', () => deps.git.testProxy())
   handle('account:createRepo', async (name: string, isPrivate: boolean) => {

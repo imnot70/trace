@@ -75,6 +75,8 @@ export interface AppSettings {
   enablePlugins: boolean
   /** 插件 id -> 是否启用 */
   pluginEnabled: Record<string, boolean>
+  /** Git 来源偏好：null = 未选择（首次触发时检测并弹窗），'system' = 使用系统 Git，'bundled' = 使用内置 Git */
+  gitSource: 'system' | 'bundled' | null
 }
 
 export interface AccountInfo {

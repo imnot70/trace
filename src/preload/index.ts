@@ -54,6 +54,7 @@ const api: TraceApi = {
   associateVault: (vault, repoFullName) => ipcRenderer.invoke('git:associate', vault, repoFullName),
   disconnectVault: (vault) => ipcRenderer.invoke('git:disconnect', vault),
   syncVault: (vault) => ipcRenderer.invoke('git:sync', vault),
+  checkGitAvailability: () => ipcRenderer.invoke('git:checkAvailability'),
   testProxy: () => ipcRenderer.invoke('git:testProxy'),
 
   getSettings: () => ipcRenderer.invoke('settings:get'),

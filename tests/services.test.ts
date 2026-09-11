@@ -28,7 +28,8 @@ function buildStack() {
     attachmentsDir: 'attachments',
     proxyUrl: '',
     enablePlugins: false,
-    pluginEnabled: {}
+    pluginEnabled: {},
+    gitSource: null
   })
   const workspace = new WorkspaceService(settings, path.join(tmp, 'ws'))
   workspace.initDefault()

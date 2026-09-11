@@ -48,7 +48,7 @@ function isGridOpen(section: 'recents' | 'favorites' | 'vaults'): boolean {
 
 function handleVaultCommand(cmd: string, vault: string): void {
   if (cmd === 'sync') void git.sync(vault)
-  else if (cmd === 'associate') git.openAssociate(vault)
+  else if (cmd === 'associate') void git.openAssociate(vault)
   else if (cmd === 'disconnect') void git.disconnect(vault)
   else if (cmd === 'rename') actions.renameVault(vault)
   else if (cmd === 'delete') void actions.deleteVault(vault)

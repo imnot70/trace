@@ -114,7 +114,8 @@ app.whenReady().then(() => {
     attachmentsDir: 'attachments',
     proxyUrl: '',
     enablePlugins: false,
-    pluginEnabled: {}
+    pluginEnabled: {},
+    gitSource: null
   })
 
   const settings = new SettingsService(settingsStore)
