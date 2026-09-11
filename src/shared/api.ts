@@ -3,6 +3,7 @@ import type {
   AppSettings,
   FavoriteItem,
   FsChangedPayload,
+  GitAvailability,
   GitEventPayload,
   GitStatus,
   NoteContent,
@@ -67,7 +68,7 @@ export interface TraceApi {
   associateVault(vault: string, repoFullName: string): Promise<SyncResult>
   disconnectVault(vault: string): Promise<OpResult>
   syncVault(vault: string): Promise<SyncResult>
-  checkGitAvailability(): Promise<{ systemGit: boolean; bundledGit: boolean }>
+  checkGitAvailability(): Promise<GitAvailability>
   testProxy(): Promise<OpResult>
 
   // ---- 设置 ----

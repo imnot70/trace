@@ -10,9 +10,8 @@ files:
   - out/**
   - "!resources/**"
 
-extraResources:
-  - from: resources/sample-plugin
-    to: sample-plugin
+# 注意：extraResources 必须在每个平台段内分别声明——平台段会覆盖顶层同名配置，
+# 顶层声明在平台构建（--win / --linux / --mac）时会被整个丢弃。
 
 asar: true
 
@@ -21,6 +20,12 @@ linux:
   category: Utility
   maintainer: trace
   artifactName: linux-v${version}-x64.${ext}
+  extraResources:
+    - from: resources/sample-plugin
+      to: sample-plugin
+    # 内置 Git（FR-2.8.13）：需先执行 npm run fetch:git 生成 vendor/git/linux
+    - from: vendor/git/linux
+      to: git
   target:
     - target: deb
       arch:
@@ -32,6 +37,12 @@ linux:
 win:
   icon: build/icon.png
   artifactName: win-v${version}-x64.${ext}
+  extraResources:
+    - from: resources/sample-plugin
+      to: sample-plugin
+    # 内置 Git（FR-2.8.13）：需先执行 npm run fetch:git 生成 vendor/git/win32
+    - from: vendor/git/win32
+      to: git
   target:
     - target: nsis
       arch:
@@ -45,5 +56,9 @@ nsis:
 mac:
   icon: build/icon.png
   category: public.app-category.productivity
+  extraResources:
+    - from: resources/sample-plugin
+      to: sample-plugin
+    # macOS 仅支持源码构建，不内置 Git；运行时回落到系统 git（见 bundled-git-design.md 3.5）
   target:
     - dmg

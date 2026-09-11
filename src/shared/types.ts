@@ -22,6 +22,18 @@ export interface GitStatus {
   dirty: boolean
 }
 
+/** git 可用性检测结果（FR-2.8.13，触发同步/关联时检测） */
+export interface GitAvailability {
+  /** 系统 PATH 中是否有可用的 git */
+  systemGit: boolean
+  /** 打包产物中是否内置了 git（开发模式恒为 false） */
+  bundledGit: boolean
+  /** 系统 git 版本号；不可用时为 null */
+  systemVersion: string | null
+  /** 内置 git 版本号；未内置或不可执行时为 null */
+  bundledVersion: string | null
+}
+
 export interface VaultInfo {
   name: string
   path: string

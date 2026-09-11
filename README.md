@@ -42,6 +42,8 @@
 
 在多台设备上安装 Trace 并关联同一个远程仓库，即可实现笔记同步。
 
+> **不需要自己安装 Git**：Windows / Linux 安装包已内置 Git。若系统已安装 Git 则优先使用系统版本；两者都可在「设置 → 通用 → Git 信息」中查看来源与版本。
+
 > 网络无法直连 GitHub？设置 → 通用 → 网络代理中填入代理地址（如 `http://127.0.0.1:7890`），点「测试连接」验证后即可正常同步。
 
 ### 收藏 / 常用 / 回收站
@@ -73,7 +75,7 @@
 
 > macOS 需要自行构建：安装 Node.js ≥ 20 与 git 后，执行下面的「从源码构建」，在 macOS 机器上运行 `npm run dist` 即可得到 `Trace-x.y.z.dmg`（首次构建前建议先执行 `xcode-select --install` 安装命令行工具）。
 
-> 同步功能依赖系统 git（`sudo apt install git` / [Windows 下载](https://git-scm.com/download/win) / `xcode-select --install`）。未安装 git 时其余功能不受影响。
+> Git 依赖：Windows / Linux 安装包**已内置 Git**，无需自行安装；系统已装 Git 时优先使用系统版本。macOS 不内置（仅支持源码构建），同步时使用系统 Git（`brew install git` 或 `xcode-select --install`）。未安装 Git 时其余功能不受影响。
 
 ### 从源码构建
 

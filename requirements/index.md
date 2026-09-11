@@ -1,7 +1,7 @@
 # Trace 需求与实施状态索引
 
-> 更新：2026-09-10 ｜ 发布基线：**v0.3.8**（工作区干净，无待发布改动）
-> 最近变更：内置 Git 设计修正（实测体积数据 + 交付方式选定「随包内置」，D-BG2/D-BG8）
+> 更新：2026-09-11 ｜ 发布基线：**v0.3.8**（内置 Git 已实施，待发版）
+> 最近变更：内置 Git 实施完成（FR-2.8.13）——实测安装包增量 +15.7%，Windows 已完整验证
 > 本文件是 `requirements/` 目录的导览与实施状态总览。各项明细以对应文档与 [CHANGELOG.md](../CHANGELOG.md) 为准。
 
 ## 文档导读
@@ -13,7 +13,7 @@
 | [plugin-design.md](plugin-design.md) | 插件系统 v2 设计：独立插件进程 + 能力网关 + require 白名单 + 市场分发 | 📐 设计已确认（D1–D5 拍板），**未实施**（目标 0.4.0） |
 | [vault-grid-navigation-design.md](vault-grid-navigation-design.md) | 笔记库网格导航设计：双击钻入库内容 + 面包屑 + 三卡片区分 | ✅ **P1 + P2 全部实施**（P1 已发布 v0.3.5，P2 已随 v0.3.6 发布） |
 | [preview-enhancement-design.md](preview-enhancement-design.md) | 预览增强设计：HTML 内嵌（DOMPurify 净化）、a 标签跳转（外部 + 库内笔记）、行级双向同步滚动 | ✅ **已实施**（2026-09-09 发布 v0.3.7） |
-| [bundled-git-design.md](bundled-git-design.md) | 内置 Git 设计：捆绑 Git 二进制 + 随包内置（压缩归档 + 首次解压）+ 触发时检测 + 条件弹窗；含实测体积数据、交付方式对比、三平台选型 | 📐 **设计已确认**（D-BG1–D-BG10 拍板），**部分实施**（检测/弹窗已落地，捆绑待办） |
+| [bundled-git-design.md](bundled-git-design.md) | 内置 Git 设计与实施：捆绑 MinGit/dugite + build 时解压 + 触发时检测 + 条件弹窗；含实测体积、决策记录与验证清单 | ✅ **已实施**（Windows 已验证，Linux 待 CI）｜D-BG1–D-BG11 |
 | [handoff-2026-09-07.md](handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
@@ -21,6 +21,10 @@
 ---
 
 ## 一、已实现并发布（v0.1.0 → v0.3.8）
+
+### 待发版（v0.3.8 之后）
+
+- **内置 Git**（FR-2.8.13）：随安装包内置精简 Git（Windows MinGit busybox / Linux dugite-native），系统未装 Git 也能直接同步。触发关联/同步时检测，不可用时弹窗引导；偏好持久化到 `gitSource`，设置页可重置并展示系统/内置版本。二进制不入库（`npm run fetch:git` 获取 + SHA256 校验）。**实测安装包 125.0 → 144.6 MB（+15.7%）**。详见 [bundled-git-design.md](bundled-git-design.md)。
 
 ### v0.1.0 / v0.2.0 基线（PRD 全部需求）
 
@@ -89,12 +93,6 @@
 - 页内锚点跳转未实现（`[jump](#tag1)` 点击无动作）——归入双链/大纲批次，见 preview-enhancement-design.md 第 5 节
 
 ## 三、设计已确认（部分已实施）
-
-### 内置 Git — [bundled-git-design.md](bundled-git-design.md)
-
-已拍板（D-BG1–D-BG10）：路线 A（捆绑 Git 二进制）+ 系统 Git 保留 fallback；**交付方式选定随包内置**（实测每平台 +33~43 MB，Windows 安装包 125 MB → ~158 MB / +26%），采用**压缩归档 + 首次解压**控制体积（D-BG8）；**触发关联/同步时检测**（不在启动时打扰）；系统 git 可用则静默使用，不可用时弹窗询问是否使用内置 Git；用户选择持久化到 `settings.json`，设置页可重置；GitHub 登录（PAT）与 git 检测完全解耦。isomorphic-git 重新评估后仍不采用（rebase 支持不完整）。预计 2.5~3.5 人日，待排期。
-
-> 进度：检测与弹窗、设置页 Git 信息区块**已实施**（2026-09-10，未捆绑二进制）；归档准备、解压、打包、CI 待办。
 
 ### 插件系统 v2（目标 0.4.0）— [plugin-design.md](plugin-design.md)
 

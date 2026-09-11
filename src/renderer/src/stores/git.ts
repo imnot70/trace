@@ -1,14 +1,15 @@
 import { defineStore } from 'pinia'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import type { GitAvailability } from '@shared/types'
 import { useTreeStore } from './tree'
 import { useEditorStore } from './editor'
 import { useAppStore } from './app'
 
 /** 模块级缓存：避免同一次会话中重复检测 git 可用性 */
-let gitAvailabilityCache: { systemGit: boolean; bundledGit: boolean } | null = null
+let gitAvailabilityCache: GitAvailability | null = null
 
 /** 获取 git 可用性（优先读缓存，无缓存时调用主进程检测） */
-async function getGitAvailability(): Promise<{ systemGit: boolean; bundledGit: boolean }> {
+async function getGitAvailability(): Promise<GitAvailability> {
   if (gitAvailabilityCache) return gitAvailabilityCache
   gitAvailabilityCache = await window.trace.checkGitAvailability()
   return gitAvailabilityCache
@@ -25,9 +26,15 @@ export const useGitStore = defineStore('git', {
     account: { loggedIn: false, username: null as string | null },
     /** 正在关联远程仓库的笔记库（控制关联对话框显隐） */
     associateVault: null as string | null,
-    syncing: {} as Record<string, boolean>
+    syncing: {} as Record<string, boolean>,
+    /** 最近一次 git 可用性检测结果（设置页展示来源与版本号） */
+    availability: null as GitAvailability | null
   }),
   actions: {
+    /** 加载 git 可用性（设置页展示用，不触发任何弹窗） */
+    async loadAvailability(): Promise<void> {
+      this.availability = await getGitAvailability()
+    },
     async refreshAccount(): Promise<void> {
       const result = await window.trace.getAccount()
       this.account = { loggedIn: result.loggedIn, username: result.username ?? null }
@@ -53,15 +60,17 @@ export const useGitStore = defineStore('git', {
       const app = useAppStore()
       // 用户已做过选择且选择的是系统 git → 直接通过
       if (app.settings.gitSource === 'system') return true
-      // 用户已选择内置 git → 直接通过（当前版本无内置 git，兜底检测）
+      // 用户已选择内置 git → 校验内置仍然可用
       if (app.settings.gitSource === 'bundled') {
         const avail = await getGitAvailability()
+        this.availability = avail
         if (avail.bundledGit) return true
-        // 内置 git 不可用（理论上不会发生），重置偏好重新检测
+        // 内置不可用（用户取消了安装组件 / 归档缺失）→ 重置偏好后重新检测
         await app.updateSettings({ gitSource: null })
       }
       // 未做过选择或需要重新检测
       const avail = await getGitAvailability()
+      this.availability = avail
       if (avail.systemGit) {
         // 系统 git 可用，记住选择
         await app.updateSettings({ gitSource: 'system' })

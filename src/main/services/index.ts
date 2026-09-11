@@ -8,6 +8,14 @@ export { SettingsService } from './settings'
 export { AccountService } from './account'
 export { GithubService } from './github'
 export { GitService } from './gitService'
+export {
+  bundledGitCandidates,
+  parseGitVersion,
+  pickGitBinary,
+  readGitVersion,
+  resolveBundledGitPath
+} from './bundledGit'
+export type { GitSourcePreference } from './bundledGit'
 export { WatcherService } from './watcher'
 export { PluginHost } from './pluginHost'
 export type { PluginInfo } from '@shared/types'

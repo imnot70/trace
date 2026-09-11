@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron'
-import { simpleGit } from 'simple-git'
 import { errMessage } from '../lib/errMessage'
 import { logger } from '../lib/logger'
+import { readGitVersion, resolveBundledGitPath } from '../services'
 import type { AppSettings } from '@shared/types'
 import type {
   AccountService,
@@ -199,17 +199,17 @@ export function registerIpc(deps: IpcDeps): void {
     return { ok: true, repos: await deps.github.listRepos(token) }
   })
   handle('git:checkAvailability', async () => {
-    let systemGit = false
-    try {
-      const git = simpleGit()
-      const v = await git.version()
-      systemGit = v && v.major !== undefined
-    } catch {
-      systemGit = false
+    // 系统 git：执行 `git --version`（走系统 PATH）
+    const systemVersion = await readGitVersion('git')
+    // 内置 git：定位打包产物中的可执行文件并读版本（开发模式下不存在）
+    const bundledPath = resolveBundledGitPath(process.resourcesPath)
+    const bundledVersion = bundledPath ? await readGitVersion(bundledPath) : null
+    return {
+      systemGit: systemVersion !== null,
+      bundledGit: bundledPath !== null,
+      systemVersion,
+      bundledVersion
     }
-    // 内置 git 检测预留（当前版本不捆绑，始终为 false）
-    const bundledGit = false
-    return { systemGit, bundledGit }
   })
   handle('git:testProxy', () => deps.git.testProxy())
   handle('account:createRepo', async (name: string, isPrivate: boolean) => {

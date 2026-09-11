@@ -54,6 +54,7 @@ onMounted(() => {
   workspaceInput.value = app.workspaceRoot
   attachmentsDirInput.value = app.settings.attachmentsDir
   void git.refreshAccount()
+  void git.loadAvailability()
   if (git.account.loggedIn) void tree.refreshAll()
 })
 
@@ -173,10 +174,18 @@ function backToEditor(): void {
   app.view = { name: 'editor' }
 }
 
+/** 当前 Git 来源的中文标签 */
+const gitSourceLabel = computed(() => {
+  if (app.settings.gitSource === 'system') return '系统 Git'
+  if (app.settings.gitSource === 'bundled') return '内置 Git'
+  return '自动检测'
+})
+
 /** 重置 Git 来源选择：清空偏好 + 清除会话级缓存，下次触发同步时重新检测 */
 async function resetGitSource(): Promise<void> {
   resetGitAvailabilityCache()
   await app.updateSettings({ gitSource: null })
+  await git.loadAvailability()
   ElMessage.success('已重置，下次同步时将重新检测 Git')
 }
 </script>
@@ -425,11 +434,29 @@ async function resetGitSource(): Promise<void> {
 
         <div class="settings-block">
           <h3>Git 信息</h3>
-          <p class="settings-desc">笔记库的云端同步依赖 Git。如果系统未安装 Git，首次同步时会提示选择内置 Git 或手动安装。</p>
+          <p class="settings-desc">
+            笔记库的云端同步依赖 Git。Trace 已内置 Git，系统未安装时也能直接使用；首次同步时会自动检测并提示。
+          </p>
           <div class="setting-row">
             <span class="setting-label">当前来源</span>
+            <span style="color: var(--text-secondary)">{{ gitSourceLabel }}</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">系统 Git</span>
             <span style="color: var(--text-secondary)">
-              {{ app.settings.gitSource === 'system' ? '系统 Git' : app.settings.gitSource === 'bundled' ? '内置 Git' : '自动检测' }}
+              {{ git.availability?.systemVersion ? `v${git.availability.systemVersion}` : '未检测到' }}
+            </span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">内置 Git</span>
+            <span style="color: var(--text-secondary)">
+              {{
+                git.availability?.bundledVersion
+                  ? `v${git.availability.bundledVersion}`
+                  : git.availability?.bundledGit
+                    ? '已内置（版本未知）'
+                    : '未内置'
+              }}
             </span>
           </div>
           <div class="setting-row">

@@ -12,6 +12,11 @@ export interface GitDeps {
   getToken: () => string | null
   /** Git 同步的 HTTP/HTTPS 代理地址（空 = 不使用） */
   getProxyUrl: () => string
+  /**
+   * 内置 git 可执行文件路径（FR-2.8.13）。
+   * 返回 null/未提供 = 使用系统 PATH 中的 git。
+   */
+  getGitBinary?: () => string | null
 }
 
 export interface SyncOutcome {
@@ -33,6 +38,21 @@ export class GitService {
     return fs.existsSync(path.join(vaultPath, '.git'))
   }
 
+  /**
+   * 构造 simple-git 选项。
+   *
+   * 内置 git 时附加 `binary`；同时必须打开 `unsafe.allowUnsafeCustomBinary`：
+   * simple-git 对 `binary` 做字符白名单校验（`/^([a-z]:)?([a-z0-9/.\\_~-]+)$/i`），
+   * 不含空格与非 ASCII——安装在 `C:\Program Files\…` 或中文用户名路径下会被拒绝。
+   * 该路径来自 `process.resourcesPath`（应用自身、非用户输入），放行是安全的。
+   */
+  private gitOptions(vaultPath: string, config: string[], timeoutMs: number) {
+    const base = { baseDir: vaultPath, config, timeout: { block: timeoutMs } }
+    const binary = this.deps.getGitBinary?.() ?? null
+    if (!binary) return base
+    return { ...base, binary, unsafe: { allowUnsafeCustomBinary: true } }
+  }
+
   private git(vaultPath: string): SimpleGit {
     const { name, email } = this.deps.getCommitter()
     // simple-git 的 config 选项会自动为每一项加上 -c 前缀
@@ -50,7 +70,7 @@ export class GitService {
     }
     // 阻塞超时 60s：网络不通（无法访问 GitHub）时 git 会长时间挂起，
     // 同步按钮会无限转圈；本地操作（提交/状态）远用不到这么久
-    return simpleGit({ baseDir: vaultPath, config, timeout: { block: 60_000 } })
+    return simpleGit(this.gitOptions(vaultPath, config, 60_000))
   }
 
   /** 本地状态（不访问网络，用于界面展示） */
@@ -257,11 +277,13 @@ export class GitService {
    */
   async testProxy(timeoutMs = 15_000): Promise<SyncOutcome> {
     const proxyUrl = this.deps.getProxyUrl().trim()
-    const git = simpleGit({
-      baseDir: os.tmpdir(),
-      config: proxyUrl ? [`http.proxy=${proxyUrl}`, `https.proxy=${proxyUrl}`] : [],
-      timeout: { block: timeoutMs }
-    })
+    const git = simpleGit(
+      this.gitOptions(
+        os.tmpdir(),
+        proxyUrl ? [`http.proxy=${proxyUrl}`, `https.proxy=${proxyUrl}`] : [],
+        timeoutMs
+      )
+    )
     await git.raw(['ls-remote', 'https://github.com/git/git.git', 'HEAD'])
     return { ok: true }
   }

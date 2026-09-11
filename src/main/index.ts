@@ -12,8 +12,10 @@ import {
   FsTreeService,
   GitService,
   GithubService,
+  pickGitBinary,
   PluginHost,
   RecentsService,
+  resolveBundledGitPath,
   SettingsService,
   TrashService,
   VaultMetaService,
@@ -160,7 +162,14 @@ app.whenReady().then(() => {
         : { name: 'Trace', email: 'trace@localhost' }
     },
     getToken: () => account.getToken(),
-    getProxyUrl: () => settingsStore.get().proxyUrl ?? ''
+    getProxyUrl: () => settingsStore.get().proxyUrl ?? '',
+    // 内置 git（FR-2.8.13）：用户偏好为 system 时走 PATH；bundled/未选择时优先内置，
+    // 内置缺失（开发模式或用户取消了安装组件）则回落系统 git
+    getGitBinary: () =>
+      pickGitBinary(
+        settingsStore.get().gitSource ?? null,
+        resolveBundledGitPath(process.resourcesPath)
+      )
   })
   const watcher = new WatcherService(() => workspace.getRoot(), (payload) => {
     for (const w of BrowserWindow.getAllWindows()) w.webContents.send('fs:changed', payload)

@@ -55,6 +55,20 @@ jobs:
       - name: Build app bundles
         run: npm run build
 
+      # 4.5 缓存内置 Git：key 关联 fetch 脚本（版本与 SHA256 pin 在其中），
+      #     改动 pin 会自动失效重取
+      - name: Cache bundled Git
+        uses: actions/cache@v4
+        with:
+          path: vendor/git
+          key: bundled-git-${{ runner.os }}-${{ hashFiles('scripts/fetch-git.mjs') }}
+
+      # 4.6 获取内置 Git（FR-2.8.13）：下载 + SHA256 校验 + 解压到 vendor/git/<platform>。
+      #     vendor/ 不入库，必须在 electron-builder 之前生成，否则安装包缺失内置 git。
+      #     不传 --platform：脚本默认取宿主平台，与 matrix 的构建目标一致
+      - name: Fetch bundled Git
+        run: npm run fetch:git
+
       # 5. 打包对应平台的安装包
       - name: Build for ${{ matrix.platform }}
         env:
