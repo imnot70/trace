@@ -65,7 +65,7 @@ Trace（中文名「笔迹」）是一款**本地优先**的轻量级 Markdown �
 
 ### 2.4 笔记编辑器
 
-- FR-2.4.1 形态：左侧源码编辑（CodeMirror 6）+ 右侧实时渲染预览，中间分隔条可拖拽调整比例（20%–80%），双向滚动按源码行号映射联动（见 preview-enhancement-design.md）。
+- FR-2.4.1 形态：左侧源码编辑（CodeMirror 6）+ 右侧实时渲染预览，中间分隔条可拖拽调整比例（20%–80%），双向滚动按源码行号映射联动（见 [preview-enhancement-design.md](2026-09-09_preview-enhancement/preview-enhancement-design.md)）。
 - FR-2.4.7 内嵌 HTML：笔记中的内嵌 HTML 在预览中渲染（markdown-it `html: true`）；渲染输出经 DOMPurify 白名单净化（剥除脚本 / 样式注入 / base / 表单 / 事件属性，防同步投毒笔记的视觉钓鱼与导航劫持），CSP 追加 `form-action 'none'`。
 - FR-2.4.8 链接跳转：预览中链接（markdown 与原始 HTML 两种来源）统一事件委托处理——外部 http(s) 链接经系统浏览器打开；指向库内笔记的相对路径链接（`./笔记.md` 等）在应用内直接打开；断链渲染为删除线样式并轻提示。该"相对引用解析 → 校验 → 打开"管道与二期 wiki 双链共享。
 - FR-2.4.2 语法支持：完整 Markdown + LaTeX 公式（行内 `$...$`、块级 `$$...$$`，KaTeX 渲染）+ 代码块语法高亮（常用 16 种语言）+ GFM 任务列表（`- [x]` / `- [ ]`，只读复选框）。
@@ -114,6 +114,18 @@ Trace（中文名「笔迹」）是一款**本地优先**的轻量级 Markdown �
 - FR-2.8.10 网络健壮性：同步等网络操作有 60 秒超时上限（超时即中止并提示，不无限等待）；常见网络故障（DNS 解析失败、无法连接、超时、连接中断、令牌失效、仓库不存在）以友好的中文提示呈现，原始报错仅记录日志文件。
 - FR-2.8.11 网络代理：用户可为 Git 同步配置 HTTP/HTTPS 代理（地址 + 端口 + 可选凭据），配置存应用数据目录，仅在 git 调用时以 `-c http.proxy=…` 注入（与令牌同策略，不写入 `.git/config`）；提供「测试连接」反馈可达性（对 github.com 发起轻量 ls-remote，15 秒超时）。
 - FR-2.8.12 同步入口：库齿轮菜单「立即同步」与编辑卡「同步」按钮；同步期间按钮呈加载态且不可重复触发。
+<<<<<<< Updated upstream
+=======
+- FR-2.8.13 内置 Git：应用随安装包附带平台对应的精简 Git 二进制（Windows MinGit busybox 版 / macOS·Linux Dugite-native）。
+  - 交付方式：**随安装包内置**（非按需下载）；构建时由 `npm run fetch:git` 下载并按 SHA256 校验，解压到 `vendor/git/<platform>/`（不入库），electron-builder 收进 `resources/git/`，由安装包自身压缩载荷（实测 Windows 安装包 125.0 → 144.6 MB，增量 **+19.6 MB / +15.7%**）。
+  - 运行时定位：零解压逻辑，按候选路径探测可执行文件（Windows `cmd/git.exe`、Linux `bin/git`）；不随应用引入解压依赖；安装后磁盘占用 +82 MB。
+  - 检测时机：用户触发关联（FR-2.8.3）或同步（FR-2.8.5）时才检测 git 可用性，不在启动时打扰用户。
+  - 检测逻辑：系统 git 可用 → 静默使用系统 git（无提示）；系统 git 不可用 + 内置 git 可用 → 弹窗询问「是否使用内置 Git？」；两者均不可用 → 弹窗提示安装 Git 并给出平台安装指引（降级兜底，仅在用户取消内置组件或归档损坏时可达）。
+  - 用户选择持久化：弹窗选择后记住用户偏好（`settings.json` 的 `gitSource` 字段），后续同步不再重复弹窗；设置页提供「重置选择」按钮。
+  - 与 GitHub 登录解耦：登录（FR-2.8.1）通过 REST API 完成，不需要 git 二进制，登录流程不受影响。
+  - 设置页信息：通用标签页展示当前 Git 来源（系统/内置）及版本号。
+  - 详见 [bundled-git-design.md](2026-09-10_bundled-git/bundled-git-design.md)。
+>>>>>>> Stashed changes
 
 ### 2.9 界面布局与外观
 

@@ -2,20 +2,13 @@
 
 本文件面向在本仓库中工作的 AI 编码代理（及新加入的开发者），帮助快速理解项目并遵守其约定。
 
-## 项目是什么
+## 项目简介
 
-**Trace（笔迹）** 是一款本地优先的轻量级 Markdown 笔记桌面应用（当前版本 v0.3.8）：
+**Trace（笔迹）** 是一款本地优先的轻量级 Markdown 笔记桌面应用：
 
 - 笔记以纯 `.md` 文件存储，无私有格式；每个**笔记库**是一个独立 git 仓库，通过 GitHub PAT 实现多设备同步；
 - 支持 LaTeX 公式、图片粘贴、回收站、收藏/常用、浅色/深色主题与插件骨架（实验性）；
 - 跨平台：Windows / Linux（Ubuntu、Debian 为主），macOS 仅支持源码构建。
-
-**权威文档**（修改行为时务必同步更新）：
-
-- `requirements/requirements.md` — 产品需求文档，当前形态的权威描述；
-- `requirements/development-plan.md` — 技术选型与架构决策（另一台机器上制定）；
-- `CHANGELOG.md` — 版本变更明细（Keep a Changelog 格式，语义化版本）；
-- `README.md` — 用户视角的功能说明与使用指南。
 
 ## 技术栈
 
@@ -43,11 +36,16 @@ npm run dist:deb     # 只打 deb 包
 npm run icon         # 重新生成应用图标
 ```
 
+<<<<<<< Updated upstream
+=======
+**内置 Git**（FR-2.8.13）：二进制**不入库**，`npm run fetch:git` 负责下载 + SHA256 校验 + 解压到 `vendor/git/<平台>/`（已 gitignore）；`dist*` 命令已自动前置该步骤。打包后位于 `resources/git/`，**运行期零解压代码**，仅按候选路径定位（`src/main/services/bundledGit.ts`）。⚠️ simple-git 对 `binary` 做字符白名单校验（不允许空格与非 ASCII），传自定义路径时**必须同时设 `unsafe: { allowUnsafeCustomBinary: true }`**，否则安装在 `C:\Program Files\…` 或中文用户名目录下会抛 `GitPluginError`。
+
+>>>>>>> Stashed changes
 调试：`TRACE_CDP=9222 npm run dev` 后访问 `http://127.0.0.1:9222` 连接渲染进程 DevTools；`TRACE_TEST_USERDATA=1` 以临时数据目录启动隔离实例。
 
 CI（`.github/workflows/build.yml`）：**仅在推送 `v*.*.*` 标签时**构建 Windows/Linux 安装包并发布 Release（push main 不触发，需要临时测试包可手动 workflow_dispatch）；tag 触发时会校验标签与 package.json 版本一致，不一致构建失败。注意 CI 中 electron-builder 前必须先 `npm run build` 生成 `out/`；多行 bash run 步骤在 Windows runner 上必须显式 `shell: bash`（默认 pwsh 解析不了 bash 语法）。产物命名规范：**平台-v版本-架构.扩展名**（如 `win-v0.2.0-x64.exe`、`linux-v0.2.0-x64.deb`）。⚠️ electron-builder 的 `${arch}` 变量在不同 target 上渲染不一致（deb→`amd64`、AppImage→`x86_64`、exe→`x64`），为保证命名统一，`electron-builder.yml` 的 `artifactName` 模板中架构是写死的 `x64`；将来增加 arm64 构建时需改为按 target 分别配置或恢复 `${arch}`。
 
-## 架构
+## 架构概览
 
 三进程模型，**渲染进程不直接触碰文件系统 / git / 网络**，一切经 IPC：
 
@@ -77,9 +75,9 @@ src/
 - **磁盘布局**：工作区（默认 `~/Trace`）下每个笔记库 = 一个 git 仓库；回收站在 `<工作区>/.trash/`；应用元数据（设置、收藏、最近打开、凭据）存 Electron `userData` 目录的 JSON 文件，**绝不写入笔记库**。
 - 新增 IPC 能力的路径：先在 `shared/types.ts` 定类型、`shared/api.ts` 加方法签名 → 主进程 `services/` 实现 → `ipc/registerIpc.ts` 注册 → `preload/index.ts` 暴露 → 渲染进程经 `window.trace` 调用。
 
-## 必须遵守的设计原则
+## 开发规范与约定
 
-这些原则来自需求文档，改动任何相关代码前先理解：
+### 设计原则
 
 1. **文件是唯一事实来源**。笔记和图片都是磁盘上普通文件；应用元数据与笔记数据严格分离，不得污染笔记库（避免污染 git 仓库）。
 2. **不悄悄丢数据**。保存有外部修改保护（磁盘内容 hash 比对：无冲突静默重载，有未保存改动给用户选择，本地保存时 hash 不一致拒绝写入）；删除一律先进回收站 `.trash/`（还原冲突自动加后缀，不覆盖）；危险操作红色警示 + 确认弹窗。
@@ -87,7 +85,7 @@ src/
 4. **令牌安全**。GitHub PAT 存 `safeStorage`，仅通过每次调用注入 `http.extraheader`，**绝不写入 `.git/config`**；日志统一脱敏（`lib/logger.ts`），任何新日志不得输出令牌。
 5. **校验规则前后端一致**。名称校验（非法字符、Windows 保留名、重名大小写不敏感、文件夹最多 6 层、附件目录最多 4 层）集中在 `src/shared/validate.ts`，主进程与渲染进程共用——不要在单侧另写一套规则。
 
-## 代码约定
+### 代码约定
 
 - 注释、文档、UI 文案、commit message 均使用**中文**（与现有代码保持一致）。
 - UI 用语：一律用「文件夹」（不用「子目录」）、「笔记库」；删除类菜单项红色警示。
@@ -98,9 +96,23 @@ src/
   ⚠️ Windows 上 `tests/gitService.test.ts` 的 6 项集成测试会因超出 Vitest 默认 5s 超时而失败：Windows 下每次 git 子进程调用约 1~1.7s（Linux 仅几十毫秒），完整关联+同步流程需 5~10s。功能本身正常（已手动复现验证），用 `npx vitest run --testTimeout=30000` 验证即可，勿误判为产品代码 bug。
   ⚠️ Linux（Ubuntu 24.04+，含本机 Ubuntu 26.04）重新 `npm install` 后 Electron 可能启动失败：`The SUID sandbox helper binary was found, but is not configured correctly`。原因是 AppArmor 限制非特权用户命名空间（`kernel.apparmor_restrict_unprivileged_userns=1`），npm 又总是以当前用户安装 `chrome-sandbox`（无法带 SUID 位）。修复：`sudo chown root:root node_modules/electron/dist/chrome-sandbox && sudo chmod 4755 node_modules/electron/dist/chrome-sandbox`（每次重装依赖后需重做）。
 - 版本号在 `package.json`，是**唯一版本来源**：「关于 Trace」（`app.getVersion()`）、安装包文件名（electron-builder `artifactName`）、CI 工件命名全部自动读取它；git tag 必须与其一致（CI 在 tag 触发时会校验，不一致构建失败）。**发版流程**：更新 `CHANGELOG.md` → `npm version <patch|minor|major 或 x.y.z>`（自动改版本号 + commit + 打 `v` 标签，要求工作区干净；经 `postversion` 钩子自动 `git push --follow-tags` 触发 Release）。
+
+### 文档与需求管理约定
+
+- **权威文档**（修改行为时务必同步更新）：
+  - `requirements/requirements.md` — 产品需求文档（PRD），当前形态的权威描述；
+  - `CHANGELOG.md` — 版本变更明细（Keep a Changelog 格式，语义化版本）；
+  - `README.md` — 用户视角的功能说明与使用指南。
+- **需求 / 设计文档目录规范**：`requirements/` 下按功能模块组织，每个模块一个子目录，命名格式 `{创建日期}_{功能名称}/`，目录内包含：
+  - `{功能名称}.md` — 需求描述（功能需求、验收标准等）；
+  - `{功能名称}_design.md` — 技术设计（方案、架构、接口等）；
+  - `{功能名称}_plan.md` — 实施计划（可选，复杂功能需要时添加）。
+  - 示例：`requirements/2026-09-10_bundled-git/bundled-git_design.md`
+- 项目级文档（PRD、开发计划等）保留在 `requirements/` 根目录。
 - **【强制】改动完成后必须同步相关文档，代码先行、文档欠账视为改动未完成**：
   - 行为 / 功能变更记录 → `CHANGELOG.md`（写进顶部 `[未发布]` 段，无此段则新建；发版时整段改为版本号 + 日期）；
-  - 需求追加或需求完成状态变化 → `requirements/index.md`（实施状态总览）与对应文档：新需求 / 需求语义变化进 `requirements/requirements.md`（PRD，含 FR 编号），架构级方案进 `requirements/` 下对应设计文档（如 `plugin-design.md`），设计文档需同步标注实施进度；
+  - 需求追加或需求完成状态变化 → 对应需求文档（PRD 中的 FR 编号）与设计文档（如适用）；
+  - 新功能 / 架构级方案 → 按上述目录规范在 `requirements/` 下创建对应子目录；
   - 提交信息无法替代文档——commit message 只记录「这次改了什么」，文档记录「产品现在是什么」。
 
 ## 已知局限（勿误判为新 bug）
@@ -111,4 +123,4 @@ src/
 
 ## 二期规划（未实现，不要顺手实现）
 
-全局搜索、所见即所得模式、图形化冲突解决、定时/变更自动同步、自定义主题包、插件完整 API 与市场（v2 设计已定稿，见 `requirements/plugin-design.md`，目标 0.4.0）、标签、多窗口、导出 PDF/HTML、窗口毛玻璃效果。近期待办（已排期讨论，见 `requirements/index.md` 第三节）：文件/文件夹移动、笔记双链引用（`[[笔记名]]`）。
+全局搜索、所见即所得模式、图形化冲突解决、定时/变更自动同步、自定义主题包、插件完整 API 与市场（v2 设计已定稿，见 `requirements/2026-09-08_plugin-system/`，目标 0.4.0）、标签、多窗口、导出 PDF/HTML、窗口毛玻璃效果。近期待办（已排期讨论）：文件/文件夹移动、笔记双链引用（`[[笔记名]]`）。

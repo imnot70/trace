@@ -2,6 +2,33 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+<<<<<<< Updated upstream
+=======
+## [未发布]
+
+### 新功能
+
+- **内置 Git**（FR-2.8.13）：应用随安装包内置精简 Git（Windows MinGit busybox / Linux dugite-native），系统未安装 Git 也能完成云端同步。
+  - 交付：构建时 `npm run fetch:git` 下载并按 SHA256 校验，解压到 `vendor/git/<平台>/`（不入库）由 electron-builder 收进 `resources/git/`；安装包自身压缩载荷，**运行期零解压代码**。实测 Windows 安装包 125.0 → **144.6 MB（+15.7%）**。
+  - 检测：用户触发关联或同步时才检测系统 Git 是否可用，不在启动时打扰；不可用时弹窗引导选择内置 Git 或给出平台安装指引。
+  - 偏好：选择持久化到设置（`gitSource`），避免重复弹窗；设置页新增「Git 信息」区块，展示系统/内置 Git 版本并支持重置选择。
+  - 二进制不入库：`vendor/` 已加入 `.gitignore`，避免 ~76 MB 二进制进入 git 历史。
+
+### 修复
+
+- **内置 Git 路径含空格/中文时无法调用**：simple-git 对 `binary` 做字符白名单校验（不允许空格与非 ASCII），安装在 `C:\Program Files\…` 或中文用户名目录下会抛错。已通过 `unsafe.allowUnsafeCustomBinary` 放行（路径来自 `process.resourcesPath`，非用户输入）。
+
+### 构建/工程
+
+- `electron-builder.yml`：`extraResources` 改为每平台分别声明——平台段会覆盖顶层同名配置，否则示例插件会随内置 Git 改动一起丢失。
+- CI：新增 `vendor/git` 缓存与 `npm run fetch:git` 步骤（在 electron-builder 之前）。
+- 新增单测 16 项：`bundledGit` 纯函数 14 项 + 内置 Git 真实同步链路 2 项。
+
+### 设计/规划
+
+- **内置 Git 设计定稿并实施**（`requirements/2026-09-10_bundled-git/bundled-git-design.md`）：D-BG1–D-BG11。关键决策：交付方式选**随包内置**（D-BG2）；打包形态由「运行时解压」**修订为 build 时解压**（D-BG8）——实测安装包增量更小（+19.6 vs +32.9 MB）、且省 33 MB 磁盘与一套解压代码；二进制不入库（D-BG11）。isomorphic-git 因 rebase 支持不完整仍不采用（D-BG9）。
+
+>>>>>>> Stashed changes
 ## [0.3.8] - 2026-09-09
 
 ### 其他
