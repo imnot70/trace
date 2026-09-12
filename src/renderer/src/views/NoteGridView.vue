@@ -168,6 +168,7 @@ function onVaultMenuCommand(cmd: string, card: VaultCard): void {
 function onFolderMenuCommand(cmd: string, node: TreeNode): void {
   const folderPath = [folderRel.value, node.name].filter(Boolean).join('/')
   if (cmd === 'rename') actions.renameDir(vaultName.value, folderPath, node.name)
+  else if (cmd === 'move') actions.moveNode(vaultName.value, folderPath, 'dir', node.name)
   else if (cmd === 'delete') void actions.deleteDir(vaultName.value, folderPath, node.name)
   else if (cmd === 'newDir') actions.createDir(vaultName.value, folderPath)
   else if (cmd === 'newNote') actions.createNote(vaultName.value, folderPath)
@@ -183,6 +184,10 @@ async function onNoteMenuCommand(cmd: string, item: GridItem): Promise<void> {
 
   if (cmd === 'delete') {
     void actions.deleteNote(item.vault, item.path, item.name)
+    return
+  }
+  if (cmd === 'move') {
+    actions.moveNode(item.vault, item.path, 'note', item.name)
     return
   }
   if (cmd === 'favorite') {
@@ -430,6 +435,7 @@ watch(section, () => {
                         <el-dropdown-item command="newDir">新建文件夹</el-dropdown-item>
                         <el-dropdown-item command="newNote">创建笔记</el-dropdown-item>
                         <el-dropdown-item command="locate" divided>在侧栏中定位</el-dropdown-item>
+                        <el-dropdown-item command="move">移动到…</el-dropdown-item>
                         <el-dropdown-item command="rename">重命名</el-dropdown-item>
                         <el-dropdown-item command="delete" class="danger-item">删除文件夹</el-dropdown-item>
                       </el-dropdown-menu>
@@ -463,6 +469,7 @@ watch(section, () => {
                     </button>
                     <template #dropdown>
                       <el-dropdown-menu>
+                        <el-dropdown-item command="move">移动到…</el-dropdown-item>
                         <el-dropdown-item command="favorite">
                           {{ isFavorited({ vault: vaultName, path: node.path, name: node.name }) ? '取消收藏' : '收藏笔记' }}
                         </el-dropdown-item>

@@ -38,6 +38,7 @@ npm run icon         # 重新生成应用图标
 ```
 
 **内置 Git**（FR-2.8.13）：二进制**不入库**，`npm run fetch:git` 负责下载 + SHA256 校验 + 解压到 `vendor/git/<平台>/`（已 gitignore）；`dist*` 命令已自动前置该步骤。打包后位于 `resources/git/`，**运行期零解压代码**，仅按候选路径定位（`src/main/services/bundledGit.ts`）。⚠️ simple-git 对 `binary` 做字符白名单校验（不允许空格与非 ASCII），传自定义路径时**必须同时设 `unsafe: { allowUnsafeCustomBinary: true }`**，否则安装在 `C:\Program Files\…` 或中文用户名目录下会抛 `GitPluginError`。
+
 调试：`TRACE_CDP=9222 npm run dev` 后访问 `http://127.0.0.1:9222` 连接渲染进程 DevTools；`TRACE_TEST_USERDATA=1` 以临时数据目录启动隔离实例。
 
 CI（`.github/workflows/build.yml`）：**仅在推送 `v*.*.*` 标签时**构建 Windows/Linux 安装包并发布 Release（push main 不触发，需要临时测试包可手动 workflow_dispatch）；tag 触发时会校验标签与 package.json 版本一致，不一致构建失败。注意 CI 中 electron-builder 前必须先 `npm run build` 生成 `out/`、并执行 `npm run fetch:git` 生成 `vendor/git/`（内置 Git，`vendor/` 不入库）；多行 bash run 步骤在 Windows runner 上必须显式 `shell: bash`（默认 pwsh 解析不了 bash 语法）。产物命名规范：**平台-v版本-架构.扩展名**（如 `win-v0.2.0-x64.exe`、`linux-v0.2.0-x64.deb`）。⚠️ electron-builder 的 `${arch}` 变量在不同 target 上渲染不一致（deb→`amd64`、AppImage→`x86_64`、exe→`x64`），为保证命名统一，`electron-builder.yml` 的 `artifactName` 模板中架构是写死的 `x64`；将来增加 arm64 构建时需改为按 target 分别配置或恢复 `${arch}`。

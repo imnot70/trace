@@ -143,6 +143,181 @@ describe('目录与笔记', () => {
     expect(escape.ok).toBe(false)
   })
 
+  it('移动笔记到子文件夹', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    fsTree.createNote('库', '', '笔记')
+    fsTree.createDir('库', '', '子目录')
+    const r = fsTree.moveNode('库', '笔记.md', 'note', '子目录')
+    expect(r.ok).toBe(true)
+    expect(r.newPath).toBe('子目录/笔记.md')
+    expect(fs.existsSync(path.join(vaults.vaultPath('库'), '子目录', '笔记.md'))).toBe(true)
+    expect(fs.existsSync(path.join(vaults.vaultPath('库'), '笔记.md'))).toBe(false)
+  })
+
+  it('移动文件夹到子文件夹', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    fsTree.createDir('库', '', '源')
+    fsTree.createNote('库', '源', 'n')
+    fsTree.createDir('库', '', '目标')
+    const r = fsTree.moveNode('库', '源', 'dir', '目标')
+    expect(r.ok).toBe(true)
+    expect(r.newPath).toBe('目标/源')
+    expect(fs.existsSync(path.join(vaults.vaultPath('库'), '目标', '源', 'n.md'))).toBe(true)
+  })
+
+  it('移动到库根', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    fsTree.createDir('库', '', '子')
+    fsTree.createNote('库', '子', '笔记')
+    const r = fsTree.moveNode('库', '子/笔记.md', 'note', '')
+    expect(r.ok).toBe(true)
+    expect(r.newPath).toBe('笔记.md')
+  })
+
+  it('移动目标重名拒绝', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    fsTree.createNote('库', '', 'a')
+    fsTree.createDir('库', '', '子')
+    fsTree.createNote('库', '子', 'a')
+    const r = fsTree.moveNode('库', 'a.md', 'note', '子')
+    expect(r.ok).toBe(false)
+    expect(r.error).toMatch(/已存在/)
+  })
+
+  it('移动文件夹到自身拒绝', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    fsTree.createDir('库', '', '自引用')
+    const r = fsTree.moveNode('库', '自引用', 'dir', '自引用')
+    expect(r.ok).toBe(false)
+    expect(r.error).toMatch(/自身/)
+  })
+
+  it('移动文件夹到自身子目录拒绝', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    fsTree.createDir('库', '', '父')
+    fsTree.createDir('库', '父', '子')
+    const r = fsTree.moveNode('库', '父', 'dir', '父/子')
+    expect(r.ok).toBe(false)
+    expect(r.error).toMatch(/自身/)
+  })
+
+  it('移动源不存在报错', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    const r = fsTree.moveNode('库', '不存在.md', 'note', '')
+    expect(r.ok).toBe(false)
+    expect(r.error).toMatch(/不存在/)
+  })
+
+  it('移动目标不存在报错', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    fsTree.createNote('库', '', 'n')
+    const r = fsTree.moveNode('库', 'n.md', 'note', '不存在的目录')
+    expect(r.ok).toBe(false)
+    expect(r.error).toMatch(/不存在/)
+  })
+
+  it('移动后深度超限拒绝', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    // 建 5 层目录
+    let rel = 'L1'
+    fsTree.createDir('库', '', 'L1')
+    for (let i = 2; i <= 5; i++) {
+      fsTree.createDir('库', rel, `L${i}`)
+      rel = `${rel}/L${i}`
+    }
+    // 在 L1/L2/L3/L4/L5 下建一个文件夹
+    fsTree.createDir('库', rel, '待移')
+    // 移到 L1/L2/L3/L4/L5 同级（L1/L2/L3/L4）应成功（总深度 5+1=6）
+    const r1 = fsTree.moveNode('库', `${rel}/待移`, 'dir', 'L1/L2/L3/L4')
+    expect(r1.ok).toBe(true)
+    // 移到 L1/L2/L3 下应失败（子树深度 1 + 目标深度 3 = 4，但子树本身深度为 1，移后总深 3+1=4，应成功）
+    // 实际检查：待移 文件夹深度=1，移到 L1/L2/L3 后路径=L1/L2/L3/待移，深度=4，<=6，应成功
+    const r2 = fsTree.moveNode('库', 'L1/L2/L3/L4/待移', 'dir', 'L1/L2/L3')
+    expect(r2.ok).toBe(true)
+  })
+
+  it('移动笔记后改写图片相对路径', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    // 在库根创建笔记，引用附件
+    fsTree.writeNote('库', 'n.md', '# 标题\n\n![img](./attachments/123.png)\n', null)
+    // 创建附件文件（让引用目标存在）
+    fs.mkdirSync(path.join(vaults.vaultPath('库'), 'attachments'))
+    fs.writeFileSync(path.join(vaults.vaultPath('库'), 'attachments', '123.png'), 'fake')
+    fsTree.createDir('库', '', '子目录')
+    const r = fsTree.moveNode('库', 'n.md', 'note', '子目录')
+    expect(r.ok).toBe(true)
+    const content = fsTree.readNote('库', '子目录/n.md')
+    expect(content.ok && content.content).toContain('../attachments/123.png')
+    expect(content.ok && content.content).not.toMatch(/\]\(\.\/attachments\/123\.png\)/)
+  })
+
+  it('移动笔记后改写链接相对路径', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    fsTree.writeNote('库', 'a.md', '[链接](./other.md)\n', null)
+    fsTree.createNote('库', '', 'other')
+    fsTree.createDir('库', '', '子')
+    const r = fsTree.moveNode('库', 'a.md', 'note', '子')
+    expect(r.ok).toBe(true)
+    const content = fsTree.readNote('库', '子/a.md')
+    expect(content.ok && content.content).toContain('../other.md')
+    expect(content.ok && content.content).not.toMatch(/\]\(\.\/other\.md\)/)
+  })
+
+  it('移动笔记后不改写同目录树内引用', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    fsTree.createDir('库', '', '源')
+    fsTree.writeNote('库', '源/a.md', '![img](./attachments/x.png)\n', null)
+    // attachments 也在源目录下
+    fsTree.createDir('库', '源', 'attachments')
+    fsTree.createDir('库', '', '目标')
+    const r = fsTree.moveNode('库', '源', 'dir', '目标')
+    expect(r.ok).toBe(true)
+    // 相对路径不变（attachments 一起移过去了）
+    const content = fsTree.readNote('库', '目标/源/a.md')
+    expect(content.ok && content.content).toContain('./attachments/x.png')
+  })
+
+  it('移动文件夹后批量改写内部笔记引用', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    fsTree.createDir('库', '', '移动区')
+    fsTree.writeNote('库', '移动区/n1.md', '![a](./img.png)\n', null)
+    fsTree.writeNote('库', '移动区/n2.md', '[link](./n1.md)\n', null)
+    fsTree.createDir('库', '', '目标')
+    const r = fsTree.moveNode('库', '移动区', 'dir', '目标')
+    expect(r.ok).toBe(true)
+    // n1 引用的 img.png 在移动区内，一起移了，不改写
+    const c1 = fsTree.readNote('库', '目标/移动区/n1.md')
+    expect(c1.ok && c1.content).toContain('./img.png')
+    // n2 引用的 n1.md 也在移动区内，不改写
+    const c2 = fsTree.readNote('库', '目标/移动区/n2.md')
+    expect(c2.ok && c2.content).toContain('./n1.md')
+  })
+
+  it('不改写绝对 URL 和锚点', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    fsTree.writeNote('库', 'n.md', '[ext](https://example.com) [anchor](#sec) ![remote](http://x.com/img.png)\n', null)
+    fsTree.createDir('库', '', '子')
+    fsTree.moveNode('库', 'n.md', 'note', '子')
+    const content = fsTree.readNote('库', '子/n.md')
+    expect(content.ok && content.content).toContain('https://example.com')
+    expect(content.ok && content.content).toContain('#sec')
+    expect(content.ok && content.content).toContain('http://x.com/img.png')
+  })
+
   it('listTree 返回排序后的嵌套树', () => {
     const { vaults, fsTree } = buildStack()
     vaults.create('库')

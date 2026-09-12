@@ -137,6 +137,18 @@ export function registerIpc(deps: IpcDeps): void {
       return result
     }
   )
+  handle(
+    'node:move',
+    (vault: string, srcPath: string, kind: 'dir' | 'note', destParentPath: string) => {
+      const result = deps.fsTree.moveNode(vault, srcPath, kind, destParentPath)
+      if (result.ok && result.newPath) {
+        const name = kind === 'note' ? result.newPath.replace(/.*\//, '').replace(/\.md$/i, '') : result.newPath.replace(/.*\//, '')
+        deps.favorites.onRename(vault, srcPath, result.newPath, kind, name)
+        deps.recents.onRename(vault, srcPath, result.newPath, kind, name)
+      }
+      return result
+    }
+  )
   handle('node:delete', (vault: string, relPath: string, kind: 'dir' | 'note') => {
     const result = deps.fsTree.deleteNode(vault, relPath, kind)
     if (result.ok) {

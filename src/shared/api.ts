@@ -37,6 +37,7 @@ export interface TraceApi {
   createDir(vault: string, parentPath: string, name: string): Promise<OpResult>
   createNote(vault: string, parentPath: string, name: string): Promise<OpResult & { path?: string }>
   renameNode(vault: string, path: string, kind: 'dir' | 'note', newName: string): Promise<OpResult & { newPath?: string }>
+  moveNode(vault: string, srcPath: string, kind: 'dir' | 'note', destParentPath: string): Promise<OpResult & { newPath?: string }>
   deleteNode(vault: string, path: string, kind: 'dir' | 'note'): Promise<OpResult>
   readNote(vault: string, path: string): Promise<NoteContent>
   writeNote(vault: string, path: string, content: string, expectedHash: string | null): Promise<OpResult & { hash?: string }>

@@ -1,7 +1,6 @@
 # Trace 需求与实施状态索引
 
-> 更新：2026-09-11 ｜ 发布基线：**v0.3.8**（内置 Git 已实施，待发版）
-> 最近变更：内置 Git 实施完成（FR-2.8.13）——实测安装包增量 +15.7%，Windows 已完整验证
+> 更新：2026-09-12 ｜ 发布基线：**v0.3.8**（内置 Git + 文件/文件夹移动已实施，待发版）
 > 本文件是 `requirements/` 目录的导览与实施状态总览。各项明细以对应文档与 [CHANGELOG.md](../CHANGELOG.md) 为准。
 
 ## 文档导读
@@ -14,6 +13,7 @@
 | [vault-grid-navigation-design.md](2026-09-08_vault-grid-navigation/vault-grid-navigation-design.md) | 笔记库网格导航设计：双击钻入库内容 + 面包屑 + 三卡片区分 | ✅ **P1 + P2 全部实施**（P1 已发布 v0.3.5，P2 已随 v0.3.6 发布） |
 | [preview-enhancement-design.md](2026-09-09_preview-enhancement/preview-enhancement-design.md) | 预览增强设计：HTML 内嵌（DOMPurify 净化）、a 标签跳转（外部 + 库内笔记）、行级双向同步滚动 | ✅ **已实施**（2026-09-09 发布 v0.3.7） |
 | [bundled-git-design.md](2026-09-10_bundled-git/bundled-git-design.md) | 内置 Git 设计与实施：捆绑 MinGit/dugite + build 时解压 + 触发时检测 + 条件弹窗；含实测体积、决策记录与验证清单 | ✅ **已实施**（Windows 已验证，Linux 待 CI）｜D-BG1–D-BG11 |
+| [move-node_design.md](2026-09-12_move-node/move-node_design.md) | 文件/文件夹移动设计（库内）：树形文件夹选择器 + renameNode 校验管道复用 | ✅ **已实施**（待发布） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
@@ -24,6 +24,7 @@
 
 ### 待发版（v0.3.8 之后）
 
+- **文件/文件夹移动**（库内）：侧栏树和网格卡片的 ⋮ 菜单新增「移动到…」，弹出文件夹选择对话框（树形选择器），支持将笔记或文件夹移动到库内任意位置。详见 [move-node_design.md](2026-09-12_move-node/move-node_design.md)。
 - **内置 Git**（FR-2.8.13）：随安装包内置精简 Git（Windows MinGit busybox / Linux dugite-native），系统未装 Git 也能直接同步。触发关联/同步时检测，不可用时弹窗引导；偏好持久化到 `gitSource`，设置页可重置并展示系统/内置版本。二进制不入库（`npm run fetch:git` 获取 + SHA256 校验）。**实测安装包 125.0 → 144.6 MB（+15.7%）**。详见 [bundled-git-design.md](2026-09-10_bundled-git/bundled-git-design.md)。
 
 ### v0.1.0 / v0.2.0 基线（PRD 全部需求）
@@ -110,7 +111,6 @@
 
 ### 功能规划（已排期讨论，方案见下）
 
-- **文件 / 文件夹移动**：卡片与树节点 ⋮ 菜单「移动到…」→ 库 + 文件夹两级选择对话框。库内移动复用 renameNode 管道（低复杂度）；跨库移动需迁移收藏 / 常用引用与编辑指针（中复杂度）。预计一天。已知局限：v1 不自动改写其他笔记中的引用（待全局搜索 / 引用功能落地后解决）
 - **笔记互相引用（wiki 双链）**：语法选型 `[[笔记名]]`（Obsidian 惯例，弃用相对路径链接）。分期：P1 预览渲染可点击链接 + 断链样式（约半天）→ P2 编辑器 `[[` 自动补全 → P3 反向链接与未解析引用列表（与二期全局搜索合并实施）。移动不改写引用的局限在 P3 一并解决
 
 ### 二期 Backlog（源自 PRD 第 7 节；「插件完整 API 与市场」已由插件 v2 设计承接）
