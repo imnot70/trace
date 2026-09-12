@@ -6,10 +6,15 @@ import { basicSetup } from 'codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { undo, redo } from '@codemirror/commands'
+import { autocompletion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete'
+import { useTreeStore } from '../stores/tree'
+import type { TreeNode } from '@shared/types'
 
 const props = defineProps<{
   modelValue: string
   fontSize: number
+  vault: string
+  notePath: string
 }>()
 
 const emit = defineEmits<{
@@ -22,6 +27,135 @@ const container = ref<HTMLDivElement | null>(null)
 let view: EditorView | null = null
 /** 是否由外部（props）导致的文档替换，避免回环 */
 let applyingExternal = false
+
+function slugify(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\u4e00-\u9fff-]/g, '')
+}
+
+/** 递归收集目录下所有笔记名（去 .md 后缀） */
+function collectNotes(nodes: TreeNode[], prefix = ''): string[] {
+  const result: string[] = []
+  for (const n of nodes) {
+    if (n.kind === 'note') result.push(prefix ? `${prefix}/${n.name}` : n.name)
+    else if (n.kind === 'dir' && n.children) result.push(...collectNotes(n.children, prefix ? `${prefix}/${n.name}` : n.name))
+  }
+  return result
+}
+
+/** 根据相对路径获取目录节点 */
+function getDirAt(tree: TreeNode[], relDir: string): TreeNode[] {
+  if (!relDir) return tree
+  const parts = relDir.split('/')
+  let current = tree
+  for (const part of parts) {
+    if (part === '.') continue
+    if (part === '..') return [] // 不支持向上
+    const dir = current.find((n) => n.kind === 'dir' && n.name === part)
+    if (!dir?.children) return []
+    current = dir.children
+  }
+  return current
+}
+
+/** 综合补全：[[双链]] 笔记名 + 相对路径 + 锚点 */
+function traceCompletions(context: CompletionContext): CompletionResult | null {
+  // 1. [[双链]] 笔记名补全
+  const wikilink = context.matchBefore(/\[\[[^\]]*$/)
+  if (wikilink) {
+    const prefix = wikilink.text.slice(2) // 去掉 [[
+    const tree = useTreeStore()
+    const nodes = tree.trees[props.vault] ?? []
+    const notes = collectNotes(nodes)
+    // 排除当前笔记自身（用完整路径比较，避免不同目录下同名笔记被误排除）
+    const currentRel = props.notePath.replace(/\.md$/i, '').toLowerCase()
+    const filtered = notes
+      .filter((n) => n.toLowerCase() !== currentRel)
+      .filter((n) => !prefix || n.toLowerCase().includes(prefix.toLowerCase()))
+    if (filtered.length === 0) return null
+    return {
+      from: wikilink.from + 2,
+      options: filtered.map((n) => ({ label: n, detail: '笔记' }))
+    }
+  }
+
+  // 2. 相对路径链接补全：[text](./path) 或 [text](../path)
+  const pathLink = context.matchBefore(/\]\(\.\/?[^)]*$|\]\(\.\.\/[^)]*$/)
+  if (pathLink) {
+    const refStart = pathLink.text.indexOf('(') + 1
+    const ref = pathLink.text.slice(refStart)
+    const lastSlash = ref.lastIndexOf('/')
+    const dirPart = lastSlash >= 0 ? ref.slice(0, lastSlash + 1) : ''
+    const prefix = lastSlash >= 0 ? ref.slice(lastSlash + 1) : ref
+
+    const tree = useTreeStore()
+    const nodes = tree.trees[props.vault] ?? []
+    // 计算当前笔记所在目录
+    const noteDir = props.notePath.includes('/') ? props.notePath.slice(0, props.notePath.lastIndexOf('/')) : ''
+    // 解析相对路径到库内目录
+    const resolvedDir = resolveRelDir(noteDir, dirPart)
+    const dirNodes = getDirAt(nodes, resolvedDir)
+
+    const options: { label: string; detail: string; apply: string }[] = []
+    for (const n of dirNodes) {
+      if (n.name.startsWith('.')) continue
+      if (n.kind === 'dir') {
+        if (!prefix || n.name.toLowerCase().startsWith(prefix.toLowerCase())) {
+          options.push({ label: n.name + '/', detail: '文件夹', apply: n.name + '/' })
+        }
+      } else if (n.kind === 'note') {
+        if (!prefix || n.name.toLowerCase().startsWith(prefix.toLowerCase())) {
+          options.push({ label: n.name + '.md', detail: '笔记', apply: n.name + '.md' })
+        }
+      }
+    }
+    if (options.length === 0) return null
+    return {
+      from: pathLink.from + refStart,
+      options
+    }
+  }
+
+  // 3. 锚点补全
+  const anchor = context.matchBefore(/#[\w\u4e00-\u9fff-]*$/)
+  if (anchor) {
+    const prefix = anchor.text.slice(1)
+    const doc = context.state.doc.toString()
+    const items: { label: string; detail: string }[] = []
+    const seen = new Map<string, number>()
+    const headingRe = /^(#{1,6})\s+(.+)$/gm
+    let m: RegExpExecArray | null
+    while ((m = headingRe.exec(doc))) {
+      let id = slugify(m[2])
+      const count = seen.get(id) ?? 0
+      seen.set(id, count + 1)
+      if (count > 0) id = `${id}-${count}`
+      items.push({ label: id, detail: '标题' })
+    }
+    const idRe = /\bid="([^"]+)"/g
+    while ((m = idRe.exec(doc))) {
+      if (!seen.has(m[1])) {
+        seen.set(m[1], 0)
+        items.push({ label: m[1], detail: '锚点' })
+      }
+    }
+    const filtered = prefix ? items.filter((o) => o.label.startsWith(prefix)) : items
+    if (filtered.length === 0) return null
+    return { from: anchor.from + 1, options: filtered }
+  }
+
+  return null
+}
+
+/** 解析相对路径到库内目录 */
+function resolveRelDir(noteDir: string, rel: string): string {
+  const parts = noteDir ? noteDir.split('/') : []
+  for (const seg of rel.split('/')) {
+    if (!seg || seg === '.') continue
+    if (seg === '..') { if (parts.length > 0) parts.pop() }
+    else parts.push(seg)
+  }
+  return parts.join('/')
+}
 
 const traceTheme = EditorView.theme({
   '&': {
@@ -106,7 +240,8 @@ function createView(initialDoc: string): EditorView {
         if (!update.docChanged) return
         if (applyingExternal) return
         emit('update:modelValue', update.state.doc.toString())
-      })
+      }),
+      autocompletion({ override: [traceCompletions] })
     ]
   })
   return new EditorView({ state, parent: container.value! })

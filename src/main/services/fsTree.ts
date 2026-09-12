@@ -164,6 +164,35 @@ export class FsTreeService {
     }
   }
 
+  /** 按笔记名解析库内路径（大小写不敏感，取第一个匹配） */
+  resolveByName(vault: string, name: string): { ok: boolean; path?: string; error?: string } {
+    try {
+      const target = name.toLowerCase()
+      const found = this.findByName(this.getVaultPath(vault), '', target)
+      return found ? { ok: true, path: found } : { ok: false, error: '笔记不存在' }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  private findByName(absDir: string, rel: string, target: string): string | null {
+    for (const e of fs.readdirSync(absDir, { withFileTypes: true })) {
+      if (e.name.startsWith('.')) continue
+      const childRel = rel ? `${rel}/${e.name}` : e.name
+      if (e.isFile() && e.name.toLowerCase().endsWith('.md')) {
+        const leaf = noteDisplayName(e.name).toLowerCase()
+        if (leaf === target) return childRel
+        // 支持路径形式的双链，如 [[dir_02/for_test_02]]
+        if (target.includes('/') && childRel.replace(/\.md$/i, '').toLowerCase() === target) return childRel
+      }
+      if (e.isDirectory()) {
+        const found = this.findByName(path.join(absDir, e.name), childRel, target)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
   /**
    * 写入笔记。expectedHash 为渲染进程最后读到的磁盘内容 hash，
    * 不一致说明文件已被外部修改，拒绝覆盖以防丢失数据。

@@ -318,6 +318,26 @@ describe('目录与笔记', () => {
     expect(content.ok && content.content).toContain('http://x.com/img.png')
   })
 
+  it('resolveByName 按名称查找笔记', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    fsTree.createNote('库', '', '笔记A')
+    fsTree.createDir('库', '', '子')
+    fsTree.createNote('库', '子', '笔记B')
+    // 大小写不敏感
+    const r1 = fsTree.resolveByName('库', '笔记a')
+    expect(r1.ok && r1.path).toBe('笔记A.md')
+    // 子目录中的笔记
+    const r2 = fsTree.resolveByName('库', '笔记B')
+    expect(r2.ok && r2.path).toBe('子/笔记B.md')
+    // 路径形式双链（如 [[子/笔记B]]）
+    const r3 = fsTree.resolveByName('库', '子/笔记B')
+    expect(r3.ok && r3.path).toBe('子/笔记B.md')
+    // 不存在的笔记
+    const r4 = fsTree.resolveByName('库', '不存在')
+    expect(r4.ok).toBe(false)
+  })
+
   it('listTree 返回排序后的嵌套树', () => {
     const { vaults, fsTree } = buildStack()
     vaults.create('库')
