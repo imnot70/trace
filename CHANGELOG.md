@@ -2,12 +2,11 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
-<<<<<<< Updated upstream
-=======
 ## [未发布]
 
 ### 新功能
 
+- **文件/文件夹移动**（库内）：侧栏树和网格卡片的 ⋮ 菜单新增「移动到…」，弹出文件夹选择对话框，支持将笔记或文件夹移动到库内任意位置。复用重命名校验管道，含目标重名检查、深度限制（6层）、防止移到自身内部等校验。移动后自动改写笔记内的相对路径引用（图片、链接），引用目标同在移动范围内时跳过。
 - **内置 Git**（FR-2.8.13）：应用随安装包内置精简 Git（Windows MinGit busybox / Linux dugite-native），系统未安装 Git 也能完成云端同步。
   - 交付：构建时 `npm run fetch:git` 下载并按 SHA256 校验，解压到 `vendor/git/<平台>/`（不入库）由 electron-builder 收进 `resources/git/`；安装包自身压缩载荷，**运行期零解压代码**。实测 Windows 安装包 125.0 → **144.6 MB（+15.7%）**。
   - 检测：用户触发关联或同步时才检测系统 Git 是否可用，不在启动时打扰；不可用时弹窗引导选择内置 Git 或给出平台安装指引。
@@ -28,7 +27,6 @@
 
 - **内置 Git 设计定稿并实施**（`requirements/2026-09-10_bundled-git/bundled-git-design.md`）：D-BG1–D-BG11。关键决策：交付方式选**随包内置**（D-BG2）；打包形态由「运行时解压」**修订为 build 时解压**（D-BG8）——实测安装包增量更小（+19.6 vs +32.9 MB）、且省 33 MB 磁盘与一套解压代码；二进制不入库（D-BG11）。isomorphic-git 因 rebase 支持不完整仍不采用（D-BG9）。
 
->>>>>>> Stashed changes
 ## [0.3.8] - 2026-09-09
 
 ### 其他

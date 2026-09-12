@@ -54,6 +54,8 @@ function handleMenuCommand(cmd: string): void {
   if (cmd === 'rename') {
     if (isDir.value) actions.renameDir(props.vault, props.node.path, props.node.name)
     else actions.renameNote(props.vault, props.node.path, props.node.name)
+  } else if (cmd === 'move') {
+    actions.moveNode(props.vault, props.node.path, props.node.kind, props.node.name)
   } else if (cmd === 'delete') {
     if (isDir.value) void actions.deleteDir(props.vault, props.node.path, props.node.name)
     else void actions.deleteNote(props.vault, props.node.path, props.node.name)
@@ -109,12 +111,14 @@ function handlePlusCommand(cmd: string): void {
           <template #dropdown>
             <el-dropdown-menu>
               <template v-if="isDir">
+                <el-dropdown-item command="move">移动到…</el-dropdown-item>
                 <el-dropdown-item command="rename">重命名</el-dropdown-item>
                 <el-dropdown-item command="delete" divided class="danger-item"
                   >删除文件夹</el-dropdown-item
                 >
               </template>
               <template v-else>
+                <el-dropdown-item command="move">移动到…</el-dropdown-item>
                 <el-dropdown-item command="rename">重命名</el-dropdown-item>
                 <el-dropdown-item v-if="favorited" command="unfavorite" divided
                   >取消收藏</el-dropdown-item

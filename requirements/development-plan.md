@@ -12,11 +12,7 @@
 | 组件库 | Element Plus | 树、下拉菜单、对话框、右键菜单齐全，中文文档好 |
 | 编辑器 | CodeMirror 6（`@codemirror/lang-markdown`） | 源码模式编辑 |
 | 预览渲染 | markdown-it + KaTeX + highlight.js | `$...$` 行内公式、`$$...$$` 块级公式 |
-<<<<<<< Updated upstream
-| Git | 系统 git + simple-git | 启动时检测 git 是否安装，缺失时引导安装 |
-=======
 | Git | 系统 git + simple-git；内置 Git（FR-2.8.13，见 [bundled-git-design.md](2026-09-10_bundled-git/bundled-git-design.md)） | 触发关联/同步时检测：优先系统 git，未安装时使用内置 git |
->>>>>>> Stashed changes
 | GitHub API | octokit（REST） | 校验 Token、列出/创建远程仓库 |
 | 凭据存储 | Electron `safeStorage` | Windows DPAPI / macOS Keychain / Linux libsecret |
 | 文件监听 | chokidar | 感知 git pull / 用户在应用外的改动 |

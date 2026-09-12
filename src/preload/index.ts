@@ -25,6 +25,7 @@ const api: TraceApi = {
   createDir: (vault, parentPath, name) => ipcRenderer.invoke('dir:create', vault, parentPath, name),
   createNote: (vault, parentPath, name) => ipcRenderer.invoke('note:create', vault, parentPath, name),
   renameNode: (vault, path, kind, newName) => ipcRenderer.invoke('node:rename', vault, path, kind, newName),
+  moveNode: (vault, srcPath, kind, destParentPath) => ipcRenderer.invoke('node:move', vault, srcPath, kind, destParentPath),
   deleteNode: (vault, path, kind) => ipcRenderer.invoke('node:delete', vault, path, kind),
   readNote: (vault, path) => ipcRenderer.invoke('note:read', vault, path),
   writeNote: (vault, path, content, expectedHash) =>

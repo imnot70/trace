@@ -5,9 +5,11 @@ import { useTreeStore } from './stores/tree'
 import { useEditorStore } from './stores/editor'
 import { useTrashStore } from './stores/trash'
 import { useNameDialog } from './stores/nameDialog'
+import { useMoveDialog } from './stores/moveDialog'
 import { useNoteActions } from './composables/actions'
 import SideBar from './components/SideBar.vue'
 import NameDialog from './components/NameDialog.vue'
+import MoveDialog from './components/MoveDialog.vue'
 import GitAssociateDialog from './components/GitAssociateDialog.vue'
 import WelcomeView from './views/WelcomeView.vue'
 import EditorView from './views/EditorView.vue'
@@ -42,11 +44,12 @@ function onRailKeydown(e: KeyboardEvent): void {
 
 // ---------- 全局快捷键（速查表见 src/renderer/src/config/shortcuts.ts 与设置 → 通用） ----------
 const nameDialog = useNameDialog()
+const moveDialog = useMoveDialog()
 const noteActions = useNoteActions()
 
 /** 对话框 / 弹窗打开时跳过全局键，避免劫持输入与确认操作 */
 function hasModalOpen(): boolean {
-  return nameDialog.visible || !!document.querySelector('.el-message-box__wrapper, .el-overlay:not([style*="display: none"])')
+  return nameDialog.visible || moveDialog.visible || !!document.querySelector('.el-message-box__wrapper, .el-overlay:not([style*="display: none"])')
 }
 
 function onGlobalKeydown(e: KeyboardEvent): void {
@@ -222,5 +225,6 @@ onMounted(async () => {
     </div>
   </div>
   <NameDialog />
+  <MoveDialog />
   <GitAssociateDialog />
 </template>

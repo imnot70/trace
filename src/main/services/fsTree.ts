@@ -111,6 +111,45 @@ export class FsTreeService {
     }
   }
 
+  moveNode(
+    vault: string,
+    srcPath: string,
+    kind: 'dir' | 'note',
+    destParentPath: string
+  ): { ok: boolean; error?: string; newPath?: string } {
+    try {
+      const vaultPath = this.getVaultPath(vault)
+      const srcAbs = resolveWithin(vaultPath, srcPath)
+      if (!fs.existsSync(srcAbs)) return { ok: false, error: '源路径不存在' }
+      const destAbs = resolveWithin(vaultPath, destParentPath || '')
+      if (!fs.existsSync(destAbs)) return { ok: false, error: '目标文件夹不存在' }
+      if (kind === 'dir') {
+        const srcNorm = srcPath.endsWith('/') ? srcPath : srcPath + '/'
+        if (destParentPath === srcPath || destParentPath.startsWith(srcNorm)) {
+          return { ok: false, error: '不能移动到自身内部' }
+        }
+        const depthAfter = relDepth(destParentPath) + this.subtreeDepth(srcAbs)
+        if (depthAfter > MAX_DIR_DEPTH) return { ok: false, error: '移动后将超过最大层数限制' }
+      }
+      const baseName = kind === 'note' ? noteFileName(path.basename(srcPath)) : path.basename(srcPath)
+      const invalid =
+        checkNameFormat(kind === 'note' ? noteDisplayName(baseName) : baseName, kind) ??
+        checkDuplicate(
+          kind === 'note' ? noteDisplayName(baseName) : baseName,
+          kind === 'dir' ? this.dirNames(destAbs) : this.noteNames(destAbs),
+          kind
+        )
+      if (invalid) return { ok: false, error: invalid }
+      const newRel = destParentPath ? `${destParentPath}/${baseName}` : baseName
+      if (newRel === srcPath) return { ok: true, newPath: newRel }
+      fs.renameSync(srcAbs, path.join(destAbs, baseName))
+      this.rewriteRefs(vault, vaultPath, srcPath, kind, newRel)
+      return { ok: true, newPath: newRel }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
   deleteNode(vault: string, relPath: string, kind: 'dir' | 'note'): { ok: boolean; error?: string } {
     return this.trash.put({ vault, path: toRelPath(this.getVaultPath(vault), resolveWithin(this.getVaultPath(vault), relPath)), kind })
   }
@@ -179,6 +218,86 @@ export class FsTreeService {
     const abs = resolveWithin(vaultPath, parentPath || '')
     if (!fs.existsSync(abs)) throw new Error('父目录不存在')
     return abs
+  }
+
+  private subtreeDepth(absDir: string): number {
+    let maxChild = 0
+    for (const e of fs.readdirSync(absDir, { withFileTypes: true })) {
+      if (e.isDirectory() && !e.name.startsWith('.')) {
+        const d = this.subtreeDepth(path.join(absDir, e.name))
+        if (d > maxChild) maxChild = d
+      }
+    }
+    return maxChild + 1
+  }
+
+  /** 移动后改写笔记内的相对路径引用 */
+  private rewriteRefs(vault: string, vaultPath: string, srcPath: string, kind: 'dir' | 'note', newPath: string): void {
+    try {
+      if (kind === 'note') {
+        this.rewriteNoteRefs(vaultPath, srcPath, newPath, srcPath)
+      } else {
+        this.walkNotes(path.join(vaultPath, newPath), (noteAbs) => {
+          const noteNewRel = toRelPath(vaultPath, noteAbs)
+          const noteOldRel = srcPath + noteNewRel.slice(newPath.length)
+          this.rewriteNoteRefs(vaultPath, noteOldRel, noteNewRel, srcPath)
+        })
+      }
+    } catch { /* 不阻塞移动 */ }
+  }
+
+  /** 改写单个笔记内的相对路径引用 */
+  private rewriteNoteRefs(vaultPath: string, oldNoteRel: string, newNoteRel: string, movedRoot: string): void {
+    const newAbs = path.join(vaultPath, newNoteRel)
+    let content: string
+    try { content = fs.readFileSync(newAbs, 'utf-8') } catch { return }
+
+    const oldDir = path.posix.dirname(oldNoteRel)
+    const movedNorm = movedRoot.endsWith('/') ? movedRoot : movedRoot + '/'
+
+    const rewritten = content.replace(
+      /(!?\[[^\]]*\]\(([^)]+)\))|(<img[^>]*\ssrc="([^"]+)")/g,
+      (full, _md, mdRef: string | undefined, _html, htmlRef: string | undefined) => {
+        const ref = mdRef ?? htmlRef
+        if (!ref) return full
+        if (/^[a-z][a-z0-9+.-]*:/i.test(ref) || ref.startsWith('/') || ref.startsWith('#')) return full
+
+        const oldTargetRel = this.resolvePosix(oldDir, ref)
+        if (!oldTargetRel || (oldTargetRel.startsWith(movedNorm) || oldTargetRel === movedRoot)) return full
+
+        const oldTargetAbs = path.join(vaultPath, oldTargetRel)
+        if (!fs.existsSync(oldTargetAbs)) return full
+
+        const newRef = relReference(newNoteRel, oldTargetRel)
+        return full.replace(ref, newRef)
+      }
+    )
+
+    if (rewritten !== content) {
+      try { fs.writeFileSync(newAbs, rewritten, 'utf-8') } catch { /* skip */ }
+    }
+  }
+
+  /** POSIX 风格路径解析（渲染进程无 node:path，主进程自己实现） */
+  private resolvePosix(fromDir: string, ref: string): string | null {
+    const parts = [...fromDir.split('/'), ...ref.split('/')]
+    const stack: string[] = []
+    for (const seg of parts) {
+      if (!seg || seg === '.') continue
+      if (seg === '..') { if (stack.length > 0) stack.pop() }
+      else stack.push(seg)
+    }
+    return stack.length > 0 ? stack.join('/') : null
+  }
+
+  /** 递归遍历目录下所有 .md 文件 */
+  private walkNotes(absDir: string, cb: (abs: string) => void): void {
+    for (const e of fs.readdirSync(absDir, { withFileTypes: true })) {
+      if (e.name.startsWith('.')) continue
+      const child = path.join(absDir, e.name)
+      if (e.isDirectory()) this.walkNotes(child, cb)
+      else if (e.isFile() && e.name.toLowerCase().endsWith('.md')) cb(child)
+    }
   }
 
   private dirNames(absDir: string): string[] {

@@ -114,8 +114,6 @@ Trace（中文名「笔迹」）是一款**本地优先**的轻量级 Markdown �
 - FR-2.8.10 网络健壮性：同步等网络操作有 60 秒超时上限（超时即中止并提示，不无限等待）；常见网络故障（DNS 解析失败、无法连接、超时、连接中断、令牌失效、仓库不存在）以友好的中文提示呈现，原始报错仅记录日志文件。
 - FR-2.8.11 网络代理：用户可为 Git 同步配置 HTTP/HTTPS 代理（地址 + 端口 + 可选凭据），配置存应用数据目录，仅在 git 调用时以 `-c http.proxy=…` 注入（与令牌同策略，不写入 `.git/config`）；提供「测试连接」反馈可达性（对 github.com 发起轻量 ls-remote，15 秒超时）。
 - FR-2.8.12 同步入口：库齿轮菜单「立即同步」与编辑卡「同步」按钮；同步期间按钮呈加载态且不可重复触发。
-<<<<<<< Updated upstream
-=======
 - FR-2.8.13 内置 Git：应用随安装包附带平台对应的精简 Git 二进制（Windows MinGit busybox 版 / macOS·Linux Dugite-native）。
   - 交付方式：**随安装包内置**（非按需下载）；构建时由 `npm run fetch:git` 下载并按 SHA256 校验，解压到 `vendor/git/<platform>/`（不入库），electron-builder 收进 `resources/git/`，由安装包自身压缩载荷（实测 Windows 安装包 125.0 → 144.6 MB，增量 **+19.6 MB / +15.7%**）。
   - 运行时定位：零解压逻辑，按候选路径探测可执行文件（Windows `cmd/git.exe`、Linux `bin/git`）；不随应用引入解压依赖；安装后磁盘占用 +82 MB。
@@ -125,7 +123,6 @@ Trace（中文名「笔迹」）是一款**本地优先**的轻量级 Markdown �
   - 与 GitHub 登录解耦：登录（FR-2.8.1）通过 REST API 完成，不需要 git 二进制，登录流程不受影响。
   - 设置页信息：通用标签页展示当前 Git 来源（系统/内置）及版本号。
   - 详见 [bundled-git-design.md](2026-09-10_bundled-git/bundled-git-design.md)。
->>>>>>> Stashed changes
 
 ### 2.9 界面布局与外观
 

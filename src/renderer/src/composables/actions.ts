@@ -1,5 +1,6 @@
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { useNameDialog } from '../stores/nameDialog'
+import { useMoveDialog } from '../stores/moveDialog'
 import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
 import { useTrashStore } from '../stores/trash'
@@ -8,6 +9,7 @@ import { useAppStore } from '../stores/app'
 /** 侧栏与树节点的全部操作（创建/重命名/删除/收藏/git） */
 export function useNoteActions() {
   const dialog = useNameDialog()
+  const moveDialog = useMoveDialog()
   const tree = useTreeStore()
   const editor = useEditorStore()
   const trash = useTrashStore()
@@ -177,6 +179,25 @@ export function useNoteActions() {
     })
   }
 
+  function moveNode(vault: string, srcPath: string, kind: 'dir' | 'note', name: string): void {
+    moveDialog.open({
+      vault,
+      srcPath,
+      kind,
+      name,
+      action: async (destParentPath) => {
+        const result = await window.trace.moveNode(vault, srcPath, kind, destParentPath)
+        if (result.ok && result.newPath) {
+          editor.handleNodeRenamed(vault, srcPath, result.newPath, kind, name)
+          await refreshVault(vault)
+          await tree.loadFavorites()
+          await tree.loadRecents()
+        }
+        return result
+      }
+    })
+  }
+
   async function deleteNote(vault: string, path: string, name: string): Promise<void> {
     try {
       await ElMessageBox.confirm(`确定删除笔记「${name}」吗？删除后将移入回收站。`, '删除笔记', {
@@ -231,6 +252,7 @@ export function useNoteActions() {
     deleteDir,
     createNote,
     renameNote,
+    moveNode,
     deleteNote,
     toggleFavorite,
     removeRecent,
