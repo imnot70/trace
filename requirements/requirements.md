@@ -65,7 +65,7 @@ Trace（中文名「笔迹」）是一款**本地优先**的轻量级 Markdown �
 
 ### 2.4 笔记编辑器
 
-- FR-2.4.1 形态：左侧源码编辑（CodeMirror 6）+ 右侧实时渲染预览，中间分隔条可拖拽调整比例（20%–80%），双向滚动按源码行号映射联动（见 preview-enhancement-design.md）。
+- FR-2.4.1 形态：左侧源码编辑（CodeMirror 6）+ 右侧实时渲染预览，中间分隔条可拖拽调整比例（20%–80%），双向滚动按源码行号映射联动（见 [preview-enhancement-design.md](2026-09-09_preview-enhancement/preview-enhancement-design.md)）。
 - FR-2.4.7 内嵌 HTML：笔记中的内嵌 HTML 在预览中渲染（markdown-it `html: true`）；渲染输出经 DOMPurify 白名单净化（剥除脚本 / 样式注入 / base / 表单 / 事件属性，防同步投毒笔记的视觉钓鱼与导航劫持），CSP 追加 `form-action 'none'`。
 - FR-2.4.8 链接跳转：预览中链接（markdown 与原始 HTML 两种来源）统一事件委托处理——外部 http(s) 链接经系统浏览器打开；指向库内笔记的相对路径链接（`./笔记.md` 等）在应用内直接打开；断链渲染为删除线样式并轻提示。该"相对引用解析 → 校验 → 打开"管道与二期 wiki 双链共享。
 - FR-2.4.2 语法支持：完整 Markdown + LaTeX 公式（行内 `$...$`、块级 `$$...$$`，KaTeX 渲染）+ 代码块语法高亮（常用 16 种语言）+ GFM 任务列表（`- [x]` / `- [ ]`，只读复选框）。
@@ -122,7 +122,7 @@ Trace（中文名「笔迹」）是一款**本地优先**的轻量级 Markdown �
   - 用户选择持久化：弹窗选择后记住用户偏好（`settings.json` 的 `gitSource` 字段），后续同步不再重复弹窗；设置页提供「重置选择」按钮。
   - 与 GitHub 登录解耦：登录（FR-2.8.1）通过 REST API 完成，不需要 git 二进制，登录流程不受影响。
   - 设置页信息：通用标签页展示当前 Git 来源（系统/内置）及版本号。
-  - 详见 `requirements/bundled-git-design.md`。
+  - 详见 [bundled-git-design.md](2026-09-10_bundled-git/bundled-git-design.md)。
 
 ### 2.9 界面布局与外观
 

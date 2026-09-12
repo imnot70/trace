@@ -10,12 +10,12 @@
 | --- | --- | --- |
 | [requirements.md](requirements.md) | 产品需求文档（PRD），当前形态的权威描述；随版本同步更新（当前覆盖至 FR-2.8.13 / FR-2.10.4） | ✅ 基线文档，FR-2.8.13 为未发布新增 |
 | [development-plan.md](development-plan.md) | 初版开发计划：技术选型、架构、里程碑 M0–M6、风险对策 | ✅ M0–M6 已全部完成（v1/v0.2.0 交付）；二期 Backlog 部分被后续设计文档细化 |
-| [plugin-design.md](plugin-design.md) | 插件系统 v2 设计：独立插件进程 + 能力网关 + require 白名单 + 市场分发 | 📐 设计已确认（D1–D5 拍板），**未实施**（目标 0.4.0） |
-| [vault-grid-navigation-design.md](vault-grid-navigation-design.md) | 笔记库网格导航设计：双击钻入库内容 + 面包屑 + 三卡片区分 | ✅ **P1 + P2 全部实施**（P1 已发布 v0.3.5，P2 已随 v0.3.6 发布） |
-| [preview-enhancement-design.md](preview-enhancement-design.md) | 预览增强设计：HTML 内嵌（DOMPurify 净化）、a 标签跳转（外部 + 库内笔记）、行级双向同步滚动 | ✅ **已实施**（2026-09-09 发布 v0.3.7） |
-| [bundled-git-design.md](bundled-git-design.md) | 内置 Git 设计与实施：捆绑 MinGit/dugite + build 时解压 + 触发时检测 + 条件弹窗；含实测体积、决策记录与验证清单 | ✅ **已实施**（Windows 已验证，Linux 待 CI）｜D-BG1–D-BG11 |
-| [handoff-2026-09-07.md](handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
-| [handoff-2026-09-08.md](handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
+| [plugin-design.md](2026-09-08_plugin-system/plugin-design.md) | 插件系统 v2 设计：独立插件进程 + 能力网关 + require 白名单 + 市场分发 | 📐 设计已确认（D1–D5 拍板），**未实施**（目标 0.4.0） |
+| [vault-grid-navigation-design.md](2026-09-08_vault-grid-navigation/vault-grid-navigation-design.md) | 笔记库网格导航设计：双击钻入库内容 + 面包屑 + 三卡片区分 | ✅ **P1 + P2 全部实施**（P1 已发布 v0.3.5，P2 已随 v0.3.6 发布） |
+| [preview-enhancement-design.md](2026-09-09_preview-enhancement/preview-enhancement-design.md) | 预览增强设计：HTML 内嵌（DOMPurify 净化）、a 标签跳转（外部 + 库内笔记）、行级双向同步滚动 | ✅ **已实施**（2026-09-09 发布 v0.3.7） |
+| [bundled-git-design.md](2026-09-10_bundled-git/bundled-git-design.md) | 内置 Git 设计与实施：捆绑 MinGit/dugite + build 时解压 + 触发时检测 + 条件弹窗；含实测体积、决策记录与验证清单 | ✅ **已实施**（Windows 已验证，Linux 待 CI）｜D-BG1–D-BG11 |
+| [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
+| [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
 
 ---
@@ -24,7 +24,7 @@
 
 ### 待发版（v0.3.8 之后）
 
-- **内置 Git**（FR-2.8.13）：随安装包内置精简 Git（Windows MinGit busybox / Linux dugite-native），系统未装 Git 也能直接同步。触发关联/同步时检测，不可用时弹窗引导；偏好持久化到 `gitSource`，设置页可重置并展示系统/内置版本。二进制不入库（`npm run fetch:git` 获取 + SHA256 校验）。**实测安装包 125.0 → 144.6 MB（+15.7%）**。详见 [bundled-git-design.md](bundled-git-design.md)。
+- **内置 Git**（FR-2.8.13）：随安装包内置精简 Git（Windows MinGit busybox / Linux dugite-native），系统未装 Git 也能直接同步。触发关联/同步时检测，不可用时弹窗引导；偏好持久化到 `gitSource`，设置页可重置并展示系统/内置版本。二进制不入库（`npm run fetch:git` 获取 + SHA256 校验）。**实测安装包 125.0 → 144.6 MB（+15.7%）**。详见 [bundled-git-design.md](2026-09-10_bundled-git/bundled-git-design.md)。
 
 ### v0.1.0 / v0.2.0 基线（PRD 全部需求）
 
@@ -90,17 +90,17 @@
 
 ## 二、已记录的已知问题（待处理）
 
-- 页内锚点跳转未实现（`[jump](#tag1)` 点击无动作）——归入双链/大纲批次，见 preview-enhancement-design.md 第 5 节
+- 页内锚点跳转未实现（`[jump](#tag1)` 点击无动作）——归入双链/大纲批次，见 [preview-enhancement-design.md](2026-09-09_preview-enhancement/preview-enhancement-design.md) 第 5 节
 
 ## 三、设计已确认（部分已实施）
 
-### 插件系统 v2（目标 0.4.0）— [plugin-design.md](plugin-design.md)
+### 插件系统 v2（目标 0.4.0）— [plugin-design.md](2026-09-08_plugin-system/plugin-design.md)
 
 已拍板：独立插件进程（utilityProcess）+ 能力网关 ｜ 仅 Tier 1 能力（笔记读写 / 事件 / 命令）｜ 全局授权 ｜ GitHub 索引市场 + 本地导入并存 ｜ 版本 0.4.0 = M1 进程隔离 + Tier 1 + 权限确认。
 
 里程碑：M1 进程隔离与能力网关 → M2 `.trace-plugin` 导入导出与设置页增强 → M3 声明式 UI 扩展与类型包 → M4 市场浏览 / 安装 / 更新。
 
-### 笔记库网格导航 — [vault-grid-navigation-design.md](vault-grid-navigation-design.md)
+### 笔记库网格导航 — [vault-grid-navigation-design.md](2026-09-08_vault-grid-navigation/vault-grid-navigation-design.md)
 
 ✅ **P1 + P2 已全部实施**（P1 随 v0.3.5 发布；P2 库卡片双列 + 强调色浅底待发布）。已决议不做：库卡片笔记数统计（懒统计成本高）；空文件夹计数留白。
 
@@ -127,7 +127,7 @@
 
 **已知问题（已记录待处理）**：
 
-- 页内锚点跳转未实现（`[jump](#tag1)` 点击无动作）——`#锚点` 归入双链/大纲批次，见 preview-enhancement-design.md 第 5 节
+- 页内锚点跳转未实现（`[jump](#tag1)` 点击无动作）——`#锚点` 归入双链/大纲批次，见 [preview-enhancement-design.md](2026-09-09_preview-enhancement/preview-enhancement-design.md) 第 5 节
 
 其他已记录的小项：
 

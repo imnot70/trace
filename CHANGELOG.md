@@ -24,7 +24,7 @@
 
 ### 设计/规划
 
-- **内置 Git 设计定稿并实施**（`requirements/bundled-git-design.md`）：D-BG1–D-BG11。关键决策：交付方式选**随包内置**（D-BG2）；打包形态由「运行时解压」**修订为 build 时解压**（D-BG8）——实测安装包增量更小（+19.6 vs +32.9 MB）、且省 33 MB 磁盘与一套解压代码；二进制不入库（D-BG11）。isomorphic-git 因 rebase 支持不完整仍不采用（D-BG9）。
+- **内置 Git 设计定稿并实施**（`requirements/2026-09-10_bundled-git/bundled-git-design.md`）：D-BG1–D-BG11。关键决策：交付方式选**随包内置**（D-BG2）；打包形态由「运行时解压」**修订为 build 时解压**（D-BG8）——实测安装包增量更小（+19.6 vs +32.9 MB）、且省 33 MB 磁盘与一套解压代码；二进制不入库（D-BG11）。isomorphic-git 因 rebase 支持不完整仍不采用（D-BG9）。
 
 ## [0.3.8] - 2026-09-09
 

@@ -2,7 +2,7 @@
 /**
  * 下载并解压内置 Git 到 vendor/git/<platform>/（FR-2.8.13）。
  *
- * 设计要点（详见 requirements/bundled-git-design.md 第 3.5 节）：
+ * 设计要点（详见 requirements/2026-09-10_bundled-git/bundled-git-design.md 第 3.5 节）：
  * - 二进制不入库：`vendor/` 已 gitignore，由本脚本在打包前获取，避免把 ~76 MB 二进制写进 git 历史
  * - 先校验 SHA256 再解压，防供应链篡改（校验失败即中止，fail-closed）
  * - 解压到 `vendor/git/<platform>/`，electron-builder 以 extraResources 原样收进 `resources/git/`；
