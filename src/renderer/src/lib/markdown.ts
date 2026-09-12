@@ -61,6 +61,38 @@ const md = new MarkdownIt({
 
 md.use(texmath, { engine: katex, delimiters: 'dollars', katexOptions: { output: 'html' } })
 
+// [[双链]] 语法：[[笔记名]] 或 [[路径|显示名]]
+md.inline.ruler.push('wikilink', (state, silent) => {
+  const src = state.src
+  const pos = state.pos
+  if (src.charCodeAt(pos) !== 0x5B || src.charCodeAt(pos + 1) !== 0x5B) return false // [[
+  const end = src.indexOf(']]', pos + 2)
+  if (end < 0) return false
+  if (silent) return true
+
+  const inner = src.slice(pos + 2, end)
+  const pipeIdx = inner.indexOf('|')
+  const path = (pipeIdx >= 0 ? inner.slice(0, pipeIdx) : inner).trim()
+  const display = pipeIdx >= 0 ? inner.slice(pipeIdx + 1).trim() : path
+  if (!path) return false
+
+  const token = state.push('wikilink', 'a', 0)
+  token.attrSet('data-wikilink', path)
+  token.attrSet('href', `${path}.md`)
+  token.content = display
+  token.markup = '[[]]'
+  state.pos = end + 2
+  return true
+})
+
+md.renderer.rules.wikilink = (tokens, idx) => {
+  const token = tokens[idx]
+  const href = String(token.attrGet('href') ?? '')
+  const wikilink = String(token.attrGet('data-wikilink') ?? '')
+  const display = token.content
+  return `<a data-wikilink="${escapeHtml(wikilink)}" href="${escapeHtml(href)}">${escapeHtml(display)}</a>`
+}
+
 // 块级 token 注入源码行号（0 基）：供编辑器/预览双向行级滚动同步定位。
 // 仅顶层块（token.map 存在且非 hidden）；嵌套内层不加，查找时取最近前驱块。
 // fence 高亮返回完整 <pre> 字符串时，markdown-it 会绕过 token attrs 渲染——
@@ -113,5 +145,36 @@ md.core.ruler.push('trace_source_line', (state) => {
     }
   }
 })
+
+// 标题 id 生成：供页内锚点跳转和自动补全使用
+export function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\u4e00-\u9fff-]/g, '')
+}
+
+const headingSeen = new Map<string, number>()
+md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
+  const token = tokens[idx]
+  // 提取标题纯文本
+  const inline = tokens[idx + 1]
+  const text = inline?.children?.map((t: { content: string }) => t.content).join('') ?? ''
+  let id = slugify(text)
+  if (id) {
+    const count = headingSeen.get(id) ?? 0
+    headingSeen.set(id, count + 1)
+    if (count > 0) id = `${id}-${count}`
+    token.attrSet('id', id)
+  }
+  return self.renderToken(tokens, idx, options)
+}
+
+// 每次渲染重置 seen set
+const origRender = md.render.bind(md)
+md.render = (src: string, env?: Record<string, unknown>) => {
+  headingSeen.clear()
+  return origRender(src, env)
+}
 
 export { md }

@@ -410,6 +410,8 @@ onBeforeUnmount(() => {
         ref="editorRef"
         :model-value="editor.content"
         :font-size="app.settings.editorFontSize"
+        :vault="editor.current.vault"
+        :note-path="editor.current.path"
         @update:model-value="onEditorUpdate"
         @save="editor.flushSave()"
         @image="(name: string, b64: string) => onImage(name, b64)"

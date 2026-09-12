@@ -14,6 +14,7 @@
 | [preview-enhancement-design.md](2026-09-09_preview-enhancement/preview-enhancement-design.md) | 预览增强设计：HTML 内嵌（DOMPurify 净化）、a 标签跳转（外部 + 库内笔记）、行级双向同步滚动 | ✅ **已实施**（2026-09-09 发布 v0.3.7） |
 | [bundled-git-design.md](2026-09-10_bundled-git/bundled-git-design.md) | 内置 Git 设计与实施：捆绑 MinGit/dugite + build 时解压 + 触发时检测 + 条件弹窗；含实测体积、决策记录与验证清单 | ✅ **已实施**（Windows 已验证，Linux 待 CI）｜D-BG1–D-BG11 |
 | [move-node_design.md](2026-09-12_move-node/move-node_design.md) | 文件/文件夹移动设计（库内）：树形文件夹选择器 + renameNode 校验管道复用 | ✅ **已实施**（待发布） |
+| [wiki-link-anchor_design.md](2026-09-12_wiki-link-anchor/wiki-link-anchor_design.md) | 双链 P1 + 页内锚点 + 锚点补全：`[[笔记名]]` 可点击、标题 id 生成、锚点跳转、`#` 补全 | ✅ **已实施**（待发布） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
@@ -24,6 +25,7 @@
 
 ### 待发版（v0.3.8 之后）
 
+- **`[[双链]]` 引用 + 页内锚点跳转 + 锚点补全**：预览中 `[[笔记名]]` 渲染为可点击链接（按名称全局匹配），断链删除线样式；`[text](#anchor)` 锚点链接可点击跳转；标题自动生成 id；编辑器输入 `#` 补全文档内锚点。详见 [wiki-link-anchor_design.md](2026-09-12_wiki-link-anchor/wiki-link-anchor_design.md)。
 - **文件/文件夹移动**（库内）：侧栏树和网格卡片的 ⋮ 菜单新增「移动到…」，弹出文件夹选择对话框（树形选择器），支持将笔记或文件夹移动到库内任意位置。详见 [move-node_design.md](2026-09-12_move-node/move-node_design.md)。
 - **内置 Git**（FR-2.8.13）：随安装包内置精简 Git（Windows MinGit busybox / Linux dugite-native），系统未装 Git 也能直接同步。触发关联/同步时检测，不可用时弹窗引导；偏好持久化到 `gitSource`，设置页可重置并展示系统/内置版本。二进制不入库（`npm run fetch:git` 获取 + SHA256 校验）。**实测安装包 125.0 → 144.6 MB（+15.7%）**。详见 [bundled-git-design.md](2026-09-10_bundled-git/bundled-git-design.md)。
 
@@ -111,7 +113,7 @@
 
 ### 功能规划（已排期讨论，方案见下）
 
-- **笔记互相引用（wiki 双链）**：语法选型 `[[笔记名]]`（Obsidian 惯例，弃用相对路径链接）。分期：P1 预览渲染可点击链接 + 断链样式（约半天）→ P2 编辑器 `[[` 自动补全 → P3 反向链接与未解析引用列表（与二期全局搜索合并实施）。移动不改写引用的局限在 P3 一并解决
+- **笔记互相引用（wiki 双链）**：~~P1 已实施（预览可点击 + 断链样式）~~。剩余：P2 编辑器 `[[` 自动补全 → P3 反向链接与未解析引用列表（与二期全局搜索合并实施）。移动不改写引用的局限在 P3 一并解决
 
 ### 二期 Backlog（源自 PRD 第 7 节；「插件完整 API 与市场」已由插件 v2 设计承接）
 
@@ -127,12 +129,9 @@
 
 **已知问题（已记录待处理）**：
 
-- 页内锚点跳转未实现（`[jump](#tag1)` 点击无动作）——`#锚点` 归入双链/大纲批次，见 [preview-enhancement-design.md](2026-09-09_preview-enhancement/preview-enhancement-design.md) 第 5 节
-
 其他已记录的小项：
 
 - **编辑器 HTML 标签自动闭合**（用户提出 2026-09-09）：现版 @codemirror/autocomplete（6.20.3）仅有括号闭合，无标签闭合；升级到带 `autoclose()` 的版本或自定义 inputHandler（约半天）；插件化需等插件 v2 的编辑器扩展 API（M3 之后）
-- **锚点 id 自动补全**（用户提出 2026-09-09）：输入 `#` 时提示文档内自定义的 `id="…"` 跳转点——CM6 CompletionSource + 正则提取，难度低（约半天）；与页内锚点导航同批实施才有实际价值
 
 - **网格 / 列表切换**：常用 / 收藏 / 回收站三视图统一的显示形态切换（回收站现保留列表形态即为此预留）
 - 常用网格卡片显示相对时间（如「3 分钟前」）

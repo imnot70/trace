@@ -28,6 +28,7 @@ const api: TraceApi = {
   moveNode: (vault, srcPath, kind, destParentPath) => ipcRenderer.invoke('node:move', vault, srcPath, kind, destParentPath),
   deleteNode: (vault, path, kind) => ipcRenderer.invoke('node:delete', vault, path, kind),
   readNote: (vault, path) => ipcRenderer.invoke('note:read', vault, path),
+  resolveByName: (vault, name) => ipcRenderer.invoke('note:resolveByName', vault, name),
   writeNote: (vault, path, content, expectedHash) =>
     ipcRenderer.invoke('note:write', vault, path, content, expectedHash),
   saveImage: (vault, notePath, fileName, base64) =>

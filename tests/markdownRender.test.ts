@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
 import DOMPurify from 'dompurify'
-import { md } from '../src/renderer/src/lib/markdown'
+import { md, slugify } from '../src/renderer/src/lib/markdown'
 
 // 与生产一致的净化配置（MarkdownPreview.vue）
 const SANITIZE_CONFIG = {
@@ -99,5 +99,48 @@ describe('GFM 任务列表', () => {
   it('非列表上下文的 [x] 不受影响', () => {
     const html = md.render('正文中的 [x] 不是任务项\n')
     expect(html).not.toContain('task-item-checkbox')
+  })
+})
+
+describe('标题 id 生成', () => {
+  it('标题渲染带 id 属性', () => {
+    const html = md.render('# 一级标题\n\n## 二级标题\n')
+    expect(html).toContain('id="一级标题"')
+    expect(html).toContain('id="二级标题"')
+  })
+
+  it('slugify 正确转换', () => {
+    expect(slugify('Hello World')).toBe('hello-world')
+    expect(slugify('中文标题')).toBe('中文标题')
+    expect(slugify('带有 special!@# 字符')).toBe('带有-special-字符')
+  })
+
+  it('同名标题去重追加后缀', () => {
+    const html = md.render('# 重复\n\n## 重复\n\n### 重复\n')
+    expect(html).toContain('id="重复"')
+    expect(html).toContain('id="重复-1"')
+    expect(html).toContain('id="重复-2"')
+  })
+})
+
+describe('[[双链]] 渲染', () => {
+  it('[[笔记名]] 渲染为 data-wikilink 标签', () => {
+    const html = md.render('[[我的笔记]]\n')
+    expect(html).toContain('data-wikilink="我的笔记"')
+    expect(html).toContain('href="我的笔记.md"')
+    expect(html).toContain('我的笔记')
+  })
+
+  it('[[路径|显示名]] 渲染正确', () => {
+    const html = md.render('[[path/to/note|显示名]]\n')
+    expect(html).toContain('data-wikilink="path/to/note"')
+    expect(html).toContain('href="path/to/note.md"')
+    expect(html).toContain('显示名')
+  })
+
+  it('双链标签通过 DOMPurify 净化保留', () => {
+    const html = md.render('[[测试笔记]]\n')
+    const clean = DOMPurify.sanitize(html, SANITIZE_CONFIG)
+    expect(clean).toContain('data-wikilink="测试笔记"')
   })
 })

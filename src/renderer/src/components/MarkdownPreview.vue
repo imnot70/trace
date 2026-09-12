@@ -59,7 +59,23 @@ function rewriteInternalLinks(html: string): string {
     } catch {
       decoded = href
     }
-    if (/^[a-z][a-z0-9+.-]*:/i.test(decoded) || decoded.startsWith('/') || decoded.startsWith('#')) return match
+    // 锚点链接：#开头 → data-internal="#anchor"
+    if (decoded.startsWith('#')) {
+      return match.replace(' href="', ` data-internal="${decoded.replace(/"/g, '&quot;')}" href="`)
+    }
+    if (/^[a-z][a-z0-9+.-]*:/i.test(decoded) || decoded.startsWith('/')) return match
+    // [[双链]] 链接：带 data-wikilink 属性
+    if (match.includes('data-wikilink')) {
+      const wikilink = match.match(/data-wikilink="([^"]*)"/)?.[1] ?? ''
+      if (wikilink) {
+        const resolved = wikilinkResolutions.get(wikilink)
+        if (resolved) {
+          return match.replace(' href="', ` data-internal="${resolved.replace(/"/g, '&quot;')}" href="`)
+        }
+        // 未解析到时标记为断链
+        return match.replace(' href="', ` data-internal="${wikilink.replace(/"/g, '&quot;')}" data-broken href="`)
+      }
+    }
     if (!decoded.toLowerCase().endsWith('.md')) return match
     const rel = resolveRelRef(props.notePath, decoded)
     return match.replace(' href="', ` data-internal="${rel.replace(/"/g, '&quot;')}" href="`)
@@ -79,6 +95,38 @@ function rewriteImages(html: string): string {
         .join('/')}`
     )
   })
+}
+
+// [[双链]] 解析结果缓存：wikilink名 → 库内路径
+const wikilinkResolutions = new Map<string, string>()
+let wikilinkSeq = 0
+
+/** 异步解析所有 [[双链]] 链接，设置 data-internal */
+async function resolveWikilinks(): Promise<void> {
+  const seq = ++wikilinkSeq
+  await nextTick()
+  if (seq !== wikilinkSeq) return
+  const links = rootRef.value?.querySelectorAll('a[data-wikilink]') ?? []
+  for (const link of links) {
+    if (seq !== wikilinkSeq) return
+    const name = link.getAttribute('data-wikilink')
+    if (!name) continue
+    if (wikilinkResolutions.has(name)) {
+      const cached = wikilinkResolutions.get(name)!
+      link.setAttribute('data-internal', cached)
+      link.removeAttribute('data-broken')
+      continue
+    }
+    const result = await window.trace.resolveByName(props.vault, name)
+    if (seq !== wikilinkSeq) return
+    if (result.ok && result.path) {
+      wikilinkResolutions.set(name, result.path)
+      link.setAttribute('data-internal', result.path)
+      link.removeAttribute('data-broken')
+    }
+  }
+  if (seq !== wikilinkSeq) return
+  checkBrokenLinks()
 }
 
 const html = computed(() => {
@@ -155,10 +203,17 @@ defineExpose({ syncToLine, lineAtScrollTop, scrollElement: rootRef })
 function onPreviewClick(e: MouseEvent): void {
   const anchor = (e.target as HTMLElement).closest?.('a')
   if (!anchor) return
-  // 全部阻止默认：应用窗口绝不被链接导航带走
   e.preventDefault()
   const internal = anchor.getAttribute('data-internal')
   if (internal) {
+    // 页内锚点跳转
+    if (internal.startsWith('#')) {
+      const anchorId = decodeURIComponent(internal.slice(1))
+      const target = rootRef.value?.querySelector(`[id="${CSS.escape(anchorId)}"]`)
+      if (target) (target as HTMLElement).scrollIntoView({ behavior: 'smooth' })
+      else ElMessage.warning(`锚点不存在：${anchorId}`)
+      return
+    }
     if (anchor.hasAttribute('data-broken')) {
       ElMessage.warning(`笔记不存在：${internal}`)
       return
@@ -168,27 +223,33 @@ function onPreviewClick(e: MouseEvent): void {
   }
   const href = anchor.getAttribute('href') ?? ''
   if (/^https?:/i.test(href)) {
-    // window.open → 主进程 setWindowOpenHandler → shell.openExternal（系统浏览器）
     window.open(href, '_blank', 'noopener,noreferrer')
   }
-  // 其他（#锚点、mailto: 等）本期不处理，仅阻止默认
 }
 
 // ---------- 断链校验：渲染后异步检查库内链接是否存在，不存在标记删除线 ----------
 let brokenSeq = 0
-watch(
-  html,
-  async () => {
+function checkBrokenLinks(): void {
+  void (async () => {
     await nextTick()
     const seq = ++brokenSeq
     const links = [...(rootRef.value?.querySelectorAll('a[data-internal]:not([data-broken])') ?? [])]
     for (const link of links) {
-      const path = link.getAttribute('data-internal')
-      if (!path) continue
-      const result = await window.trace.readNote(props.vault, path)
-      if (seq !== brokenSeq) return // 渲染已更新，丢弃本轮结果
+      const p = link.getAttribute('data-internal')
+      if (!p || p.startsWith('#')) continue // 跳过锚点
+      const result = await window.trace.readNote(props.vault, p)
+      if (seq !== brokenSeq) return
       if (!result.ok) link.setAttribute('data-broken', '')
     }
+  })()
+}
+
+watch(
+  html,
+  () => {
+    wikilinkResolutions.clear()
+    void resolveWikilinks()
+    checkBrokenLinks()
   },
   { immediate: true }
 )
