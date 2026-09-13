@@ -4,6 +4,7 @@ import { useAppStore, type GridSection } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import { useNoteActions } from '../composables/actions'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
+import { formatRelativeTime } from '../lib/relativeTime'
 import type { TreeNode } from '@shared/types'
 
 /** 卡片网格视图：常用 / 收藏（笔记卡片，单击预览双击编辑）、笔记库（库卡片双击钻入，
@@ -12,7 +13,7 @@ const app = useAppStore()
 const tree = useTreeStore()
 const actions = useNoteActions()
 
-type GridItem = { id?: string; vault: string; path: string; name: string }
+type GridItem = { id?: string; vault: string; path: string; name: string; openedAt?: string }
 type VaultCard = { id?: string; name: string; description?: string }
 
 const SECTION_TITLE: Record<GridSection, string> = {
@@ -534,8 +535,13 @@ watch(section, () => {
           </div>
           <div class="note-card-excerpt">{{ excerpts[`${item.vault}::${item.path}`] ?? '' }}</div>
           <div class="note-card-meta">
-            <span>{{ item.vault }}</span>
-            <span v-if="dirOf(item.path)">/{{ dirOf(item.path) }}</span>
+            <template v-if="section === 'recents' && item.openedAt">
+              {{ formatRelativeTime(item.openedAt) }}
+            </template>
+            <template v-else>
+              <span>{{ item.vault }}</span>
+              <span v-if="dirOf(item.path)">/{{ dirOf(item.path) }}</span>
+            </template>
           </div>
         </div>
       </el-tooltip>
