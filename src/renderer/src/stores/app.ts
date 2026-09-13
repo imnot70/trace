@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import type { AppSettings } from '@shared/types'
 import { useTreeStore } from './tree'
+import { THEME_PRESETS, buildThemeCss } from '../styles/presets'
 
 /** 卡片网格视图的区块类型 */
 export type GridSection = 'recents' | 'favorites' | 'vaults'
@@ -18,6 +19,7 @@ export type ActiveView =
 const DEFAULT_SETTINGS: AppSettings = {
   workspaceRoot: '',
   theme: 'system',
+  themePreset: 'default',
   editorFontSize: 15,
   autoSave: true,
   zenHideTopbar: false,
@@ -178,6 +180,21 @@ export const useAppStore = defineStore('app', {
         (this.settings.theme === 'system' && prefersDark())
       document.documentElement.classList.toggle('dark', dark)
       document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+      // 注入预设主题包 CSS 变量覆盖
+      const presetId = this.settings.themePreset ?? 'default'
+      let el = document.getElementById('trace-theme-preset')
+      if (presetId === 'default') {
+        if (el) el.textContent = ''
+        return
+      }
+      const preset = THEME_PRESETS.find((p) => p.id === presetId)
+      if (!preset) return
+      if (!el) {
+        el = document.createElement('style')
+        el.id = 'trace-theme-preset'
+        document.head.appendChild(el)
+      }
+      el.textContent = buildThemeCss(preset)
     },
     async updateSettings(patch: Partial<AppSettings>): Promise<void> {
       this.settings = { ...this.settings, ...patch }

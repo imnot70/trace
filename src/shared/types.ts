@@ -81,6 +81,7 @@ export type ThemeOption = 'light' | 'dark' | 'system'
 export interface AppSettings {
   workspaceRoot: string
   theme: ThemeOption
+  themePreset: string
   editorFontSize: number
   autoSave: boolean
   /** 专注模式下隐藏顶部信息栏（面包屑 / Git 状态 / 视图开关，悬停编辑卡顶部可临时显示） */

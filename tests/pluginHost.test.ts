@@ -38,6 +38,7 @@ beforeEach(() => {
   settings = new JsonStore<AppSettings>(path.join(tmp, 'settings.json'), {
     workspaceRoot: tmp,
     theme: 'system',
+    themePreset: 'default',
     editorFontSize: 15,
     autoSave: true,
     zenHideTopbar: false,

@@ -9,6 +9,7 @@ import { useEditorStore } from '../stores/editor'
 import type { ThemeOption } from '@shared/types'
 import { normalizeAttachDir, normalizeProxyUrl } from '@shared/validate'
 import { SHORTCUT_GROUPS } from '../config/shortcuts'
+import { THEME_PRESETS } from '../styles/presets'
 
 const app = useAppStore()
 const git = useGitStore()
@@ -340,6 +341,37 @@ async function resetGitSource(): Promise<void> {
               </el-radio-button>
             </el-radio-group>
           </div>
+          <div class="setting-row">
+            <span class="setting-label">配色</span>
+            <div class="theme-preset-grid">
+              <div
+                class="theme-preset-card"
+                :class="{ active: (app.settings.themePreset ?? 'default') === 'default' }"
+                @click="app.updateSettings({ themePreset: 'default' })"
+              >
+                <div class="preset-swatches">
+                  <span class="swatch" style="background: #ffffff; border: 1px solid #e4e7ec" />
+                  <span class="swatch" style="background: #4078d3" />
+                  <span class="swatch" style="background: #d34850" />
+                </div>
+                <span class="preset-name">Trace</span>
+              </div>
+              <div
+                v-for="preset in THEME_PRESETS"
+                :key="preset.id"
+                class="theme-preset-card"
+                :class="{ active: app.settings.themePreset === preset.id }"
+                @click="app.updateSettings({ themePreset: preset.id })"
+              >
+                <div class="preset-swatches">
+                  <span class="swatch" :style="{ background: app.isDark ? preset.dark['--bg-primary'] : preset.light['--bg-primary'], border: '1px solid ' + (app.isDark ? preset.dark['--border-color'] : preset.light['--border-color']) }" />
+                  <span class="swatch" :style="{ background: app.isDark ? preset.dark['--accent'] : preset.light['--accent'] }" />
+                  <span class="swatch" :style="{ background: app.isDark ? preset.dark['--danger'] : preset.light['--danger'] }" />
+                </div>
+                <span class="preset-name">{{ preset.name }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="settings-block">
@@ -567,5 +599,49 @@ async function resetGitSource(): Promise<void> {
 
 .settings-back-note + .el-button {
   margin-left: auto;
+}
+
+.theme-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  flex: 1;
+}
+
+.theme-preset-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.theme-preset-card:hover {
+  border-color: var(--accent);
+}
+
+.theme-preset-card.active {
+  border-color: var(--accent);
+}
+
+.preset-swatches {
+  display: flex;
+  gap: 4px;
+}
+
+.swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.preset-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
 }
 </style>

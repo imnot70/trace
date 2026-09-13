@@ -110,6 +110,7 @@ app.whenReady().then(() => {
   const settingsStore = new JsonStore<AppSettings>(path.join(userData, 'settings.json'), {
     workspaceRoot: '',
     theme: 'system',
+    themePreset: 'default',
     editorFontSize: 15,
     autoSave: true,
     zenHideTopbar: false,
