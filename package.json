@@ -18,7 +18,7 @@
     "fetch:git": "node scripts/fetch-git.mjs",
     "dist": "npm run fetch:git && electron-vite build && electron-builder",
     "dist:dir": "npm run fetch:git && electron-vite build && electron-builder --dir",
-    "lint": "eslint src tests scripts",
+    "lint": "eslint src tests",
     "icon": "node scripts/generate-icon.js",
     "dist:deb": "npm run fetch:git && electron-vite build && electron-builder --linux deb",
     "postversion": "git push --follow-tags"
