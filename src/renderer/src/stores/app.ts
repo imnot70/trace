@@ -4,16 +4,17 @@ import { useTreeStore } from './tree'
 import { THEME_PRESETS, buildThemeCss } from '../styles/presets'
 
 /** 卡片网格视图的区块类型 */
-export type GridSection = 'recents' | 'favorites' | 'vaults'
+export type GridSection = 'recents' | 'favorites' | 'vaults' | 'tags'
 export type ViewMode = 'grid' | 'list'
 
 export type ActiveView =
   | { name: 'welcome' }
   | { name: 'editor' }
   | { name: 'trash' }
-  /** 常用 / 收藏 / 笔记库 的卡片网格视图（在主区域展示，预览卡片自然收起）；
-   *  笔记库区可携带钻入路径（POSIX 相对路径，首段为库名；缺省 = 库列表级） */
-  | { name: 'grid'; section: GridSection; vaultPath?: string }
+  /** 常用 / 收藏 / 笔记库 / 标签 的卡片网格视图（在主区域展示，预览卡片自然收起）；
+   *  笔记库区可携带钻入路径（POSIX 相对路径，首段为库名；缺省 = 库列表级）；
+   *  标签区携带 tagId */
+  | { name: 'grid'; section: GridSection; vaultPath?: string; tagId?: string }
   | { name: 'settings'; tab: 'account' | 'plugins' | 'general' }
 
 const DEFAULT_SETTINGS: AppSettings = {

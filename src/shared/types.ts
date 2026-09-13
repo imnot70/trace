@@ -76,6 +76,19 @@ export interface NoteInfo {
   mtime: string
 }
 
+export interface TagItem {
+  id: string
+  name: string
+  color: string
+  createdAt: string
+}
+
+export interface NoteTagEntry {
+  vault: string
+  path: string
+  tagId: string
+}
+
 export type ThemeOption = 'light' | 'dark' | 'system'
 
 export interface AppSettings {

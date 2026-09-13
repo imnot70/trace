@@ -66,6 +66,16 @@ const api: TraceApi = {
   listPlugins: () => ipcRenderer.invoke('plugin:list'),
   setPluginEnabled: (id, enabled) => ipcRenderer.invoke('plugin:setEnabled', id, enabled),
 
+  listTags: () => ipcRenderer.invoke('tag:list'),
+  createTag: (name, color) => ipcRenderer.invoke('tag:create', name, color),
+  renameTag: (id, name) => ipcRenderer.invoke('tag:rename', id, name),
+  deleteTag: (id) => ipcRenderer.invoke('tag:delete', id),
+  setTagColor: (id, color) => ipcRenderer.invoke('tag:setColor', id, color),
+  noteTags: (vault, path) => ipcRenderer.invoke('tag:noteTags', vault, path),
+  addTagToNote: (vault, path, tagId) => ipcRenderer.invoke('tag:addToNote', vault, path, tagId),
+  removeTagFromNote: (vault, path, tagId) => ipcRenderer.invoke('tag:removeFromNote', vault, path, tagId),
+  notesByTag: (tagId) => ipcRenderer.invoke('tag:byTag', tagId),
+
   onFsChanged: (cb) => subscribe<FsChangedPayload>('fs:changed', cb),
   onGitEvent: (cb) => subscribe<GitEventPayload>('git:event', cb),
   onPluginNotify: (cb) => subscribe<string>('plugin:notify', cb)

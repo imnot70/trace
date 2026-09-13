@@ -17,6 +17,7 @@ import {
   RecentsService,
   resolveBundledGitPath,
   SettingsService,
+  TagsService,
   TrashService,
   VaultMetaService,
   VaultService,
@@ -153,6 +154,7 @@ app.whenReady().then(() => {
     new JsonStore(path.join(userData, 'favorites.json'), { items: [] })
   )
   const recents = new RecentsService(new JsonStore(path.join(userData, 'recents.json'), { items: [] }))
+  const tags = new TagsService(new JsonStore(path.join(userData, 'tags.json'), { tags: [], noteTags: [] }))
   const account = new AccountService(userData)
   const github = new GithubService()
   const git = new GitService({
@@ -201,6 +203,7 @@ app.whenReady().then(() => {
     trash,
     favorites,
     recents,
+    tags,
     account,
     github,
     git,

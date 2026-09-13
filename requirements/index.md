@@ -21,6 +21,7 @@
 | [grid-list-toggle_design.md](2026-09-13_grid-list-toggle/grid-list-toggle_design.md) | 网格/列表切换视图：常用/收藏/笔记库统一支持，持久化 | ✅ **已实施**（view-type 分支待发布） |
 | [auto-close-tags_design.md](2026-09-13_auto-close-tags/auto-close-tags_design.md) | 编辑器 HTML 标签自动闭合 | ✅ **已实施**（待发布） |
 | [theme-presets_design.md](2026-09-13_theme-presets/theme-presets_design.md) | 预设主题包：暖色/冷色/高对比度 | ✅ **已实施**（theme 分支待发布） |
+| [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md) | 标签系统：打标签 / 筛选 / 管理 | ✅ **已实施**（tag 分支待发布） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
@@ -39,6 +40,7 @@
 - **网格/列表切换视图**：常用、收藏、笔记库支持网格/列表切换，持久化到 localStorage。
 - **编辑器 HTML 标签自动闭合**：输入 `<div>` 等开标签的 `>` 时自动生成闭合标签。详见 [auto-close-tags_design.md](2026-09-13_auto-close-tags/auto-close-tags_design.md)。
 - **预设主题包**：新增暖色、冷色、高对比度 3 套预设配色，设置页网格卡片选择，持久化到设置。详见 [theme-presets_design.md](2026-09-13_theme-presets/theme-presets_design.md)。
+- **标签系统**：创建/重命名/删除标签（含自定义颜色）；笔记打标签；侧栏标签区筛选；标签跟随重命名/删除维护。详见 [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md)。
 - **修复 `npm run lint` scripts glob 问题**：ESLint 配置忽略 `scripts/` 但 lint 命令仍包含该目录导致报错，从命令中移除。
 
 ### v0.4.0（2026-09-13）

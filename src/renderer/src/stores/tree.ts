@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { nextTick } from 'vue'
 import { useAppStore } from './app'
-import type { GitStatus, TreeNode, VaultInfo } from '@shared/types'
+import type { GitStatus, TagItem, TreeNode, VaultInfo } from '@shared/types'
 
 /** 侧栏数据：笔记库列表、库内目录树、git 状态、收藏与常用 */
 export const useTreeStore = defineStore('tree', {
@@ -16,6 +16,7 @@ export const useTreeStore = defineStore('tree', {
     gitStatuses: {} as Record<string, GitStatus | null>,
     favorites: [] as { id: string; vault: string; path: string; name: string; addedAt: string }[],
     recents: [] as { vault: string; path: string; name: string; openedAt: string }[],
+    tags: [] as TagItem[],
     /** 定位目标行（`${vault}::${path}` 或库级 `${vault}`），短暂高亮后自动清除 */
     locateKey: '',
     locateTimer: null as ReturnType<typeof setTimeout> | null,
@@ -41,7 +42,7 @@ export const useTreeStore = defineStore('tree', {
     async refreshAll(): Promise<void> {
       await this.loadVaults()
       await Promise.all(Object.keys(this.trees).map((v) => this.loadTree(v)))
-      await Promise.all([this.loadFavorites(), this.loadRecents()])
+      await Promise.all([this.loadFavorites(), this.loadRecents(), this.loadTags()])
     },
     toggleExpand(vault: string, path: string): void {
       const key = `${vault}::${path}`
@@ -67,6 +68,10 @@ export const useTreeStore = defineStore('tree', {
     async loadRecents(): Promise<void> {
       const result = await window.trace.listRecents()
       if (result.ok && result.items) this.recents = result.items
+    },
+    async loadTags(): Promise<void> {
+      const result = await window.trace.listTags()
+      if (result.ok && result.tags) this.tags = result.tags
     },
     /**
      * 在侧栏树中定位节点：展开祖先链 → 滚动到行 → 高亮闪烁。

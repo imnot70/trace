@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAppStore } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import { useTrashStore } from '../stores/trash'
@@ -38,12 +39,71 @@ function onVaultMenuVisible(visible: boolean, vaultName: string): void {
   }
 }
 
-function toggleGrid(section: 'recents' | 'favorites' | 'vaults'): void {
+function toggleGrid(section: 'recents' | 'favorites' | 'vaults' | 'tags', tagId?: string): void {
+  if (section === 'tags' && tagId) {
+    if (app.view.name === 'grid' && app.view.section === 'tags' && app.view.tagId === tagId) {
+      app.view = { name: 'welcome' }
+    } else {
+      app.view = { name: 'grid', section: 'tags', tagId }
+    }
+    return
+  }
   app.toggleGridSection(section)
 }
 
-function isGridOpen(section: 'recents' | 'favorites' | 'vaults'): boolean {
-  return app.view.name === 'grid' && app.view.section === section
+function isGridOpen(section: 'recents' | 'favorites' | 'vaults' | 'tags', tagId?: string): boolean {
+  if (app.view.name !== 'grid' || app.view.section !== section) return false
+  if (section === 'tags') return app.view.tagId === tagId
+  return true
+}
+
+const TAG_COLORS = ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#3498db','#9b59b6','#1abc9c','#95a5a6']
+
+async function createTag(): Promise<void> {
+  const { value } = await ElMessageBox.prompt('标签名称', '新建标签', {
+    confirmButtonText: '创建',
+    cancelButtonText: '取消',
+    inputPattern: /\S+/,
+    inputErrorMessage: '标签名不能为空'
+  })
+  const color = TAG_COLORS[tree.tags.length % TAG_COLORS.length]
+  const result = await window.trace.createTag(value.trim(), color)
+  if (result.ok) {
+    await tree.loadTags()
+    ElMessage.success('标签已创建')
+  } else {
+    ElMessage.error(result.error ?? '创建失败')
+  }
+}
+
+async function handleTagMenu(cmd: string, tag: { id: string; name: string; color: string }): Promise<void> {
+  if (cmd === 'rename') {
+    const { value } = await ElMessageBox.prompt('新名称', '重命名标签', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputValue: tag.name,
+      inputPattern: /\S+/,
+      inputErrorMessage: '标签名不能为空'
+    })
+    const result = await window.trace.renameTag(tag.id, value.trim())
+    if (result.ok) await tree.loadTags()
+    else ElMessage.error(result.error ?? '重命名失败')
+  } else if (cmd === 'color') {
+    // 简单循环到下一个颜色
+    const idx = TAG_COLORS.indexOf(tag.color)
+    const next = TAG_COLORS[(idx + 1) % TAG_COLORS.length]
+    await window.trace.setTagColor(tag.id, next)
+    await tree.loadTags()
+  } else if (cmd === 'delete') {
+    await ElMessageBox.confirm(`确定删除标签「${tag.name}」？关联的笔记不会被删除。`, '删除标签', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await window.trace.deleteTag(tag.id)
+    await tree.loadTags()
+    ElMessage.success('标签已删除')
+  }
 }
 
 function handleVaultCommand(cmd: string, vault: string): void {
@@ -97,6 +157,46 @@ defineProps<{ vaults?: VaultInfo[] }>()
           <span v-if="tree.favorites.length" class="side-section-count">{{
             tree.favorites.length
           }}</span>
+        </div>
+      </div>
+
+      <!-- 标签：点击标签筛选笔记 -->
+      <div class="side-section">
+        <div
+          class="side-section-header"
+          :class="{ active: app.view.name === 'grid' && app.view.section === 'tags' }"
+          @click="tree.tags.length ? toggleGrid('tags', tree.tags[0].id) : createTag()"
+        >
+          <el-icon><PriceTag /></el-icon>
+          <span>标签</span>
+          <span v-if="tree.tags.length" class="side-section-count">{{ tree.tags.length }}</span>
+          <button class="side-section-add" title="新建标签" @click.stop="createTag()">
+            <el-icon><Plus /></el-icon>
+          </button>
+        </div>
+        <div v-if="tree.tags.length" class="tag-list">
+          <div
+            v-for="tag in tree.tags"
+            :key="tag.id"
+            class="tag-row"
+            :class="{ active: isGridOpen('tags', tag.id) }"
+            @click="toggleGrid('tags', tag.id)"
+          >
+            <span class="tag-dot" :style="{ background: tag.color }" />
+            <span class="tag-name">{{ tag.name }}</span>
+            <el-dropdown trigger="click" @command="(cmd: string) => handleTagMenu(cmd, tag)" popper-class="dd-instant-hide">
+              <button class="row-btn tag-menu-btn" title="更多操作" @click.stop>
+                <el-icon><MoreFilled /></el-icon>
+              </button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="rename">重命名</el-dropdown-item>
+                  <el-dropdown-item command="color">更换颜色</el-dropdown-item>
+                  <el-dropdown-item command="delete" divided class="danger-item">删除标签</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
         </div>
       </div>
 

@@ -12,6 +12,7 @@ import type {
   PluginHost,
   RecentsService,
   SettingsService,
+  TagsService,
   TrashService,
   VaultMetaService,
   VaultService,
@@ -28,6 +29,7 @@ export interface IpcDeps {
   trash: TrashService
   favorites: FavoritesService
   recents: RecentsService
+  tags: TagsService
   account: AccountService
   github: GithubService
   git: GitService
@@ -104,6 +106,7 @@ export function registerIpc(deps: IpcDeps): void {
     if (result.ok) {
       deps.favorites.onVaultRename(oldName, newName)
       deps.recents.onVaultRename(oldName, newName)
+      deps.tags.onVaultRename(oldName, newName)
       deps.vaultMeta.rename(oldName, newName)
     }
     return result
@@ -113,6 +116,7 @@ export function registerIpc(deps: IpcDeps): void {
     if (result.ok) {
       deps.favorites.onDelete(name, '', 'vault')
       deps.recents.onDelete(name, '', 'vault')
+      deps.tags.onDelete(name, '', 'vault')
       deps.vaultMeta.remove(name)
     }
     return result
@@ -133,6 +137,7 @@ export function registerIpc(deps: IpcDeps): void {
       if (result.ok && result.newPath) {
         deps.favorites.onRename(vault, relPath, result.newPath, kind, newName)
         deps.recents.onRename(vault, relPath, result.newPath, kind, newName)
+        deps.tags.onRename(vault, relPath, result.newPath, kind)
       }
       return result
     }
@@ -145,6 +150,7 @@ export function registerIpc(deps: IpcDeps): void {
         const name = kind === 'note' ? result.newPath.replace(/.*\//, '').replace(/\.md$/i, '') : result.newPath.replace(/.*\//, '')
         deps.favorites.onRename(vault, srcPath, result.newPath, kind, name)
         deps.recents.onRename(vault, srcPath, result.newPath, kind, name)
+        deps.tags.onRename(vault, srcPath, result.newPath, kind)
       }
       return result
     }
@@ -154,6 +160,7 @@ export function registerIpc(deps: IpcDeps): void {
     if (result.ok) {
       deps.favorites.onDelete(vault, relPath, kind)
       deps.recents.onDelete(vault, relPath, kind)
+      deps.tags.onDelete(vault, relPath, kind)
     }
     return result
   })
@@ -184,6 +191,20 @@ export function registerIpc(deps: IpcDeps): void {
     deps.recents.remove(vault, relPath)
     return { ok: true }
   })
+
+  // ---------- 标签 ----------
+  handle('tag:list', () => ({ ok: true, tags: deps.tags.listTags() }))
+  handle('tag:create', (name: string, color: string) => deps.tags.createTag(name, color))
+  handle('tag:rename', (id: string, name: string) => deps.tags.renameTag(id, name))
+  handle('tag:delete', (id: string) => deps.tags.deleteTag(id))
+  handle('tag:setColor', (id: string, color: string) => deps.tags.setTagColor(id, color))
+  handle('tag:noteTags', (vault: string, relPath: string) => ({ ok: true, tags: deps.tags.noteTags(vault, relPath) }))
+  handle('tag:addToNote', (vault: string, relPath: string, tagId: string) => deps.tags.addToNote(vault, relPath, tagId))
+  handle('tag:removeFromNote', (vault: string, relPath: string, tagId: string) => {
+    deps.tags.removeFromNote(vault, relPath, tagId)
+    return { ok: true }
+  })
+  handle('tag:byTag', (tagId: string) => ({ ok: true, entries: deps.tags.notesByTag(tagId) }))
 
   // ---------- 回收站 ----------
   handle('trash:list', () => ({ ok: true, entries: deps.trash.list() }))

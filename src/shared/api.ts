@@ -8,12 +8,14 @@ import type {
   GitStatus,
   NoteContent,
   NoteInfo,
+  NoteTagEntry,
   OpResult,
   PluginInfo,
   RecentItem,
   RemoteRepo,
   SaveImageResult,
   SyncResult,
+  TagItem,
   TreeNode,
   TrashEntry,
   VaultInfo
@@ -82,6 +84,17 @@ export interface TraceApi {
   // ---- 插件 ----
   listPlugins(): Promise<OpResult & { plugins?: PluginInfo[] }>
   setPluginEnabled(id: string, enabled: boolean): Promise<OpResult>
+
+  // ---- 标签 ----
+  listTags(): Promise<OpResult & { tags?: TagItem[] }>
+  createTag(name: string, color: string): Promise<OpResult & { tag?: TagItem }>
+  renameTag(id: string, name: string): Promise<OpResult>
+  deleteTag(id: string): Promise<OpResult>
+  setTagColor(id: string, color: string): Promise<OpResult>
+  noteTags(vault: string, path: string): Promise<OpResult & { tags?: TagItem[] }>
+  addTagToNote(vault: string, path: string, tagId: string): Promise<OpResult>
+  removeTagFromNote(vault: string, path: string, tagId: string): Promise<OpResult>
+  notesByTag(tagId: string): Promise<OpResult & { entries?: NoteTagEntry[] }>
 
   // ---- 事件订阅（返回取消订阅函数） ----
   onFsChanged(cb: (payload: FsChangedPayload) => void): () => void

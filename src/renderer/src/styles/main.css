@@ -292,6 +292,72 @@ body {
   text-align: center;
 }
 
+.side-section-add {
+  margin-left: 4px;
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.side-section-add:hover {
+  color: var(--accent);
+  background: var(--bg-hover);
+}
+
+/* 标签列表 */
+.tag-list {
+  padding: 0 0 4px 0;
+}
+
+.tag-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 52px;
+  cursor: pointer;
+  border-radius: 6px;
+  margin: 0 8px;
+  position: relative;
+}
+
+.tag-row:hover {
+  background: var(--bg-hover);
+}
+
+.tag-row.active {
+  background: var(--bg-active);
+}
+
+.tag-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tag-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-menu-btn {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.tag-row:hover .tag-menu-btn {
+  opacity: 1;
+}
+
 /* 全局悬浮提示：圆角与阴影贴合应用卡片风格（6px 圆角 + 柔和投影） */
 .el-popper.is-dark,
 .el-popper.is-light {

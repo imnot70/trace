@@ -20,13 +20,20 @@ type VaultCard = { id?: string; name: string; description?: string }
 const SECTION_TITLE: Record<GridSection, string> = {
   recents: '常用',
   favorites: '收藏',
-  vaults: '笔记库'
+  vaults: '笔记库',
+  tags: '标签'
 }
 
 const section = computed<GridSection>(() =>
   app.view.name === 'grid' ? app.view.section : 'recents'
 )
-const title = computed(() => SECTION_TITLE[section.value])
+const title = computed(() => {
+  if (section.value === 'tags' && tagId.value) {
+    const tag = tree.tags.find((t) => t.id === tagId.value)
+    return tag ? `标签：${tag.name}` : '标签'
+  }
+  return SECTION_TITLE[section.value]
+})
 const isVaults = computed(() => section.value === 'vaults')
 
 // ---------- 库内容导航（vaultPath = '库名' 或 '库名/文件夹/…'，POSIX 风格） ----------
@@ -86,8 +93,28 @@ const items = computed<GridItem[]>(() =>
     ? tree.recents
     : section.value === 'favorites'
       ? tree.favorites
-      : contentNotes.value
+      : section.value === 'tags'
+        ? tagItems.value
+        : contentNotes.value
 )
+
+// ---------- 标签视图：按 tagId 加载笔记 ----------
+const tagId = computed(() =>
+  app.view.name === 'grid' && app.view.section === 'tags' ? app.view.tagId ?? '' : ''
+)
+const tagItems = ref<GridItem[]>([])
+
+watch(tagId, async (id) => {
+  if (!id) { tagItems.value = []; return }
+  const result = await window.trace.notesByTag(id)
+  if (result.ok && result.entries) {
+    tagItems.value = result.entries.map((e) => ({
+      vault: e.vault,
+      path: e.path,
+      name: e.path.replace(/\.md$/i, '').replace(/.*\//, '')
+    }))
+  }
+}, { immediate: true })
 const vaultCards = computed<VaultCard[]>(() =>
   isVaults.value && !inVaultContent.value
     ? tree.vaults.map((v) => ({ name: v.name, description: v.description }))
@@ -150,6 +177,32 @@ function toExcerpt(content: string): string {
   return text.length > 120 ? `${text.slice(0, 120)}…` : text
 }
 
+// ---------- 标签选择对话框 ----------
+const tagDialogVisible = ref(false)
+const tagDialogNote = ref<GridItem | null>(null)
+const tagDialogTags = ref<{ id: string; name: string; color: string; checked: boolean }[]>([])
+
+async function openTagDialog(item: GridItem): Promise<void> {
+  tagDialogNote.value = item
+  tagDialogVisible.value = true
+  const noteTagRes = await window.trace.noteTags(item.vault, item.path)
+  const noteTagIds = new Set((noteTagRes.ok && noteTagRes.tags ? noteTagRes.tags : []).map((t) => t.id))
+  tagDialogTags.value = tree.tags.map((t) => ({ ...t, checked: noteTagIds.has(t.id) }))
+}
+
+async function toggleTagDialog(tagId: string): Promise<void> {
+  if (!tagDialogNote.value) return
+  const entry = tagDialogTags.value.find((t) => t.id === tagId)
+  if (!entry) return
+  if (entry.checked) {
+    await window.trace.removeTagFromNote(tagDialogNote.value.vault, tagDialogNote.value.path, tagId)
+    entry.checked = false
+  } else {
+    await window.trace.addTagToNote(tagDialogNote.value.vault, tagDialogNote.value.path, tagId)
+    entry.checked = true
+  }
+}
+
 function dirOf(path: string): string {
   const parts = path.split('/')
   parts.pop()
@@ -198,6 +251,10 @@ async function onNoteMenuCommand(cmd: string, item: GridItem): Promise<void> {
         customStyle: { whiteSpace: 'pre-wrap' }
       })
     }
+    return
+  }
+  if (cmd === 'tag') {
+    await openTagDialog(item)
     return
   }
   if (cmd === 'move') {
@@ -492,6 +549,7 @@ watch(section, () => {
                         </el-dropdown-item>
                         <el-dropdown-item command="locate">在侧栏中定位</el-dropdown-item>
                         <el-dropdown-item command="info" divided>信息</el-dropdown-item>
+                        <el-dropdown-item command="tag">标签</el-dropdown-item>
                         <el-dropdown-item command="delete" class="danger-item">删除笔记</el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
@@ -542,6 +600,7 @@ watch(section, () => {
                   <el-dropdown-item v-if="section === 'recents'" command="removeRecent">移出常用</el-dropdown-item>
                   <el-dropdown-item command="locate">在侧栏中定位</el-dropdown-item>
                   <el-dropdown-item command="info" divided>信息</el-dropdown-item>
+                  <el-dropdown-item command="tag">标签</el-dropdown-item>
                   <el-dropdown-item command="delete" class="danger-item">删除笔记</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -590,6 +649,23 @@ watch(section, () => {
         </div>
       </div>
     </Transition>
+
+    <!-- 标签选择对话框 -->
+    <el-dialog v-model="tagDialogVisible" title="管理标签" width="320px" :append-to-body="true" destroy-on-close>
+      <div v-if="tagDialogNote" class="tag-dialog-content">
+        <div v-if="tagDialogTags.length === 0" class="tag-dialog-empty">暂无标签，请先创建标签</div>
+        <div
+          v-for="tag in tagDialogTags"
+          :key="tag.id"
+          class="tag-dialog-item"
+          @click="toggleTagDialog(tag.id)"
+        >
+          <el-checkbox :model-value="tag.checked" @click.stop="toggleTagDialog(tag.id)" />
+          <span class="tag-dot" :style="{ background: tag.color }" />
+          <span>{{ tag.name }}</span>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -933,5 +1009,39 @@ watch(section, () => {
 .float-preview-leave-to {
   transform: translateX(48px);
   opacity: 0;
+}
+
+/* 标签选择对话框 */
+.tag-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tag-dialog-empty {
+  color: var(--text-tertiary);
+  font-size: 13px;
+  text-align: center;
+  padding: 12px 0;
+}
+
+.tag-dialog-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.tag-dialog-item:hover {
+  background: var(--bg-hover);
+}
+
+.tag-dialog-item .tag-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 </style>
