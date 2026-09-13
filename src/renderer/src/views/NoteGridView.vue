@@ -365,14 +365,9 @@ watch(section, () => {
           {{ isVaults ? '双击打开笔记库' : '单击预览 · 双击编辑' }}
         </span>
       </template>
-      <span class="grid-view-toggle">
-        <button class="tool-btn" :class="{ active: app.viewMode === 'grid' }" title="网格" @click.stop="app.setViewMode('grid')">
-          <el-icon><Grid /></el-icon>
-        </button>
-        <button class="tool-btn" :class="{ active: app.viewMode === 'list' }" title="列表" @click.stop="app.setViewMode('list')">
-          <el-icon><List /></el-icon>
-        </button>
-      </span>
+      <button class="tool-btn grid-view-toggle" :title="app.viewMode === 'grid' ? '切换列表' : '切换网格'" @click.stop="app.setViewMode(app.viewMode === 'grid' ? 'list' : 'grid')">
+        <el-icon><Grid v-if="app.viewMode === 'grid'" /><List v-else /></el-icon>
+      </button>
       <button class="tool-btn grid-close" title="关闭" @click="close">
         <el-icon><Close /></el-icon>
       </button>
@@ -614,18 +609,8 @@ watch(section, () => {
 }
 
 .grid-view-toggle {
-  display: flex;
-  gap: 2px;
   margin-left: auto;
   margin-right: 8px;
-}
-
-.grid-view-toggle .tool-btn {
-  color: var(--text-tertiary);
-}
-
-.grid-view-toggle .tool-btn.active {
-  color: var(--accent);
 }
 
 /* 列表模式 */
