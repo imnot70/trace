@@ -32,6 +32,8 @@
 - **笔记「信息」菜单**：笔记 ⋮ 菜单（侧栏树 + 网格卡片）新增「信息」项，弹窗显示创建时间和最后修改时间。详见 [note-info_design.md](2026-09-13_note-info/note-info_design.md)。
 - **悬浮预览滚动同步**：悬浮预览接入编辑器↔预览双向滚动同步；关闭悬浮预览时自动将固定预览同步到编辑器当前位置。详见 [floating-preview-scroll-sync_design.md](2026-09-13_floating-preview-scroll-sync/floating-preview-scroll-sync_design.md)。
 - **双链修复**：路径形式双链（`[[目录/笔记名]]`）解析修复；补全自引用过滤改为完整路径比较。
+- **网格卡片摘要自适应高度**：摘录不足 3 行时卡片高度自动收缩，去掉固定 3 行留白。
+- **修复 `npm run lint` scripts glob 问题**：ESLint 配置忽略 `scripts/` 但 lint 命令仍包含该目录导致报错，从命令中移除。
 
 ### v0.4.0（2026-09-13）
 
@@ -148,7 +150,4 @@
 - **编辑器 HTML 标签自动闭合**（用户提出 2026-09-09）：现版 @codemirror/autocomplete（6.20.3）仅有括号闭合，无标签闭合；升级到带 `autoclose()` 的版本或自定义 inputHandler（约半天）；插件化需等插件 v2 的编辑器扩展 API（M3 之后）
 
 - **网格 / 列表切换**：常用 / 收藏 / 回收站三视图统一的显示形态切换（回收站现保留列表形态即为此预留）
-- 常用网格卡片显示相对时间（如「3 分钟前」）
-- 网格卡片摘要自适应高度（现为固定三行）
-- 修复 `npm run lint` 的 `scripts` glob 问题（ESLint 10 下该目录被整体忽略导致命令报错）
 - PRD 已知局限待解：列表项内块级公式渲染（markdown-it-texmath 局限）、极窄窗口（<1080px）编辑区最小宽度、回收站容量上限与过期清理
