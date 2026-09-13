@@ -365,6 +365,14 @@ watch(section, () => {
           {{ isVaults ? '双击打开笔记库' : '单击预览 · 双击编辑' }}
         </span>
       </template>
+      <span class="grid-view-toggle">
+        <button class="tool-btn" :class="{ active: app.viewMode === 'grid' }" title="网格" @click.stop="app.setViewMode('grid')">
+          <el-icon><Grid /></el-icon>
+        </button>
+        <button class="tool-btn" :class="{ active: app.viewMode === 'list' }" title="列表" @click.stop="app.setViewMode('list')">
+          <el-icon><List /></el-icon>
+        </button>
+      </span>
       <button class="tool-btn grid-close" title="关闭" @click="close">
         <el-icon><Close /></el-icon>
       </button>
@@ -394,7 +402,7 @@ watch(section, () => {
     <!-- 笔记库网格（库列表级：库卡片双击钻入；内容级：文件夹 + 笔记卡片） -->
     <div v-else-if="isVaults" class="vault-grid-wrap">
       <Transition :name="drillAnim" mode="out-in">
-        <div :key="vaultPath || '__list__'" class="grid-body">
+        <div :key="vaultPath || '__list__'" class="grid-body" :class="app.viewMode">
           <!-- 库列表级 -->
           <template v-if="!inVaultContent">
             <el-tooltip
@@ -419,11 +427,11 @@ watch(section, () => {
                     </template>
                   </el-dropdown>
                 </div>
-                <div class="note-card-title">
-                  <el-icon class="note-card-icon"><Folder /></el-icon>
-                  <span>{{ card.name }}</span>
+                <el-icon class="note-card-icon"><Folder /></el-icon>
+                <div class="note-card-body">
+                  <div class="note-card-title"><span>{{ card.name }}</span></div>
+                  <div class="note-card-excerpt">{{ card.description ?? '' }}</div>
                 </div>
-                <div class="note-card-excerpt">{{ card.description ?? '' }}</div>
                 <div class="note-card-meta">
                   <span>{{ tree.gitStatuses[card.name]?.associated ? '已关联 Git 仓库' : '本地笔记库' }}</span>
                 </div>
@@ -456,9 +464,9 @@ watch(section, () => {
                     </template>
                   </el-dropdown>
                 </div>
-                <div class="note-card-title">
-                  <el-icon class="note-card-icon"><Folder /></el-icon>
-                  <span>{{ node.name }}</span>
+                <el-icon class="note-card-icon"><Folder /></el-icon>
+                <div class="note-card-body">
+                  <div class="note-card-title"><span>{{ node.name }}</span></div>
                 </div>
                 <div class="note-card-meta folder-counts">
                   <span v-if="childCounts(node).notes">{{ childCounts(node).notes }} 篇笔记</span>
@@ -494,11 +502,11 @@ watch(section, () => {
                     </template>
                   </el-dropdown>
                 </div>
-                <div class="note-card-title">
-                  <el-icon class="note-card-icon"><Document /></el-icon>
-                  <span>{{ node.name }}</span>
+                <el-icon class="note-card-icon"><Document /></el-icon>
+                <div class="note-card-body">
+                  <div class="note-card-title"><span>{{ node.name }}</span></div>
+                  <div class="note-card-excerpt">{{ excerpts[`${vaultName}::${node.path}`] ?? '' }}</div>
                 </div>
-                <div class="note-card-excerpt">{{ excerpts[`${vaultName}::${node.path}`] ?? '' }}</div>
                 <div class="note-card-meta">
                   <span>{{ dirOf(node.path) || '根目录' }}</span>
                 </div>
@@ -510,7 +518,7 @@ watch(section, () => {
     </div>
 
     <!-- 笔记卡片网格（常用 / 收藏） -->
-    <div v-else class="grid-body">
+    <div v-else class="grid-body" :class="app.viewMode">
       <el-tooltip
         v-for="item in items"
         :key="item.id ?? `${item.vault}::${item.path}`"
@@ -544,11 +552,11 @@ watch(section, () => {
               </template>
             </el-dropdown>
           </div>
-          <div class="note-card-title">
-            <el-icon class="note-card-icon"><Document /></el-icon>
-            <span>{{ item.name }}</span>
+          <el-icon class="note-card-icon"><Document /></el-icon>
+          <div class="note-card-body">
+            <div class="note-card-title"><span>{{ item.name }}</span></div>
+            <div class="note-card-excerpt">{{ excerpts[`${item.vault}::${item.path}`] ?? '' }}</div>
           </div>
-          <div class="note-card-excerpt">{{ excerpts[`${item.vault}::${item.path}`] ?? '' }}</div>
           <div class="note-card-meta">
             <template v-if="section === 'recents' && item.openedAt">
               {{ formatRelativeTime(item.openedAt) }}
@@ -603,6 +611,76 @@ watch(section, () => {
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
   align-content: start;
+}
+
+.grid-view-toggle {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.grid-view-toggle .tool-btn {
+  color: var(--text-tertiary);
+}
+
+.grid-view-toggle .tool-btn.active {
+  color: var(--accent);
+}
+
+/* 列表模式 */
+.grid-body.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.grid-body.list .note-card {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+}
+
+.grid-body.list .note-card:hover {
+  transform: none;
+}
+
+.grid-body.list .note-card-body {
+  flex: 1;
+  min-width: 0;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.grid-body.list .note-card-title {
+  flex-shrink: 0;
+}
+
+.grid-body.list .note-card-excerpt {
+  -webkit-line-clamp: 1;
+  min-height: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.grid-body.list .note-card-meta {
+  margin-top: 0;
+  flex-shrink: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.grid-body.list .note-card.vault-card {
+  grid-column: auto;
+  background: var(--accent-soft);
+}
+
+.grid-body.list .note-card-actions {
+  position: static;
+  opacity: 0;
+  flex-shrink: 0;
 }
 
 .note-card {
@@ -687,6 +765,14 @@ watch(section, () => {
 .note-card-icon {
   flex-shrink: 0;
   color: var(--text-tertiary);
+}
+
+.note-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .note-card-excerpt {

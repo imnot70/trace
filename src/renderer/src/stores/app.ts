@@ -4,6 +4,7 @@ import { useTreeStore } from './tree'
 
 /** 卡片网格视图的区块类型 */
 export type GridSection = 'recents' | 'favorites' | 'vaults'
+export type ViewMode = 'grid' | 'list'
 
 export type ActiveView =
   | { name: 'welcome' }
@@ -51,7 +52,9 @@ export const useAppStore = defineStore('app', {
     /** 从设置等视图返回编辑时置位，EditorView 挂载后聚焦编辑器并清除 */
     focusEditorOnce: false,
     /** 悬浮预览卡片（长按预览按钮触发，会话级不持久化） */
-    floatingPreview: false
+    floatingPreview: false,
+    /** 网格/列表视图模式（localStorage 持久化） */
+    viewMode: 'grid' as ViewMode
   }),
   getters: {
     isDark(state): boolean {
@@ -94,6 +97,8 @@ export const useAppStore = defineStore('app', {
         this.previewVisible = localStorage.getItem('trace.previewVisible') !== '0'
         this.zenMode = localStorage.getItem('trace.zenMode') === '1'
         this.sidebarVisible = localStorage.getItem('trace.sidebarVisible') !== '0'
+        const vm = localStorage.getItem('trace.viewMode')
+        if (vm === 'grid' || vm === 'list') this.viewMode = vm
       } catch {
         /* localStorage 不可用时保持默认 */
       }
@@ -139,6 +144,14 @@ export const useAppStore = defineStore('app', {
     },
     toggleZenSidebar(): void {
       this.zenSidebarOverlay = !this.zenSidebarOverlay
+    },
+    setViewMode(mode: ViewMode): void {
+      this.viewMode = mode
+      try {
+        localStorage.setItem('trace.viewMode', mode)
+      } catch {
+        /* ignore */
+      }
     },
     closeZenSidebar(): void {
       this.zenSidebarOverlay = false
