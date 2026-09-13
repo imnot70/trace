@@ -1,6 +1,6 @@
 # Trace 需求与实施状态索引
 
-> 更新：2026-09-12 ｜ 发布基线：**v0.3.8**（内置 Git + 文件/文件夹移动已实施，待发版）
+> 更新：2026-09-13 ｜ 发布基线：**v0.4.0**（双链 + 锚点 + 移动 + 内置 Git + 相对时间 + 笔记信息 + 悬浮预览同步）
 > 本文件是 `requirements/` 目录的导览与实施状态总览。各项明细以对应文档与 [CHANGELOG.md](../CHANGELOG.md) 为准。
 
 ## 文档导读
@@ -14,7 +14,10 @@
 | [preview-enhancement-design.md](2026-09-09_preview-enhancement/preview-enhancement-design.md) | 预览增强设计：HTML 内嵌（DOMPurify 净化）、a 标签跳转（外部 + 库内笔记）、行级双向同步滚动 | ✅ **已实施**（2026-09-09 发布 v0.3.7） |
 | [bundled-git-design.md](2026-09-10_bundled-git/bundled-git-design.md) | 内置 Git 设计与实施：捆绑 MinGit/dugite + build 时解压 + 触发时检测 + 条件弹窗；含实测体积、决策记录与验证清单 | ✅ **已实施**（Windows 已验证，Linux 待 CI）｜D-BG1–D-BG11 |
 | [move-node_design.md](2026-09-12_move-node/move-node_design.md) | 文件/文件夹移动设计（库内）：树形文件夹选择器 + renameNode 校验管道复用 | ✅ **已实施**（待发布） |
-| [wiki-link-anchor_design.md](2026-09-12_wiki-link-anchor/wiki-link-anchor_design.md) | 双链 P1 + 页内锚点 + 锚点补全：`[[笔记名]]` 可点击、标题 id 生成、锚点跳转、`#` 补全 | ✅ **已实施**（待发布） |
+| [wiki-link-anchor_design.md](2026-09-12_wiki-link-anchor/wiki-link-anchor_design.md) | 双链 P1 + 页内锚点 + 锚点补全：`[[笔记名]]` 可点击、标题 id 生成、锚点跳转、`#` 补全 | ✅ **已实施**（v0.4.0 发布） |
+| [floating-preview-scroll-sync_design.md](2026-09-13_floating-preview-scroll-sync/floating-preview-scroll-sync_design.md) | 悬浮预览滚动同步：接入双向滚动，关闭时同步固定预览进度 | ✅ **已实施**（v0.4.0 发布） |
+| [relative-time_design.md](2026-09-13_relative-time/relative-time_design.md) | 常用网格卡片显示相对时间 | ✅ **已实施**（misc 分支待发布） |
+| [note-info_design.md](2026-09-13_note-info/note-info_design.md) | 笔记「信息」菜单：创建时间 / 最后修改时间 | ✅ **已实施**（misc 分支待发布） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
@@ -23,11 +26,22 @@
 
 ## 一、已实现并发布（v0.1.0 → v0.3.8）
 
-### 待发版（v0.3.8 之后）
+### 待发版（v0.4.0 之后）
+
+- **常用网格卡片显示相对时间**：常用视图卡片底部显示「3 分钟前」「2 天前」等相对时间（`Intl.RelativeTimeFormat` 零依赖实现）。详见 [relative-time_design.md](2026-09-13_relative-time/relative-time_design.md)。
+- **笔记「信息」菜单**：笔记 ⋮ 菜单（侧栏树 + 网格卡片）新增「信息」项，弹窗显示创建时间和最后修改时间。详见 [note-info_design.md](2026-09-13_note-info/note-info_design.md)。
+- **悬浮预览滚动同步**：悬浮预览接入编辑器↔预览双向滚动同步；关闭悬浮预览时自动将固定预览同步到编辑器当前位置。详见 [floating-preview-scroll-sync_design.md](2026-09-13_floating-preview-scroll-sync/floating-preview-scroll-sync_design.md)。
+- **双链修复**：路径形式双链（`[[目录/笔记名]]`）解析修复；补全自引用过滤改为完整路径比较。
+
+### v0.4.0（2026-09-13）
 
 - **`[[双链]]` 引用 + 页内锚点跳转 + 锚点补全**：预览中 `[[笔记名]]` 渲染为可点击链接（按名称全局匹配），断链删除线样式；`[text](#anchor)` 锚点链接可点击跳转；标题自动生成 id；编辑器输入 `#` 补全文档内锚点。详见 [wiki-link-anchor_design.md](2026-09-12_wiki-link-anchor/wiki-link-anchor_design.md)。
 - **文件/文件夹移动**（库内）：侧栏树和网格卡片的 ⋮ 菜单新增「移动到…」，弹出文件夹选择对话框（树形选择器），支持将笔记或文件夹移动到库内任意位置。详见 [move-node_design.md](2026-09-12_move-node/move-node_design.md)。
 - **内置 Git**（FR-2.8.13）：随安装包内置精简 Git（Windows MinGit busybox / Linux dugite-native），系统未装 Git 也能直接同步。触发关联/同步时检测，不可用时弹窗引导；偏好持久化到 `gitSource`，设置页可重置并展示系统/内置版本。二进制不入库（`npm run fetch:git` 获取 + SHA256 校验）。**实测安装包 125.0 → 144.6 MB（+15.7%）**。详见 [bundled-git-design.md](2026-09-10_bundled-git/bundled-git-design.md)。
+- **常用网格卡片显示相对时间**：常用视图卡片底部显示相对时间。
+- **笔记「信息」菜单**：笔记 ⋮ 菜单新增「信息」项，显示创建时间和最后修改时间。
+- **悬浮预览滚动同步**：悬浮预览接入双向滚动同步，关闭时自动同步固定预览进度。
+- **双链修复**：路径形式双链解析修复；补全自引用过滤修复。
 
 ### v0.1.0 / v0.2.0 基线（PRD 全部需求）
 
@@ -93,7 +107,7 @@
 
 ## 二、已记录的已知问题（待处理）
 
-- 页内锚点跳转未实现（`[jump](#tag1)` 点击无动作）——归入双链/大纲批次，见 [preview-enhancement-design.md](2026-09-09_preview-enhancement/preview-enhancement-design.md) 第 5 节
+（无）
 
 ## 三、设计已确认（部分已实施）
 
