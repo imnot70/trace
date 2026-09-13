@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { ElMessageBox } from 'element-plus'
 import type { TreeNode } from '@shared/types'
 import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
@@ -61,6 +62,17 @@ function handleMenuCommand(cmd: string): void {
     else void actions.deleteNote(props.vault, props.node.path, props.node.name)
   } else if (cmd === 'favorite' || cmd === 'unfavorite') {
     void actions.toggleFavorite(props.vault, props.node.path, props.node.name, cmd === 'unfavorite')
+  } else if (cmd === 'info') {
+    void window.trace.noteGetInfo(props.vault, props.node.path).then((result) => {
+      if (result.ok && result.info) {
+        const created = new Date(result.info.birthtime).toLocaleString('zh-CN')
+        const modified = new Date(result.info.mtime).toLocaleString('zh-CN')
+        void ElMessageBox.alert(`创建时间：${created}\n最后修改：${modified}`, `${props.node.name} 信息`, {
+          confirmButtonText: '确定',
+          customStyle: { whiteSpace: 'pre-wrap' }
+        })
+      }
+    })
   }
 }
 
@@ -124,7 +136,8 @@ function handlePlusCommand(cmd: string): void {
                   >取消收藏</el-dropdown-item
                 >
                 <el-dropdown-item v-else command="favorite" divided>收藏笔记</el-dropdown-item>
-                <el-dropdown-item command="delete" divided class="danger-item"
+                <el-dropdown-item command="info" divided>信息</el-dropdown-item>
+                <el-dropdown-item command="delete" class="danger-item"
                   >删除笔记</el-dropdown-item
                 >
               </template>

@@ -194,6 +194,19 @@ export class FsTreeService {
   }
 
   /**
+   * 获取笔记的创建时间和最后修改时间。
+   */
+  noteGetInfo(vault: string, relPath: string): { ok: boolean; info?: { birthtime: string; mtime: string }; error?: string } {
+    try {
+      const abs = resolveWithin(this.getVaultPath(vault), relPath)
+      const stat = fs.statSync(abs)
+      return { ok: true, info: { birthtime: stat.birthtime.toISOString(), mtime: stat.mtime.toISOString() } }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  /**
    * 写入笔记。expectedHash 为渲染进程最后读到的磁盘内容 hash，
    * 不一致说明文件已被外部修改，拒绝覆盖以防丢失数据。
    */

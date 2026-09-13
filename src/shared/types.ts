@@ -71,6 +71,11 @@ export interface RecentItem {
   openedAt: string
 }
 
+export interface NoteInfo {
+  birthtime: string
+  mtime: string
+}
+
 export type ThemeOption = 'light' | 'dark' | 'system'
 
 export interface AppSettings {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { ElMessageBox } from 'element-plus'
 import { useAppStore, type GridSection } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import { useNoteActions } from '../composables/actions'
@@ -185,6 +186,18 @@ async function onNoteMenuCommand(cmd: string, item: GridItem): Promise<void> {
 
   if (cmd === 'delete') {
     void actions.deleteNote(item.vault, item.path, item.name)
+    return
+  }
+  if (cmd === 'info') {
+    const result = await window.trace.noteGetInfo(item.vault, item.path)
+    if (result.ok && result.info) {
+      const created = new Date(result.info.birthtime).toLocaleString('zh-CN')
+      const modified = new Date(result.info.mtime).toLocaleString('zh-CN')
+      await ElMessageBox.alert(`创建时间：${created}\n最后修改：${modified}`, `${item.name} 信息`, {
+        confirmButtonText: '确定',
+        customStyle: { whiteSpace: 'pre-wrap' }
+      })
+    }
     return
   }
   if (cmd === 'move') {
@@ -475,7 +488,8 @@ watch(section, () => {
                           {{ isFavorited({ vault: vaultName, path: node.path, name: node.name }) ? '取消收藏' : '收藏笔记' }}
                         </el-dropdown-item>
                         <el-dropdown-item command="locate">在侧栏中定位</el-dropdown-item>
-                        <el-dropdown-item command="delete" divided class="danger-item">删除笔记</el-dropdown-item>
+                        <el-dropdown-item command="info" divided>信息</el-dropdown-item>
+                        <el-dropdown-item command="delete" class="danger-item">删除笔记</el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
                   </el-dropdown>
@@ -524,7 +538,8 @@ watch(section, () => {
                   </el-dropdown-item>
                   <el-dropdown-item v-if="section === 'recents'" command="removeRecent">移出常用</el-dropdown-item>
                   <el-dropdown-item command="locate">在侧栏中定位</el-dropdown-item>
-                  <el-dropdown-item command="delete" divided class="danger-item">删除笔记</el-dropdown-item>
+                  <el-dropdown-item command="info" divided>信息</el-dropdown-item>
+                  <el-dropdown-item command="delete" class="danger-item">删除笔记</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
