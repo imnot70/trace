@@ -697,7 +697,6 @@ watch(section, () => {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: calc(1.6em * 3);
   word-break: break-all;
 }
 
