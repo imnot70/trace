@@ -18,6 +18,7 @@ const actions = useNoteActions()
 
 const editorRef = ref<InstanceType<typeof MarkdownEditor> | null>(null)
 const previewRef = ref<InstanceType<typeof MarkdownPreview> | null>(null)
+const floatPreviewRef = ref<InstanceType<typeof MarkdownPreview> | null>(null)
 const splitPercent = ref(50)
 const dragging = ref(false)
 
@@ -52,7 +53,8 @@ function rebindScrollSync(): void {
   unbindScrollSync = null
   void nextTick(() => {
     const scroller = editorWrapRef.value?.querySelector('.cm-scroller') as HTMLElement | null
-    const previewEl: HTMLElement | null = previewRef.value?.scrollElement ?? null
+    const activePreview = floatPreviewRef.value ?? previewRef.value
+    const previewEl: HTMLElement | null = activePreview?.scrollElement ?? null
     if (!scroller || !previewEl) return
 
     const onEditorScroll = (): void => {
@@ -61,11 +63,11 @@ function rebindScrollSync(): void {
       if (!pos) return
       syncGuard.time = Date.now()
       syncGuard.source = 'editor'
-      previewRef.value?.syncToLine(pos.line, pos.ratio)
+      activePreview?.syncToLine(pos.line, pos.ratio)
     }
     const onPreviewScroll = (): void => {
       if (Date.now() - syncGuard.time < 100 && syncGuard.source === 'editor') return
-      const line = previewRef.value?.lineAtScrollTop()
+      const line = activePreview?.lineAtScrollTop()
       if (line == null) return
       syncGuard.time = Date.now()
       syncGuard.source = 'preview'
@@ -74,7 +76,7 @@ function rebindScrollSync(): void {
     // 图片/媒体加载完成后按编辑器当前位置重对齐（捕获阶段监听 load）
     const onLoad = (): void => {
       const pos = editorRef.value?.firstVisibleLine()
-      if (pos) previewRef.value?.syncToLine(pos.line, pos.ratio)
+      if (pos) activePreview?.syncToLine(pos.line, pos.ratio)
     }
 
     scroller.addEventListener('scroll', onEditorScroll, { passive: true })
@@ -214,6 +216,16 @@ watch(
 watch(
   () => app.previewVisible,
   () => rebindScrollSync()
+)
+watch(
+  () => app.floatingPreview,
+  (open) => {
+    if (!open && app.previewVisible) {
+      const pos = editorRef.value?.firstVisibleLine()
+      if (pos) previewRef.value?.syncToLine(pos.line, pos.ratio)
+    }
+    rebindScrollSync()
+  }
 )
 
 const vaultName = computed(() => editor.current?.vault ?? '')
@@ -456,6 +468,7 @@ onBeforeUnmount(() => {
         </div>
       <div class="floating-preview-body">
         <MarkdownPreview
+          ref="floatPreviewRef"
           v-if="editor.current"
           :content="editor.content"
           :vault="vaultName"
