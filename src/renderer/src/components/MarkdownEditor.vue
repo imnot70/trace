@@ -214,6 +214,22 @@ const traceTheme = EditorView.theme({
   '.cm-cursor': { borderLeftColor: 'var(--accent)' }
 })
 
+const selfClosers = new Set(['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'])
+
+const autoCloseHtmlTags = EditorView.inputHandler.of((view, from, to, text) => {
+  if (text !== '>' || view.composing || view.state.readOnly || from !== to) return false
+  const before = view.state.doc.sliceString(Math.max(0, from - 100), from)
+  const match = before.match(/<([a-zA-Z][a-zA-Z0-9]*)\s*(?:[^>]*[^/])?\s*$/)
+  if (!match || selfClosers.has(match[1].toLowerCase())) return false
+  const tag = match[1]
+  view.dispatch({
+    changes: { from, to, insert: `></${tag}>` },
+    selection: { anchor: from + 1 },
+    userEvent: 'input.complete'
+  })
+  return true
+})
+
 function createView(initialDoc: string): EditorView {
   const state = EditorState.create({
     doc: initialDoc,
@@ -241,6 +257,7 @@ function createView(initialDoc: string): EditorView {
         if (applyingExternal) return
         emit('update:modelValue', update.state.doc.toString())
       }),
+      autoCloseHtmlTags,
       autocompletion({ override: [traceCompletions] })
     ]
   })
