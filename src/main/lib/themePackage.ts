@@ -50,7 +50,8 @@ function normalizeVars(
       typeof raw !== 'string' ||
       raw.length === 0 ||
       raw.length > MAX_VALUE_LEN ||
-      !VALUE_PATTERN.test(raw)
+      !VALUE_PATTERN.test(raw) ||
+      raw.toLowerCase().includes('url(')
     ) {
       return { ok: false, error: `变量 ${key} 的值非法` }
     }
@@ -67,6 +68,10 @@ export function validateThemePackage(
     return { ok: false, error: '主题文件必须是 JSON 对象' }
   }
   const obj = raw as Record<string, unknown>
+  const allowedKeys = ['id', 'name', 'light', 'dark']
+  for (const key of Object.keys(obj)) {
+    if (!allowedKeys.includes(key)) return { ok: false, error: `未知字段 ${key}` }
+  }
   const id = typeof obj.id === 'string' ? obj.id : ''
   if (!isValidThemeId(id)) {
     return { ok: false, error: 'id 需为小写字母、数字或连字符，且以字母或数字开头' }

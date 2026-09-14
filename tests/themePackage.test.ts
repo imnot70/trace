@@ -44,6 +44,18 @@ describe('validateThemePackage', () => {
     expect(validateThemePackage({ id: 'a', name: 'A', light: {} }).error).toContain('缺少')
   })
 
+  it('拒绝未知顶层字段', () => {
+    const r = validateThemePackage({ ...valid, evil: 1 })
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('未知字段 evil')
+  })
+
+  it('拒绝 url() 值', () => {
+    const r = validateThemePackage({ ...valid, light: { '--accent': 'url(//evil.com/x)' } })
+    expect(r.ok).toBe(false)
+    expect(r.error).toContain('值非法')
+  })
+
   it('拒绝未知变量', () => {
     const r = validateThemePackage({ ...valid, light: { '--accent-hover': '#fff' } })
     expect(r.ok).toBe(false)
