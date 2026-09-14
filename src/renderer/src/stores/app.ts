@@ -196,7 +196,10 @@ export const useAppStore = defineStore('app', {
         return
       }
       const preset = this.allPresets.find((p) => p.id === presetId)
-      if (!preset) return
+      if (!preset) {
+        if (el) el.textContent = ''
+        return
+      }
       if (!el) {
         el = document.createElement('style')
         el.id = 'trace-theme-preset'
