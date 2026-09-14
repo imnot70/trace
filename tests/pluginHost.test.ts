@@ -44,6 +44,9 @@ beforeEach(() => {
     zenHideTopbar: false,
     attachmentsDir: 'attachments',
     proxyUrl: '',
+    trashRetentionDays: 30,
+    autoSyncEnabled: false,
+    autoSyncIntervalMin: 5,
     enablePlugins: false,
     pluginEnabled: {},
     gitSource: null

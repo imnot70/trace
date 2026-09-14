@@ -103,6 +103,12 @@ export interface AppSettings {
   attachmentsDir: string
   /** Git 同步的 HTTP/HTTPS 代理（如 http://127.0.0.1:7890 或含凭据 http://user:pass@host:port），空 = 不使用 */
   proxyUrl: string
+  /** 回收站保留天数（超过自动清理；0 = 永不清理） */
+  trashRetentionDays: number
+  /** 定时自动同步开关（仅对已关联远程仓库的笔记库生效） */
+  autoSyncEnabled: boolean
+  /** 定时自动同步间隔（分钟） */
+  autoSyncIntervalMin: number
   enablePlugins: boolean
   /** 插件 id -> 是否启用 */
   pluginEnabled: Record<string, boolean>

@@ -14,6 +14,7 @@ import {
   GithubService,
   pickGitBinary,
   PluginHost,
+  AutoSyncService,
   RecentsService,
   resolveBundledGitPath,
   SettingsService,
@@ -118,6 +119,9 @@ app.whenReady().then(() => {
     zenHideTopbar: false,
     attachmentsDir: 'attachments',
     proxyUrl: '',
+    trashRetentionDays: 30,
+    autoSyncEnabled: false,
+    autoSyncIntervalMin: 5,
     enablePlugins: false,
     pluginEnabled: {},
     gitSource: null
@@ -204,6 +208,24 @@ app.whenReady().then(() => {
   plugins.init()
   plugins.activateAll()
 
+  const autoSync = new AutoSyncService({
+    getRoot: () => workspace.getRoot(),
+    git,
+    watcher,
+    getConfig: () => ({
+      enabled: settingsStore.get().autoSyncEnabled,
+      intervalMin: settingsStore.get().autoSyncIntervalMin
+    })
+  })
+  autoSync.apply()
+  // 启动时执行一轮回收站过期清理（保留天数 0 = 永不清理）
+  try {
+    const cleaned = trash.cleanup(settingsStore.get().trashRetentionDays)
+    if (cleaned.removed > 0) logger.info(`启动清理：回收站移除 ${cleaned.removed} 条过期条目`)
+  } catch (e) {
+    logger.warn('回收站启动清理失败', e)
+  }
+
   registerIpc({
     settings,
     workspace,
@@ -220,6 +242,7 @@ app.whenReady().then(() => {
     git,
     watcher,
     plugins,
+    autoSync,
     getWindow: () => mainWindow
   })
 

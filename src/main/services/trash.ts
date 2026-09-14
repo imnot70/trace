@@ -3,6 +3,7 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { JsonStore } from '../lib/jsonStore'
 import { noteDisplayName } from '@shared/validate'
+import { logger } from '../lib/logger'
 import type { ItemKind, TrashEntry } from '@shared/types'
 
 interface TrashIndex {
@@ -124,6 +125,32 @@ export class TrashService {
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) }
     }
+  }
+
+  /**
+   * 过期清理：删除保留天数之前的条目（本体 + 索引）。retentionDays <= 0 表示永不清理。
+   * 由应用启动时调用（用户重启应用即触发一轮清理）。
+   */
+  cleanup(retentionDays: number): { removed: number } {
+    const store = this.ensureStore()
+    const root = this.getRoot()
+    if (!store || !root || retentionDays <= 0) return { removed: 0 }
+    const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000
+    const expired = store.get().entries.filter((e) => new Date(e.deletedAt).getTime() < cutoff)
+    let removed = 0
+    for (const entry of expired) {
+      try {
+        fs.rmSync(path.join(root, '.trash', 'items', entry.id), { recursive: true, force: true })
+        store.update((d) => {
+          d.entries = d.entries.filter((e) => e.id !== entry.id)
+        })
+        removed++
+      } catch (e) {
+        logger.warn(`回收站清理失败：${entry.id}`, e)
+      }
+    }
+    if (removed > 0) logger.info(`回收站清理了 ${removed} 条过期条目（保留 ${retentionDays} 天）`)
+    return { removed }
   }
 
   empty(): { ok: boolean; error?: string } {

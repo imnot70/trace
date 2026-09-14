@@ -20,4 +20,5 @@ export {
 export type { GitSourcePreference } from './bundledGit'
 export { WatcherService } from './watcher'
 export { PluginHost } from './pluginHost'
+export { AutoSyncService } from './autoSync'
 export type { PluginInfo } from '@shared/types'

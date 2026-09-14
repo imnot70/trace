@@ -37,6 +37,7 @@ export interface IpcDeps {
   git: GitService
   watcher: WatcherService
   plugins: PluginHost
+  autoSync: import('../services/autoSync').AutoSyncService
   getWindow: () => BrowserWindow | null
 }
 
@@ -283,10 +284,12 @@ export function registerIpc(deps: IpcDeps): void {
 
   // ---------- 设置 ----------
   handle('settings:get', () => ({ ok: true, settings: deps.settings.get() }))
-  handle('settings:set', (patch: Partial<AppSettings>) => ({
-    ok: true,
-    settings: deps.settings.update(patch)
-  }))
+  handle('settings:set', (patch: Partial<AppSettings>) => {
+    const settings = deps.settings.update(patch)
+    // 定时自动同步配置可能变化，重新应用定时器
+    deps.autoSync.apply()
+    return { ok: true, settings }
+  })
 
   // ---------- 主题包 ----------
   handle('theme:list', () => ({ ok: true, themes: deps.themes.list() }))

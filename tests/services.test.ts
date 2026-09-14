@@ -29,6 +29,9 @@ function buildStack() {
     zenHideTopbar: false,
     attachmentsDir: 'attachments',
     proxyUrl: '',
+    trashRetentionDays: 30,
+    autoSyncEnabled: false,
+    autoSyncIntervalMin: 5,
     enablePlugins: false,
     pluginEnabled: {},
     gitSource: null
@@ -420,6 +423,27 @@ describe('回收站', () => {
     expect(trash.purge(entry.id).ok).toBe(true)
     expect(trash.list()).toHaveLength(0)
     expect(fs.existsSync(path.join(trash.trashDir()!, 'items', entry.id))).toBe(false)
+  })
+
+  it('回收站过期清理', () => {
+    const { vaults, fsTree, trash } = buildStack()
+    vaults.create('库')
+    fsTree.createNote('库', '', '旧笔记')
+    fsTree.createNote('库', '', '新笔记')
+    fsTree.deleteNode('库', '旧笔记.md', 'note')
+    fsTree.deleteNode('库', '新笔记.md', 'note')
+    // 把第一条的删除时间改到 40 天前，并重建服务实例（模拟下次启动从磁盘加载）
+    const store = JSON.parse(fs.readFileSync(path.join(trash.trashDir()!, 'index.json'), 'utf-8'))
+    store.entries[0].deletedAt = new Date(Date.now() - 40 * 24 * 3600 * 1000).toISOString()
+    fs.writeFileSync(path.join(trash.trashDir()!, 'index.json'), JSON.stringify(store))
+    const freshTrash = new TrashService(() => path.join(tmp, 'ws'))
+
+    const { removed } = freshTrash.cleanup(30)
+    expect(removed).toBe(1)
+    expect(freshTrash.list()).toHaveLength(1)
+    expect(freshTrash.list()[0].name).toBe('新笔记')
+    // 保留天数 0 = 永不清理
+    expect(trash.cleanup(0).removed).toBe(0)
   })
 
   it('清空回收站', () => {

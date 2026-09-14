@@ -1,0 +1,79 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import type { GitService } from './gitService'
+import type { WatcherService } from './watcher'
+import { logger } from '../lib/logger'
+
+export interface AutoSyncDeps {
+  /** 工作区根目录（空 = 未设置） */
+  getRoot: () => string | null
+  git: GitService
+  watcher: WatcherService
+  /** 读取当前设置（开关 / 间隔） */
+  getConfig: () => { enabled: boolean; intervalMin: number }
+}
+
+/**
+ * 定时自动同步：对工作区内所有已关联远程仓库的笔记库静默执行同步管道。
+ * - 仅同步磁盘状态（未防抖的输入属下一轮）；不广播 git:event，避免周期性打扰
+ * - 失败仅记日志（界面上的 ahead/behind 徽标自然反映状态），下轮重试
+ * - 同步期间挂起文件监听（与手动同步同路径）
+ */
+export class AutoSyncService {
+  private timer: NodeJS.Timeout | null = null
+  private running = false
+
+  constructor(private deps: AutoSyncDeps) {}
+
+  /** 按当前设置应用定时器（设置变更 / 启动时调用） */
+  apply(): void {
+    const { enabled, intervalMin } = this.deps.getConfig()
+    this.stop()
+    if (!enabled || intervalMin <= 0) {
+      logger.info('定时自动同步未启用')
+      return
+    }
+    const ms = Math.max(1, Math.min(1440, intervalMin)) * 60 * 1000
+    this.timer = setInterval(() => void this.tick(), ms)
+    logger.info(`定时自动同步已启用，间隔 ${intervalMin} 分钟`)
+  }
+
+  stop(): void {
+    if (this.timer) {
+      clearInterval(this.timer)
+      this.timer = null
+    }
+  }
+
+  /** 单轮同步：遍历工作区一级目录中的 git 仓库，有 origin 的才同步 */
+  private async tick(): Promise<void> {
+    if (this.running) return // 上一轮未结束（网络慢）则跳过本轮
+    const root = this.deps.getRoot()
+    if (!root || !fs.existsSync(root)) return
+    this.running = true
+    try {
+      const vaults = fs
+        .readdirSync(root, { withFileTypes: true })
+        .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+        .map((e) => e.name)
+      for (const vault of vaults) {
+        const vaultPath = path.join(root, vault)
+        if (!this.deps.git.isRepo(vaultPath)) continue
+        const status = await this.deps.git.status(vaultPath)
+        if (!status.associated) continue
+        this.deps.watcher.suspend()
+        try {
+          const result = await this.deps.git.sync(vaultPath)
+          if (!result.ok) logger.warn(`自动同步失败（${vault}）：${result.error ?? '未知错误'}`)
+          else if (result.conflicts?.length) logger.warn(`自动同步存在冲突（${vault}）：${result.conflicts.join('、')}`)
+        } catch (e) {
+          logger.warn(`自动同步异常（${vault}）`, e)
+        } finally {
+          this.deps.watcher.resume()
+        }
+      }
+    } finally {
+      this.running = false
+    }
+  }
+}

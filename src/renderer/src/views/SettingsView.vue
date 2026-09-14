@@ -66,6 +66,21 @@ watch(
   }
 )
 
+// ---------- 回收站 / 自动同步 ----------
+const retentionOptions = [
+  { label: '7 天', value: 7 },
+  { label: '30 天', value: 30 },
+  { label: '90 天', value: 90 },
+  { label: '永久保留', value: 0 }
+]
+
+const autoSyncIntervals = [
+  { label: '每 1 分钟', value: 1 },
+  { label: '每 5 分钟', value: 5 },
+  { label: '每 10 分钟', value: 10 },
+  { label: '每 30 分钟', value: 30 }
+]
+
 // ---------- 网络代理 ----------
 const proxyInput = ref('')
 const proxyTesting = ref(false)
@@ -485,6 +500,42 @@ async function resetGitSource(): Promise<void> {
           <p class="settings-desc" style="margin: 0 0 0 102px">
             相对于笔记库根目录，修改后只对之后粘贴的图片生效；已有图片的引用不受影响。
           </p>
+        </div>
+
+        <div class="settings-block">
+          <h3>回收站</h3>
+          <div class="setting-row">
+            <span class="setting-label">保留天数</span>
+            <el-select
+              :model-value="app.settings.trashRetentionDays"
+              style="width: 200px"
+              @update:model-value="(v: number) => app.updateSettings({ trashRetentionDays: v })"
+            >
+              <el-option v-for="opt in retentionOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </el-select>
+            <span class="settings-desc" style="margin: 0">超过保留天数的回收站条目将在应用启动时自动清理（0 / 永久保留 = 不自动清理）</span>
+          </div>
+        </div>
+
+        <div class="settings-block">
+          <h3>自动同步</h3>
+          <p class="settings-desc">按设定间隔自动同步所有已关联 Git 仓库的笔记库；仅对磁盘上已保存的内容生效，失败时静默（状态见库徽标与编辑页）。</p>
+          <div class="setting-row">
+            <span class="setting-label">定时同步</span>
+            <el-switch
+              :model-value="app.settings.autoSyncEnabled"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ autoSyncEnabled: Boolean(v) })"
+            />
+            <template v-if="app.settings.autoSyncEnabled">
+              <el-select
+                :model-value="app.settings.autoSyncIntervalMin"
+                style="width: 140px"
+                @update:model-value="(v: number) => app.updateSettings({ autoSyncIntervalMin: v })"
+              >
+                <el-option v-for="opt in autoSyncIntervals" :key="opt.value" :label="opt.label" :value="opt.value" />
+              </el-select>
+            </template>
+          </div>
         </div>
 
         <div class="settings-block">
