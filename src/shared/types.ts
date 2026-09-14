@@ -110,6 +110,14 @@ export interface AppSettings {
   gitSource: 'system' | 'bundled' | null
 }
 
+/** 自定义主题包：一组 CSS 变量覆盖（light/dark 两套），存 userData/themes/<id>.json */
+export interface ThemePackage {
+  id: string
+  name: string
+  light: Record<string, string>
+  dark: Record<string, string>
+}
+
 export interface AccountInfo {
   loggedIn: boolean
   username: string | null
