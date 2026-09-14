@@ -113,6 +113,7 @@ src/
   - 需求追加或需求完成状态变化 → 对应需求文档（PRD 中的 FR 编号）与设计文档（如适用）；
   - 新功能 / 架构级方案 → 按上述目录规范在 `requirements/` 下创建对应子目录；
   - 提交信息无法替代文档——commit message 只记录「这次改了什么」，文档记录「产品现在是什么」。
+  - **requirements/ 目录组织**：新功能的设计 / 需求文档放 `requirements/<日期>_<功能名>/` 子目录（如 `2026-09-13_tag-system/`），并在 `requirements/index.md` 的文档导读表登记一行状态；发版后该功能的变更从 CHANGELOG `[未发布]` 段随版本归档。面向使用者的操作指引放 `guides/<功能名>.md`。历史交接文档移入 `requirements/changelog/`。
 
 ## 已知局限（勿误判为新 bug）
 

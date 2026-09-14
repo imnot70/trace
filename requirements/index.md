@@ -1,6 +1,6 @@
 # Trace 需求与实施状态索引
 
-> 更新：2026-09-14 ｜ 发布基线：**v0.4.0**（双链 + 锚点 + 移动 + 内置 Git + 相对时间 + 笔记信息 + 悬浮预览同步）；main 上已积累一批待发版改动（标签系统 / 主题包 / 网格列表切换等，见第一节「待发版」）
+> 更新：2026-09-14 ｜ 发布基线：**v0.4.0**；v0.4.1 已发布；main 上待发版改动包括标签系统 / 主题包 / 网格列表切换 / 导出 PDF 等（见第一节「待发版」）
 > 本文件是 `requirements/` 目录的导览与实施状态总览。各项明细以对应文档与 [CHANGELOG.md](../CHANGELOG.md) 为准。
 
 ## 文档导读
@@ -23,6 +23,7 @@
 | [theme-presets_design.md](2026-09-13_theme-presets/theme-presets_design.md) | 预设主题包：暖色/冷色/高对比度 | ✅ **已实施**（main，随下版本发布） |
 | [theme-import_design.md](2026-09-14_theme-import/theme-import_design.md) | 主题包导入：JSON 变量覆盖 + 白名单校验 + 应用数据目录存储 | ✅ **已实施**（main，随下版本发布） |
 | [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md) | 标签系统：打标签 / 筛选 / 管理 | ✅ **已实施**（main，随下版本发布） |
+| [note-export_design.md](note-export/note-export_design.md) | 笔记导出 PDF：多篇不合并（单篇 / 文件夹 / 整库递归，可跨库），图片内联自包含 | ✅ **已实施**（main，随下版本发布） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
@@ -44,6 +45,8 @@
 - **标签系统**：创建/重命名/删除标签（含自定义颜色，改色为弹窗选色器）；笔记打标签/取消标签（侧栏树 + 网格卡片均有「标签…」入口）；侧栏「标签」区筛选。**标签已迁移到笔记 frontmatter 存储**（方案 A，FR-2.6.10）——随文件移动 / 重命名 / 外部编辑跟随，旧数据自动迁移；预览 / 悬浮预览与卡片摘要不渲染 frontmatter。详见 [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md)。
 - **修复 `npm run lint` scripts glob 问题**：ESLint 配置忽略 `scripts/` 但 lint 命令仍包含该目录导致报错，从命令中移除。
 - **主题包导入**：设置页支持导入/删除 JSON 自定义主题（浅/深两套变量覆盖，19 项白名单校验）。详见 [theme-import_design.md](2026-09-14_theme-import/theme-import_design.md)。
+- **导出 PDF**（FR-2.4.10，note-export 分支）：单篇 / 文件夹递归 / 整库批量导出为独立 PDF（不合并），公式 / 高亮 / 表格 / 内嵌 HTML / 图片全保真（图片内联 base64），进度与失败汇总。详见 [note-export_design.md](note-export/note-export_design.md)。
+- **双链 `[[` 补全补记**（FR-2.4.11）：已随双链 P1 实现（此前 index 记录过时，已修正）。
 - **回收站过期清理**（FR-2.7.6）：保留天数可配置，启动时自动清理超期条目。
 - **定时自动同步**（FR-2.8.14）：开关 + 间隔可配置，对已关联库静默同步，失败静默记日志。
 - **双链 `[[` 补全补记**：FR（双链 P2）实际已随双链 P1 一并实现并验证可用，index 此前的「剩余 P2」记录过时，已修正（P3 反向链接仍待做）。
