@@ -241,7 +241,7 @@ Trace（中文名「笔迹」）是一款**本地优先**的轻量级 Markdown �
 
 ## 7. 二期规划
 
-全局搜索 · 所见即所得模式 · 图形化冲突解决 · 定时/变更自动同步 · 自定义主题包 · 插件完整 API 与市场 · 标签 · 多窗口 · 导出 PDF/HTML · 窗口半透明 + 毛玻璃效果（调研中：Win11 `backgroundMaterial` / macOS `vibrancy` / Linux 依赖合成器，建议平台分级降级）
+全局搜索 · 所见即所得模式 · 图形化冲突解决 · 定时/变更自动同步 · 插件完整 API 与市场 · 标签 · 多窗口 · 导出 PDF/HTML · 窗口半透明 + 毛玻璃效果（调研中：Win11 `backgroundMaterial` / macOS `vibrancy` / Linux 依赖合成器，建议平台分级降级）
 
 ## 8. 版本历史
 
