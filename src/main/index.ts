@@ -31,6 +31,7 @@ import { registerIpc } from './ipc/registerIpc'
 import type { AppSettings } from '@shared/types'
 
 let mainWindow: BrowserWindow | null = null
+let exportPdf: ExportService | null = null
 
 // 自定义协议：预览中的相对路径图片（trace-vault://<库名>/<库内路径>）
 protocol.registerSchemesAsPrivileged([
@@ -87,6 +88,8 @@ function createWindow(): void {
 
   mainWindow.on('closed', () => {
     mainWindow = null
+    // 关闭隐藏导出窗口，否则它阻止 window-all-closed → 应用无法退出
+    exportPdf?.close()
   })
 
   // 外部链接用系统浏览器打开
@@ -209,7 +212,7 @@ app.whenReady().then(() => {
   plugins.init()
   plugins.activateAll()
 
-  const exportPdf = new ExportService(() => mainWindow)
+  exportPdf = new ExportService(() => mainWindow)
 
   const autoSync = new AutoSyncService({
     getRoot: () => workspace.getRoot(),

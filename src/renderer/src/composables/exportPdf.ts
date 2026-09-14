@@ -1,4 +1,5 @@
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { reactive } from 'vue'
 import { renderNoteHtml } from '../lib/noteExportHtml'
 import type { TreeNode } from '@shared/types'
 
@@ -22,13 +23,13 @@ export function collectNotes(nodes: TreeNode[], vault: string, prefix = ''): Exp
   return result
 }
 
-/** 导出进度对话框状态（组件侧渲染） */
-export const exportState = {
+/** 导出进行中的全局进度（App.vue 渲染为悬浮进度条；完成即移除，无残留提示） */
+export const exportState = reactive({
   visible: false,
   done: 0,
   total: 0,
   current: ''
-}
+})
 
 /**
  * 批量导出 PDF：
@@ -67,22 +68,20 @@ export async function exportNotesToPdf(
     )
   }
 
-  const progressClose = ElMessage({
-    message: `正在导出 0/${targets.length}…`,
-    type: 'info',
-    duration: 0,
-    showClose: false
-  })
+  exportState.visible = true
+  exportState.done = 0
+  exportState.total = targets.length
+  exportState.current = ''
   const offProgress = window.trace.onExportProgress(({ done, total, current }) => {
-    // ElMessage 实例更新文案较繁琐，简单做法：关闭旧的弹新的
-    progressClose.close()
-    void ElMessage({ message: `正在导出 ${done}/${total}：${current}`, type: 'info', duration: 0 })
+    exportState.done = done
+    exportState.total = total
+    exportState.current = current
   })
 
   const items = targets.map((t, i) => ({ ...t, html: htmls[i] }))
   const result = await window.trace.exportPdf(items)
   offProgress()
-  progressClose.close()
+  exportState.visible = false
 
   if (!result.ok && result.error) {
     ElMessage.error(result.error)

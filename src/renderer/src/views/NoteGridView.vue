@@ -554,9 +554,11 @@ watch(section, () => {
                           {{ isFavorited({ vault: vaultName, path: node.path, name: node.name }) ? '取消收藏' : '收藏笔记' }}
                         </el-dropdown-item>
                         <el-dropdown-item command="locate">在侧栏中定位</el-dropdown-item>
+                        <el-dropdown-item command="exportPdf" divided>导出 PDF…</el-dropdown-item>
                         <el-dropdown-item command="info" divided>信息</el-dropdown-item>
                         <el-dropdown-item command="tag">标签</el-dropdown-item>
-                        <el-dropdown-item command="delete" class="danger-item">删除笔记</el-dropdown-item>
+                        <el-dropdown-item command="exportPdf" divided>导出 PDF…</el-dropdown-item>
+                  <el-dropdown-item command="delete" class="danger-item">删除笔记</el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
                   </el-dropdown>
@@ -607,6 +609,7 @@ watch(section, () => {
                   <el-dropdown-item command="locate">在侧栏中定位</el-dropdown-item>
                   <el-dropdown-item command="info" divided>信息</el-dropdown-item>
                   <el-dropdown-item command="tag">标签</el-dropdown-item>
+                  <el-dropdown-item command="exportPdf" divided>导出 PDF…</el-dropdown-item>
                   <el-dropdown-item command="delete" class="danger-item">删除笔记</el-dropdown-item>
                 </el-dropdown-menu>
               </template>

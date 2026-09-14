@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useAppStore } from './stores/app'
+import { exportState } from './composables/exportPdf'
 import { useTreeStore } from './stores/tree'
 import { useEditorStore } from './stores/editor'
 import { useTrashStore } from './stores/trash'
@@ -227,4 +228,31 @@ onMounted(async () => {
   <NameDialog />
   <MoveDialog />
   <GitAssociateDialog />
+
+  <!-- 批量导出进度（悬浮条，完成即消失） -->
+  <Transition name="float-preview">
+    <div v-if="exportState.visible" class="export-progress">
+      <el-icon class="is-loading"><Loading /></el-icon>
+      <span>正在导出 {{ exportState.done }}/{{ exportState.total }}：{{ exportState.current }}</span>
+    </div>
+  </Transition>
 </template>
+
+<style scoped>
+.export-progress {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+</style>
