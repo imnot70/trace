@@ -21,6 +21,7 @@
 | [grid-list-toggle_design.md](2026-09-13_grid-list-toggle/grid-list-toggle_design.md) | 网格/列表切换视图：常用/收藏/笔记库统一支持，持久化 | ✅ **已实施**（main，随下版本发布） |
 | [auto-close-tags_design.md](2026-09-13_auto-close-tags/auto-close-tags_design.md) | 编辑器 HTML 标签自动闭合 | ✅ **已实施**（main，随下版本发布） |
 | [theme-presets_design.md](2026-09-13_theme-presets/theme-presets_design.md) | 预设主题包：暖色/冷色/高对比度 | ✅ **已实施**（main，随下版本发布） |
+| [theme-import_design.md](2026-09-14_theme-import/theme-import_design.md) | 主题包导入：JSON 变量覆盖 + 白名单校验 + 应用数据目录存储 | ✅ **已实施**（main，随下版本发布） |
 | [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md) | 标签系统：打标签 / 筛选 / 管理 | ✅ **已实施**（main，随下版本发布） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
@@ -42,6 +43,7 @@
 - **预设主题包**：新增暖色、冷色、高对比度 3 套预设配色，设置页网格卡片选择，持久化到设置。详见 [theme-presets_design.md](2026-09-13_theme-presets/theme-presets_design.md)。
 - **标签系统**：创建/重命名/删除标签（含自定义颜色，改色为弹窗选色器）；笔记打标签/取消标签（侧栏树 + 网格卡片均有「标签…」入口）；侧栏「标签」区筛选。**标签已迁移到笔记 frontmatter 存储**（方案 A，FR-2.6.10）——随文件移动 / 重命名 / 外部编辑跟随，旧数据自动迁移；预览 / 悬浮预览与卡片摘要不渲染 frontmatter。详见 [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md)。
 - **修复 `npm run lint` scripts glob 问题**：ESLint 配置忽略 `scripts/` 但 lint 命令仍包含该目录导致报错，从命令中移除。
+- **主题包导入**：设置页支持导入/删除 JSON 自定义主题（浅/深两套变量覆盖，19 项白名单校验）。详见 [theme-import_design.md](2026-09-14_theme-import/theme-import_design.md)。
 
 ### v0.4.0（2026-09-13）
 
