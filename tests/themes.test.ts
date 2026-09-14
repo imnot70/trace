@@ -38,6 +38,19 @@ describe('ThemeService', () => {
     expect(svc.remove('../../etc').ok).toBe(false)
   })
 
+  it('save 同 id 覆盖：list 只保留最后一次', () => {
+    expect(svc.save(sakura).ok).toBe(true)
+    expect(svc.save({ ...sakura, name: '樱花B' }).ok).toBe(true)
+    const list = svc.list()
+    expect(list).toHaveLength(1)
+    expect(list[0].name).toBe('樱花B')
+  })
+
+  it('list 跳过文件名与 id 不一致的文件', () => {
+    writeFileSync(path.join(dir, 'mismatch.json'), JSON.stringify(sakura), 'utf-8')
+    expect(svc.list()).toEqual([])
+  })
+
   it('save 拒绝非法主题', () => {
     const r = svc.save({ id: 'warm', name: 'x', light: {}, dark: {} })
     expect(r.ok).toBe(false)

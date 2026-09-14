@@ -21,11 +21,12 @@ export class ThemeService {
     }
     const themes: ThemePackage[] = []
     for (const file of files) {
-      if (!file.endsWith('.json')) continue
+      if (!file.toLowerCase().endsWith('.json')) continue
       try {
         const raw = JSON.parse(fs.readFileSync(path.join(this.dir, file), 'utf-8'))
         const result = validateThemePackage(raw)
-        if (result.ok && result.theme) themes.push(result.theme)
+        // 文件名须与主题 id 一致，否则 remove(id) 会删错文件（幽灵主题 / 重复 key）
+        if (result.ok && result.theme && path.parse(file).name === result.theme.id) themes.push(result.theme)
       } catch {
         /* 损坏文件：跳过 */
       }
