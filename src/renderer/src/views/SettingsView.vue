@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAppStore } from '../stores/app'
 import { useGitStore } from '../stores/git'
 import { resetGitAvailabilityCache } from '../stores/git'
@@ -117,6 +117,45 @@ async function applyAttachmentsDir(): Promise<void> {
   if (normalized.dir === app.settings.attachmentsDir) return
   await app.updateSettings({ attachmentsDir: normalized.dir })
   ElMessage.success(`附件目录已设为 ${normalized.dir}，对之后粘贴的图片生效`)
+}
+
+// ---------- 主题包 ----------
+async function importTheme(): Promise<void> {
+  const result = await app.importThemeFile()
+  if (result.canceled) return
+  if (result.error || !result.theme) {
+    ElMessage.error(result.error ?? '导入失败')
+    return
+  }
+  const theme = result.theme
+  if (app.customThemes.some((t) => t.id === theme.id)) {
+    try {
+      await ElMessageBox.confirm(`已存在主题「${theme.name}」，覆盖更新？`, '导入主题', {
+        type: 'warning',
+        confirmButtonText: '覆盖'
+      })
+    } catch {
+      return
+    }
+  }
+  const error = await app.saveTheme(theme)
+  if (error) ElMessage.error(error)
+  else ElMessage.success(`主题「${theme.name}」已导入`)
+}
+
+async function removeTheme(id: string, name: string): Promise<void> {
+  try {
+    await ElMessageBox.confirm(`确定删除主题「${name}」吗？`, '删除主题', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      confirmButtonClass: 'el-button--danger'
+    })
+  } catch {
+    return
+  }
+  const error = await app.deleteTheme(id)
+  if (error) ElMessage.error(error)
+  else ElMessage.success('主题已删除')
 }
 
 async function chooseWorkspace(): Promise<void> {
@@ -370,6 +409,33 @@ async function resetGitSource(): Promise<void> {
                 </div>
                 <span class="preset-name">{{ preset.name }}</span>
               </div>
+              <div
+                v-for="custom in app.customThemes"
+                :key="custom.id"
+                class="theme-preset-card"
+                :class="{ active: app.settings.themePreset === custom.id }"
+                @click="app.updateSettings({ themePreset: custom.id })"
+              >
+                <div class="preset-swatches">
+                  <span
+                    class="swatch"
+                    :style="{
+                      background: app.isDark ? custom.dark['--bg-primary'] : custom.light['--bg-primary'],
+                      border: '1px solid ' + (app.isDark ? custom.dark['--border-color'] : custom.light['--border-color'])
+                    }"
+                  />
+                  <span class="swatch" :style="{ background: app.isDark ? custom.dark['--accent'] : custom.light['--accent'] }" />
+                  <span class="swatch" :style="{ background: app.isDark ? custom.dark['--danger'] : custom.light['--danger'] }" />
+                </div>
+                <span class="preset-name">{{ custom.name }}</span>
+                <button class="preset-remove" title="删除主题" @click.stop="removeTheme(custom.id, custom.name)">
+                  <el-icon><Close /></el-icon>
+                </button>
+              </div>
+              <div class="theme-preset-card theme-import-card" title="导入主题包（JSON）" @click="importTheme">
+                <el-icon><Plus /></el-icon>
+                <span class="preset-name">导入主题</span>
+              </div>
             </div>
           </div>
         </div>
@@ -618,6 +684,7 @@ async function resetGitSource(): Promise<void> {
   border-radius: 8px;
   cursor: pointer;
   transition: border-color 0.15s ease;
+  position: relative;
 }
 
 .theme-preset-card:hover {
@@ -643,5 +710,36 @@ async function resetGitSource(): Promise<void> {
   font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
+}
+
+.preset-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: none;
+  padding: 2px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.theme-preset-card:hover .preset-remove {
+  display: flex;
+}
+
+.preset-remove:hover {
+  color: var(--danger);
+}
+
+.theme-import-card {
+  justify-content: center;
+  gap: 6px;
+  border-style: dashed;
+  color: var(--text-secondary);
+}
+
+.theme-import-card:hover {
+  color: var(--accent);
 }
 </style>
