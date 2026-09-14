@@ -18,6 +18,7 @@ import type {
   TagItem,
   ThemePackage,
   TreeNode,
+  ExportProgress,
   TrashEntry,
   VaultInfo
 } from './types'
@@ -77,6 +78,13 @@ export interface TraceApi {
   syncVault(vault: string): Promise<SyncResult>
   checkGitAvailability(): Promise<GitAvailability>
   testProxy(): Promise<OpResult>
+  /** 批量导出 PDF：每项一个文件；返回逐篇结果与失败清单 */
+  exportPdf(items: { vault: string; path: string; name: string; html: string }[]): Promise<
+    OpResult & { results?: { ok: boolean; name: string; error?: string }[]; failed?: { name: string; error?: string }[] }
+  >
+  /** 读取库内图片（导出 HTML 内联 base64 用），路径限定库内且扩展名白名单 */
+  readImage(vault: string, relPath: string): Promise<OpResult & { mime?: string; base64?: string }>
+  onExportProgress(cb: (payload: ExportProgress) => void): () => void
 
   // ---- 设置 ----
   getSettings(): Promise<OpResult & { settings?: AppSettings }>

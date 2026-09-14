@@ -15,6 +15,7 @@ import {
   pickGitBinary,
   PluginHost,
   AutoSyncService,
+  ExportService,
   RecentsService,
   resolveBundledGitPath,
   SettingsService,
@@ -208,6 +209,8 @@ app.whenReady().then(() => {
   plugins.init()
   plugins.activateAll()
 
+  const exportPdf = new ExportService(() => mainWindow)
+
   const autoSync = new AutoSyncService({
     getRoot: () => workspace.getRoot(),
     git,
@@ -243,6 +246,7 @@ app.whenReady().then(() => {
     watcher,
     plugins,
     autoSync,
+    exportPdf,
     getWindow: () => mainWindow
   })
 

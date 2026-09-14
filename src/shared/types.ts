@@ -175,6 +175,14 @@ export interface FsChangedPayload {
   paths: string[]
 }
 
+/** 主进程 -> 渲染进程：批量导出进度 */
+export interface ExportProgress {
+  done: number
+  total: number
+  current: string
+  ok: boolean
+}
+
 /** 主进程 -> 渲染进程：git 同步过程事件 */
 export interface GitEventPayload {
   vault: string

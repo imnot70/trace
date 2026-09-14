@@ -1,6 +1,9 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import { errMessage } from '../lib/errMessage'
 import { logger } from '../lib/logger'
+import { resolveWithin } from '../lib/paths'
 import { readGitVersion, resolveBundledGitPath } from '../services'
 import type { AppSettings, ThemePackage } from '@shared/types'
 import type {
@@ -38,6 +41,7 @@ export interface IpcDeps {
   watcher: WatcherService
   plugins: PluginHost
   autoSync: import('../services/autoSync').AutoSyncService
+  exportPdf: import('../services/exportPdf').ExportService
   getWindow: () => BrowserWindow | null
 }
 
@@ -308,6 +312,69 @@ export function registerIpc(deps: IpcDeps): void {
   handle('theme:delete', (id: string) => deps.themes.remove(id))
 
   // ---------- 插件 ----------
+  // ---------- 导出 PDF ----------
+  let exportDir: string | null = null
+  handle(
+    'export:pdf',
+    async (items: { vault: string; path: string; name: string; html: string }[]) => {
+      if (!Array.isArray(items) || items.length === 0) {
+        return { ok: false, error: '没有可导出的笔记', results: [] }
+      }
+      if (!exportDir) {
+        exportDir = await deps.exportPdf.chooseDirectory()
+        if (!exportDir) return { ok: false, error: '已取消', results: [] }
+      }
+      const results = []
+      let done = 0
+      for (const item of items) {
+        const r = await deps.exportPdf.exportOne(exportDir, item)
+        results.push(r)
+        done++
+        send('export:progress', { done, total: items.length, current: item.name, ok: r.ok })
+      }
+      const failed = results.filter((r) => !r.ok)
+      return {
+        ok: failed.length === 0,
+        results,
+        failed: failed.map((f) => ({ name: f.name, error: f.error }))
+      }
+    }
+  )
+  handle('export:resetDir', () => {
+    exportDir = null
+    return { ok: true }
+  })
+
+  // 图片内联（导出 HTML 用）：读取库内图片并返回 base64
+  const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp'])
+  handle(
+    'fs:readImage',
+    (vault: string, relPath: string) => {
+      try {
+        const vaultPath = deps.vaults.vaultPath(vault)
+        const abs = resolveWithin(vaultPath, relPath)
+        if (!IMAGE_EXTS.has(path.extname(abs).toLowerCase())) {
+          return { ok: false, error: '不支持的图片格式' }
+        }
+        const data = fs.readFileSync(abs)
+        const mime = (
+          {
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.gif': 'image/gif',
+            '.webp': 'image/webp',
+            '.svg': 'image/svg+xml',
+            '.bmp': 'image/bmp'
+          } as Record<string, string>
+        )[path.extname(abs).toLowerCase()]
+        return { ok: true, mime, base64: data.toString('base64') }
+      } catch (e) {
+        return { ok: false, error: errMessage(e) }
+      }
+    }
+  )
+
   handle('plugin:list', () => ({ ok: true, plugins: deps.plugins.discover() }))
   handle('plugin:setEnabled', (id: string, enabled: boolean) => {
     deps.plugins.setEnabled(id, enabled)

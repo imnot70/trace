@@ -59,6 +59,9 @@ const api: TraceApi = {
   syncVault: (vault) => ipcRenderer.invoke('git:sync', vault),
   checkGitAvailability: () => ipcRenderer.invoke('git:checkAvailability'),
   testProxy: () => ipcRenderer.invoke('git:testProxy'),
+  exportPdf: (items) => ipcRenderer.invoke('export:pdf', items),
+  readImage: (vault, relPath) => ipcRenderer.invoke('fs:readImage', vault, relPath),
+  onExportProgress: (cb) => subscribe('export:progress', cb),
 
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),

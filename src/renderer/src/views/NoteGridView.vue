@@ -4,6 +4,8 @@ import { ElMessageBox } from 'element-plus'
 import { useAppStore, type GridSection } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import { useNoteActions } from '../composables/actions'
+import { collectNotes, exportNotesToPdf } from '../composables/exportPdf'
+import { useEditorStore } from '../stores/editor'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
 import TagPickerDialog from '../components/TagPickerDialog.vue'
 import { formatRelativeTime } from '../lib/relativeTime'
@@ -15,6 +17,7 @@ import type { TreeNode } from '@shared/types'
 const app = useAppStore()
 const tree = useTreeStore()
 const actions = useNoteActions()
+const editor = useEditorStore()
 
 type GridItem = { id?: string; vault: string; path: string; name: string; openedAt?: string }
 type VaultCard = { id?: string; name: string; description?: string }
@@ -204,10 +207,18 @@ function onVaultMenuCommand(cmd: string, card: VaultCard): void {
   if (cmd === 'rename') actions.renameVault(card.name)
   else if (cmd === 'deleteVault') void actions.deleteVault(card.name)
   else if (cmd === 'locate') void tree.revealNode(card.name, '', 'vault')
+  else if (cmd === 'exportPdf') actions.exportFolderPdf(card.name, '')
 }
 
 function onFolderMenuCommand(cmd: string, node: TreeNode): void {
   const folderPath = [folderRel.value, node.name].filter(Boolean).join('/')
+  if (cmd === 'exportPdf') {
+    // 递归导出该文件夹下全部笔记
+    const nodes = node.children ?? []
+    const targets = collectNotes(nodes, `${vaultName.value}/${folderPath}`, folderPath)
+    void exportNotesToPdf(targets, tree, editor)
+    return
+  }
   if (cmd === 'rename') actions.renameDir(vaultName.value, folderPath, node.name)
   else if (cmd === 'move') actions.moveNode(vaultName.value, folderPath, 'dir', node.name)
   else if (cmd === 'delete') void actions.deleteDir(vaultName.value, folderPath, node.name)
@@ -223,6 +234,10 @@ async function onNoteMenuCommand(cmd: string, item: GridItem): Promise<void> {
     cmd === 'removeRecent' || (section.value === 'favorites' && cmd === 'favorite')
   if (removesCard) await new Promise((resolve) => setTimeout(resolve, 350))
 
+  if (cmd === 'exportPdf') {
+    void actions.exportNotes([{ vault: item.vault, path: item.path, name: item.name }])
+    return
+  }
   if (cmd === 'delete') {
     void actions.deleteNote(item.vault, item.path, item.name)
     return
@@ -461,7 +476,8 @@ watch(section, () => {
                     <template #dropdown>
                       <el-dropdown-menu>
                         <el-dropdown-item command="locate">在侧栏中定位</el-dropdown-item>
-                        <el-dropdown-item command="rename" divided>重命名</el-dropdown-item>
+                        <el-dropdown-item command="exportPdf" divided>导出 PDF…</el-dropdown-item>
+                        <el-dropdown-item command="rename">重命名</el-dropdown-item>
                         <el-dropdown-item command="deleteVault" class="danger-item">删除笔记库</el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
@@ -496,6 +512,7 @@ watch(section, () => {
                       <el-dropdown-menu>
                         <el-dropdown-item command="newDir">新建文件夹</el-dropdown-item>
                         <el-dropdown-item command="newNote">创建笔记</el-dropdown-item>
+                        <el-dropdown-item command="exportPdf" divided>导出 PDF…</el-dropdown-item>
                         <el-dropdown-item command="locate" divided>在侧栏中定位</el-dropdown-item>
                         <el-dropdown-item command="move">移动到…</el-dropdown-item>
                         <el-dropdown-item command="rename">重命名</el-dropdown-item>
@@ -531,6 +548,7 @@ watch(section, () => {
                     </button>
                     <template #dropdown>
                       <el-dropdown-menu>
+                        <el-dropdown-item command="exportPdf">导出 PDF…</el-dropdown-item>
                         <el-dropdown-item command="move">移动到…</el-dropdown-item>
                         <el-dropdown-item command="favorite">
                           {{ isFavorited({ vault: vaultName, path: node.path, name: node.name }) ? '取消收藏' : '收藏笔记' }}

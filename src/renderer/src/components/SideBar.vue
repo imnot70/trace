@@ -139,6 +139,7 @@ function handleVaultCommand(cmd: string, vault: string): void {
 function handleVaultPlus(cmd: string, vault: string): void {
   if (cmd === 'dir') actions.createDir(vault, '')
   else if (cmd === 'note') actions.createNote(vault, '')
+  else if (cmd === 'exportPdf') actions.exportFolderPdf(vault, '')
 }
 
 defineProps<{ vaults?: VaultInfo[] }>()
@@ -322,6 +323,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
                     <el-dropdown-menu>
                       <el-dropdown-item command="dir">新建文件夹</el-dropdown-item>
                       <el-dropdown-item command="note">创建笔记</el-dropdown-item>
+                      <el-dropdown-item command="exportPdf" divided>导出整库 PDF…</el-dropdown-item>
                     </el-dropdown-menu>
                   </template>
                 </el-dropdown>

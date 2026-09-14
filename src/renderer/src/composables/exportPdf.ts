@@ -1,0 +1,116 @@
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { renderNoteHtml } from '../lib/noteExportHtml'
+import type { TreeNode } from '@shared/types'
+
+interface ExportItem {
+  vault: string
+  path: string
+  name: string
+}
+
+/** 递归收集文件夹/库下的全部笔记（名称排序与侧栏一致），vault 随项携带 */
+export function collectNotes(nodes: TreeNode[], vault: string, prefix = ''): ExportItem[] {
+  const result: ExportItem[] = []
+  for (const n of nodes) {
+    const path = prefix ? `${prefix}/${n.name}` : n.name
+    if (n.kind === 'note') {
+      result.push({ vault, path: `${path}.md`, name: n.name })
+    } else if (n.kind === 'dir' && n.children) {
+      result.push(...collectNotes(n.children, vault, path))
+    }
+  }
+  return result
+}
+
+/** 导出进度对话框状态（组件侧渲染） */
+export const exportState = {
+  visible: false,
+  done: 0,
+  total: 0,
+  current: ''
+}
+
+/**
+ * 批量导出 PDF：
+ * 1. flushSave 当前笔记（磁盘内容 = 最新）
+ * 2. 逐篇生成导出 HTML（图片内联 base64）
+ * 3. 交主进程 printToPDF 写盘；进度经 export:progress 回推
+ */
+export async function exportNotesToPdf(
+  targets: { vault: string; path: string; name: string }[],
+  treeStore: { trees: Record<string, TreeNode[]>; loadTree(v: string): Promise<void> },
+  editorStore: { current: { vault: string; path: string } | null; flushSave(): Promise<void> }
+): Promise<void> {
+  if (targets.length === 0) {
+    ElMessage.warning('没有可导出的笔记')
+    return
+  }
+  // 导出前保存当前笔记，保证磁盘内容为最新
+  await editorStore.flushSave()
+
+  // 首次确认 + 选择目录（在主进程弹）
+  const confirm = await ElMessageBox.confirm(
+    `将导出 ${targets.length} 篇笔记为 PDF（每篇一个文件，不合并）。继续后请选择导出目录。`,
+    '导出 PDF',
+    { confirmButtonText: '继续', cancelButtonText: '取消', type: 'info' }
+  ).catch(() => null)
+  if (!confirm) return
+
+  // 逐篇准备 HTML（主进程选完目录后再生成，避免取消白做；先收集数据源）
+  const htmls: string[] = []
+  for (const t of targets) {
+    if (!treeStore.trees[t.vault]) await treeStore.loadTree(t.vault)
+    const result = await window.trace.readNote(t.vault, t.path)
+    const content = result.ok && result.content != null ? result.content : ''
+    htmls.push(
+      await renderNoteHtml(content, t.path, (rel) => window.trace.readImage(t.vault, rel))
+    )
+  }
+
+  const progressClose = ElMessage({
+    message: `正在导出 0/${targets.length}…`,
+    type: 'info',
+    duration: 0,
+    showClose: false
+  })
+  const offProgress = window.trace.onExportProgress(({ done, total, current }) => {
+    // ElMessage 实例更新文案较繁琐，简单做法：关闭旧的弹新的
+    progressClose.close()
+    void ElMessage({ message: `正在导出 ${done}/${total}：${current}`, type: 'info', duration: 0 })
+  })
+
+  const items = targets.map((t, i) => ({ ...t, html: htmls[i] }))
+  const result = await window.trace.exportPdf(items)
+  offProgress()
+  progressClose.close()
+
+  if (!result.ok && result.error) {
+    ElMessage.error(result.error)
+    return
+  }
+  const failed = result.failed ?? []
+  if (failed.length === 0) {
+    ElMessage.success(`已导出 ${targets.length} 篇 PDF`)
+  } else {
+    ElMessage({
+      type: 'warning',
+      duration: 0,
+      showClose: true,
+      message: `导出完成：成功 ${targets.length - failed.length} 篇，失败 ${failed.length} 篇：${failed
+        .map((f) => `${f.name}（${f.error}）`)
+        .join('；')}`
+    })
+  }
+}
+
+export async function confirmAndExportOne(
+  vault: string,
+  path: string,
+  name: string,
+  treeStore: Parameters<typeof exportNotesToPdf>[1],
+  editorStore: Parameters<typeof exportNotesToPdf>[2]
+): Promise<void> {
+  await exportNotesToPdf([{ vault, path, name }], treeStore, editorStore)
+}
+
+export { ElMessageBox }

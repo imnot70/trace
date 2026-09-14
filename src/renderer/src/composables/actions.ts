@@ -5,6 +5,7 @@ import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
 import { useTrashStore } from '../stores/trash'
 import { useAppStore } from '../stores/app'
+import { collectNotes, exportNotesToPdf } from './exportPdf'
 
 /** 侧栏与树节点的全部操作（创建/重命名/删除/收藏/git） */
 export function useNoteActions() {
@@ -237,6 +238,36 @@ export function useNoteActions() {
     else ElMessage.error(result.error ?? '移除失败')
   }
 
+  // ---------- 导出 PDF ----------
+  async function exportNotes(targets: { vault: string; path: string; name: string }[]): Promise<void> {
+    await exportNotesToPdf(targets, tree, editor)
+  }
+
+  /** 文件夹（或库）递归导出：收集其下全部笔记 */
+  function exportFolderPdf(vault: string, folderPath = ''): void {
+    const collect = (): { vault: string; path: string; name: string }[] => {
+      const nodes = folderPath
+        ? (() => {
+            let cur = tree.trees[vault] ?? []
+            for (const seg of folderPath.split('/')) {
+              const next = cur.find((n) => n.kind === 'dir' && n.name === seg)?.children
+              if (!next) return []
+              cur = next
+            }
+            return cur
+          })()
+        : tree.trees[vault] ?? []
+      return collectNotes(nodes, vault, folderPath)
+    }
+    const ensureAndExport = async (): Promise<void> => {
+      if (collect().length === 0) {
+        await tree.loadTree(vault) // 侧栏未展开过时树为空，先加载再收
+      }
+      void exportNotes(collect())
+    }
+    void ensureAndExport()
+  }
+
   // ---------- 打开 ----------
   async function openNote(vault: string, path: string, name: string): Promise<void> {
     await editor.openNote(vault, path, name)
@@ -256,6 +287,8 @@ export function useNoteActions() {
     deleteNote,
     toggleFavorite,
     removeRecent,
+    exportNotes,
+    exportFolderPdf,
     openNote,
     refreshVault
   }
