@@ -63,6 +63,11 @@ const api: TraceApi = {
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),
 
+  listThemes: () => ipcRenderer.invoke('theme:list'),
+  importTheme: () => ipcRenderer.invoke('theme:import'),
+  saveTheme: (theme) => ipcRenderer.invoke('theme:save', theme),
+  deleteTheme: (id) => ipcRenderer.invoke('theme:delete', id),
+
   listPlugins: () => ipcRenderer.invoke('plugin:list'),
   setPluginEnabled: (id, enabled) => ipcRenderer.invoke('plugin:setEnabled', id, enabled),
 

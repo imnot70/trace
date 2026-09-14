@@ -18,6 +18,7 @@ import {
   resolveBundledGitPath,
   SettingsService,
   TagsService,
+  ThemeService,
   TrashService,
   VaultMetaService,
   VaultService,
@@ -163,6 +164,7 @@ app.whenReady().then(() => {
   void tags.migrateFromNoteTags().then((count) => {
     if (count > 0) logger.info(`标签关联已迁移到笔记 frontmatter：${count} 篇`)
   })
+  const themes = new ThemeService(path.join(userData, 'themes'))
   const account = new AccountService(userData)
   const github = new GithubService()
   const git = new GitService({
@@ -212,6 +214,7 @@ app.whenReady().then(() => {
     favorites,
     recents,
     tags,
+    themes,
     account,
     github,
     git,

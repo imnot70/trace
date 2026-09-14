@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import { errMessage } from '../lib/errMessage'
 import { logger } from '../lib/logger'
 import { readGitVersion, resolveBundledGitPath } from '../services'
-import type { AppSettings } from '@shared/types'
+import type { AppSettings, ThemePackage } from '@shared/types'
 import type {
   AccountService,
   FavoritesService,
@@ -13,6 +13,7 @@ import type {
   RecentsService,
   SettingsService,
   TagsService,
+  ThemeService,
   TrashService,
   VaultMetaService,
   VaultService,
@@ -30,6 +31,7 @@ export interface IpcDeps {
   favorites: FavoritesService
   recents: RecentsService
   tags: TagsService
+  themes: ThemeService
   account: AccountService
   github: GithubService
   git: GitService
@@ -285,6 +287,22 @@ export function registerIpc(deps: IpcDeps): void {
     ok: true,
     settings: deps.settings.update(patch)
   }))
+
+  // ---------- 主题包 ----------
+  handle('theme:list', () => ({ ok: true, themes: deps.themes.list() }))
+  handle('theme:import', async () => {
+    const win = deps.getWindow()
+    if (!win) return { ok: false, canceled: true }
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      title: '导入主题包',
+      filters: [{ name: '主题包', extensions: ['json'] }],
+      properties: ['openFile']
+    })
+    if (canceled || !filePaths[0]) return { ok: false, canceled: true }
+    return deps.themes.importFile(filePaths[0])
+  })
+  handle('theme:save', (theme: ThemePackage) => deps.themes.save(theme))
+  handle('theme:delete', (id: string) => deps.themes.remove(id))
 
   // ---------- 插件 ----------
   handle('plugin:list', () => ({ ok: true, plugins: deps.plugins.discover() }))

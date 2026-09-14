@@ -16,6 +16,7 @@ import type {
   SaveImageResult,
   SyncResult,
   TagItem,
+  ThemePackage,
   TreeNode,
   TrashEntry,
   VaultInfo
@@ -95,6 +96,12 @@ export interface TraceApi {
   addTagToNote(vault: string, path: string, tagId: string): Promise<OpResult>
   removeTagFromNote(vault: string, path: string, tagId: string): Promise<OpResult>
   notesByTag(tagId: string): Promise<OpResult & { entries?: NoteTagEntry[] }>
+
+  // ---- 主题包 ----
+  listThemes(): Promise<OpResult & { themes?: ThemePackage[] }>
+  importTheme(): Promise<OpResult & { theme?: ThemePackage; canceled?: boolean }>
+  saveTheme(theme: ThemePackage): Promise<OpResult>
+  deleteTheme(id: string): Promise<OpResult>
 
   // ---- 事件订阅（返回取消订阅函数） ----
   onFsChanged(cb: (payload: FsChangedPayload) => void): () => void
