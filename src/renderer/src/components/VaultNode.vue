@@ -5,6 +5,7 @@ import type { TreeNode } from '@shared/types'
 import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
 import { useNoteActions } from '../composables/actions'
+import TagPickerDialog from './TagPickerDialog.vue'
 
 const props = defineProps<{
   vault: string
@@ -73,6 +74,8 @@ function handleMenuCommand(cmd: string): void {
         })
       }
     })
+  } else if (cmd === 'tag') {
+    tagDialogVisible.value = true
   }
 }
 
@@ -80,6 +83,9 @@ function handlePlusCommand(cmd: string): void {
   if (cmd === 'dir') actions.createDir(props.vault, props.node.path)
   else if (cmd === 'note') actions.createNote(props.vault, props.node.path)
 }
+
+// ---------- 标签选择弹窗（仅笔记；按需渲染） ----------
+const tagDialogVisible = ref(false)
 </script>
 
 <template>
@@ -137,6 +143,7 @@ function handlePlusCommand(cmd: string): void {
                 >
                 <el-dropdown-item v-else command="favorite" divided>收藏笔记</el-dropdown-item>
                 <el-dropdown-item command="info" divided>信息</el-dropdown-item>
+                <el-dropdown-item command="tag">标签…</el-dropdown-item>
                 <el-dropdown-item command="delete" class="danger-item"
                   >删除笔记</el-dropdown-item
                 >
@@ -146,6 +153,12 @@ function handlePlusCommand(cmd: string): void {
         </el-dropdown>
       </span>
     </div>
+    <TagPickerDialog
+      v-if="tagDialogVisible"
+      :visible="tagDialogVisible"
+      :note="{ vault, path: node.path, name: node.name }"
+      @update:visible="tagDialogVisible = $event"
+    />
     <template v-if="isDir && expanded">
       <VaultNode
         v-for="child in node.children ?? []"

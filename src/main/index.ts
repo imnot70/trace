@@ -154,7 +154,15 @@ app.whenReady().then(() => {
     new JsonStore(path.join(userData, 'favorites.json'), { items: [] })
   )
   const recents = new RecentsService(new JsonStore(path.join(userData, 'recents.json'), { items: [] }))
-  const tags = new TagsService(new JsonStore(path.join(userData, 'tags.json'), { tags: [], noteTags: [] }))
+  const tags = new TagsService(
+    new JsonStore(path.join(userData, 'tags.json'), { tags: [], noteTags: [] }),
+    fsTree,
+    () => vaults.list().map((v) => v.name)
+  )
+  // 旧版（元数据方案）标签关联迁移到各笔记 frontmatter（无旧数据时为空操作）
+  void tags.migrateFromNoteTags().then((count) => {
+    if (count > 0) logger.info(`标签关联已迁移到笔记 frontmatter：${count} 篇`)
+  })
   const account = new AccountService(userData)
   const github = new GithubService()
   const git = new GitService({

@@ -323,6 +323,7 @@ body {
   border-radius: 6px;
   margin: 0 8px;
   position: relative;
+  user-select: none;
 }
 
 .tag-row:hover {

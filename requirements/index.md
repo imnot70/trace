@@ -40,7 +40,7 @@
 - **网格/列表切换视图**：常用、收藏、笔记库支持网格/列表切换，持久化到 localStorage。
 - **编辑器 HTML 标签自动闭合**：输入 `<div>` 等开标签的 `>` 时自动生成闭合标签。详见 [auto-close-tags_design.md](2026-09-13_auto-close-tags/auto-close-tags_design.md)。
 - **预设主题包**：新增暖色、冷色、高对比度 3 套预设配色，设置页网格卡片选择，持久化到设置。详见 [theme-presets_design.md](2026-09-13_theme-presets/theme-presets_design.md)。
-- **标签系统**：创建/重命名/删除标签（含自定义颜色）；笔记打标签；侧栏标签区筛选；标签跟随重命名/删除维护。详见 [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md)。
+- **标签系统**：创建/重命名/删除标签（含自定义颜色，改色为弹窗选色器）；笔记打标签/取消标签（侧栏树 + 网格卡片均有「标签…」入口）；侧栏「标签」区筛选。**标签已迁移到笔记 frontmatter 存储**（方案 A，FR-2.6.10）——随文件移动 / 重命名 / 外部编辑跟随，旧数据自动迁移；预览 / 悬浮预览与卡片摘要不渲染 frontmatter。详见 [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md)。
 - **修复 `npm run lint` scripts glob 问题**：ESLint 配置忽略 `scripts/` 但 lint 命令仍包含该目录导致报错，从命令中移除。
 
 ### v0.4.0（2026-09-13）

@@ -13,8 +13,9 @@ import { VaultService } from '../src/main/services/vaults'
 import { FsTreeService } from '../src/main/services/fsTree'
 import { TrashService } from '../src/main/services/trash'
 import { FavoritesService, RecentsService } from '../src/main/services/favorites'
+import { TagsService } from '../src/main/services/tags'
 import { VaultMetaService } from '../src/main/services/vaultMeta'
-import type { AppSettings } from '../src/shared/types'
+import type { AppSettings, NoteTagEntry, TagItem } from '../src/shared/types'
 
 let tmp: string
 
@@ -491,5 +492,104 @@ describe('笔记库元数据', () => {
     // 新实例从磁盘读回
     const reloaded = new VaultMetaService(new JsonStore(file, { descs: {} }))
     expect(reloaded.get('库')).toBe('描述')
+  })
+})
+
+describe('标签系统（frontmatter）', () => {
+  function buildTags() {
+    const { vaults, fsTree } = buildStack()
+    const tags = new TagsService(
+      new JsonStore(path.join(tmp, 'tags.json'), { tags: [], noteTags: [] }),
+      fsTree,
+      () => vaults.list().map((v) => v.name)
+    )
+    return { vaults, fsTree, tags }
+  }
+
+  it('创建 / 重命名 / 删除标签（重名大小写不敏感）', async () => {
+    const { tags } = buildTags()
+    const created = tags.createTag('工作', '#e74c3c')
+    expect(created.ok).toBe(true)
+    expect(tags.createTag('工作', '#2ecc71').ok).toBe(false)
+    expect(tags.createTag('工作 ', '#2ecc71').ok).toBe(false) // 去重空格后重名
+    expect(await tags.renameTag(created.tag!.id, '学习')).toEqual({ ok: true })
+    expect(tags.listTags()[0].name).toBe('学习')
+    await tags.deleteTag(created.tag!.id)
+    expect(tags.listTags()).toHaveLength(0)
+  })
+
+  it('打标签写入 frontmatter，幂等；移除后清空', async () => {
+    const { vaults, fsTree, tags } = buildTags()
+    vaults.create('库')
+    fsTree.createNote('库', '', 'n')
+    const tag = tags.createTag('重要', '#3498db').tag!
+    expect((await tags.addTagToNote('库', 'n.md', tag.id)).ok).toBe(true)
+    expect((await tags.addTagToNote('库', 'n.md', tag.id)).ok).toBe(true) // 幂等
+    expect(await tags.noteTags('库', 'n.md')).toEqual([expect.objectContaining({ name: '重要' })])
+    const content = fsTree.readNote('库', 'n.md')
+    expect(content.ok && content.content).toContain('tags:')
+
+    expect((await tags.removeFromNote('库', 'n.md', tag.id)).ok).toBe(true)
+    expect(await tags.noteTags('库', 'n.md')).toHaveLength(0)
+    // frontmatter 只剩 tags 且被清空 → 整体移除
+    const after = fsTree.readNote('库', 'n.md')
+    expect(after.ok && after.content).not.toContain('---')
+  })
+
+  it('标签随文件移动保持（frontmatter 在文件内），重命名标签会改写关联笔记', async () => {
+    const { vaults, fsTree, tags } = buildTags()
+    vaults.create('库')
+    fsTree.createDir('库', '', '新建文件夹')
+    fsTree.createNote('库', '', 'n')
+    const tag = tags.createTag('工作', '#3498db').tag!
+    await tags.addTagToNote('库', 'n.md', tag.id)
+
+    // 移动笔记到子文件夹：frontmatter 随文件走
+    expect(fsTree.moveNode('库', 'n.md', 'note', '新建文件夹').ok).toBe(true)
+    expect(await tags.noteTags('库', '新建文件夹/n.md')).toEqual([expect.objectContaining({ name: '工作' })])
+
+    // 移动文件夹（内含已打标笔记）到已存在的「归档」文件夹
+    fsTree.createDir('库', '', '归档')
+    expect(fsTree.moveNode('库', '新建文件夹', 'dir', '归档').ok).toBe(true)
+    expect(await tags.noteTags('库', '归档/新建文件夹/n.md')).toHaveLength(1)
+
+    // 重命名标签定义 → 改写关联笔记 frontmatter
+    await tags.renameTag(tag.id, '重要事项')
+    expect(await tags.noteTags('库', '归档/新建文件夹/n.md')).toEqual([expect.objectContaining({ name: '重要事项' })])
+
+    // 删除标签定义 → 从关联笔记移除
+    await tags.deleteTag(tag.id)
+    expect(await tags.noteTags('库', '归档/新建文件夹/n.md')).toHaveLength(0)
+  })
+
+  it('筛选：notesByTag 返回全部库中打该标签的笔记', async () => {
+    const { vaults, fsTree, tags } = buildTags()
+    vaults.create('a1')
+    vaults.create('a2')
+    fsTree.createNote('a1', '', 'n1')
+    fsTree.createNote('a2', '', 'n2')
+    const tag = tags.createTag('跨库', '#3498db').tag!
+    await tags.addTagToNote('a1', 'n1.md', tag.id)
+    await tags.addTagToNote('a2', 'n2.md', tag.id)
+    const entries = await tags.notesByTag(tag.id)
+    expect(entries.map((e) => `${e.vault}/${e.path}`)).toEqual(['a1/n1.md', 'a2/n2.md'])
+  })
+
+  it('旧版元数据关联迁移到 frontmatter 后清空', async () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    fsTree.createNote('库', '', 'n')
+    const store = new JsonStore<{ tags: TagItem[]; noteTags: NoteTagEntry[] }>(path.join(tmp, 'tags.json'), {
+      tags: [],
+      noteTags: []
+    })
+    store.update((d) => {
+      d.tags.push({ id: 't1', name: '旧标签', color: '#e74c3c', createdAt: new Date().toISOString() })
+      d.noteTags.push({ vault: '库', path: 'n.md', tagId: 't1' })
+    })
+    const tags = new TagsService(store, fsTree, () => vaults.list().map((v) => v.name))
+    expect(await tags.migrateFromNoteTags()).toBe(1)
+    expect(await tags.noteTags('库', 'n.md')).toEqual([expect.objectContaining({ name: '旧标签' })])
+    expect(store.get().noteTags).toHaveLength(0)
   })
 })

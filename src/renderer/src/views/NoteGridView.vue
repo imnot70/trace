@@ -5,7 +5,9 @@ import { useAppStore, type GridSection } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import { useNoteActions } from '../composables/actions'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
+import TagPickerDialog from '../components/TagPickerDialog.vue'
 import { formatRelativeTime } from '../lib/relativeTime'
+import { stripFrontmatter } from '@shared/noteTags'
 import type { TreeNode } from '@shared/types'
 
 /** 卡片网格视图：常用 / 收藏（笔记卡片，单击预览双击编辑）、笔记库（库卡片双击钻入，
@@ -144,7 +146,8 @@ async function loadExcerpts(): Promise<void> {
     const result = await window.trace.readNote(item.vault, item.path)
     if (seq !== excerptSeq) return // 读取期间列表已变化，丢弃本轮结果
     const content = result.ok && result.content != null ? result.content : ''
-    next[`${item.vault}::${item.path}`] = content ? toExcerpt(content) : ''
+    // 摘要不含 frontmatter（标签信息由卡片标签展示，不进摘要）
+    next[`${item.vault}::${item.path}`] = content ? toExcerpt(stripFrontmatter(content)) : ''
   }
   excerpts.value = next
 }
@@ -177,30 +180,13 @@ function toExcerpt(content: string): string {
   return text.length > 120 ? `${text.slice(0, 120)}…` : text
 }
 
-// ---------- 标签选择对话框 ----------
+// ---------- 标签选择对话框（共享组件 TagPickerDialog） ----------
 const tagDialogVisible = ref(false)
 const tagDialogNote = ref<GridItem | null>(null)
-const tagDialogTags = ref<{ id: string; name: string; color: string; checked: boolean }[]>([])
 
-async function openTagDialog(item: GridItem): Promise<void> {
+function openTagDialog(item: GridItem): void {
   tagDialogNote.value = item
   tagDialogVisible.value = true
-  const noteTagRes = await window.trace.noteTags(item.vault, item.path)
-  const noteTagIds = new Set((noteTagRes.ok && noteTagRes.tags ? noteTagRes.tags : []).map((t) => t.id))
-  tagDialogTags.value = tree.tags.map((t) => ({ ...t, checked: noteTagIds.has(t.id) }))
-}
-
-async function toggleTagDialog(tagId: string): Promise<void> {
-  if (!tagDialogNote.value) return
-  const entry = tagDialogTags.value.find((t) => t.id === tagId)
-  if (!entry) return
-  if (entry.checked) {
-    await window.trace.removeTagFromNote(tagDialogNote.value.vault, tagDialogNote.value.path, tagId)
-    entry.checked = false
-  } else {
-    await window.trace.addTagToNote(tagDialogNote.value.vault, tagDialogNote.value.path, tagId)
-    entry.checked = true
-  }
 }
 
 function dirOf(path: string): string {
@@ -446,7 +432,9 @@ watch(section, () => {
               ? '最近打开的笔记会显示在这里'
               : section === 'favorites'
                 ? '收藏的笔记会显示在这里'
-                : '还没有笔记库，点击侧栏「笔记库」旁的 + 创建'
+                : section === 'tags'
+                  ? '该标签下还没有笔记，可在笔记的「标签…」菜单中添加'
+                  : '还没有笔记库，点击侧栏「笔记库」旁的 + 创建'
         }}
       </p>
     </div>
@@ -650,22 +638,12 @@ watch(section, () => {
       </div>
     </Transition>
 
-    <!-- 标签选择对话框 -->
-    <el-dialog v-model="tagDialogVisible" title="管理标签" width="320px" :append-to-body="true" destroy-on-close>
-      <div v-if="tagDialogNote" class="tag-dialog-content">
-        <div v-if="tagDialogTags.length === 0" class="tag-dialog-empty">暂无标签，请先创建标签</div>
-        <div
-          v-for="tag in tagDialogTags"
-          :key="tag.id"
-          class="tag-dialog-item"
-          @click="toggleTagDialog(tag.id)"
-        >
-          <el-checkbox :model-value="tag.checked" @click.stop="toggleTagDialog(tag.id)" />
-          <span class="tag-dot" :style="{ background: tag.color }" />
-          <span>{{ tag.name }}</span>
-        </div>
-      </div>
-    </el-dialog>
+    <!-- 标签选择对话框（共享组件） -->
+    <TagPickerDialog
+      v-model:visible="tagDialogVisible"
+      :note="tagDialogNote"
+      @changed="void tree.loadTags()"
+    />
   </div>
 </template>
 
@@ -1009,39 +987,5 @@ watch(section, () => {
 .float-preview-leave-to {
   transform: translateX(48px);
   opacity: 0;
-}
-
-/* 标签选择对话框 */
-.tag-dialog-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.tag-dialog-empty {
-  color: var(--text-tertiary);
-  font-size: 13px;
-  text-align: center;
-  padding: 12px 0;
-}
-
-.tag-dialog-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.tag-dialog-item:hover {
-  background: var(--bg-hover);
-}
-
-.tag-dialog-item .tag-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
 }
 </style>

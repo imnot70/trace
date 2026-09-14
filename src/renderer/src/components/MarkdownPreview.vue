@@ -3,6 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import DOMPurify from 'dompurify'
 import { md } from '../lib/markdown'
+import { maskFrontmatter } from '@shared/noteTags'
 
 const props = defineProps<{
   content: string
@@ -131,11 +132,12 @@ async function resolveWikilinks(): Promise<void> {
 
 const html = computed(() => {
   try {
-    // 管道顺序：markdown-it 渲染（含 KaTeX/高亮）→ DOMPurify 白名单净化 → 相对链接/图片改写。
+    // 管道顺序：掩码 frontmatter（保留行号映射，行级滚动同步不错位）→ markdown-it 渲染（含 KaTeX/高亮）
+    // → DOMPurify 白名单净化 → 相对链接/图片改写。
     // 净化剥除脚本与事件属性（默认），并显式禁用表单/样式注入/base 等视觉钓鱼与
     // 导航劫持向量（DOMPurify 默认保留合法的 form/input，此处收紧；CSP form-action 兜底）。
     // 笔记经 git 同步传播，内嵌 HTML 必须过净化再进 v-html。
-    const sanitized = DOMPurify.sanitize(md.render(props.content ?? ''), {
+    const sanitized = DOMPurify.sanitize(md.render(maskFrontmatter(props.content ?? '')), {
       FORBID_TAGS: ['style', 'base', 'form', 'input', 'button', 'select', 'textarea', 'iframe', 'object', 'embed', 'meta', 'link'],
       FORBID_ATTR: ['srcdoc', 'target']
     })

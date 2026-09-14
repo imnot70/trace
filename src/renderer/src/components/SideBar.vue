@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAppStore } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
@@ -89,11 +89,8 @@ async function handleTagMenu(cmd: string, tag: { id: string; name: string; color
     if (result.ok) await tree.loadTags()
     else ElMessage.error(result.error ?? '重命名失败')
   } else if (cmd === 'color') {
-    // 简单循环到下一个颜色
-    const idx = TAG_COLORS.indexOf(tag.color)
-    const next = TAG_COLORS[(idx + 1) % TAG_COLORS.length]
-    await window.trace.setTagColor(tag.id, next)
-    await tree.loadTags()
+    // 打开选色弹窗（预设色板 + 自定义拾色器）
+    colorDialog.value = { visible: true, id: tag.id, name: tag.name, color: tag.color }
   } else if (cmd === 'delete') {
     await ElMessageBox.confirm(`确定删除标签「${tag.name}」？关联的笔记不会被删除。`, '删除标签', {
       confirmButtonText: '删除',
@@ -105,6 +102,31 @@ async function handleTagMenu(cmd: string, tag: { id: string; name: string; color
     ElMessage.success('标签已删除')
   }
 }
+
+// ---------- 标签颜色选择弹窗 ----------
+const colorDialog = ref<{ visible: boolean; id: string; name: string; color: string } | null>(null)
+
+async function applyTagColor(): Promise<void> {
+  const dialog = colorDialog.value
+  if (!dialog) return
+  const result = await window.trace.setTagColor(dialog.id, dialog.color)
+  if (result.ok) {
+    await tree.loadTags()
+    colorDialog.value = null
+    ElMessage.success('颜色已更新')
+  } else {
+    ElMessage.error(result.error ?? '颜色修改失败')
+  }
+}
+
+const colorDialogVisible = computed(() => !!colorDialog.value?.visible)
+
+const colorDialogColor = computed<string>({
+  get: () => colorDialog.value?.color ?? TAG_COLORS[0],
+  set: (v) => {
+    if (colorDialog.value && v) colorDialog.value.color = v
+  }
+})
 
 function handleVaultCommand(cmd: string, vault: string): void {
   if (cmd === 'sync') void git.sync(vault)
@@ -160,11 +182,10 @@ defineProps<{ vaults?: VaultInfo[] }>()
         </div>
       </div>
 
-      <!-- 标签：点击标签筛选笔记 -->
+      <!-- 标签：点击标签筛选笔记（区块标题不随选中标签高亮，如同选中笔记不点亮其父文件夹） -->
       <div class="side-section">
         <div
           class="side-section-header"
-          :class="{ active: app.view.name === 'grid' && app.view.section === 'tags' }"
           @click="tree.tags.length ? toggleGrid('tags', tree.tags[0].id) : createTag()"
         >
           <el-icon><PriceTag /></el-icon>
@@ -329,5 +350,70 @@ defineProps<{ vaults?: VaultInfo[] }>()
         <el-icon><Setting /></el-icon>
       </button>
     </div>
+
+    <!-- 标签颜色选择弹窗 -->
+    <el-dialog
+      :model-value="colorDialogVisible"
+      :title="`标签颜色 — ${colorDialog?.name ?? ''}`"
+      width="320px"
+      append-to-body
+      @update:model-value="colorDialog = null"
+    >
+      <div class="color-swatch-grid">
+        <button
+          v-for="c in TAG_COLORS"
+          :key="c"
+          class="color-swatch"
+          :class="{ active: colorDialogColor === c }"
+          :style="{ background: c }"
+          @click="colorDialogColor = c"
+        />
+      </div>
+      <div class="color-custom-row">
+        <span class="color-custom-label">自定义</span>
+        <el-color-picker v-model="colorDialogColor" :show-alpha="false" />
+      </div>
+      <template #footer>
+        <el-button @click="colorDialog = null">取消</el-button>
+        <el-button type="primary" @click="applyTagColor">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
+
+<style scoped>
+/* 标签颜色选择弹窗 */
+.color-swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+}
+
+.color-swatch {
+  height: 26px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.color-swatch:hover {
+  transform: scale(1.1);
+}
+
+.color-swatch.active {
+  border-color: var(--text-primary);
+}
+
+.color-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.color-custom-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+</style>
