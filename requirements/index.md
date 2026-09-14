@@ -1,34 +1,34 @@
 # Trace 需求与实施状态索引
 
-> 更新：2026-09-13 ｜ 发布基线：**v0.4.0**（双链 + 锚点 + 移动 + 内置 Git + 相对时间 + 笔记信息 + 悬浮预览同步）
+> 更新：2026-09-14 ｜ 发布基线：**v0.4.0**（双链 + 锚点 + 移动 + 内置 Git + 相对时间 + 笔记信息 + 悬浮预览同步）；main 上已积累一批待发版改动（标签系统 / 主题包 / 网格列表切换等，见第一节「待发版」）
 > 本文件是 `requirements/` 目录的导览与实施状态总览。各项明细以对应文档与 [CHANGELOG.md](../CHANGELOG.md) 为准。
 
 ## 文档导读
 
 | 文件 | 内容 | 状态 |
 | --- | --- | --- |
-| [requirements.md](requirements.md) | 产品需求文档（PRD），当前形态的权威描述；随版本同步更新（当前覆盖至 FR-2.8.13 / FR-2.10.4） | ✅ 基线文档，FR-2.8.13 为未发布新增 |
+| [requirements.md](requirements.md) | 产品需求文档（PRD），当前形态的权威描述；随版本同步更新（当前覆盖至 FR-2.8.13 / FR-2.10.4） | ✅ 基线文档，所载需求均已实现 |
 | [development-plan.md](development-plan.md) | 初版开发计划：技术选型、架构、里程碑 M0–M6、风险对策 | ✅ M0–M6 已全部完成（v1/v0.2.0 交付）；二期 Backlog 部分被后续设计文档细化 |
-| [plugin-design.md](2026-09-08_plugin-system/plugin-design.md) | 插件系统 v2 设计：独立插件进程 + 能力网关 + require 白名单 + 市场分发 | 📐 设计已确认（D1–D5 拍板），**未实施**（目标 0.4.0） |
+| [plugin-design.md](2026-09-08_plugin-system/plugin-design.md) | 插件系统 v2 设计：独立插件进程 + 能力网关 + require 白名单 + 市场分发 | 📐 设计已确认（D1–D5 拍板），**未实施**（原定 0.4.0，已顺延——版本号已被双链/移动/内置 Git 批次使用） |
 | [vault-grid-navigation-design.md](2026-09-08_vault-grid-navigation/vault-grid-navigation-design.md) | 笔记库网格导航设计：双击钻入库内容 + 面包屑 + 三卡片区分 | ✅ **P1 + P2 全部实施**（P1 已发布 v0.3.5，P2 已随 v0.3.6 发布） |
 | [preview-enhancement-design.md](2026-09-09_preview-enhancement/preview-enhancement-design.md) | 预览增强设计：HTML 内嵌（DOMPurify 净化）、a 标签跳转（外部 + 库内笔记）、行级双向同步滚动 | ✅ **已实施**（2026-09-09 发布 v0.3.7） |
 | [bundled-git-design.md](2026-09-10_bundled-git/bundled-git-design.md) | 内置 Git 设计与实施：捆绑 MinGit/dugite + build 时解压 + 触发时检测 + 条件弹窗；含实测体积、决策记录与验证清单 | ✅ **已实施**（Windows 已验证，Linux 待 CI）｜D-BG1–D-BG11 |
-| [move-node_design.md](2026-09-12_move-node/move-node_design.md) | 文件/文件夹移动设计（库内）：树形文件夹选择器 + renameNode 校验管道复用 | ✅ **已实施**（待发布） |
+| [move-node_design.md](2026-09-12_move-node/move-node_design.md) | 文件/文件夹移动设计（库内）：树形文件夹选择器 + renameNode 校验管道复用 | ✅ **已实施**（v0.4.0 发布） |
 | [wiki-link-anchor_design.md](2026-09-12_wiki-link-anchor/wiki-link-anchor_design.md) | 双链 P1 + 页内锚点 + 锚点补全：`[[笔记名]]` 可点击、标题 id 生成、锚点跳转、`#` 补全 | ✅ **已实施**（v0.4.0 发布） |
 | [floating-preview-scroll-sync_design.md](2026-09-13_floating-preview-scroll-sync/floating-preview-scroll-sync_design.md) | 悬浮预览滚动同步：接入双向滚动，关闭时同步固定预览进度 | ✅ **已实施**（v0.4.0 发布） |
-| [relative-time_design.md](2026-09-13_relative-time/relative-time_design.md) | 常用网格卡片显示相对时间 | ✅ **已实施**（misc 分支待发布） |
-| [note-info_design.md](2026-09-13_note-info/note-info_design.md) | 笔记「信息」菜单：创建时间 / 最后修改时间 | ✅ **已实施**（misc 分支待发布） |
-| [grid-list-toggle_design.md](2026-09-13_grid-list-toggle/grid-list-toggle_design.md) | 网格/列表切换视图：常用/收藏/笔记库统一支持，持久化 | ✅ **已实施**（view-type 分支待发布） |
-| [auto-close-tags_design.md](2026-09-13_auto-close-tags/auto-close-tags_design.md) | 编辑器 HTML 标签自动闭合 | ✅ **已实施**（待发布） |
-| [theme-presets_design.md](2026-09-13_theme-presets/theme-presets_design.md) | 预设主题包：暖色/冷色/高对比度 | ✅ **已实施**（theme 分支待发布） |
-| [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md) | 标签系统：打标签 / 筛选 / 管理 | ✅ **已实施**（tag 分支待发布） |
+| [relative-time_design.md](2026-09-13_relative-time/relative-time_design.md) | 常用网格卡片显示相对时间 | ✅ **已实施**（v0.4.0 发布） |
+| [note-info_design.md](2026-09-13_note-info/note-info_design.md) | 笔记「信息」菜单：创建时间 / 最后修改时间 | ✅ **已实施**（v0.4.0 发布） |
+| [grid-list-toggle_design.md](2026-09-13_grid-list-toggle/grid-list-toggle_design.md) | 网格/列表切换视图：常用/收藏/笔记库统一支持，持久化 | ✅ **已实施**（main，随下版本发布） |
+| [auto-close-tags_design.md](2026-09-13_auto-close-tags/auto-close-tags_design.md) | 编辑器 HTML 标签自动闭合 | ✅ **已实施**（main，随下版本发布） |
+| [theme-presets_design.md](2026-09-13_theme-presets/theme-presets_design.md) | 预设主题包：暖色/冷色/高对比度 | ✅ **已实施**（main，随下版本发布） |
+| [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md) | 标签系统：打标签 / 筛选 / 管理 | ✅ **已实施**（main，随下版本发布） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
 
 ---
 
-## 一、已实现并发布（v0.1.0 → v0.3.8）
+## 一、已实现（v0.1.0 → v0.4.0，发布状态见子节）
 
 ### 待发版（v0.4.0 之后）
 
@@ -129,7 +129,7 @@
 
 ### 笔记库网格导航 — [vault-grid-navigation-design.md](2026-09-08_vault-grid-navigation/vault-grid-navigation-design.md)
 
-✅ **P1 + P2 已全部实施**（P1 随 v0.3.5 发布；P2 库卡片双列 + 强调色浅底待发布）。已决议不做：库卡片笔记数统计（懒统计成本高）；空文件夹计数留白。
+✅ **P1 + P2 已全部实施并发布**（P1 v0.3.5；P2 v0.3.6）。已决议不做：库卡片笔记数统计（懒统计成本高）；空文件夹计数留白。
 
 ---
 
@@ -137,21 +137,20 @@
 
 ### 功能规划（已排期讨论，方案见下）
 
-- **笔记互相引用（wiki 双链）**：~~P1 已实施（预览可点击 + 断链样式）~~。剩余：P2 编辑器 `[[` 自动补全 → P3 反向链接与未解析引用列表（与二期全局搜索合并实施）。移动不改写引用的局限在 P3 一并解决
+- **笔记互相引用（wiki 双链）**：P1 已实施（v0.4.0：预览可点击 + 断链样式 + 锚点补全）。剩余：P2 编辑器 `[[` 自动补全 → P3 反向链接与未解析引用列表（与二期全局搜索合并实施）。移动不改写引用的局限在 P3 一并解决
 
-### 二期 Backlog（源自 PRD 第 7 节；「插件完整 API 与市场」已由插件 v2 设计承接）
+### 二期 Backlog（源自 PRD 第 7 节）
 
 - 全局搜索
 - 所见即所得编辑模式
 - 图形化冲突解决
-- 定时 / 变更触发自动同步
-- 自定义主题包
-- 标签系统
+- 定时/变更自动同步
+- 插件完整 API 与市场（v2 设计已定稿，见 `requirements/2026-09-08_plugin-system/`，M1 待启动）
 - 多窗口
-- 导出 PDF / HTML
-- 窗口半透明 + 毛玻璃（Win11 `backgroundMaterial` / macOS `vibrancy` / Linux 合成器，平台分级降级——调研中）
+- 导出 PDF/HTML
+- 窗口毛玻璃效果（Win11 `backgroundMaterial` / macOS `vibrancy` / Linux 合成器，平台分级降级——调研中）
 
-**已知问题（已记录待处理）**：
+> 已从 Backlog 毕业并实施：标签系统、预设主题包、文件移动、双链引用 P1、网格/列表切换（均见第一节）
 
 其他已记录的小项：
 
