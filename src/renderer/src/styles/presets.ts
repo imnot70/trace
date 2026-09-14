@@ -1,9 +1,6 @@
-export interface ThemePreset {
-  id: string
-  name: string
-  light: Record<string, string>
-  dark: Record<string, string>
-}
+import type { ThemePackage } from '@shared/types'
+
+export type ThemePreset = ThemePackage
 
 export const THEME_PRESETS: ThemePreset[] = [
   {

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { AppSettings } from '@shared/types'
+import type { AppSettings, ThemePackage } from '@shared/types'
 import { useTreeStore } from './tree'
 import { THEME_PRESETS, buildThemeCss } from '../styles/presets'
 
@@ -57,11 +57,16 @@ export const useAppStore = defineStore('app', {
     /** 悬浮预览卡片（长按预览按钮触发，会话级不持久化） */
     floatingPreview: false,
     /** 网格/列表视图模式（localStorage 持久化） */
-    viewMode: 'grid' as ViewMode
+    viewMode: 'grid' as ViewMode,
+    /** 已导入的自定义主题（userData/themes），与内置预设在 UI 中并列 */
+    customThemes: [] as ThemePackage[]
   }),
   getters: {
     isDark(state): boolean {
       return state.settings.theme === 'dark' || (state.settings.theme === 'system' && prefersDark())
+    },
+    allPresets(state): ThemePackage[] {
+      return [...THEME_PRESETS, ...state.customThemes]
     }
   },
   actions: {
@@ -161,14 +166,16 @@ export const useAppStore = defineStore('app', {
     },
     async init(): Promise<void> {
       this.loadUiPrefs()
-      const [ws, settings, version] = await Promise.all([
+      const [ws, settings, version, themes] = await Promise.all([
         window.trace.getWorkspace(),
         window.trace.getSettings(),
-        window.trace.getAppVersion()
+        window.trace.getAppVersion(),
+        window.trace.listThemes()
       ])
       this.workspaceRoot = ws.root ?? ''
       this.defaultRoot = ws.defaultRoot ?? ''
       if (settings.ok && settings.settings) this.settings = settings.settings
+      if (themes.ok && themes.themes) this.customThemes = themes.themes
       this.version = version.version ?? ''
       this.applyTheme()
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
@@ -188,7 +195,7 @@ export const useAppStore = defineStore('app', {
         if (el) el.textContent = ''
         return
       }
-      const preset = THEME_PRESETS.find((p) => p.id === presetId)
+      const preset = this.allPresets.find((p) => p.id === presetId)
       if (!preset) return
       if (!el) {
         el = document.createElement('style')
@@ -201,6 +208,31 @@ export const useAppStore = defineStore('app', {
       this.settings = { ...this.settings, ...patch }
       this.applyTheme()
       await window.trace.setSettings(patch)
+    },
+    async reloadCustomThemes(): Promise<void> {
+      const result = await window.trace.listThemes()
+      if (result.ok && result.themes) this.customThemes = result.themes
+    },
+    /** 选择文件并校验；不写盘（覆盖确认由视图层完成后调用 saveTheme） */
+    async importThemeFile(): Promise<{ theme?: ThemePackage; canceled?: boolean; error?: string }> {
+      const result = await window.trace.importTheme()
+      return { theme: result.theme, canceled: result.canceled, error: result.error }
+    },
+    /** 落盘并立即应用新主题；失败返回错误信息 */
+    async saveTheme(theme: ThemePackage): Promise<string | null> {
+      const result = await window.trace.saveTheme(theme)
+      if (!result.ok) return result.error ?? '保存失败'
+      await this.reloadCustomThemes()
+      await this.updateSettings({ themePreset: theme.id })
+      return null
+    },
+    /** 删除主题；若删除的是当前主题则回退默认 */
+    async deleteTheme(id: string): Promise<string | null> {
+      const result = await window.trace.deleteTheme(id)
+      if (!result.ok) return result.error ?? '删除失败'
+      await this.reloadCustomThemes()
+      if (this.settings.themePreset === id) await this.updateSettings({ themePreset: 'default' })
+      return null
     },
     async changeWorkspace(root: string): Promise<string | null> {
       const result = await window.trace.setWorkspace(root)
