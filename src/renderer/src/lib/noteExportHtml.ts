@@ -1,5 +1,6 @@
 import DOMPurify from 'dompurify'
 import { md } from './markdown'
+import { stripFrontmatter } from '@shared/noteTags'
 
 /** 与生产净化配置一致（MarkdownPreview.vue），导出沿用同一安全边界 */
 export const SANITIZE_CONFIG = {
@@ -33,7 +34,8 @@ export async function renderNoteHtml(
   notePath: string,
   fetchImageBase64: (relPath: string) => Promise<{ ok: boolean; mime?: string; base64?: string }>
 ): Promise<string> {
-  const rendered = md.render(content ?? '')
+  // frontmatter 属元数据，不进导出内容
+  const rendered = md.render(stripFrontmatter(content ?? ''))
   const sanitized = DOMPurifySanitize(rendered)
 
   // 库内图片 → data URL

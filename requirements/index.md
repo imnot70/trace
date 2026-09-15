@@ -24,6 +24,7 @@
 | [theme-import_design.md](2026-09-14_theme-import/theme-import_design.md) | 主题包导入：JSON 变量覆盖 + 白名单校验 + 应用数据目录存储 | ✅ **已实施**（main，随下版本发布） |
 | [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md) | 标签系统：打标签 / 筛选 / 管理（frontmatter 存储，方案 A） | ✅ **已实施**（v0.4.1 发布） |
 | [note-export_design.md](note-export/note-export_design.md) | 笔记导出 PDF：多篇不合并（单篇 / 文件夹 / 整库递归，可跨库），图片内联自包含 | ✅ **已实施**（main，随下版本发布） |
+| [note-export-html_design.md](2026-09-15_note-export-html/note-export-html_design.md) | 笔记导出 HTML：自包含单文件，深浅色自适应阅读排版 | ✅ **已实施**（main，随下版本发布） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
@@ -39,6 +40,7 @@
 - **回收站过期清理**（FR-2.7.6）：保留天数可配置（7 / 30 / 90 天 / 永久），启动时自动清理超期条目。
 - **定时自动同步**（FR-2.8.14）：开关 + 间隔（1/5/10/30 分钟）可配置，对已关联库静默同步，失败静默记日志，同步期间挂起文件监听。
 - **回收站容量上限**（FR-2.7.7）：最大条目数可配置（默认不限），移入新条目与启动时按 FIFO 永久删除最旧条目。
+- **导出 HTML**（FR-2.4.12）：范围与交互同导出 PDF，产物为自包含单文件 HTML（深浅色自适应阅读排版，公式字体与图片内联）。详见 [note-export-html_design.md](2026-09-15_note-export-html/note-export-html_design.md)。
 - **双链 `[[` 补全补记**（FR-2.4.11）：已随双链 P1 实现（此前记录过时，已修正）。
 
 ### v0.4.1（2026-09-14）

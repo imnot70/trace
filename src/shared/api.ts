@@ -82,6 +82,10 @@ export interface TraceApi {
   exportPdf(items: { vault: string; path: string; name: string; html: string }[]): Promise<
     OpResult & { results?: { ok: boolean; name: string; error?: string }[]; failed?: { name: string; error?: string }[] }
   >
+  /** 批量导出 HTML：每项一个自包含 .html 文件；返回逐篇结果与失败清单 */
+  exportHtml(items: { vault: string; path: string; name: string; html: string }[]): Promise<
+    OpResult & { results?: { ok: boolean; name: string; error?: string }[]; failed?: { name: string; error?: string }[] }
+  >
   /** 读取库内图片（导出 HTML 内联 base64 用），路径限定库内且扩展名白名单 */
   readImage(vault: string, relPath: string): Promise<OpResult & { mime?: string; base64?: string }>
   onExportProgress(cb: (payload: ExportProgress) => void): () => void

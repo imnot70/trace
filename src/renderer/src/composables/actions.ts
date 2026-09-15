@@ -5,7 +5,7 @@ import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
 import { useTrashStore } from '../stores/trash'
 import { useAppStore } from '../stores/app'
-import { collectNotes, exportNotesToPdf } from './exportPdf'
+import { collectNotes, exportNotesToHtml, exportNotesToPdf } from './exportPdf'
 
 /** 侧栏与树节点的全部操作（创建/重命名/删除/收藏/git） */
 export function useNoteActions() {
@@ -238,13 +238,17 @@ export function useNoteActions() {
     else ElMessage.error(result.error ?? '移除失败')
   }
 
-  // ---------- 导出 PDF ----------
+  // ---------- 导出（PDF / HTML） ----------
   async function exportNotes(targets: { vault: string; path: string; name: string }[]): Promise<void> {
     await exportNotesToPdf(targets, tree, editor)
   }
 
+  async function exportNotesHtml(targets: { vault: string; path: string; name: string }[]): Promise<void> {
+    await exportNotesToHtml(targets, tree, editor)
+  }
+
   /** 文件夹（或库）递归导出：收集其下全部笔记 */
-  function exportFolderPdf(vault: string, folderPath = ''): void {
+  function exportFolder(vault: string, folderPath: string, kind: 'pdf' | 'html'): void {
     const collect = (): { vault: string; path: string; name: string }[] => {
       const nodes = folderPath
         ? (() => {
@@ -263,9 +267,20 @@ export function useNoteActions() {
       if (collect().length === 0) {
         await tree.loadTree(vault) // 侧栏未展开过时树为空，先加载再收
       }
-      void exportNotes(collect())
+      const targets = collect()
+      void (kind === 'pdf' ? exportNotesToPdf(targets, tree, editor) : exportNotesToHtml(targets, tree, editor))
     }
     void ensureAndExport()
+  }
+
+  /** 文件夹（或库）递归导出 PDF */
+  function exportFolderPdf(vault: string, folderPath = ''): void {
+    exportFolder(vault, folderPath, 'pdf')
+  }
+
+  /** 文件夹（或库）递归导出 HTML */
+  function exportFolderHtml(vault: string, folderPath = ''): void {
+    exportFolder(vault, folderPath, 'html')
   }
 
   // ---------- 打开 ----------
@@ -288,7 +303,9 @@ export function useNoteActions() {
     toggleFavorite,
     removeRecent,
     exportNotes,
+    exportNotesHtml,
     exportFolderPdf,
+    exportFolderHtml,
     openNote,
     refreshVault
   }

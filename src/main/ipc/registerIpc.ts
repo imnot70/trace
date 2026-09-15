@@ -340,6 +340,32 @@ export function registerIpc(deps: IpcDeps): void {
       }
     }
   )
+  handle(
+    'export:html',
+    async (items: { vault: string; path: string; name: string; html: string }[]) => {
+      if (!Array.isArray(items) || items.length === 0) {
+        return { ok: false, error: '没有可导出的笔记', results: [], failed: [] }
+      }
+      if (!exportDir) {
+        exportDir = await deps.exportPdf.chooseDirectory()
+        if (!exportDir) return { ok: false, error: '已取消', results: [], failed: [] }
+      }
+      const results = []
+      let done = 0
+      for (const item of items) {
+        const r = deps.exportPdf.exportOneHtml(exportDir, item)
+        results.push(r)
+        done++
+        send('export:progress', { done, total: items.length, current: item.name, ok: r.ok })
+      }
+      const failed = results.filter((r) => !r.ok)
+      return {
+        ok: failed.length === 0,
+        results,
+        failed: failed.map((f) => ({ name: f.name, error: f.error }))
+      }
+    }
+  )
   handle('export:resetDir', () => {
     exportDir = null
     return { ok: true }

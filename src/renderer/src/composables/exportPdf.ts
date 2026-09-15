@@ -32,16 +32,18 @@ export const exportState = reactive({
 })
 
 /**
- * 批量导出 PDF：
+ * 批量导出（PDF / HTML 共用管道）：
  * 1. flushSave 当前笔记（磁盘内容 = 最新）
- * 2. 逐篇生成导出 HTML（图片内联 base64）
- * 3. 交主进程 printToPDF 写盘；进度经 export:progress 回推
+ * 2. 逐篇生成导出 HTML（图片内联 base64，frontmatter 剥离）
+ * 3. PDF 交主进程 printToPDF 写盘；HTML 直接写自包含单文件；进度经 export:progress 回推
  */
-export async function exportNotesToPdf(
+async function exportNotes(
   targets: { vault: string; path: string; name: string }[],
   treeStore: { trees: Record<string, TreeNode[]>; loadTree(v: string): Promise<void> },
-  editorStore: { current: { vault: string; path: string } | null; flushSave(): Promise<void> }
+  editorStore: { current: { vault: string; path: string } | null; flushSave(): Promise<void> },
+  kind: 'pdf' | 'html'
 ): Promise<void> {
+  const label = kind === 'pdf' ? 'PDF' : 'HTML'
   if (targets.length === 0) {
     ElMessage.warning('没有可导出的笔记')
     return
@@ -51,8 +53,8 @@ export async function exportNotesToPdf(
 
   // 首次确认 + 选择目录（在主进程弹）
   const confirm = await ElMessageBox.confirm(
-    `将导出 ${targets.length} 篇笔记为 PDF（每篇一个文件，不合并）。继续后请选择导出目录。`,
-    '导出 PDF',
+    `将导出 ${targets.length} 篇笔记为 ${label}（每篇一个文件，不合并）。继续后请选择导出目录。`,
+    `导出 ${label}`,
     { confirmButtonText: '继续', cancelButtonText: '取消', type: 'info' }
   ).catch(() => null)
   if (!confirm) return
@@ -79,7 +81,7 @@ export async function exportNotesToPdf(
   })
 
   const items = targets.map((t, i) => ({ ...t, html: htmls[i] }))
-  const result = await window.trace.exportPdf(items)
+  const result = kind === 'pdf' ? await window.trace.exportPdf(items) : await window.trace.exportHtml(items)
   offProgress()
   exportState.visible = false
 
@@ -89,7 +91,7 @@ export async function exportNotesToPdf(
   }
   const failed = result.failed ?? []
   if (failed.length === 0) {
-    ElMessage.success(`已导出 ${targets.length} 篇 PDF`)
+    ElMessage.success(`已导出 ${targets.length} 篇 ${label}`)
   } else {
     ElMessage({
       type: 'warning',
@@ -102,6 +104,22 @@ export async function exportNotesToPdf(
   }
 }
 
+export async function exportNotesToPdf(
+  targets: { vault: string; path: string; name: string }[],
+  treeStore: Parameters<typeof exportNotes>[1],
+  editorStore: Parameters<typeof exportNotes>[2]
+): Promise<void> {
+  await exportNotes(targets, treeStore, editorStore, 'pdf')
+}
+
+export async function exportNotesToHtml(
+  targets: { vault: string; path: string; name: string }[],
+  treeStore: Parameters<typeof exportNotes>[1],
+  editorStore: Parameters<typeof exportNotes>[2]
+): Promise<void> {
+  await exportNotes(targets, treeStore, editorStore, 'html')
+}
+
 export async function confirmAndExportOne(
   vault: string,
   path: string,
@@ -110,6 +128,16 @@ export async function confirmAndExportOne(
   editorStore: Parameters<typeof exportNotesToPdf>[2]
 ): Promise<void> {
   await exportNotesToPdf([{ vault, path, name }], treeStore, editorStore)
+}
+
+export async function confirmAndExportOneHtml(
+  vault: string,
+  path: string,
+  name: string,
+  treeStore: Parameters<typeof exportNotesToHtml>[1],
+  editorStore: Parameters<typeof exportNotesToHtml>[2]
+): Promise<void> {
+  await exportNotesToHtml([{ vault, path, name }], treeStore, editorStore)
 }
 
 export { ElMessageBox }

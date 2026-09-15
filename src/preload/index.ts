@@ -60,6 +60,7 @@ const api: TraceApi = {
   checkGitAvailability: () => ipcRenderer.invoke('git:checkAvailability'),
   testProxy: () => ipcRenderer.invoke('git:testProxy'),
   exportPdf: (items) => ipcRenderer.invoke('export:pdf', items),
+  exportHtml: (items) => ipcRenderer.invoke('export:html', items),
   readImage: (vault, relPath) => ipcRenderer.invoke('fs:readImage', vault, relPath),
   onExportProgress: (cb) => subscribe('export:progress', cb),
 

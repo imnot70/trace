@@ -4,7 +4,7 @@ import { ElMessageBox } from 'element-plus'
 import { useAppStore, type GridSection } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import { useNoteActions } from '../composables/actions'
-import { collectNotes, exportNotesToPdf } from '../composables/exportPdf'
+import { collectNotes, exportNotesToHtml, exportNotesToPdf } from '../composables/exportPdf'
 import { useEditorStore } from '../stores/editor'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
 import TagPickerDialog from '../components/TagPickerDialog.vue'
@@ -208,6 +208,7 @@ function onVaultMenuCommand(cmd: string, card: VaultCard): void {
   else if (cmd === 'deleteVault') void actions.deleteVault(card.name)
   else if (cmd === 'locate') void tree.revealNode(card.name, '', 'vault')
   else if (cmd === 'exportPdf') actions.exportFolderPdf(card.name, '')
+  else if (cmd === 'exportHtml') actions.exportFolderHtml(card.name, '')
 }
 
 function onFolderMenuCommand(cmd: string, node: TreeNode): void {
@@ -217,6 +218,12 @@ function onFolderMenuCommand(cmd: string, node: TreeNode): void {
     const nodes = node.children ?? []
     const targets = collectNotes(nodes, `${vaultName.value}/${folderPath}`, folderPath)
     void exportNotesToPdf(targets, tree, editor)
+    return
+  }
+  if (cmd === 'exportHtml') {
+    const nodes = node.children ?? []
+    const targets = collectNotes(nodes, `${vaultName.value}/${folderPath}`, folderPath)
+    void exportNotesToHtml(targets, tree, editor)
     return
   }
   if (cmd === 'rename') actions.renameDir(vaultName.value, folderPath, node.name)
@@ -236,6 +243,10 @@ async function onNoteMenuCommand(cmd: string, item: GridItem): Promise<void> {
 
   if (cmd === 'exportPdf') {
     void actions.exportNotes([{ vault: item.vault, path: item.path, name: item.name }])
+    return
+  }
+  if (cmd === 'exportHtml') {
+    void actions.exportNotesHtml([{ vault: item.vault, path: item.path, name: item.name }])
     return
   }
   if (cmd === 'delete') {
@@ -477,6 +488,7 @@ watch(section, () => {
                       <el-dropdown-menu>
                         <el-dropdown-item command="locate">在侧栏中定位</el-dropdown-item>
                         <el-dropdown-item command="exportPdf" divided>导出 PDF…</el-dropdown-item>
+                        <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
                         <el-dropdown-item command="rename">重命名</el-dropdown-item>
                         <el-dropdown-item command="deleteVault" class="danger-item">删除笔记库</el-dropdown-item>
                       </el-dropdown-menu>
@@ -513,6 +525,7 @@ watch(section, () => {
                         <el-dropdown-item command="newDir">新建文件夹</el-dropdown-item>
                         <el-dropdown-item command="newNote">创建笔记</el-dropdown-item>
                         <el-dropdown-item command="exportPdf" divided>导出 PDF…</el-dropdown-item>
+                        <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
                         <el-dropdown-item command="locate" divided>在侧栏中定位</el-dropdown-item>
                         <el-dropdown-item command="move">移动到…</el-dropdown-item>
                         <el-dropdown-item command="rename">重命名</el-dropdown-item>
@@ -549,16 +562,15 @@ watch(section, () => {
                     <template #dropdown>
                       <el-dropdown-menu>
                         <el-dropdown-item command="exportPdf">导出 PDF…</el-dropdown-item>
+                        <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
                         <el-dropdown-item command="move">移动到…</el-dropdown-item>
                         <el-dropdown-item command="favorite">
                           {{ isFavorited({ vault: vaultName, path: node.path, name: node.name }) ? '取消收藏' : '收藏笔记' }}
                         </el-dropdown-item>
                         <el-dropdown-item command="locate">在侧栏中定位</el-dropdown-item>
-                        <el-dropdown-item command="exportPdf" divided>导出 PDF…</el-dropdown-item>
                         <el-dropdown-item command="info" divided>信息</el-dropdown-item>
                         <el-dropdown-item command="tag">标签</el-dropdown-item>
-                        <el-dropdown-item command="exportPdf" divided>导出 PDF…</el-dropdown-item>
-                  <el-dropdown-item command="delete" class="danger-item">删除笔记</el-dropdown-item>
+                        <el-dropdown-item command="delete" divided class="danger-item">删除笔记</el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
                   </el-dropdown>
@@ -610,6 +622,7 @@ watch(section, () => {
                   <el-dropdown-item command="info" divided>信息</el-dropdown-item>
                   <el-dropdown-item command="tag">标签</el-dropdown-item>
                   <el-dropdown-item command="exportPdf" divided>导出 PDF…</el-dropdown-item>
+                  <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
                   <el-dropdown-item command="delete" class="danger-item">删除笔记</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
