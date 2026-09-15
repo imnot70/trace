@@ -23,7 +23,8 @@
 | [theme-presets_design.md](2026-09-13_theme-presets/theme-presets_design.md) | 预设主题包：暖色/冷色/高对比度 | ✅ **已实施**（v0.4.1 发布） |
 | [theme-import_design.md](2026-09-14_theme-import/theme-import_design.md) | 主题包导入：JSON 变量覆盖 + 白名单校验 + 应用数据目录存储 | ✅ **已实施**（main，随下版本发布） |
 | [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md) | 标签系统：打标签 / 筛选 / 管理（frontmatter 存储，方案 A） | ✅ **已实施**（v0.4.1 发布） |
-| [note-export_design.md](note-export/note-export_design.md) | 笔记导出 PDF：多篇不合并（单篇 / 文件夹 / 整库递归，可跨库），图片内联自包含 | ✅ **已实施**（main，随下版本发布） |
+| [note-export_design.md](note-export/note-export_design.md) | 笔记导出 PDF：单篇 / 文件夹 / 整库递归（可跨库），图片内联自包含；支持合并为单个 PDF | ✅ **已实施**（main，随下版本发布） |
+| [pdf-merge_design.md](pdf-merge/pdf-merge_design.md) | PDF 合并导出设计：多篇 → 单个 PDF，pdf-lib 拼接管线 | ✅ **已实施**（随下版本发布） |
 | [note-export-html_design.md](2026-09-15_note-export-html/note-export-html_design.md) | 笔记导出 HTML：自包含单文件，深浅色自适应阅读排版 | ✅ **已实施**（main，随下版本发布） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
@@ -36,7 +37,7 @@
 ### v0.4.2（2026-09-15）
 
 - **主题包导入**：设置 → 通用 → 外观支持导入/删除 JSON 自定义主题（浅/深两套变量覆盖，19 项白名单校验，拒绝未知字段与 url()）；自定义主题与内置预设并列显示，预设 id 失效时自动清空覆盖。使用指引见 [guides/theme-import.md](../../guides/theme-import.md)，设计详见 [theme-import_design.md](2026-09-14_theme-import/theme-import_design.md)。
-- **导出 PDF**（FR-2.4.9 / FR-2.4.10）：单篇 / 文件夹递归 / 整库批量导出为独立 PDF（不合并），公式 / 高亮 / 表格 / 内嵌 HTML / 图片全保真（图片内联 base64），进度条与失败汇总。详见 [note-export_design.md](note-export/note-export_design.md)。
+- **导出 PDF**（FR-2.4.9 / FR-2.4.10）：单篇 / 文件夹递归 / 整库批量导出为独立 PDF，公式 / 高亮 / 表格 / 内嵌 HTML / 图片全保真（图片内联 base64），进度条与失败汇总；支持将多篇合并为单个 PDF（pdf-lib 拼接）。详见 [note-export_design.md](note-export/note-export_design.md)。
 - **回收站过期清理**（FR-2.7.6）：保留天数可配置（7 / 30 / 90 天 / 永久），启动时自动清理超期条目。
 - **自动同步（定时 + 变更触发）**（FR-2.8.14）：方式选择（关闭 / 定时 / 变更触发），变更触发模式由保存事件驱动（5 秒防抖合并、单轮未完成轮次结束后补跑）；兼容旧 autoSyncEnabled 设置。
 - **回收站容量上限**（FR-2.7.7）：最大条目数可配置（默认不限），移入新条目与启动时按 FIFO 永久删除最旧条目。
