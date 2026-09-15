@@ -74,6 +74,14 @@ const retentionOptions = [
   { label: '永久保留', value: 0 }
 ]
 
+const capOptions = [
+  { label: '100 条', value: 100 },
+  { label: '200 条', value: 200 },
+  { label: '500 条', value: 500 },
+  { label: '1000 条', value: 1000 },
+  { label: '不限', value: 0 }
+]
+
 const autoSyncIntervals = [
   { label: '每 1 分钟', value: 1 },
   { label: '每 5 分钟', value: 5 },
@@ -514,6 +522,17 @@ async function resetGitSource(): Promise<void> {
               <el-option v-for="opt in retentionOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
             </el-select>
             <span class="settings-desc" style="margin: 0">超过保留天数的回收站条目将在应用启动时自动清理（0 / 永久保留 = 不自动清理）</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">容量上限</span>
+            <el-select
+              :model-value="app.settings.trashMaxEntries"
+              style="width: 200px"
+              @update:model-value="(v: number) => app.updateSettings({ trashMaxEntries: v })"
+            >
+              <el-option v-for="opt in capOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </el-select>
+            <span class="settings-desc" style="margin: 0">条目数超出上限时自动永久删除最旧的条目（0 / 不限 = 不限制数量）</span>
           </div>
         </div>
 

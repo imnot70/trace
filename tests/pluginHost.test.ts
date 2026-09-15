@@ -45,6 +45,7 @@ beforeEach(() => {
     attachmentsDir: 'attachments',
     proxyUrl: '',
     trashRetentionDays: 30,
+    trashMaxEntries: 0,
     autoSyncEnabled: false,
     autoSyncIntervalMin: 5,
     enablePlugins: false,

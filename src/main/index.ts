@@ -124,6 +124,7 @@ app.whenReady().then(() => {
     attachmentsDir: 'attachments',
     proxyUrl: '',
     trashRetentionDays: 30,
+    trashMaxEntries: 0,
     autoSyncEnabled: false,
     autoSyncIntervalMin: 5,
     enablePlugins: false,
@@ -228,6 +229,8 @@ app.whenReady().then(() => {
   try {
     const cleaned = trash.cleanup(settingsStore.get().trashRetentionDays)
     if (cleaned.removed > 0) logger.info(`启动清理：回收站移除 ${cleaned.removed} 条过期条目`)
+    const capped = trash.enforceCap()
+    if (capped.removed > 0) logger.info(`启动清理：回收站超出容量上限，移除 ${capped.removed} 条最旧条目`)
   } catch (e) {
     logger.warn('回收站启动清理失败', e)
   }

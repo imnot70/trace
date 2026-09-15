@@ -20,7 +20,11 @@ export class TrashService {
   private store: JsonStore<TrashIndex> | null = null
   private storeRoot: string | null = null
 
-  constructor(private getRoot: () => string | null) {}
+  constructor(
+    private getRoot: () => string | null,
+    /** 容量上限（条目数）读取器；<= 0 表示不限制 */
+    private getMaxEntries: () => number = () => 0
+  ) {}
 
   private ensureStore(): JsonStore<TrashIndex> | null {
     const root = this.getRoot()
@@ -68,6 +72,8 @@ export class TrashService {
         deletedAt: new Date().toISOString()
       }
       store.update((d) => d.entries.push(entry))
+      // 容量上限：超出时永久删除最旧的条目（FIFO）
+      this.enforceCap()
       return { ok: true }
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) }
@@ -150,6 +156,32 @@ export class TrashService {
       }
     }
     if (removed > 0) logger.info(`回收站清理了 ${removed} 条过期条目（保留 ${retentionDays} 天）`)
+    return { removed }
+  }
+
+  /**
+   * 容量上限执行：条目数超过上限时按删除时间从旧到新永久删除（FIFO）。
+   * maxEntries <= 0 表示不限制。由 put 时与启动清理时调用。
+   */
+  enforceCap(): { removed: number } {
+    const store = this.ensureStore()
+    const root = this.getRoot()
+    const max = this.getMaxEntries()
+    if (!store || !root || max <= 0) return { removed: 0 }
+    const entries = [...store.get().entries].sort((a, b) => a.deletedAt.localeCompare(b.deletedAt))
+    let removed = 0
+    for (const entry of entries.slice(0, Math.max(0, entries.length - max))) {
+      try {
+        fs.rmSync(path.join(root, '.trash', 'items', entry.id), { recursive: true, force: true })
+        store.update((d) => {
+          d.entries = d.entries.filter((e) => e.id !== entry.id)
+        })
+        removed++
+      } catch (e) {
+        logger.warn(`回收站容量清理失败：${entry.id}`, e)
+      }
+    }
+    if (removed > 0) logger.info(`回收站容量清理：移除 ${removed} 条最旧条目（上限 ${max} 条）`)
     return { removed }
   }
 

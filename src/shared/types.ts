@@ -105,6 +105,8 @@ export interface AppSettings {
   proxyUrl: string
   /** 回收站保留天数（超过自动清理；0 = 永不清理） */
   trashRetentionDays: number
+  /** 回收站容量上限（条目数），0 = 不限 */
+  trashMaxEntries: number
   /** 定时自动同步开关（仅对已关联远程仓库的笔记库生效） */
   autoSyncEnabled: boolean
   /** 定时自动同步间隔（分钟） */

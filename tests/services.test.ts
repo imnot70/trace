@@ -30,6 +30,7 @@ function buildStack() {
     attachmentsDir: 'attachments',
     proxyUrl: '',
     trashRetentionDays: 30,
+    trashMaxEntries: 0,
     autoSyncEnabled: false,
     autoSyncIntervalMin: 5,
     enablePlugins: false,
@@ -38,12 +39,13 @@ function buildStack() {
   })
   const workspace = new WorkspaceService(settings, path.join(tmp, 'ws'))
   workspace.initDefault()
-  const trash = new TrashService(() => workspace.getRoot())
+  let trashCap = 0 // 0 = 不限
+  const trash = new TrashService(() => workspace.getRoot(), () => trashCap)
   const vaults = new VaultService(() => workspace.getRoot(), trash)
   const fsTree = new FsTreeService((v) => vaults.vaultPath(v), trash)
   const favorites = new FavoritesService(new JsonStore(path.join(tmp, 'fav.json'), { items: [] }))
   const recents = new RecentsService(new JsonStore(path.join(tmp, 'rec.json'), { items: [] }))
-  return { settings, workspace, trash, vaults, fsTree, favorites, recents }
+  return { settings, workspace, trash, vaults, fsTree, favorites, recents, setTrashCap: (n: number) => { trashCap = n } }
 }
 
 beforeEach(() => {
@@ -615,5 +617,32 @@ describe('标签系统（frontmatter）', () => {
     expect(await tags.migrateFromNoteTags()).toBe(1)
     expect(await tags.noteTags('库', 'n.md')).toEqual([expect.objectContaining({ name: '旧标签' })])
     expect(store.get().noteTags).toHaveLength(0)
+  })
+})
+
+describe('回收站容量上限', () => {
+  it('超出上限时永久删除最旧条目（FIFO）；0 = 不限', () => {
+    const { vaults, fsTree, trash, setTrashCap } = buildStack()
+    vaults.create('库')
+    for (const n of ['n1', 'n2', 'n3']) fsTree.createNote('库', '', n)
+    setTrashCap(2)
+
+    expect(trash.put({ vault: '库', path: 'n1.md', kind: 'note' }).ok).toBe(true)
+    expect(trash.put({ vault: '库', path: 'n2.md', kind: 'note' }).ok).toBe(true)
+    expect(trash.list()).toHaveLength(2)
+    // 放入第 3 条时超出上限 → 最旧的 n1 被永久删除（list 按删除时间倒序：最新在前）
+    expect(trash.put({ vault: '库', path: 'n3.md', kind: 'note' }).ok).toBe(true)
+    expect(trash.list().map((e) => e.name)).toEqual(['n3', 'n2'])
+
+    // 显式执行同样生效
+    setTrashCap(1)
+    expect(trash.enforceCap().removed).toBe(1)
+    expect(trash.list().map((e) => e.name)).toEqual(['n3'])
+
+    // 不限：不再清理
+    setTrashCap(0)
+    fsTree.createNote('库', '', 'n4')
+    expect(trash.put({ vault: '库', path: 'n4.md', kind: 'note' }).ok).toBe(true)
+    expect(trash.list()).toHaveLength(2)
   })
 })
