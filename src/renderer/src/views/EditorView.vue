@@ -489,7 +489,8 @@ onBeforeUnmount(() => {
   background: var(--bg-primary);
   border-radius: 8px;
   overflow: hidden;
-  min-width: 0;
+  /* 编辑区至少 480px（约 40 字/行），窗口再窄也不压缩到无法编辑 */
+  min-width: 480px;
   flex-shrink: 0;
   flex-grow: 0;
 }
@@ -538,7 +539,8 @@ onBeforeUnmount(() => {
 
 .preview-card {
   flex: 1;
-  min-width: 0;
+  /* 预览区至少 280px，保留最小可读宽度 */
+  min-width: 280px;
   height: 100%;
   border-radius: 8px;
   overflow: hidden;

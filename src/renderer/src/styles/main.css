@@ -78,6 +78,8 @@ body {
   background: var(--bg-secondary);
   box-sizing: border-box;
   position: relative;
+  /* 窗口过窄时不再压缩卡片（配合 BrowserWindow.minWidth: 1080） */
+  min-width: 800px;
 }
 
 /* ========== 迷你导航条：侧栏不可见时的窄条泊位（视图切换 + 侧栏呼出） ========== */
@@ -159,7 +161,7 @@ body {
 /* 非编辑视图（欢迎/回收站/设置）的整页卡片 */
 .page-card {
   flex: 1;
-  min-width: 0;
+  min-width: 500px;
   display: flex;
   flex-direction: column;
   border-radius: 8px;
