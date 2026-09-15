@@ -2,6 +2,12 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 优化
+
+- **窗口最小宽度保护**（PRD 已知局限毕业）：编辑区设置 min-width 480px、预览区 280px，窗口拖窄时不再压缩卡片至不可用，改为横向滚动；非编辑视图页卡片设 min-width 500px
+
 ## [0.4.3] - 2026-09-15
 
 ### 新功能
