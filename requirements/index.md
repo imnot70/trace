@@ -1,13 +1,13 @@
 # Trace 需求与实施状态索引
 
-> 更新：2026-09-14 ｜ 发布基线：**v0.4.0**；v0.4.1 已发布；main 上待发版改动包括标签系统 / 主题包 / 网格列表切换 / 导出 PDF 等（见第一节「待发版」）
+> 更新：2026-09-15 ｜ 发布基线：**v0.4.1**；main 上待发版改动包括主题包导入 / 导出 PDF / 回收站过期清理 / 定时自动同步（见第一节「待发版」）
 > 本文件是 `requirements/` 目录的导览与实施状态总览。各项明细以对应文档与 [CHANGELOG.md](../CHANGELOG.md) 为准。
 
 ## 文档导读
 
 | 文件 | 内容 | 状态 |
 | --- | --- | --- |
-| [requirements.md](requirements.md) | 产品需求文档（PRD），当前形态的权威描述；随版本同步更新（当前覆盖至 FR-2.8.13 / FR-2.10.4） | ✅ 基线文档，所载需求均已实现 |
+| [requirements.md](requirements.md) | 产品需求文档（PRD），当前形态的权威描述；随版本同步更新（覆盖至 FR-2.4.11 / FR-2.7.6 / FR-2.8.14 等） | ✅ 基线文档，所载需求均已实现 |
 | [development-plan.md](development-plan.md) | 初版开发计划：技术选型、架构、里程碑 M0–M6、风险对策 | ✅ M0–M6 已全部完成（v1/v0.2.0 交付）；二期 Backlog 部分被后续设计文档细化 |
 | [plugin-design.md](2026-09-08_plugin-system/plugin-design.md) | 插件系统 v2 设计：独立插件进程 + 能力网关 + require 白名单 + 市场分发 | 📐 设计已确认（D1–D5 拍板），**未实施**（原定 0.4.0，已顺延——版本号已被双链/移动/内置 Git 批次使用） |
 | [vault-grid-navigation-design.md](2026-09-08_vault-grid-navigation/vault-grid-navigation-design.md) | 笔记库网格导航设计：双击钻入库内容 + 面包屑 + 三卡片区分 | ✅ **P1 + P2 全部实施**（P1 已发布 v0.3.5，P2 已随 v0.3.6 发布） |
@@ -18,11 +18,11 @@
 | [floating-preview-scroll-sync_design.md](2026-09-13_floating-preview-scroll-sync/floating-preview-scroll-sync_design.md) | 悬浮预览滚动同步：接入双向滚动，关闭时同步固定预览进度 | ✅ **已实施**（v0.4.0 发布） |
 | [relative-time_design.md](2026-09-13_relative-time/relative-time_design.md) | 常用网格卡片显示相对时间 | ✅ **已实施**（v0.4.0 发布） |
 | [note-info_design.md](2026-09-13_note-info/note-info_design.md) | 笔记「信息」菜单：创建时间 / 最后修改时间 | ✅ **已实施**（v0.4.0 发布） |
-| [grid-list-toggle_design.md](2026-09-13_grid-list-toggle/grid-list-toggle_design.md) | 网格/列表切换视图：常用/收藏/笔记库统一支持，持久化 | ✅ **已实施**（main，随下版本发布） |
-| [auto-close-tags_design.md](2026-09-13_auto-close-tags/auto-close-tags_design.md) | 编辑器 HTML 标签自动闭合 | ✅ **已实施**（main，随下版本发布） |
-| [theme-presets_design.md](2026-09-13_theme-presets/theme-presets_design.md) | 预设主题包：暖色/冷色/高对比度 | ✅ **已实施**（main，随下版本发布） |
+| [grid-list-toggle_design.md](2026-09-13_grid-list-toggle/grid-list-toggle_design.md) | 网格/列表切换视图：常用/收藏/笔记库统一支持，持久化 | ✅ **已实施**（v0.4.1 发布） |
+| [auto-close-tags_design.md](2026-09-13_auto-close-tags/auto-close-tags_design.md) | 编辑器 HTML 标签自动闭合 | ✅ **已实施**（v0.4.1 发布） |
+| [theme-presets_design.md](2026-09-13_theme-presets/theme-presets_design.md) | 预设主题包：暖色/冷色/高对比度 | ✅ **已实施**（v0.4.1 发布） |
 | [theme-import_design.md](2026-09-14_theme-import/theme-import_design.md) | 主题包导入：JSON 变量覆盖 + 白名单校验 + 应用数据目录存储 | ✅ **已实施**（main，随下版本发布） |
-| [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md) | 标签系统：打标签 / 筛选 / 管理 | ✅ **已实施**（main，随下版本发布） |
+| [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md) | 标签系统：打标签 / 筛选 / 管理（frontmatter 存储，方案 A） | ✅ **已实施**（v0.4.1 发布） |
 | [note-export_design.md](note-export/note-export_design.md) | 笔记导出 PDF：多篇不合并（单篇 / 文件夹 / 整库递归，可跨库），图片内联自包含 | ✅ **已实施**（main，随下版本发布） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
@@ -30,26 +30,21 @@
 
 ---
 
-## 一、已实现（v0.1.0 → v0.4.0，发布状态见子节）
+## 一、已实现（v0.1.0 → v0.4.1，发布状态见子节）
 
-### 待发版（v0.4.0 之后）
+### 待发版（v0.4.1 之后，main 已合并）
 
-- **常用网格卡片显示相对时间**：常用视图卡片底部显示「3 分钟前」「2 天前」等相对时间（`Intl.RelativeTimeFormat` 零依赖实现）。详见 [relative-time_design.md](2026-09-13_relative-time/relative-time_design.md)。
-- **笔记「信息」菜单**：笔记 ⋮ 菜单（侧栏树 + 网格卡片）新增「信息」项，弹窗显示创建时间和最后修改时间。详见 [note-info_design.md](2026-09-13_note-info/note-info_design.md)。
-- **悬浮预览滚动同步**：悬浮预览接入编辑器↔预览双向滚动同步；关闭悬浮预览时自动将固定预览同步到编辑器当前位置。详见 [floating-preview-scroll-sync_design.md](2026-09-13_floating-preview-scroll-sync/floating-preview-scroll-sync_design.md)。
-- **双链修复**：路径形式双链（`[[目录/笔记名]]`）解析修复；补全自引用过滤改为完整路径比较。
-- **网格卡片摘要自适应高度**：摘录不足 3 行时卡片高度自动收缩，去掉固定 3 行留白。
-- **网格/列表切换视图**：常用、收藏、笔记库支持网格/列表切换，持久化到 localStorage。
-- **编辑器 HTML 标签自动闭合**：输入 `<div>` 等开标签的 `>` 时自动生成闭合标签。详见 [auto-close-tags_design.md](2026-09-13_auto-close-tags/auto-close-tags_design.md)。
-- **预设主题包**：新增暖色、冷色、高对比度 3 套预设配色，设置页网格卡片选择，持久化到设置。详见 [theme-presets_design.md](2026-09-13_theme-presets/theme-presets_design.md)。
-- **标签系统**：创建/重命名/删除标签（含自定义颜色，改色为弹窗选色器）；笔记打标签/取消标签（侧栏树 + 网格卡片均有「标签…」入口）；侧栏「标签」区筛选。**标签已迁移到笔记 frontmatter 存储**（方案 A，FR-2.6.10）——随文件移动 / 重命名 / 外部编辑跟随，旧数据自动迁移；预览 / 悬浮预览与卡片摘要不渲染 frontmatter。详见 [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md)。
-- **修复 `npm run lint` scripts glob 问题**：ESLint 配置忽略 `scripts/` 但 lint 命令仍包含该目录导致报错，从命令中移除。
-- **主题包导入**：设置页支持导入/删除 JSON 自定义主题（浅/深两套变量覆盖，19 项白名单校验）。详见 [theme-import_design.md](2026-09-14_theme-import/theme-import_design.md)。
-- **导出 PDF**（FR-2.4.10，note-export 分支）：单篇 / 文件夹递归 / 整库批量导出为独立 PDF（不合并），公式 / 高亮 / 表格 / 内嵌 HTML / 图片全保真（图片内联 base64），进度与失败汇总。详见 [note-export_design.md](note-export/note-export_design.md)。
-- **双链 `[[` 补全补记**（FR-2.4.11）：已随双链 P1 实现（此前 index 记录过时，已修正）。
-- **回收站过期清理**（FR-2.7.6）：保留天数可配置，启动时自动清理超期条目。
-- **定时自动同步**（FR-2.8.14）：开关 + 间隔可配置，对已关联库静默同步，失败静默记日志。
-- **双链 `[[` 补全补记**：FR（双链 P2）实际已随双链 P1 一并实现并验证可用，index 此前的「剩余 P2」记录过时，已修正（P3 反向链接仍待做）。
+- **主题包导入**：设置 → 通用 → 外观支持导入/删除 JSON 自定义主题（浅/深两套变量覆盖，19 项白名单校验，拒绝未知字段与 url()）；自定义主题与内置预设并列显示，预设 id 失效时自动清空覆盖。使用指引见 [guides/theme-import.md](../../guides/theme-import.md)，设计详见 [theme-import_design.md](2026-09-14_theme-import/theme-import_design.md)。
+- **导出 PDF**（FR-2.4.9 / FR-2.4.10）：单篇 / 文件夹递归 / 整库批量导出为独立 PDF（不合并），公式 / 高亮 / 表格 / 内嵌 HTML / 图片全保真（图片内联 base64），进度条与失败汇总。详见 [note-export_design.md](note-export/note-export_design.md)。
+- **回收站过期清理**（FR-2.7.6）：保留天数可配置（7 / 30 / 90 天 / 永久），启动时自动清理超期条目。
+- **定时自动同步**（FR-2.8.14）：开关 + 间隔（1/5/10/30 分钟）可配置，对已关联库静默同步，失败静默记日志，同步期间挂起文件监听。
+- **双链 `[[` 补全补记**（FR-2.4.11）：已随双链 P1 实现（此前记录过时，已修正）。
+
+### v0.4.1（2026-09-14）
+
+- **标签系统 + frontmatter 存储迁移**（FR-2.6.7~2.6.10）：创建/重命名/删除/改色（弹窗选色器）；打标签入口（侧栏树 + 网格卡片）；侧栏筛选。标签随笔记 frontmatter（方案 A）——移动/重命名/外部编辑跟随，旧元数据自动迁移；预览/摘要不渲染 frontmatter。详见 [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md)。
+- **网格/列表切换视图**、**编辑器 HTML 标签自动闭合**、**预设主题包**（暖色/冷色/高对比度）
+- **常用卡片相对时间**、**笔记「信息」菜单**、**悬浮预览滚动同步**、**双链修复**、**摘要自适应高度**、lint scripts glob 修复
 
 ### v0.4.0（2026-09-13）
 
@@ -152,14 +147,14 @@
 - 全局搜索
 - 所见即所得编辑模式
 - 图形化冲突解决
-- 定时/变更自动同步
+- 变更触发自动同步（定时部分已实施，FR-2.8.14）
 - 插件完整 API 与市场（v2 设计已定稿，见 `requirements/2026-09-08_plugin-system/`，M1 待启动）
 - 多窗口
-- 导出 PDF/HTML
+- 导出 HTML（PDF 已实施，FR-2.4.9）
 - 窗口毛玻璃效果（Win11 `backgroundMaterial` / macOS `vibrancy` / Linux 合成器，平台分级降级——调研中）
 
-> 已从 Backlog 毕业并实施：标签系统、预设主题包、文件移动、双链引用 P1、网格/列表切换、主题包导入（均见第一节）
+> 已从 Backlog 毕业并实施：标签系统、预设主题包 + 主题包导入、文件移动、双链引用 P1（含 `[[` 补全）、网格/列表切换、导出 PDF、回收站过期清理、定时自动同步（均见第一节）
 
 其他已记录的小项：
 
-- PRD 已知局限待解：列表项内块级公式渲染（markdown-it-texmath 局限）、极窄窗口（<1080px）编辑区最小宽度、回收站容量上限与过期清理
+- PRD 已知局限待解：列表项内块级公式渲染（markdown-it-texmath 局限）、极窄窗口（<1080px）编辑区最小宽度、回收站容量上限（过期自动清理已实施，FR-2.7.6）
