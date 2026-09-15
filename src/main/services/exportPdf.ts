@@ -1,6 +1,7 @@
 import { BrowserWindow, app, dialog } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
+import { PDFDocument } from 'pdf-lib'
 import { logger } from '../lib/logger'
 
 export interface ExportRequestItem {
@@ -260,6 +261,58 @@ ${req.html}
   close(): void {
     if (this.win && !this.win.isDestroyed()) this.win.close()
     this.win = null
+  }
+
+  /**
+   * 合并多篇为单个 PDF：逐篇 printToPDF → pdf-lib 拼接 → 保存。
+   * items 顺序即 PDF 中的页序。
+   */
+  async mergePdfs(
+    dir: string,
+    items: ExportRequestItem[],
+    outputFileName: string
+  ): Promise<ExportFileResult> {
+    try {
+      this.prepareKaTeX()
+      const pdfBuffers: Buffer[] = []
+      const win = this.ensureWindow()
+
+      for (const item of items) {
+        const htmlPath = this.writeTempHtml(item)
+        await win.loadFile(htmlPath)
+        await win.webContents.executeJavaScript('document.fonts.ready.then(() => undefined)').catch(() => undefined)
+        const pdf = await win.webContents.printToPDF({
+          landscape: false,
+          printBackground: true,
+          pageSize: 'A4',
+          margins: { top: 0.6, bottom: 0.6, left: 0.6, right: 0.6 }
+        })
+        pdfBuffers.push(pdf)
+      }
+
+      const merged = await PDFDocument.create()
+      for (const pdfBuf of pdfBuffers) {
+        const src = await PDFDocument.load(pdfBuf)
+        const pages = await merged.copyPages(src, src.getPageIndices())
+        for (const page of pages) merged.addPage(page)
+      }
+
+      const fileBase = sanitizeFileName(outputFileName.replace(/\.pdf$/i, ''))
+      let target = path.join(dir, `${fileBase}.pdf`)
+      let n = 1
+      while (fs.existsSync(target)) {
+        target = path.join(dir, `${fileBase} (${n}).pdf`)
+        n++
+      }
+      const mergedBytes = await merged.save()
+      fs.writeFileSync(target, mergedBytes)
+      logger.info(`导出合并 PDF（${items.length} 篇）：${target}`)
+      return { ok: true, path: target, name: outputFileName }
+    } catch (e) {
+      const error = e instanceof Error ? e.message : String(e)
+      logger.error(`导出合并 PDF 失败`, e)
+      return { ok: false, name: outputFileName, error }
+    }
   }
 }
 

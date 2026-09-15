@@ -4,7 +4,7 @@ import { ElMessageBox } from 'element-plus'
 import { useAppStore, type GridSection } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import { useNoteActions } from '../composables/actions'
-import { collectNotes, exportNotesToHtml, exportNotesToPdf } from '../composables/exportPdf'
+import { collectNotes, exportNotesToHtml, exportNotesToPdf, exportMergePdf } from '../composables/exportPdf'
 import { useEditorStore } from '../stores/editor'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
 import TagPickerDialog from '../components/TagPickerDialog.vue'
@@ -208,6 +208,7 @@ function onVaultMenuCommand(cmd: string, card: VaultCard): void {
   else if (cmd === 'deleteVault') void actions.deleteVault(card.name)
   else if (cmd === 'locate') void tree.revealNode(card.name, '', 'vault')
   else if (cmd === 'exportPdf') actions.exportFolderPdf(card.name, '')
+  else if (cmd === 'exportPdfMerge') void actions.exportFolderMergePdf(card.name, '')
   else if (cmd === 'exportHtml') actions.exportFolderHtml(card.name, '')
 }
 
@@ -218,6 +219,12 @@ function onFolderMenuCommand(cmd: string, node: TreeNode): void {
     const nodes = node.children ?? []
     const targets = collectNotes(nodes, `${vaultName.value}/${folderPath}`, folderPath)
     void exportNotesToPdf(targets, tree, editor)
+    return
+  }
+  if (cmd === 'exportPdfMerge') {
+    const nodes = node.children ?? []
+    const targets = collectNotes(nodes, `${vaultName.value}/${folderPath}`, folderPath)
+    void exportMergePdf(targets, tree, editor)
     return
   }
   if (cmd === 'exportHtml') {
@@ -243,6 +250,10 @@ async function onNoteMenuCommand(cmd: string, item: GridItem): Promise<void> {
 
   if (cmd === 'exportPdf') {
     void actions.exportNotes([{ vault: item.vault, path: item.path, name: item.name }])
+    return
+  }
+  if (cmd === 'exportPdfMerge') {
+    void exportMergePdf([{ vault: item.vault, path: item.path, name: item.name }], tree, editor)
     return
   }
   if (cmd === 'exportHtml') {
@@ -488,6 +499,7 @@ watch(section, () => {
                       <el-dropdown-menu>
                         <el-dropdown-item command="locate">在侧栏中定位</el-dropdown-item>
                         <el-dropdown-item command="exportPdf" divided>导出 PDF…</el-dropdown-item>
+                        <el-dropdown-item command="exportPdfMerge" divided>导出合并 PDF…</el-dropdown-item>
                         <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
                         <el-dropdown-item command="rename">重命名</el-dropdown-item>
                         <el-dropdown-item command="deleteVault" class="danger-item">删除笔记库</el-dropdown-item>
@@ -526,6 +538,7 @@ watch(section, () => {
                         <el-dropdown-item command="newNote">创建笔记</el-dropdown-item>
                         <el-dropdown-item command="exportPdf" divided>导出 PDF…</el-dropdown-item>
                         <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
+                        <el-dropdown-item command="exportPdfMerge" divided>导出合并 PDF…</el-dropdown-item>
                         <el-dropdown-item command="locate" divided>在侧栏中定位</el-dropdown-item>
                         <el-dropdown-item command="move">移动到…</el-dropdown-item>
                         <el-dropdown-item command="rename">重命名</el-dropdown-item>

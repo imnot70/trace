@@ -340,6 +340,24 @@ export function registerIpc(deps: IpcDeps): void {
       }
     }
   )
+  // 合并 PDF：多篇 → 单个 PDF
+  handle(
+    'export:pdf-merge',
+    async (args: { items: { vault: string; path: string; name: string; html: string }[]; fileName: string }) => {
+      const items = args.items
+      const fileName = args.fileName || '导出合并.pdf'
+      if (!Array.isArray(items) || items.length === 0) {
+        return { ok: false, error: '没有可导出的笔记' }
+      }
+      if (!exportDir) {
+        exportDir = await deps.exportPdf.chooseDirectory()
+        if (!exportDir) return { ok: false, error: '已取消' }
+      }
+      send('export:progress', { done: 0, total: items.length, current: '正在合并…', ok: true })
+      const result = await deps.exportPdf.mergePdfs(exportDir, items, fileName)
+      return result
+    }
+  )
   handle(
     'export:html',
     async (items: { vault: string; path: string; name: string; html: string }[]) => {

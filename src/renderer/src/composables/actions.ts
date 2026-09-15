@@ -5,7 +5,7 @@ import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
 import { useTrashStore } from '../stores/trash'
 import { useAppStore } from '../stores/app'
-import { collectNotes, exportNotesToHtml, exportNotesToPdf } from './exportPdf'
+import { collectNotes, exportNotesToHtml, exportNotesToPdf, exportMergePdf } from './exportPdf'
 
 /** 侧栏与树节点的全部操作（创建/重命名/删除/收藏/git） */
 export function useNoteActions() {
@@ -283,6 +283,35 @@ export function useNoteActions() {
     exportFolder(vault, folderPath, 'html')
   }
 
+  /** 文件夹（或库）递归导出合并 PDF */
+  async function exportFolderMergePdf(vault: string, folderPath = ''): Promise<void> {
+    const collect = (): { vault: string; path: string; name: string }[] => {
+      const nodes = folderPath
+        ? (() => {
+            let cur = tree.trees[vault] ?? []
+            for (const seg of folderPath.split('/')) {
+              const next = cur.find((n) => n.kind === 'dir' && n.name === seg)?.children
+              if (!next) return []
+              cur = next
+            }
+            return cur
+          })()
+        : tree.trees[vault] ?? []
+      return collectNotes(nodes, vault, folderPath)
+    }
+    let targets = collect()
+    if (targets.length === 0) {
+      await tree.loadTree(vault)
+      targets = collect()
+    }
+    if (targets.length === 0) {
+      ElMessage.warning('该文件夹内没有笔记')
+      return
+    }
+    const { exportMergePdf } = await import('./exportPdf')
+    await exportMergePdf(targets, tree, editor)
+  }
+
   // ---------- 打开 ----------
   async function openNote(vault: string, path: string, name: string): Promise<void> {
     await editor.openNote(vault, path, name)
@@ -306,6 +335,8 @@ export function useNoteActions() {
     exportNotesHtml,
     exportFolderPdf,
     exportFolderHtml,
+    exportFolderMergePdf,
+    exportMergePdf,
     openNote,
     refreshVault
   }

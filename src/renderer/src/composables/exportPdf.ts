@@ -140,4 +140,51 @@ export async function confirmAndExportOneHtml(
   await exportNotesToHtml([{ vault, path, name }], treeStore, editorStore)
 }
 
+/** 合并 PDF 导出：多篇 → 单个 PDF（用户输入文件名） */
+export async function exportMergePdf(
+  targets: { vault: string; path: string; name: string }[],
+  treeStore: Parameters<typeof exportNotesToPdf>[1],
+  editorStore: Parameters<typeof exportNotesToPdf>[2]
+): Promise<void> {
+  const label = '合并 PDF'
+  if (targets.length === 0) {
+    ElMessage.warning('没有可导出的笔记')
+    return
+  }
+  await editorStore.flushSave()
+
+  const confirm = await ElMessageBox.confirm(
+    `将 ${targets.length} 篇笔记合并为 1 个 PDF。继续后请选择导出目录。`,
+    label,
+    { confirmButtonText: '继续', cancelButtonText: '取消', type: 'info' }
+  ).catch(() => null)
+  if (!confirm) return
+
+  // 逐篇生成 HTML
+  const htmls: string[] = []
+  for (const t of targets) {
+    if (!treeStore.trees[t.vault]) await treeStore.loadTree(t.vault)
+    const result = await window.trace.readNote(t.vault, t.path)
+    const content = result.ok && result.content != null ? result.content : ''
+    htmls.push(
+      await renderNoteHtml(content, t.path, (rel) => window.trace.readImage(t.vault, rel))
+    )
+  }
+
+  exportState.visible = true
+  exportState.done = 0
+  exportState.total = targets.length
+  exportState.current = '生成各篇…'
+
+  const items = targets.map((t, i) => ({ ...t, html: htmls[i] }))
+  const result = await window.trace.exportPdfMerge(items, '导出合并.pdf')
+  exportState.visible = false
+
+  if (result.ok) {
+    ElMessage.success(`已导出合并 PDF：${result.name}`)
+  } else {
+    ElMessage.error(result.error ?? '导出失败')
+  }
+}
+
 export { ElMessageBox }

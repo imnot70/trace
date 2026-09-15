@@ -58,6 +58,11 @@ function handleMenuCommand(cmd: string): void {
     else void actions.exportNotes([{ vault: props.vault, path: props.node.path, name: props.node.name }])
     return
   }
+  if (cmd === 'exportPdfMerge') {
+    if (isDir.value) void actions.exportFolderMergePdf(props.vault, props.node.path)
+    else void actions.exportMergePdf([{ vault: props.vault, path: props.node.path, name: props.node.name }], tree, editor)
+    return
+  }
   if (cmd === 'exportHtml') {
     if (isDir.value) actions.exportFolderHtml(props.vault, props.node.path)
     else void actions.exportNotesHtml([{ vault: props.vault, path: props.node.path, name: props.node.name }])
@@ -140,6 +145,7 @@ const tagDialogVisible = ref(false)
             <el-dropdown-menu>
               <template v-if="isDir">
                 <el-dropdown-item command="exportPdf">导出 PDF…</el-dropdown-item>
+                <el-dropdown-item command="exportPdfMerge">导出合并 PDF…</el-dropdown-item>
                 <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
                 <el-dropdown-item command="move">移动到…</el-dropdown-item>
                 <el-dropdown-item command="rename">重命名</el-dropdown-item>
@@ -149,6 +155,7 @@ const tagDialogVisible = ref(false)
               </template>
               <template v-else>
                 <el-dropdown-item command="exportPdf">导出 PDF…</el-dropdown-item>
+                <el-dropdown-item command="exportPdfMerge">导出合并 PDF…</el-dropdown-item>
                 <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
                 <el-dropdown-item command="move">移动到…</el-dropdown-item>
                 <el-dropdown-item command="rename">重命名</el-dropdown-item>

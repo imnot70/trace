@@ -82,6 +82,8 @@ export interface TraceApi {
   exportPdf(items: { vault: string; path: string; name: string; html: string }[]): Promise<
     OpResult & { results?: { ok: boolean; name: string; error?: string }[]; failed?: { name: string; error?: string }[] }
   >
+  /** 合并 PDF：多篇 → 单个 PDF；fileName 为输出文件名 */
+  exportPdfMerge(items: { vault: string; path: string; name: string; html: string }[], fileName: string): Promise<OpResult & { name?: string; path?: string; error?: string }>
   /** 批量导出 HTML：每项一个自包含 .html 文件；返回逐篇结果与失败清单 */
   exportHtml(items: { vault: string; path: string; name: string; html: string }[]): Promise<
     OpResult & { results?: { ok: boolean; name: string; error?: string }[]; failed?: { name: string; error?: string }[] }
