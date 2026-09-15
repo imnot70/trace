@@ -1,6 +1,6 @@
 # 双链 P1 + 页内锚点 + 锚点补全设计
 
-> 状态：**设计已确认（2026-09-12）**，未实施
+> 状态：**已实施**——P1 随 v0.4.0 发布（双链渲染 / 锚点跳转 / 锚点补全）；编辑器 `[[` 笔记路径补全（原 P2）已随 P1 一并实现，v0.4.1 修复路径形式双链解析，wiki-link-p2 分支增强「选中补全自动闭合 `]]`」。
 > 关联：FR-2.4（笔记编辑器）；FR-2.4.8（链接跳转，扩展双链和锚点支持）
 > 涉及代码：`src/renderer/src/lib/markdown.ts`、`src/renderer/src/components/MarkdownPreview.vue`、`src/renderer/src/components/MarkdownEditor.vue`、`src/main/services/fsTree.ts`、`src/main/ipc/registerIpc.ts`、`src/shared/api.ts`、`src/preload/index.ts`
 > 设计决策：双链按名称全局匹配（同名取第一个）；锚点复用 markdown 自动生成的标题 id；锚点补全从文档内容提取。

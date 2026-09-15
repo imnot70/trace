@@ -74,7 +74,17 @@ function traceCompletions(context: CompletionContext): CompletionResult | null {
     if (filtered.length === 0) return null
     return {
       from: wikilink.from + 2,
-      options: filtered.map((n) => ({ label: n, detail: '笔记' }))
+      options: filtered.map((n) => ({
+        label: n,
+        detail: '笔记',
+        // 选中后自动闭合 ]]，光标停在闭合符前（便于继续追加 |显示名）
+        apply: (view, _completion, from, to) => {
+          view.dispatch({
+            changes: { from, to, insert: `${n}]]` },
+            selection: { anchor: from + n.length }
+          })
+        }
+      }))
     }
   }
 
