@@ -8,6 +8,7 @@ import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
 import type { ThemeOption } from '@shared/types'
 import { normalizeAttachDir, normalizeProxyUrl } from '@shared/validate'
+import type { AppSettings } from '@shared/types'
 import { SHORTCUT_GROUPS } from '../config/shortcuts'
 import { THEME_PRESETS } from '../styles/presets'
 
@@ -80,6 +81,12 @@ const capOptions = [
   { label: '500 条', value: 500 },
   { label: '1000 条', value: 1000 },
   { label: '不限', value: 0 }
+]
+
+const autoSyncModes = [
+  { label: '关闭', value: 'off' },
+  { label: '定时（按间隔）', value: 'interval' },
+  { label: '变更触发（保存后 5 秒）', value: 'change' }
 ]
 
 const autoSyncIntervals = [
@@ -538,22 +545,26 @@ async function resetGitSource(): Promise<void> {
 
         <div class="settings-block">
           <h3>自动同步</h3>
-          <p class="settings-desc">按设定间隔自动同步所有已关联 Git 仓库的笔记库；仅对磁盘上已保存的内容生效，失败时静默（状态见库徽标与编辑页）。</p>
+          <p class="settings-desc">自动同步所有已关联 Git 仓库的笔记库；仅对磁盘上已保存的内容生效，失败时静默（状态见库徽标与编辑页）。</p>
           <div class="setting-row">
-            <span class="setting-label">定时同步</span>
-            <el-switch
-              :model-value="app.settings.autoSyncEnabled"
-              @update:model-value="(v: string | number | boolean) => app.updateSettings({ autoSyncEnabled: Boolean(v) })"
-            />
-            <template v-if="app.settings.autoSyncEnabled">
-              <el-select
-                :model-value="app.settings.autoSyncIntervalMin"
-                style="width: 140px"
-                @update:model-value="(v: number) => app.updateSettings({ autoSyncIntervalMin: v })"
-              >
-                <el-option v-for="opt in autoSyncIntervals" :key="opt.value" :label="opt.label" :value="opt.value" />
-              </el-select>
-            </template>
+            <span class="setting-label">同步方式</span>
+            <el-select
+              :model-value="app.settings.autoSyncMode"
+              style="width: 220px"
+              @update:model-value="(v: string) => app.updateSettings({ autoSyncMode: v as AppSettings['autoSyncMode'] })"
+            >
+              <el-option v-for="opt in autoSyncModes" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </el-select>
+          </div>
+          <div class="setting-row" v-if="app.settings.autoSyncMode === 'interval'">
+            <span class="setting-label">同步间隔</span>
+            <el-select
+              :model-value="app.settings.autoSyncIntervalMin"
+              style="width: 140px"
+              @update:model-value="(v: number) => app.updateSettings({ autoSyncIntervalMin: v })"
+            >
+              <el-option v-for="opt in autoSyncIntervals" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </el-select>
           </div>
         </div>
 

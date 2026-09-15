@@ -46,7 +46,7 @@ beforeEach(() => {
     proxyUrl: '',
     trashRetentionDays: 30,
     trashMaxEntries: 0,
-    autoSyncEnabled: false,
+    autoSyncMode: 'off',
     autoSyncIntervalMin: 5,
     enablePlugins: false,
     pluginEnabled: {},

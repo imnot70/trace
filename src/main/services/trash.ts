@@ -44,7 +44,11 @@ export class TrashService {
   list(): TrashEntry[] {
     const store = this.ensureStore()
     if (!store) return []
-    return [...store.get().entries].sort((a, b) => b.deletedAt.localeCompare(a.deletedAt))
+        // 删除时间倒序；同毫秒条目按插入序倒序（后删的在前）——sort 需全序，否则同毫秒批次顺序不稳定
+    return [...store.get().entries]
+      .map((e, i) => ({ e, i }))
+      .sort((a, b) => b.e.deletedAt.localeCompare(a.e.deletedAt) || b.i - a.i)
+      .map((x) => x.e)
   }
 
   put(opts: { vault: string; path: string; kind: ItemKind }): { ok: boolean; error?: string } {
