@@ -125,7 +125,7 @@ app.whenReady().then(() => {
     proxyUrl: '',
     trashRetentionDays: 30,
     trashMaxEntries: 0,
-    autoSyncEnabled: false,
+    autoSyncMode: 'off',
     autoSyncIntervalMin: 5,
     enablePlugins: false,
     pluginEnabled: {},
@@ -195,6 +195,7 @@ app.whenReady().then(() => {
   })
   const watcher = new WatcherService(() => workspace.getRoot(), (payload) => {
     for (const w of BrowserWindow.getAllWindows()) w.webContents.send('fs:changed', payload)
+    autoSync.onChanged()
   })
   watcher.start()
 
@@ -219,10 +220,13 @@ app.whenReady().then(() => {
     getRoot: () => workspace.getRoot(),
     git,
     watcher,
-    getConfig: () => ({
-      enabled: settingsStore.get().autoSyncEnabled,
-      intervalMin: settingsStore.get().autoSyncIntervalMin
-    })
+    getConfig: () => {
+      const s = settingsStore.get()
+      // 兼容旧设置：v0.4.2 的 autoSyncEnabled=true 迁移为 interval 模式
+      const legacy = s as AppSettings & { autoSyncEnabled?: boolean }
+      const mode = s.autoSyncMode ?? (legacy.autoSyncEnabled ? 'interval' : 'off')
+      return { mode, intervalMin: s.autoSyncIntervalMin }
+    }
   })
   autoSync.apply()
   // 启动时执行一轮回收站过期清理（保留天数 0 = 永不清理）
