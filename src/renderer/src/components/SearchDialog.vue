@@ -1,11 +1,12 @@
 <template>
   <el-dialog
-    v-model="visible"
+    :model-value="visible"
     title="全局搜索"
     width="80%"
     :close-on-click-modal="false"
     :close-on-press-escape="true"
     class="search-dialog"
+    @update:model-value="(v: boolean) => !v && handleClose()"
     @close="handleClose"
   >
     <div class="search-container">
