@@ -69,17 +69,19 @@
             class="result-item"
             @click="openResult(result)"
           >
-            <div class="result-header">
-              <span class="result-vault">{{ result.vault }}</span>
-              <span class="result-path">{{ result.path }}</span>
-              <span class="result-line">行 {{ result.lineNumber }}</span>
+            <div class="result-title-row">
+              <span class="result-title">{{ result.title }}</span>
+              <span v-if="result.lineNumber" class="result-line">{{ result.lineNumber }}</span>
             </div>
-            <div class="result-title">{{ result.title }}</div>
             <div
               v-if="result.snippet"
               class="result-snippet"
               v-html="highlightSnippet(result.snippet, result.keyword)"
             />
+            <div class="result-location">
+              <span class="result-vault">{{ result.vault }}</span>
+              <span class="result-path">{{ result.path }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -350,35 +352,31 @@ function handleClose() {
 }
 
 .result-item {
-  padding: 8px 10px;
-  border-radius: 4px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-color);
   cursor: pointer;
-  transition: background-color 0.15s;
-  margin-bottom: 2px;
+  transition: background-color 0.1s;
+}
+
+.result-item:last-child {
+  border-bottom: none;
 }
 
 .result-item:hover {
   background-color: var(--bg-hover);
 }
 
-.result-header {
+.result-title-row {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  align-items: baseline;
+  gap: 8px;
   margin-bottom: 2px;
-  font-size: 11px;
-  color: var(--text-secondary);
 }
 
-.result-vault {
-  background-color: var(--accent-light);
-  padding: 1px 5px;
-  border-radius: 2px;
-  font-size: 10px;
-  flex-shrink: 0;
-}
-
-.result-path {
+.result-title {
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -388,23 +386,20 @@ function handleClose() {
 
 .result-line {
   flex-shrink: 0;
-  margin-left: auto;
-}
-
-.result-title {
-  font-weight: 500;
-  font-size: 13px;
-  margin-bottom: 2px;
-  color: var(--text-primary);
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.7;
 }
 
 .result-snippet {
   font-size: 12px;
   color: var(--text-secondary);
-  line-height: 1.4;
+  line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  margin-bottom: 2px;
+  padding-left: 0;
 }
 
 .result-snippet :deep(mark) {
@@ -412,6 +407,25 @@ function handleClose() {
   color: var(--accent);
   padding: 0 1px;
   border-radius: 1px;
+}
+
+.result-location {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+.result-vault {
+  flex-shrink: 0;
+}
+
+.result-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .search-empty {
