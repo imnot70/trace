@@ -32,7 +32,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   autoSyncIntervalMin: 5,
   enablePlugins: false,
   pluginEnabled: {},
-  gitSource: null
+  gitSource: null,
+  windowGlassEffect: 'auto',
+  windowOpacity: 100
 }
 
 function prefersDark(): boolean {

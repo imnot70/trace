@@ -35,7 +35,9 @@ function buildStack() {
     autoSyncIntervalMin: 5,
     enablePlugins: false,
     pluginEnabled: {},
-    gitSource: null
+    gitSource: null,
+    windowGlassEffect: 'auto',
+    windowOpacity: 100
   })
   const workspace = new WorkspaceService(settings, path.join(tmp, 'ws'))
   workspace.initDefault()

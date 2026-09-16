@@ -50,7 +50,9 @@ beforeEach(() => {
     autoSyncIntervalMin: 5,
     enablePlugins: false,
     pluginEnabled: {},
-    gitSource: null
+    gitSource: null,
+    windowGlassEffect: 'auto',
+    windowOpacity: 100
   })
   notifications = []
 })

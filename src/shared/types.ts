@@ -116,6 +116,10 @@ export interface AppSettings {
   pluginEnabled: Record<string, boolean>
   /** Git 来源偏好：null = 未选择（首次触发时检测并弹窗），'system' = 使用系统 Git，'bundled' = 使用内置 Git */
   gitSource: 'system' | 'bundled' | null
+  /** 窗口玻璃效果：auto 根据平台自动选择，none 关闭，mica Windows 11 Mica，acrylic Windows Acrylic，vibrancy macOS 毛玻璃 */
+  windowGlassEffect: 'auto' | 'none' | 'mica' | 'acrylic' | 'vibrancy'
+  /** 窗口透明度 0-100，0 完全透明，100 完全不透明 */
+  windowOpacity: number
 }
 
 /** 自定义主题包：一组 CSS 变量覆盖（light/dark 两套），存 userData/themes/<id>.json */

@@ -468,6 +468,38 @@ async function resetGitSource(): Promise<void> {
               </div>
             </div>
           </div>
+          <div class="setting-row">
+            <span class="setting-label">窗口效果</span>
+            <el-select
+              :model-value="app.settings.windowGlassEffect"
+              style="width: 200px"
+              @update:model-value="(v: string) => app.updateSettings({ windowGlassEffect: v as AppSettings['windowGlassEffect'] })"
+            >
+              <el-option label="自动（根据平台）" value="auto" />
+              <el-option label="关闭" value="none" />
+              <el-option label="Mica（Windows 11）" value="mica" />
+              <el-option label="Acrylic（Windows）" value="acrylic" />
+              <el-option label="毛玻璃（macOS）" value="vibrancy" />
+            </el-select>
+            <span class="settings-desc" style="margin: 0">窗口半透明和毛玻璃效果，不同平台支持程度不同</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">窗口透明度</span>
+            <el-slider
+              :model-value="app.settings.windowOpacity"
+              :min="10"
+              :max="100"
+              :step="5"
+              style="flex: 1; margin-right: 16px"
+              @update:model-value="(v: number | number[]) => app.updateSettings({ windowOpacity: Array.isArray(v) ? v[0] : v })"
+            />
+            <span style="width: 40px; text-align: right; color: var(--text-secondary)">
+              {{ app.settings.windowOpacity }}%
+            </span>
+          </div>
+          <p class="settings-desc" style="margin: 0 0 0 102px">
+            Windows 11 支持 Mica/Acrylic 效果，macOS 支持毛玻璃效果，Linux 依赖桌面合成器。透明度过低可能导致界面难以阅读。
+          </p>
         </div>
 
         <div class="settings-block">

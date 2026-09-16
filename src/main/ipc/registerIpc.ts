@@ -334,6 +334,16 @@ export function registerIpc(deps: IpcDeps): void {
     const settings = deps.settings.update(patch)
     // 定时自动同步配置可能变化，重新应用定时器
     deps.autoSync.apply()
+
+    // 窗口效果设置变化时应用
+    if (patch.windowGlassEffect !== undefined || patch.windowOpacity !== undefined) {
+      const win = deps.getWindow()
+      if (win) {
+        const { applyWindowGlassEffect } = require('../index')
+        applyWindowGlassEffect(win, settings)
+      }
+    }
+
     return { ok: true, settings }
   })
 
