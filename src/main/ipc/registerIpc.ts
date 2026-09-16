@@ -4,7 +4,7 @@ import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import { errMessage } from '../lib/errMessage'
 import { logger } from '../lib/logger'
 import { resolveWithin } from '../lib/paths'
-import { readGitVersion, resolveBundledGitPath } from '../services'
+import { readGitVersion, resolveBundledGitPath, applyWindowGlassEffect } from '../services'
 import type { AppSettings, ThemePackage } from '@shared/types'
 import type {
   AccountService,
@@ -340,7 +340,6 @@ export function registerIpc(deps: IpcDeps): void {
       const win = deps.getWindow()
       if (win && !win.isDestroyed()) {
         try {
-          const { applyWindowGlassEffect } = require('../index')
           applyWindowGlassEffect(win, settings)
         } catch (e) {
           logger.warn('应用窗口效果失败', e)
