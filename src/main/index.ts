@@ -39,6 +39,11 @@ let settingsService: SettingsService | null = null
  * 根据平台和设置应用不同的窗口效果
  */
 export function applyWindowGlassEffect(window: BrowserWindow, settings: AppSettings): void {
+  // 检查窗口是否已被销毁
+  if (window.isDestroyed()) {
+    return
+  }
+
   const { windowGlassEffect, windowOpacity } = settings
   const platform = process.platform
 

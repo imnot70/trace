@@ -338,9 +338,13 @@ export function registerIpc(deps: IpcDeps): void {
     // 窗口效果设置变化时应用
     if (patch.windowGlassEffect !== undefined || patch.windowOpacity !== undefined) {
       const win = deps.getWindow()
-      if (win) {
-        const { applyWindowGlassEffect } = require('../index')
-        applyWindowGlassEffect(win, settings)
+      if (win && !win.isDestroyed()) {
+        try {
+          const { applyWindowGlassEffect } = require('../index')
+          applyWindowGlassEffect(win, settings)
+        } catch (e) {
+          logger.warn('应用窗口效果失败', e)
+        }
       }
     }
 
