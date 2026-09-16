@@ -115,7 +115,11 @@ export class SearchService {
   /**
    * 执行搜索查询
    */
-  search(query: string, maxResults = 50): SearchResult {
+  search(
+    query: string,
+    maxResults = 100,
+    options?: { searchInTitle?: boolean; searchInContent?: boolean; vaults?: string[] }
+  ): SearchResult {
     const startTime = Date.now()
 
     if (!query || query.trim().length === 0) {
@@ -124,15 +128,25 @@ export class SearchService {
 
     const normalizedQuery = query.toLowerCase().trim()
     const results: SearchResultItem[] = []
+    const searchTitle = options?.searchInTitle !== false
+    const searchContent = options?.searchInContent !== false
+    const vaultFilter = options?.vaults
+
+    if (!searchTitle && !searchContent) {
+      return { ok: true, results: [], durationMs: 0, totalMatches: 0 }
+    }
 
     // 搜索索引
     for (const item of this.index.values()) {
-      const matches = this.findMatches(item, normalizedQuery)
+      // 按库筛选
+      if (vaultFilter && vaultFilter.length > 0 && !vaultFilter.includes(item.vault)) {
+        continue
+      }
+
+      const matches = this.findMatches(item, normalizedQuery, searchTitle, searchContent)
       results.push(...matches)
 
-      if (results.length >= maxResults) {
-        break
-      }
+      if (results.length >= maxResults * 2) break
     }
 
     // 按分数排序
@@ -152,30 +166,50 @@ export class SearchService {
   /**
    * 在单个文档中查找匹配项
    */
-  private findMatches(item: SearchIndexItem, query: string): SearchResultItem[] {
+  private findMatches(
+    item: SearchIndexItem,
+    query: string,
+    searchTitle: boolean,
+    searchContent: boolean
+  ): SearchResultItem[] {
     const matches: SearchResultItem[] = []
-    const lines = item.content.split('\n')
+    const titleLower = item.title.toLowerCase()
+    const titleMatch = titleLower.includes(query)
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      const lineLower = line.toLowerCase()
+    // 标题匹配
+    if (searchTitle && titleMatch) {
+      matches.push({
+        vault: item.vault,
+        path: item.path,
+        title: item.title,
+        snippet: '',
+        score: 200,
+        lineNumber: 0,
+        keyword: query
+      })
+    }
 
-      if (lineLower.includes(query)) {
-        // 计算匹配分数
-        const score = this.calculateScore(item, line, query, i)
+    // 内容匹配
+    if (searchContent) {
+      const lines = item.content.split('\n')
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]
+        const lineLower = line.toLowerCase()
 
-        // 提取匹配片段
-        const snippet = this.extractSnippet(line, query)
+        if (lineLower.includes(query)) {
+          const score = this.calculateScore(item, line, query, i, titleMatch)
+          const snippet = this.extractSnippet(line, query)
 
-        matches.push({
-          vault: item.vault,
-          path: item.path,
-          title: item.title,
-          snippet,
-          score,
-          lineNumber: i + 1,
-          keyword: query
-        })
+          matches.push({
+            vault: item.vault,
+            path: item.path,
+            title: item.title,
+            snippet,
+            score,
+            lineNumber: i + 1,
+            keyword: query
+          })
+        }
       }
     }
 
@@ -185,11 +219,11 @@ export class SearchService {
   /**
    * 计算匹配分数
    */
-  private calculateScore(item: SearchIndexItem, line: string, query: string, lineNumber: number): number {
+  private calculateScore(item: SearchIndexItem, line: string, query: string, lineNumber: number, titleMatch = false): number {
     let score = 0
 
     // 标题匹配权重最高
-    if (item.title.toLowerCase().includes(query)) {
+    if (titleMatch) {
       score += 100
     }
 

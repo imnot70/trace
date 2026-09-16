@@ -257,6 +257,12 @@ function createView(initialDoc: string): EditorView {
             return true
           }
         },
+        // 禁用编辑器原生 Ctrl+F 搜索，由全局搜索接管
+        {
+          key: 'Mod-f',
+          preventDefault: true,
+          run: () => false
+        },
         // Markdown 格式化快捷键（复用工具栏的智能插入：有选中包裹 / 无选中插占位）
         { key: 'Mod-b', preventDefault: true, run: () => (insertSnippet('**', '**'), true) },
         { key: 'Mod-i', preventDefault: true, run: () => (insertSnippet('*', '*'), true) },

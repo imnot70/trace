@@ -497,9 +497,9 @@ export function registerIpc(deps: IpcDeps): void {
     }
   })
 
-  handle('search:search', (query: string, maxResults?: number) => {
+  handle('search:search', (query: string, maxResults?: number, options?: { searchInTitle?: boolean; searchInContent?: boolean; vaults?: string[] }) => {
     try {
-      const result = deps.search.search(query, maxResults)
+      const result = deps.search.search(query, maxResults, options)
       return result
     } catch (e) {
       return { ok: false, error: errMessage(e) }

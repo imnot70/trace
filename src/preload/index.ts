@@ -100,7 +100,7 @@ const api: TraceApi = {
 
   // 搜索
   searchBuildIndex: (force?) => ipcRenderer.invoke('search:buildIndex', force),
-  searchQuery: (query, maxResults?) => ipcRenderer.invoke('search:search', query, maxResults),
+  searchQuery: (query, maxResults?, options?) => ipcRenderer.invoke('search:search', query, maxResults, options),
   getSearchIndexStatus: () => ipcRenderer.invoke('search:getIndexStatus'),
   updateSearchIndex: (vault, filePath) => ipcRenderer.invoke('search:updateFile', vault, filePath),
   removeSearchIndex: (vault, filePath) => ipcRenderer.invoke('search:removeFile', vault, filePath),

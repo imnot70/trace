@@ -13,9 +13,9 @@
       <!-- 搜索输入框 -->
       <div class="search-input-container">
         <el-input
+          ref="searchInputRef"
           v-model="searchQuery"
-          placeholder="搜索所有笔记..."
-          size="large"
+          placeholder="搜索笔记..."
           clearable
           @input="handleSearchInput"
           @keyup.enter="performSearch"
@@ -30,12 +30,23 @@
           </template>
         </el-input>
         <div class="search-options">
-          <el-checkbox v-model="searchInTitle">标题</el-checkbox>
-          <el-checkbox v-model="searchInContent">内容</el-checkbox>
-          <el-select v-model="searchScope" size="small" style="width: 120px">
-            <el-option label="所有库" value="all" />
-            <el-option label="当前库" value="current" />
-          </el-select>
+          <div class="search-scope-row">
+            <el-checkbox v-model="searchInTitle">标题</el-checkbox>
+            <el-checkbox v-model="searchInContent">内容</el-checkbox>
+          </div>
+          <div class="search-vault-row">
+            <span class="search-vault-label">搜索范围：</span>
+            <el-checkbox
+              :model-value="selectedVaults.length === 0"
+              @update:model-value="(val: any) => { if (val) selectedVaults = [] }"
+            >全部笔记库</el-checkbox>
+            <el-checkbox
+              v-for="v in availableVaults"
+              :key="v"
+              :model-value="selectedVaults.includes(v)"
+              @update:model-value="(val: any) => toggleVault(v, !!val)"
+            >{{ v }}</el-checkbox>
+          </div>
         </div>
       </div>
 
@@ -61,45 +72,50 @@
             <div class="result-header">
               <span class="result-vault">{{ result.vault }}</span>
               <span class="result-path">{{ result.path }}</span>
+              <span class="result-line">行 {{ result.lineNumber }}</span>
             </div>
             <div class="result-title">{{ result.title }}</div>
-            <div class="result-snippet" v-html="highlightSnippet(result.snippet, result.keyword)" />
-            <div class="result-meta">
-              <span class="result-line">行 {{ result.lineNumber }}</span>
-              <span class="result-score">相关度: {{ Math.round(result.score) }}</span>
-            </div>
+            <div
+              v-if="result.snippet"
+              class="result-snippet"
+              v-html="highlightSnippet(result.snippet, result.keyword)"
+            />
           </div>
         </div>
       </div>
 
       <!-- 无结果 -->
-      <div v-else-if="searchQuery && !isSearching" class="no-results">
-        <el-icon size="48"><Search /></el-icon>
+      <div v-else-if="searchQuery && !isSearching" class="search-empty">
+        <el-icon size="36"><Search /></el-icon>
         <p>未找到匹配的结果</p>
-        <p class="no-results-hint">尝试使用不同的关键词或检查搜索范围</p>
       </div>
 
       <!-- 初始状态 -->
-      <div v-else class="search-initial">
-        <el-icon size="48"><Search /></el-icon>
-        <p>输入关键词搜索所有笔记</p>
-        <p class="search-hint">支持标题和内容搜索</p>
+      <div v-else class="search-empty">
+        <el-icon size="36"><Search /></el-icon>
+        <p>输入关键词搜索笔记</p>
       </div>
     </div>
 
     <template #footer>
       <div class="dialog-footer">
-        <el-button @click="handleClose">关闭</el-button>
-        <el-button type="primary" @click="buildIndex" :loading="isBuildingIndex">
-          重建索引
-        </el-button>
+        <span class="index-info" v-if="indexStatus.totalFiles">
+          索引：{{ indexStatus.totalFiles }} 篇笔记
+        </span>
+        <span v-else />
+        <div>
+          <el-button size="small" @click="buildIndex" :loading="isBuildingIndex">
+            重建索引
+          </el-button>
+          <el-button @click="handleClose">关闭</el-button>
+        </div>
       </div>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Loading } from '@element-plus/icons-vue'
 import type { SearchResultItem } from '@shared/types'
@@ -120,31 +136,59 @@ const isSearching = ref(false)
 const isBuildingIndex = ref(false)
 const searchInTitle = ref(true)
 const searchInContent = ref(true)
-const searchScope = ref<'all' | 'current'>('all')
+const selectedVaults = ref<string[]>([])
+const indexStatus = ref({ totalFiles: 0, isIndexing: false })
 
-// 搜索防抖
+const availableVaults = ref<string[]>([])
+
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
 watch(
   () => props.visible,
   (visible) => {
     if (visible) {
-      // 打开对话框时聚焦搜索框
+      loadVaults()
+      loadIndexStatus()
       setTimeout(() => {
-        const input = document.querySelector('.search-dialog .el-input__inner') as HTMLInputElement
-        input?.focus()
+        const el = document.querySelector('.search-dialog .el-input__inner') as HTMLInputElement
+        el?.focus()
+        el?.select()
       }, 100)
     }
   }
 )
 
-function handleSearchInput() {
-  if (searchTimeout) {
-    clearTimeout(searchTimeout)
+async function loadVaults() {
+  try {
+    const result = await window.trace.listVaults()
+    if (result.ok && result.vaults) {
+      availableVaults.value = result.vaults.map((v) => v.name)
+    }
+  } catch { /* ignore */ }
+}
+
+async function loadIndexStatus() {
+  try {
+    const result = await window.trace.getSearchIndexStatus()
+    if (result.ok) {
+      indexStatus.value = { totalFiles: result.totalFiles || 0, isIndexing: result.isIndexing || false }
+    }
+  } catch { /* ignore */ }
+}
+
+function toggleVault(vault: string, checked: boolean) {
+  if (checked) {
+    if (!selectedVaults.value.includes(vault)) {
+      selectedVaults.value = [...selectedVaults.value, vault]
+    }
+  } else {
+    selectedVaults.value = selectedVaults.value.filter((v) => v !== vault)
   }
-  searchTimeout = setTimeout(() => {
-    performSearch()
-  }, 300)
+}
+
+function handleSearchInput() {
+  if (searchTimeout) clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => performSearch(), 300)
 }
 
 async function performSearch() {
@@ -153,9 +197,22 @@ async function performSearch() {
     return
   }
 
+  if (!searchInTitle.value && !searchInContent.value) {
+    searchResults.value = []
+    return
+  }
+
   isSearching.value = true
   try {
-    const result = await window.trace.searchQuery(searchQuery.value.trim(), 50)
+    const result = await window.trace.searchQuery(
+      searchQuery.value.trim(),
+      100,
+      {
+        searchInTitle: searchInTitle.value,
+        searchInContent: searchInContent.value,
+        vaults: selectedVaults.value.length > 0 ? selectedVaults.value : undefined
+      }
+    )
     if (result.ok && result.results) {
       searchResults.value = result.results
       searchDurationMs.value = result.durationMs || 0
@@ -163,7 +220,7 @@ async function performSearch() {
       ElMessage.error(result.error || '搜索失败')
       searchResults.value = []
     }
-  } catch (e) {
+  } catch {
     ElMessage.error('搜索失败')
     searchResults.value = []
   } finally {
@@ -173,7 +230,8 @@ async function performSearch() {
 
 function highlightSnippet(snippet: string, keyword: string): string {
   if (!keyword) return snippet
-  const regex = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(`(${escaped})`, 'gi')
   return snippet.replace(regex, '<mark>$1</mark>')
 }
 
@@ -188,10 +246,11 @@ async function buildIndex() {
     const result = await window.trace.searchBuildIndex(true)
     if (result.ok) {
       ElMessage.success(`索引构建完成：${result.totalFiles} 个文件`)
+      indexStatus.value = { totalFiles: result.totalFiles || 0, isIndexing: false }
     } else {
       ElMessage.error(result.error || '构建索引失败')
     }
-  } catch (e) {
+  } catch {
     ElMessage.error('构建索引失败')
   } finally {
     isBuildingIndex.value = false
@@ -201,39 +260,58 @@ async function buildIndex() {
 function handleClose() {
   emit('close')
 }
-
-onMounted(() => {
-  // 可以在这里初始化搜索索引状态
-})
 </script>
 
 <style scoped>
 .search-dialog {
+  :deep(.el-dialog) {
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+  }
   :deep(.el-dialog__body) {
     padding: 0;
-    height: 70vh;
-    min-height: 500px;
+    overflow: hidden;
+    flex: 1;
+    min-height: 0;
   }
 }
 
 .search-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 60vh;
   padding: 16px;
+  overflow: hidden;
 }
 
 .search-input-container {
-  margin-bottom: 16px;
+  flex-shrink: 0;
+  margin-bottom: 12px;
 }
 
 .search-options {
-  display: flex;
-  align-items: center;
-  gap: 16px;
   margin-top: 8px;
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.search-scope-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.search-vault-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.search-vault-label {
+  flex-shrink: 0;
 }
 
 .search-status {
@@ -242,8 +320,9 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 12px;
   color: var(--text-secondary);
+  min-height: 0;
 }
 
 .search-results {
@@ -251,27 +330,29 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
 }
 
 .results-header {
-  padding: 8px 0;
+  flex-shrink: 0;
+  padding: 6px 0;
   border-bottom: 1px solid var(--border-color);
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
 .results-list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 0;
+  padding: 4px 0;
 }
 
 .result-item {
-  padding: 12px;
+  padding: 8px 10px;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s;
-  margin-bottom: 4px;
+  transition: background-color 0.15s;
+  margin-bottom: 2px;
 }
 
 .result-item:hover {
@@ -281,73 +362,79 @@ onMounted(() => {
 .result-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-  font-size: 12px;
+  gap: 6px;
+  margin-bottom: 2px;
+  font-size: 11px;
   color: var(--text-secondary);
 }
 
 .result-vault {
   background-color: var(--accent-light);
-  padding: 2px 6px;
+  padding: 1px 5px;
   border-radius: 2px;
-  font-size: 11px;
+  font-size: 10px;
+  flex-shrink: 0;
 }
 
 .result-path {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.result-line {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .result-title {
   font-weight: 500;
-  margin-bottom: 4px;
+  font-size: 13px;
+  margin-bottom: 2px;
   color: var(--text-primary);
 }
 
 .result-snippet {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
-  line-height: 1.5;
-  margin-bottom: 4px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .result-snippet :deep(mark) {
   background-color: var(--accent-light);
   color: var(--accent);
-  padding: 1px 2px;
-  border-radius: 2px;
+  padding: 0 1px;
+  border-radius: 1px;
 }
 
-.result-meta {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-.no-results,
-.search-initial {
+.search-empty {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 8px;
   color: var(--text-secondary);
+  min-height: 0;
 }
 
-.no-results-hint,
-.search-hint {
+.search-empty p {
   font-size: 13px;
-  color: var(--text-secondary);
 }
 
 .dialog-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.index-info {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 </style>

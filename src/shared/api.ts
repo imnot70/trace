@@ -141,7 +141,7 @@ export interface TraceApi {
   /** 构建搜索索引（应用启动时调用） */
   searchBuildIndex(force?: boolean): Promise<OpResult & { totalFiles?: number; isIndexing?: boolean }>
   /** 执行搜索查询 */
-  searchQuery(query: string, maxResults?: number): Promise<SearchResult>
+  searchQuery(query: string, maxResults?: number, options?: { searchInTitle?: boolean; searchInContent?: boolean; vaults?: string[] }): Promise<SearchResult>
   /** 获取搜索索引状态 */
   getSearchIndexStatus(): Promise<OpResult & { totalFiles?: number; isIndexing?: boolean }>
   /** 更新单个文件的索引 */
