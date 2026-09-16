@@ -499,7 +499,13 @@ export function registerIpc(deps: IpcDeps): void {
 
   handle('search:search', (query: string, maxResults?: number, options?: { searchInTitle?: boolean; searchInContent?: boolean; vaults?: string[] }) => {
     try {
-      const result = deps.search.search(query, maxResults, options)
+      // 防御：确保 vaults 是普通数组（Vue reactive Proxy 经 IPC 传输可能异常）
+      const opts = options ? {
+        searchInTitle: options.searchInTitle,
+        searchInContent: options.searchInContent,
+        vaults: Array.isArray(options.vaults) ? [...options.vaults] : options.vaults
+      } : undefined
+      const result = deps.search.search(query, maxResults, opts)
       return result
     } catch (e) {
       return { ok: false, error: errMessage(e) }

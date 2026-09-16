@@ -204,13 +204,15 @@ async function performSearch() {
 
   isSearching.value = true
   try {
+    // 展开 reactive Proxy 数组为普通数组，避免 IPC structured clone 出错
+    const vaults = selectedVaults.value.length > 0 ? [...selectedVaults.value] : undefined
     const result = await window.trace.searchQuery(
       searchQuery.value.trim(),
       100,
       {
         searchInTitle: searchInTitle.value,
         searchInContent: searchInContent.value,
-        vaults: selectedVaults.value.length > 0 ? selectedVaults.value : undefined
+        vaults
       }
     )
     if (result.ok && result.results) {
@@ -220,8 +222,8 @@ async function performSearch() {
       ElMessage.error(result.error || '搜索失败')
       searchResults.value = []
     }
-  } catch {
-    ElMessage.error('搜索失败')
+  } catch (e: any) {
+    ElMessage.error(e?.message || '搜索失败')
     searchResults.value = []
   } finally {
     isSearching.value = false
