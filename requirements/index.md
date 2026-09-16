@@ -154,7 +154,7 @@
 - 图形化冲突解决
 - 变更触发自动同步（定时部分已实施，FR-2.8.14）
 - 插件完整 API 与市场（v2 设计已定稿，见 `requirements/2026-09-08_plugin-system/`，M1 待启动）
-- 多窗口
+- ~~多窗口~~（已作废）
 - 导出 HTML（PDF 已实施，FR-2.4.9）
 - 窗口毛玻璃效果（Win11 `backgroundMaterial` / macOS `vibrancy` / Linux 合成器，平台分级降级——调研中）
 
