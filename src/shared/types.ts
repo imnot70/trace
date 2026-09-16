@@ -118,7 +118,7 @@ export interface AppSettings {
   gitSource: 'system' | 'bundled' | null
   /** 窗口玻璃效果：auto 根据平台自动选择，none 关闭，mica Windows 11 Mica，acrylic Windows Acrylic，vibrancy macOS 毛玻璃 */
   windowGlassEffect: 'auto' | 'none' | 'mica' | 'acrylic' | 'vibrancy'
-  /** 窗口透明度 0-100，0 完全透明，100 完全不透明 */
+  /** 窗口透明度 50-100，50 半透明，100 完全不透明（下限 50 保证界面可读） */
   windowOpacity: number
 }
 

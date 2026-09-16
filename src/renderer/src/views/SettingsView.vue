@@ -487,7 +487,7 @@ async function resetGitSource(): Promise<void> {
             <span class="setting-label">窗口透明度</span>
             <el-slider
               :model-value="app.settings.windowOpacity"
-              :min="10"
+              :min="50"
               :max="100"
               :step="5"
               style="flex: 1; margin-right: 16px"
@@ -498,7 +498,7 @@ async function resetGitSource(): Promise<void> {
             </span>
           </div>
           <p class="settings-desc" style="margin: 0 0 0 102px">
-            Windows 11 支持 Mica/Acrylic 效果，macOS 支持毛玻璃效果，Linux 依赖桌面合成器。透明度过低可能导致界面难以阅读。
+            Windows 11 支持 Mica/Acrylic 效果，macOS 支持毛玻璃效果，Linux 依赖桌面合成器。透明度下限 50%，避免界面难以阅读。
           </p>
         </div>
 
