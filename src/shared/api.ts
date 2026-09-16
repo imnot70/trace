@@ -1,6 +1,8 @@
 import type {
   AccountInfo,
   AppSettings,
+  ConflictContent,
+  ConflictResolution,
   FavoriteItem,
   FsChangedPayload,
   GitAvailability,
@@ -78,6 +80,18 @@ export interface TraceApi {
   syncVault(vault: string): Promise<SyncResult>
   checkGitAvailability(): Promise<GitAvailability>
   testProxy(): Promise<OpResult>
+
+  // ---- 冲突解决 ----
+  /** 获取冲突文件列表（rebase进行中时调用） */
+  getConflictFiles(vault: string): Promise<OpResult & { files?: string[] }>
+  /** 获取冲突文件的三方内容（ours/theirs/base） */
+  getConflictContent(vault: string, filePath: string): Promise<OpResult & { content?: ConflictContent }>
+  /** 解决单个文件的冲突 */
+  resolveConflict(vault: string, filePath: string, resolution: ConflictResolution): Promise<OpResult>
+  /** 继续rebase（所有冲突解决后调用） */
+  continueRebase(vault: string): Promise<SyncResult>
+  /** 中止rebase */
+  abortRebase(vault: string): Promise<OpResult>
   /** 批量导出 PDF：每项一个文件；返回逐篇结果与失败清单 */
   exportPdf(items: { vault: string; path: string; name: string; html: string }[]): Promise<
     OpResult & { results?: { ok: boolean; name: string; error?: string }[]; failed?: { name: string; error?: string }[] }

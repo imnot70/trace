@@ -157,6 +157,24 @@ export interface SyncResult extends OpResult {
   conflicts?: string[]
 }
 
+/** 冲突文件内容（三方对比） */
+export interface ConflictContent {
+  /** 本地版本（ours） */
+  ours: string
+  /** 远端版本（theirs） */
+  theirs: string
+  /** 共同祖先版本（base） */
+  base: string
+  /** 当前工作区内容（可能包含冲突标记） */
+  current: string
+}
+
+/** 冲突解决方式 */
+export type ConflictResolution =
+  | { type: 'ours' } // 接受本地版本
+  | { type: 'theirs' } // 接受远端版本
+  | { type: 'manual'; content: string } // 手动编辑的内容
+
 export interface NoteContent {
   ok: boolean
   error?: string

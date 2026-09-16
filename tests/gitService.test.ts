@@ -127,8 +127,12 @@ describe('GitService（本地 bare 远端）', () => {
     const result = await git.sync(v2)
     expect(result.ok).toBe(false)
     expect(result.conflicts).toContain('f.md')
-    // rebase 已中止，本地工作区内容保持不变
-    expect(fs.readFileSync(path.join(v2, 'f.md'), 'utf-8')).toBe('B 的新修改\n')
+    // rebase 保留状态（不自动中止），文件内容包含冲突标记
+    const content = fs.readFileSync(path.join(v2, 'f.md'), 'utf-8')
+    expect(content).toContain('<<<<<<< HEAD')
+    expect(content).toContain('B 的新修改')
+    expect(content).toContain('=======')
+    expect(content).toContain('>>>>>>>')
   })
 
   it('解除关联保留本地仓库', async () => {
