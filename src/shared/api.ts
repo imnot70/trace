@@ -1,6 +1,7 @@
 import type {
   AccountInfo,
   AppSettings,
+  BacklinkRef,
   ConflictContent,
   ConflictResolution,
   FavoriteItem,
@@ -150,4 +151,14 @@ export interface TraceApi {
   removeSearchIndex(vault: string, filePath: string): Promise<OpResult>
   /** 清空搜索索引 */
   clearSearchIndex(): Promise<OpResult>
+
+  // ---- 双链 P3：反向链接 / 断链引用 ----
+  /** 获取引用指定笔记的反向链接列表 */
+  wikilinkBacklinks(vault: string, notePath: string): Promise<OpResult & { backlinks?: BacklinkRef[] }>
+  /** 获取所有未解析的 [[...]] 引用 */
+  wikilinkUnresolved(vault?: string): Promise<OpResult & { refs?: BacklinkRef[] }>
+  /** 重建双链索引 */
+  wikilinkRebuildIndex(): Promise<OpResult & { totalFiles?: number; totalLinks?: number }>
+  /** 获取双链索引状态 */
+  wikilinkGetIndexStatus(): Promise<OpResult & { totalFiles?: number; totalLinks?: number; isIndexing?: boolean }>
 }

@@ -25,10 +25,18 @@ export function contentHash(content: string): string {
  * 相对路径统一为 POSIX 风格（'a/b'），'' 表示库根。
  */
 export class FsTreeService {
+  /** 可选的双链索引服务引用，用于重命名时同步更新索引 */
+  private wikilinkService: { renameNoteInIndex(vault: string, oldPath: string, newPath: string): void } | null = null
+
   constructor(
     private getVaultPath: (vault: string) => string,
     private trash: TrashService
   ) {}
+
+  /** 注入双链索引服务（由 index.ts 调用） */
+  setWikilinkService(service: { renameNoteInIndex(vault: string, oldPath: string, newPath: string): void }): void {
+    this.wikilinkService = service
+  }
 
   listTree(vault: string): TreeNode[] {
     return this.scan(this.getVaultPath(vault), '')
@@ -105,6 +113,14 @@ export class FsTreeService {
       const newRel = parentRel === '.' ? newBase : `${parentRel}/${newBase}`
       if (newRel === relPath) return { ok: true, newPath: newRel }
       fs.renameSync(abs, path.join(parentAbs, newBase))
+
+      // 改写其他笔记中的 [[旧名]] 双链引用（仅笔记重命名时）
+      if (kind === 'note') {
+        this.rewriteWikilinksInVault(vault, vaultPath, noteDisplayName(path.basename(relPath)), newName)
+        // 同步更新双链索引
+        this.wikilinkService?.renameNoteInIndex(vault, relPath, newRel)
+      }
+
       return { ok: true, newPath: newRel }
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) }
@@ -318,6 +334,33 @@ export class FsTreeService {
     if (rewritten !== content) {
       try { fs.writeFileSync(newAbs, rewritten, 'utf-8') } catch { /* skip */ }
     }
+  }
+
+  /**
+   * 改写库内所有笔记中的 [[旧名]] 双链引用为 [[新名]]
+   * 仅在笔记重命名时调用，移动文件夹时不改写（双链按名称解析，移动不改名则不断链）
+   */
+  private rewriteWikilinksInVault(vault: string, vaultPath: string, oldName: string, newName: string): void {
+    if (oldName === newName) return
+    const wikilinkRe = /\[\[([^\]|]+?)(\|[^\]]*?)?\]\]/g
+
+    this.walkNotes(vaultPath, (noteAbs) => {
+      let content: string
+      try { content = fs.readFileSync(noteAbs, 'utf-8') } catch { return }
+
+      let changed = false
+      const rewritten = content.replace(wikilinkRe, (full, target: string, suffix: string | undefined) => {
+        if (target.trim() === oldName) {
+          changed = true
+          return `[[${newName}${suffix ?? ''}]]`
+        }
+        return full
+      })
+
+      if (changed) {
+        try { fs.writeFileSync(noteAbs, rewritten, 'utf-8') } catch { /* skip */ }
+      }
+    })
   }
 
   /** POSIX 风格路径解析（渲染进程无 node:path，主进程自己实现） */

@@ -8,6 +8,7 @@ import { useNoteActions } from '../composables/actions'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
 import TipButton from '../components/TipButton.vue'
+import BacklinkPanel from '../components/BacklinkPanel.vue'
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 
 const app = useAppStore()
@@ -141,6 +142,11 @@ function onPreviewBtnLeave(): void {
 function onPreviewOpenNote(target: { vault: string; path: string; name: string }): void {
   if (app.floatingPreview) app.closeFloatingPreview()
   void actions.openNote(target.vault, target.path, target.name)
+}
+
+function onBacklinkOpenNote(vault: string, path: string): void {
+  const name = path.split('/').pop()?.replace(/\.md$/i, '') ?? ''
+  void actions.openNote(vault, path, name)
 }
 
 // Ctrl/Cmd+S 手动保存；Alt+P 呼出/收起悬浮预览；Esc 收起悬浮预览
@@ -429,6 +435,14 @@ onBeforeUnmount(() => {
         @image="(name: string, b64: string) => onImage(name, b64)"
       />
     </div>
+
+    <!-- 反向链接面板（编辑器底部折叠区域） -->
+    <BacklinkPanel
+      :visible="!!editor.current"
+      :vault="editor.current?.vault ?? ''"
+      :note-path="editor.current?.path ?? ''"
+      @open-note="onBacklinkOpenNote"
+    />
   </div>
 
   <!-- 分栏拖拽间隙（预览隐藏时一并隐藏） -->

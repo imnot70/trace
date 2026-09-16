@@ -27,6 +27,7 @@ import {
   VaultService,
   WatcherService,
   WorkspaceService,
+  WikilinkService,
   applyWindowGlassEffect
 } from './services'
 import { registerIpc } from './ipc/registerIpc'
@@ -262,6 +263,15 @@ app.whenReady().then(() => {
   // 应用启动后构建搜索索引
   void search.buildIndex()
 
+  const wikilink = new WikilinkService(
+    (vault) => vaults.vaultPath(vault),
+    () => vaults.list().map((v) => v.name)
+  )
+  // 注入到 fsTree 供重命名时同步索引
+  fsTree.setWikilinkService(wikilink)
+  // 应用启动后构建双链索引
+  void wikilink.buildIndex()
+
   registerIpc({
     settings: settingsService,
     workspace,
@@ -281,6 +291,7 @@ app.whenReady().then(() => {
     autoSync,
     exportPdf,
     search,
+    wikilink,
     getWindow: () => mainWindow
   })
 

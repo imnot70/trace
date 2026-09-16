@@ -43,6 +43,7 @@ export interface IpcDeps {
   autoSync: import('../services/autoSync').AutoSyncService
   exportPdf: import('../services/exportPdf').ExportService
   search: import('../services/search').SearchService
+  wikilink: import('../services/wikilink').WikilinkService
   getWindow: () => BrowserWindow | null
 }
 
@@ -543,6 +544,40 @@ export function registerIpc(deps: IpcDeps): void {
     try {
       deps.search.clearIndex()
       return { ok: true }
+    } catch (e) {
+      return { ok: false, error: errMessage(e) }
+    }
+  })
+
+  // ---------- 双链 P3：反向链接 / 断链引用 ----------
+  handle('wikilink:backlinks', (vault: string, notePath: string) => {
+    try {
+      return { ok: true, backlinks: deps.wikilink.getBacklinks(vault, notePath) }
+    } catch (e) {
+      return { ok: false, error: errMessage(e) }
+    }
+  })
+
+  handle('wikilink:unresolved', (vault?: string) => {
+    try {
+      return { ok: true, refs: deps.wikilink.getUnresolvedRefs(vault) }
+    } catch (e) {
+      return { ok: false, error: errMessage(e) }
+    }
+  })
+
+  handle('wikilink:rebuildIndex', async () => {
+    try {
+      const stats = await deps.wikilink.buildIndex(true)
+      return { ok: true, ...stats }
+    } catch (e) {
+      return { ok: false, error: errMessage(e) }
+    }
+  })
+
+  handle('wikilink:getIndexStatus', () => {
+    try {
+      return { ok: true, ...deps.wikilink.getIndexStatus() }
     } catch (e) {
       return { ok: false, error: errMessage(e) }
     }

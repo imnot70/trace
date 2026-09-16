@@ -245,3 +245,19 @@ export interface SearchResult {
   /** 总匹配数 */
   totalMatches?: number
 }
+
+/** 反向链接引用条目 */
+export interface BacklinkRef {
+  /** 来源笔记所在库 */
+  vault: string
+  /** 来源笔记相对路径 */
+  path: string
+  /** 来源笔记标题 */
+  title: string
+  /** 引用所在行号 */
+  line: number
+  /** 引用所在行的文本片段 */
+  snippet: string
+  /** 引用的目标笔记名 */
+  targetName: string
+}

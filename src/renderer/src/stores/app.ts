@@ -4,7 +4,7 @@ import { useTreeStore } from './tree'
 import { THEME_PRESETS, buildThemeCss } from '../styles/presets'
 
 /** 卡片网格视图的区块类型 */
-export type GridSection = 'recents' | 'favorites' | 'vaults' | 'tags'
+export type GridSection = 'recents' | 'favorites' | 'vaults' | 'tags' | 'unresolved'
 export type ViewMode = 'grid' | 'list'
 
 export type ActiveView =

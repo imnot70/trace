@@ -104,7 +104,13 @@ const api: TraceApi = {
   getSearchIndexStatus: () => ipcRenderer.invoke('search:getIndexStatus'),
   updateSearchIndex: (vault, filePath) => ipcRenderer.invoke('search:updateFile', vault, filePath),
   removeSearchIndex: (vault, filePath) => ipcRenderer.invoke('search:removeFile', vault, filePath),
-  clearSearchIndex: () => ipcRenderer.invoke('search:clearIndex')
+  clearSearchIndex: () => ipcRenderer.invoke('search:clearIndex'),
+
+  // 双链 P3
+  wikilinkBacklinks: (vault, notePath) => ipcRenderer.invoke('wikilink:backlinks', vault, notePath),
+  wikilinkUnresolved: (vault?) => ipcRenderer.invoke('wikilink:unresolved', vault),
+  wikilinkRebuildIndex: () => ipcRenderer.invoke('wikilink:rebuildIndex'),
+  wikilinkGetIndexStatus: () => ipcRenderer.invoke('wikilink:getIndexStatus')
 }
 
 contextBridge.exposeInMainWorld('trace', api)

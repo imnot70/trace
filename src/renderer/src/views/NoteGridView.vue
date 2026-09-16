@@ -26,7 +26,8 @@ const SECTION_TITLE: Record<GridSection, string> = {
   recents: '常用',
   favorites: '收藏',
   vaults: '笔记库',
-  tags: '标签'
+  tags: '标签',
+  unresolved: '断链引用'
 }
 
 const section = computed<GridSection>(() =>
@@ -93,15 +94,13 @@ watch(
   { immediate: true }
 )
 
-const items = computed<GridItem[]>(() =>
-  section.value === 'recents'
-    ? tree.recents
-    : section.value === 'favorites'
-      ? tree.favorites
-      : section.value === 'tags'
-        ? tagItems.value
-        : contentNotes.value
-)
+const items = computed<GridItem[]>(() => {
+  if (section.value === 'recents') return tree.recents
+  if (section.value === 'favorites') return tree.favorites
+  if (section.value === 'tags') return tagItems.value
+  if (section.value === 'unresolved') return unresolvedItems.value
+  return contentNotes.value
+})
 
 // ---------- 标签视图：按 tagId 加载笔记 ----------
 const tagId = computed(() =>
@@ -120,6 +119,28 @@ watch(tagId, async (id) => {
     }))
   }
 }, { immediate: true })
+
+// ---------- 断链引用视图 ----------
+const unresolvedItems = computed<GridItem[]>(() =>
+  section.value === 'unresolved'
+    ? unresolvedRefs.value.map((r) => ({
+        vault: r.vault,
+        path: r.path,
+        name: `${r.title} → [[${r.targetName}]] (行 ${r.line})`
+      }))
+    : []
+)
+const unresolvedRefs = ref<import('@shared/types').BacklinkRef[]>([])
+watch(
+  () => section.value === 'unresolved',
+  async (isUnresolved) => {
+    if (!isUnresolved) { unresolvedRefs.value = []; return }
+    const result = await window.trace.wikilinkUnresolved()
+    if (result.ok && result.refs) unresolvedRefs.value = result.refs
+  },
+  { immediate: true }
+)
+
 const vaultCards = computed<VaultCard[]>(() =>
   isVaults.value && !inVaultContent.value
     ? tree.vaults.map((v) => ({ name: v.name, description: v.description }))

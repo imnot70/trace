@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search } from '@element-plus/icons-vue'
+import { Search, WarningFilled } from '@element-plus/icons-vue'
 import { useAppStore } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import { useTrashStore } from '../stores/trash'
 import { useNoteActions } from '../composables/actions'
 import { useGitStore } from '../stores/git'
 import { useSearchStore } from '../stores/search'
-import type { VaultInfo } from '@shared/types'
+import type { VaultInfo, BacklinkRef } from '@shared/types'
 import VaultNode from './VaultNode.vue'
 
 const app = useAppStore()
@@ -17,6 +17,49 @@ const trash = useTrashStore()
 const git = useGitStore()
 const search = useSearchStore()
 const actions = useNoteActions()
+
+// ---------- 断链引用 ----------
+const unresolvedCount = ref(0)
+const unresolvedRefs = ref<BacklinkRef[]>([])
+
+async function loadUnresolvedCount(): Promise<void> {
+  try {
+    const result = await window.trace.wikilinkUnresolved()
+    if (result.ok && result.refs) {
+      unresolvedCount.value = result.refs.length
+    }
+  } catch { /* ignore */ }
+}
+
+async function loadUnresolvedRefs(): Promise<void> {
+  try {
+    const result = await window.trace.wikilinkUnresolved()
+    if (result.ok && result.refs) {
+      unresolvedRefs.value = result.refs
+      unresolvedCount.value = result.refs.length
+    }
+  } catch { /* ignore */ }
+}
+
+function toggleUnresolvedView(): void {
+  if (app.view.name === 'grid' && app.view.section === 'unresolved') {
+    app.view = { name: 'welcome' }
+  } else {
+    void loadUnresolvedRefs().then(() => {
+      app.view = { name: 'grid', section: 'unresolved' }
+    })
+  }
+}
+
+// 笔记保存后刷新断链计数
+const fsChangedHandler = (): void => { void loadUnresolvedCount() }
+onMounted(() => {
+  void loadUnresolvedCount()
+  window.trace.onFsChanged(fsChangedHandler)
+})
+onBeforeUnmount(() => {
+  // 注意：onFsChanged 返回取消函数，但这里不做取消（与全局订阅生命周期一致）
+})
 
 function toggleSection(): void {
   tree.vaultSectionOpen = !tree.vaultSectionOpen
@@ -226,6 +269,19 @@ defineProps<{ vaults?: VaultInfo[] }>()
               </template>
             </el-dropdown>
           </div>
+        </div>
+      </div>
+
+      <!-- 断链引用：点击标题显示未解析的双链引用列表 -->
+      <div class="side-section" v-if="unresolvedCount > 0">
+        <div
+          class="side-section-header"
+          :class="{ active: app.view.name === 'grid' && app.view.section === 'unresolved' }"
+          @click="toggleUnresolvedView()"
+        >
+          <el-icon><WarningFilled /></el-icon>
+          <span>断链引用</span>
+          <span class="side-section-count">{{ unresolvedCount }}</span>
         </div>
       </div>
 
