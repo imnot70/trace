@@ -25,7 +25,7 @@
             </template>
           </el-input>
           <el-dropdown trigger="click" :hide-on-click="false" popper-class="search-vault-dropdown">
-            <el-button class="vault-trigger">
+            <el-button class="vault-trigger" :class="{ 'vault-trigger--error': noVaultSelected }">
               <el-icon><Folder /></el-icon>
               <span class="vault-trigger-text">{{ vaultLabel }}</span>
               <el-icon class="vault-trigger-arrow"><ArrowDown /></el-icon>
@@ -34,11 +34,11 @@
               <el-dropdown-menu>
                 <el-dropdown-item @click="toggleAllVaults">
                   <el-checkbox
-                    :model-value="selectedVaults.length === 0"
+                    :model-value="allVaultsMode"
                     @click.stop
-                    @update:model-value="(val: any) => { if (val) toggleAllVaults() }"
+                    @update:model-value="() => toggleAllVaults()"
                   />
-                  <span class="vault-item-label" :class="{ bold: selectedVaults.length === 0 }">所有库</span>
+                  <span class="vault-item-label" :class="{ bold: allVaultsMode }">所有库</span>
                 </el-dropdown-item>
                 <el-dropdown-item divided v-for="v in availableVaults" :key="v" @click="toggleVault(v)">
                   <el-checkbox
@@ -51,6 +51,7 @@
               </el-dropdown-menu>
             </template>
           </el-dropdown>
+          <span v-if="noVaultSelected" class="vault-hint">请选择至少一个笔记库</span>
         </div>
         <div class="search-scope-row">
           <el-checkbox v-model="searchInTitle" @change="handleOptionChange">标题</el-checkbox>
@@ -147,14 +148,20 @@ const isBuildingIndex = ref(false)
 const searchInTitle = ref(true)
 const searchInContent = ref(true)
 const selectedVaults = ref<string[]>([])
+/** 是否处于"所有库"模式（默认 true；取消所有库后为 false） */
+const allVaultsMode = ref(true)
 const indexStatus = ref({ totalFiles: 0, isIndexing: false })
 
 const availableVaults = ref<string[]>([])
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
+/** 是否没有选择任何库（自定义模式下 selectedVaults 为空） */
+const noVaultSelected = computed(() => !allVaultsMode.value && selectedVaults.value.length === 0)
+
 const vaultLabel = computed(() => {
-  if (selectedVaults.value.length === 0) return '所有库'
+  if (allVaultsMode.value) return '所有库'
+  if (selectedVaults.value.length === 0) return '未选择库'
   if (selectedVaults.value.length === 1) return selectedVaults.value[0]
   return `${selectedVaults.value.length} 个库`
 })
@@ -193,27 +200,43 @@ async function loadIndexStatus() {
 }
 
 function isVaultSelected(vault: string): boolean {
-  return selectedVaults.value.length === 0 || selectedVaults.value.includes(vault)
+  if (allVaultsMode.value) return true
+  return selectedVaults.value.includes(vault)
 }
 
 function toggleVault(vault: string) {
-  if (selectedVaults.value.length === 0) {
-    // 从"所有库"切换到排除当前库
+  if (allVaultsMode.value) {
+    // 从"所有库"模式切换到自定义，选中除当前库外的所有库
+    allVaultsMode.value = false
     selectedVaults.value = availableVaults.value.filter((v) => v !== vault)
   } else if (selectedVaults.value.includes(vault)) {
     selectedVaults.value = selectedVaults.value.filter((v) => v !== vault)
-    // 如果取消后全部都没选中，回到"所有库"
-    if (selectedVaults.value.length === 0) selectedVaults.value = []
+    // 全选时自动回到"所有库"模式
+    if (selectedVaults.value.length === availableVaults.value.length) {
+      allVaultsMode.value = true
+      selectedVaults.value = []
+    }
   } else {
     selectedVaults.value = [...selectedVaults.value, vault]
-    // 如果全选了，回到"所有库"
-    if (selectedVaults.value.length === availableVaults.value.length) selectedVaults.value = []
+    if (selectedVaults.value.length === availableVaults.value.length) {
+      allVaultsMode.value = true
+      selectedVaults.value = []
+    }
   }
   if (searchQuery.value.trim()) performSearch()
 }
 
+/** 切换"所有库"：已选中则取消全选，未选中则全选 */
 function toggleAllVaults() {
-  selectedVaults.value = []
+  if (allVaultsMode.value) {
+    // 取消全选
+    allVaultsMode.value = false
+    selectedVaults.value = []
+  } else {
+    // 全选
+    allVaultsMode.value = true
+    selectedVaults.value = []
+  }
   if (searchQuery.value.trim()) performSearch()
 }
 
@@ -242,7 +265,10 @@ async function performSearch() {
 
   isSearching.value = true
   try {
-    const vaults = selectedVaults.value.length > 0 ? [...selectedVaults.value] : undefined
+    // allVaultsMode 或无选择时不传 vaults（后端搜全部），自定义模式传具体列表
+    const vaults = allVaultsMode.value || selectedVaults.value.length === 0
+      ? undefined
+      : [...selectedVaults.value]
     const result = await window.trace.searchQuery(
       searchQuery.value.trim(),
       100,
@@ -345,6 +371,17 @@ function handleClose() {
   align-items: center;
   gap: 4px;
   max-width: 180px;
+}
+
+.vault-trigger--error {
+  border-color: var(--el-color-danger, #f56c6c) !important;
+}
+
+.vault-hint {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--el-color-danger, #f56c6c);
+  margin-left: 4px;
 }
 
 .vault-trigger-text {
