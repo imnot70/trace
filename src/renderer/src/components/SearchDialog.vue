@@ -10,43 +10,51 @@
     @close="handleClose"
   >
     <div class="search-container">
-      <!-- 搜索输入框 -->
+      <!-- 搜索输入框 + 选项 -->
       <div class="search-input-container">
-        <el-input
-          ref="searchInputRef"
-          v-model="searchQuery"
-          placeholder="搜索笔记..."
-          clearable
-          @input="handleSearchInput"
-          @keyup.enter="performSearch"
-        >
-          <template #prefix>
-            <el-icon><Search /></el-icon>
-          </template>
-          <template #append>
-            <el-button @click="performSearch" :loading="isSearching">
-              搜索
+        <div class="search-bar">
+          <el-input
+            v-model="searchQuery"
+            placeholder="搜索笔记..."
+            clearable
+            @input="handleSearchInput"
+            @keyup.enter="performSearch"
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
+          <el-dropdown trigger="click" :hide-on-click="false" popper-class="search-vault-dropdown">
+            <el-button class="vault-trigger">
+              <el-icon><Folder /></el-icon>
+              <span class="vault-trigger-text">{{ vaultLabel }}</span>
+              <el-icon class="vault-trigger-arrow"><ArrowDown /></el-icon>
             </el-button>
-          </template>
-        </el-input>
-        <div class="search-options">
-          <div class="search-scope-row">
-            <el-checkbox v-model="searchInTitle">标题</el-checkbox>
-            <el-checkbox v-model="searchInContent">内容</el-checkbox>
-          </div>
-          <div class="search-vault-row">
-            <span class="search-vault-label">搜索范围：</span>
-            <el-checkbox
-              :model-value="selectedVaults.length === 0"
-              @update:model-value="(val: any) => { if (val) selectedVaults = [] }"
-            >全部笔记库</el-checkbox>
-            <el-checkbox
-              v-for="v in availableVaults"
-              :key="v"
-              :model-value="selectedVaults.includes(v)"
-              @update:model-value="(val: any) => toggleVault(v, !!val)"
-            >{{ v }}</el-checkbox>
-          </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="toggleAllVaults">
+                  <el-checkbox
+                    :model-value="selectedVaults.length === 0"
+                    @click.stop
+                    @update:model-value="(val: any) => { if (val) toggleAllVaults() }"
+                  />
+                  <span class="vault-item-label" :class="{ bold: selectedVaults.length === 0 }">所有库</span>
+                </el-dropdown-item>
+                <el-dropdown-item divided v-for="v in availableVaults" :key="v" @click="toggleVault(v)">
+                  <el-checkbox
+                    :model-value="isVaultSelected(v)"
+                    @click.stop
+                    @update:model-value="() => toggleVault(v)"
+                  />
+                  <span class="vault-item-label">{{ v }}</span>
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+        <div class="search-scope-row">
+          <el-checkbox v-model="searchInTitle" @change="handleOptionChange">标题</el-checkbox>
+          <el-checkbox v-model="searchInContent" @change="handleOptionChange">内容</el-checkbox>
         </div>
       </div>
 
@@ -117,9 +125,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Loading } from '@element-plus/icons-vue'
+import { Search, Loading, Folder, ArrowDown } from '@element-plus/icons-vue'
 import type { SearchResultItem } from '@shared/types'
 
 const props = defineProps<{
@@ -144,6 +152,12 @@ const indexStatus = ref({ totalFiles: 0, isIndexing: false })
 const availableVaults = ref<string[]>([])
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
+
+const vaultLabel = computed(() => {
+  if (selectedVaults.value.length === 0) return '所有库'
+  if (selectedVaults.value.length === 1) return selectedVaults.value[0]
+  return `${selectedVaults.value.length} 个库`
+})
 
 watch(
   () => props.visible,
@@ -178,14 +192,36 @@ async function loadIndexStatus() {
   } catch { /* ignore */ }
 }
 
-function toggleVault(vault: string, checked: boolean) {
-  if (checked) {
-    if (!selectedVaults.value.includes(vault)) {
-      selectedVaults.value = [...selectedVaults.value, vault]
-    }
-  } else {
+function isVaultSelected(vault: string): boolean {
+  return selectedVaults.value.length === 0 || selectedVaults.value.includes(vault)
+}
+
+function toggleVault(vault: string) {
+  if (selectedVaults.value.length === 0) {
+    // 从"所有库"切换到排除当前库
+    selectedVaults.value = availableVaults.value.filter((v) => v !== vault)
+  } else if (selectedVaults.value.includes(vault)) {
     selectedVaults.value = selectedVaults.value.filter((v) => v !== vault)
+    // 如果取消后全部都没选中，回到"所有库"
+    if (selectedVaults.value.length === 0) selectedVaults.value = []
+  } else {
+    selectedVaults.value = [...selectedVaults.value, vault]
+    // 如果全选了，回到"所有库"
+    if (selectedVaults.value.length === availableVaults.value.length) selectedVaults.value = []
   }
+  if (searchQuery.value.trim()) performSearch()
+}
+
+function toggleAllVaults() {
+  selectedVaults.value = []
+  if (searchQuery.value.trim()) performSearch()
+}
+
+function handleOptionChange() {
+  if (!searchInTitle.value && !searchInContent.value) {
+    searchInContent.value = true
+  }
+  if (searchQuery.value.trim()) performSearch()
 }
 
 function handleSearchInput() {
@@ -206,7 +242,6 @@ async function performSearch() {
 
   isSearching.value = true
   try {
-    // 展开 reactive Proxy 数组为普通数组，避免 IPC structured clone 出错
     const vaults = selectedVaults.value.length > 0 ? [...selectedVaults.value] : undefined
     const result = await window.trace.searchQuery(
       searchQuery.value.trim(),
@@ -294,28 +329,43 @@ function handleClose() {
   margin-bottom: 12px;
 }
 
-.search-options {
-  margin-top: 8px;
+.search-bar {
+  display: flex;
+  gap: 8px;
+}
+
+.search-bar .el-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.vault-trigger {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 180px;
+}
+
+.vault-trigger-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 13px;
-  color: var(--text-secondary);
+}
+
+.vault-trigger-arrow {
+  margin-left: 2px;
+  font-size: 12px;
 }
 
 .search-scope-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 6px;
-}
-
-.search-vault-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.search-vault-label {
-  flex-shrink: 0;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .search-status {
@@ -399,7 +449,6 @@ function handleClose() {
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-bottom: 2px;
-  padding-left: 0;
 }
 
 .result-snippet :deep(mark) {
@@ -452,5 +501,27 @@ function handleClose() {
 .index-info {
   font-size: 12px;
   color: var(--text-secondary);
+}
+</style>
+
+<style>
+/* 全局：搜索库下拉面板宽度自适应 */
+.search-vault-dropdown .el-dropdown-menu {
+  min-width: 160px;
+  max-width: 280px;
+}
+.search-vault-dropdown .el-dropdown-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+}
+.search-vault-dropdown .vault-item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-vault-dropdown .vault-item-label.bold {
+  font-weight: 600;
 }
 </style>
