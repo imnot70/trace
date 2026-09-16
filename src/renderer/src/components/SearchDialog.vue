@@ -51,11 +51,11 @@
               </el-dropdown-menu>
             </template>
           </el-dropdown>
-          <span v-if="noVaultSelected" class="vault-hint">请选择至少一个笔记库</span>
         </div>
         <div class="search-scope-row">
           <el-checkbox v-model="searchInTitle" @change="handleOptionChange">标题</el-checkbox>
           <el-checkbox v-model="searchInContent" @change="handleOptionChange">内容</el-checkbox>
+          <span v-if="noVaultSelected" class="vault-hint">请选择至少一个笔记库</span>
         </div>
       </div>
 
@@ -381,7 +381,7 @@ function handleClose() {
   flex-shrink: 0;
   font-size: 12px;
   color: var(--el-color-danger, #f56c6c);
-  margin-left: 4px;
+  margin-left: auto;
 }
 
 .vault-trigger-text {
