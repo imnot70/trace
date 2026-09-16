@@ -5,6 +5,16 @@ import { useTreeStore } from './tree'
 import { useEditorStore } from './editor'
 import { useAppStore } from './app'
 
+/** 冲突解决对话框状态 */
+export interface ConflictResolutionState {
+  /** 是否显示冲突解决对话框 */
+  visible: boolean
+  /** 冲突的笔记库 */
+  vault: string | null
+  /** 冲突文件列表 */
+  files: string[]
+}
+
 /** 模块级缓存：避免同一次会话中重复检测 git 可用性 */
 let gitAvailabilityCache: GitAvailability | null = null
 
@@ -28,7 +38,13 @@ export const useGitStore = defineStore('git', {
     associateVault: null as string | null,
     syncing: {} as Record<string, boolean>,
     /** 最近一次 git 可用性检测结果（设置页展示来源与版本号） */
-    availability: null as GitAvailability | null
+    availability: null as GitAvailability | null,
+    /** 冲突解决对话框状态 */
+    conflictResolution: {
+      visible: false,
+      vault: null,
+      files: []
+    } as ConflictResolutionState
   }),
   actions: {
     /** 加载 git 可用性（设置页展示用，不触发任何弹窗） */
@@ -136,13 +152,15 @@ export const useGitStore = defineStore('git', {
           if (editor.dirty) editor.externalChanged = true
           else await editor.reloadFromDisk()
         }
-        if (result.ok) ElMessage.success('同步完成')
-        else if (result.conflicts?.length) {
-          ElMessageBox.alert(
-            `以下文件存在冲突：${result.conflicts.join('、')}。可在库目录中手动解决冲突后再次同步。`,
-            '同步冲突',
-            { type: 'error' }
-          )
+        if (result.ok) {
+          ElMessage.success('同步完成')
+        } else if (result.conflicts?.length) {
+          // 打开冲突解决对话框
+          this.conflictResolution = {
+            visible: true,
+            vault,
+            files: result.conflicts
+          }
         } else {
           ElMessage.error(result.error ?? '同步失败')
         }
@@ -166,6 +184,26 @@ export const useGitStore = defineStore('git', {
         await tree.refreshGitStatus(vault)
         ElMessage.success('已解除关联')
       }
+    },
+
+    /** 关闭冲突解决对话框 */
+    closeConflictResolution(): void {
+      this.conflictResolution = {
+        visible: false,
+        vault: null,
+        files: []
+      }
+    },
+
+    /** 冲突解决完成后刷新状态 */
+    async onConflictResolved(): Promise<void> {
+      const vault = this.conflictResolution.vault
+      if (vault) {
+        const tree = useTreeStore()
+        await tree.refreshGitStatus(vault)
+        await tree.loadTree(vault)
+      }
+      this.closeConflictResolution()
     }
   }
 })

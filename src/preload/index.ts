@@ -59,6 +59,14 @@ const api: TraceApi = {
   syncVault: (vault) => ipcRenderer.invoke('git:sync', vault),
   checkGitAvailability: () => ipcRenderer.invoke('git:checkAvailability'),
   testProxy: () => ipcRenderer.invoke('git:testProxy'),
+
+  // 冲突解决
+  getConflictFiles: (vault) => ipcRenderer.invoke('git:conflictFiles', vault),
+  getConflictContent: (vault, filePath) => ipcRenderer.invoke('git:conflictContent', vault, filePath),
+  resolveConflict: (vault, filePath, resolution) =>
+    ipcRenderer.invoke('git:resolveConflict', vault, filePath, resolution),
+  continueRebase: (vault) => ipcRenderer.invoke('git:continueRebase', vault),
+  abortRebase: (vault) => ipcRenderer.invoke('git:abortRebase', vault),
   exportPdf: (items) => ipcRenderer.invoke('export:pdf', items),
   exportPdfMerge: (items, fileName) => ipcRenderer.invoke('export:pdf-merge', { items, fileName }),
   exportHtml: (items) => ipcRenderer.invoke('export:html', items),

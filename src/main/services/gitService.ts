@@ -25,6 +25,24 @@ export interface SyncOutcome {
   conflicts?: string[]
 }
 
+/** 冲突文件内容（三方对比） */
+export interface ConflictContent {
+  /** 本地版本（ours） */
+  ours: string
+  /** 远端版本（theirs） */
+  theirs: string
+  /** 共同祖先版本（base） */
+  base: string
+  /** 当前工作区内容（可能包含冲突标记） */
+  current: string
+}
+
+/** 冲突解决方式 */
+export type ConflictResolution =
+  | { type: 'ours' } // 接受本地版本
+  | { type: 'theirs' } // 接受远端版本
+  | { type: 'manual'; content: string } // 手动编辑的内容
+
 /**
  * Git 同步服务：每个笔记库 = 一个 git 仓库。
  * 同步语义：fetch → rebase 拉取 → add -A + commit → push。
@@ -193,9 +211,9 @@ export class GitService {
         } catch (e) {
           const conflicts = await this.conflictedFiles(git)
           if (conflicts.length > 0) {
-            await this.abortRebase(git)
-            logger.warn('同步冲突', e)
-            return { ok: false, error: '同步存在冲突，已中止自动同步，请手动处理冲突文件', conflicts }
+            // 保留rebase状态，让用户在应用内解决冲突
+            logger.warn('同步冲突，等待用户解决', e)
+            return { ok: false, error: '同步存在冲突，请解决冲突后继续', conflicts }
           }
           throw e
         }
@@ -268,6 +286,148 @@ export class GitService {
       await git.rebase(['--abort'])
     } catch (e) {
       logger.error('中止 rebase 失败，请手动执行 git rebase --abort', e)
+    }
+  }
+
+  /**
+   * 获取当前冲突文件列表（rebase进行中时调用）
+   */
+  async getConflictFiles(vaultPath: string): Promise<string[]> {
+    const git = this.git(vaultPath)
+    if (!this.isRepo(vaultPath)) return []
+    return this.conflictedFiles(git)
+  }
+
+  /**
+   * 获取冲突文件的三方内容（ours/theirs/base）
+   */
+  async getConflictContent(vaultPath: string, filePath: string): Promise<ConflictContent | null> {
+    const git = this.git(vaultPath)
+    if (!this.isRepo(vaultPath)) return null
+
+    try {
+      // 获取当前工作区内容（包含冲突标记）
+      const current = await git.raw(['show', `:${filePath}`])
+
+      // 获取ours版本（本地）
+      let ours = ''
+      try {
+        ours = await git.raw(['show', `HEAD:${filePath}`])
+      } catch {
+        // 文件在HEAD中不存在（新文件）
+        ours = ''
+      }
+
+      // 获取theirs版本（远端）
+      let theirs = ''
+      try {
+        theirs = await git.raw(['show', `MERGE_HEAD:${filePath}`])
+      } catch {
+        // 文件在MERGE_HEAD中不存在
+        theirs = ''
+      }
+
+      // 获取base版本（共同祖先）
+      let base = ''
+      try {
+        base = await git.raw(['show', `MERGE_BASE:${filePath}`])
+      } catch {
+        // 无法获取共同祖先
+        base = ''
+      }
+
+      return { ours, theirs, base, current }
+    } catch (e) {
+      logger.warn('获取冲突内容失败', e)
+      return null
+    }
+  }
+
+  /**
+   * 解决单个文件的冲突
+   */
+  async resolveConflict(
+    vaultPath: string,
+    filePath: string,
+    resolution: ConflictResolution
+  ): Promise<boolean> {
+    const git = this.git(vaultPath)
+    if (!this.isRepo(vaultPath)) return false
+
+    try {
+      let content: string
+      switch (resolution.type) {
+        case 'ours':
+          content = (await this.getConflictContent(vaultPath, filePath))?.ours ?? ''
+          break
+        case 'theirs':
+          content = (await this.getConflictContent(vaultPath, filePath))?.theirs ?? ''
+          break
+        case 'manual':
+          content = resolution.content
+          break
+      }
+
+      // 写入解决后的内容
+      const fullPath = path.join(vaultPath, filePath)
+      await fs.promises.writeFile(fullPath, content, 'utf-8')
+
+      // 标记为已解决
+      await git.add(filePath)
+      return true
+    } catch (e) {
+      logger.warn('解决冲突失败', e)
+      return false
+    }
+  }
+
+  /**
+   * 继续rebase（所有冲突解决后调用）
+   */
+  async continueRebase(vaultPath: string): Promise<SyncOutcome> {
+    const git = this.git(vaultPath)
+    if (!this.isRepo(vaultPath)) return { ok: false, error: '该笔记库尚未初始化 git 仓库' }
+
+    try {
+      // 检查是否还有未解决的冲突
+      const conflicts = await this.conflictedFiles(git)
+      if (conflicts.length > 0) {
+        return { ok: false, error: '仍有未解决的冲突文件', conflicts }
+      }
+
+      // 继续rebase
+      await git.raw(['-c', 'core.editor=true', 'rebase', '--continue'])
+
+      // 推送（如果需要）
+      const branch = (await git.raw(['rev-parse', '--abbrev-ref', 'HEAD'])).trim()
+      const remoteRef = `origin/${branch}`
+      const hasRemoteRef = await this.refExists(git, remoteRef)
+      if (hasRemoteRef) {
+        const ab = await this.aheadBehind(git, remoteRef)
+        if (ab && ab.ahead > 0) {
+          await git.push(['-u', 'origin', branch])
+        }
+      }
+
+      return { ok: true }
+    } catch (e) {
+      logger.warn('继续rebase失败', e)
+      return { ok: false, error: `继续rebase失败: ${e}` }
+    }
+  }
+
+  /**
+   * 中止rebase（公开方法，供IPC调用）
+   */
+  async abortRebaseOperation(vaultPath: string): Promise<boolean> {
+    const git = this.git(vaultPath)
+    if (!this.isRepo(vaultPath)) return false
+
+    try {
+      await this.abortRebase(git)
+      return true
+    } catch {
+      return false
     }
   }
 

@@ -7,11 +7,13 @@ import { useEditorStore } from './stores/editor'
 import { useTrashStore } from './stores/trash'
 import { useNameDialog } from './stores/nameDialog'
 import { useMoveDialog } from './stores/moveDialog'
+import { useGitStore } from './stores/git'
 import { useNoteActions } from './composables/actions'
 import SideBar from './components/SideBar.vue'
 import NameDialog from './components/NameDialog.vue'
 import MoveDialog from './components/MoveDialog.vue'
 import GitAssociateDialog from './components/GitAssociateDialog.vue'
+import ConflictResolutionDialog from './components/ConflictResolutionDialog.vue'
 import WelcomeView from './views/WelcomeView.vue'
 import EditorView from './views/EditorView.vue'
 import TrashView from './views/TrashView.vue'
@@ -23,6 +25,7 @@ const app = useAppStore()
 const tree = useTreeStore()
 const editor = useEditorStore()
 const trash = useTrashStore()
+const git = useGitStore()
 
 // 侧栏不可见（手动收起或专注模式）时显示迷你导航条
 const railVisible = computed(() => app.zenMode || !app.sidebarVisible)
@@ -228,6 +231,13 @@ onMounted(async () => {
   <NameDialog />
   <MoveDialog />
   <GitAssociateDialog />
+  <ConflictResolutionDialog
+    v-if="git.conflictResolution.visible && git.conflictResolution.vault"
+    :vault="git.conflictResolution.vault"
+    :initial-files="git.conflictResolution.files"
+    @close="git.closeConflictResolution()"
+    @resolved="git.onConflictResolved()"
+  />
 
   <!-- 批量导出进度（悬浮条，完成即消失） -->
   <Transition name="float-preview">

@@ -286,6 +286,48 @@ export function registerIpc(deps: IpcDeps): void {
     })
   )
 
+  // ---------- 冲突解决 ----------
+  handle('git:conflictFiles', async (vault: string) => {
+    try {
+      const files = await deps.git.getConflictFiles(deps.vaults.vaultPath(vault))
+      return { ok: true, files }
+    } catch (e) {
+      return { ok: false, error: errMessage(e) }
+    }
+  })
+  handle('git:conflictContent', async (vault: string, filePath: string) => {
+    try {
+      const content = await deps.git.getConflictContent(deps.vaults.vaultPath(vault), filePath)
+      return { ok: true, content }
+    } catch (e) {
+      return { ok: false, error: errMessage(e) }
+    }
+  })
+  handle('git:resolveConflict', async (vault: string, filePath: string, resolution: any) => {
+    try {
+      const ok = await deps.git.resolveConflict(deps.vaults.vaultPath(vault), filePath, resolution)
+      return { ok }
+    } catch (e) {
+      return { ok: false, error: errMessage(e) }
+    }
+  })
+  handle('git:continueRebase', async (vault: string) => {
+    try {
+      const result = await deps.git.continueRebase(deps.vaults.vaultPath(vault))
+      return result
+    } catch (e) {
+      return { ok: false, error: errMessage(e) }
+    }
+  })
+  handle('git:abortRebase', async (vault: string) => {
+    try {
+      const ok = await deps.git.abortRebaseOperation(deps.vaults.vaultPath(vault))
+      return { ok }
+    } catch (e) {
+      return { ok: false, error: errMessage(e) }
+    }
+  })
+
   // ---------- 设置 ----------
   handle('settings:get', () => ({ ok: true, settings: deps.settings.get() }))
   handle('settings:set', (patch: Partial<AppSettings>) => {
