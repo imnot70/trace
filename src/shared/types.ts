@@ -213,3 +213,35 @@ export interface GitEventPayload {
   phase: 'start' | 'pull' | 'commit' | 'push' | 'done' | 'error'
   message?: string
 }
+
+/** 搜索结果项 */
+export interface SearchResultItem {
+  /** 笔记库名称 */
+  vault: string
+  /** 笔记相对路径 */
+  path: string
+  /** 笔记标题（不含 .md） */
+  title: string
+  /** 匹配的文本片段 */
+  snippet: string
+  /** 匹配分数（越高越相关） */
+  score: number
+  /** 匹配位置（行号） */
+  lineNumber: number
+  /** 匹配的关键词 */
+  keyword: string
+}
+
+/** 搜索结果 */
+export interface SearchResult {
+  /** 是否成功 */
+  ok: boolean
+  /** 错误信息 */
+  error?: string
+  /** 搜索结果列表 */
+  results?: SearchResultItem[]
+  /** 搜索耗时（毫秒） */
+  durationMs?: number
+  /** 总匹配数 */
+  totalMatches?: number
+}

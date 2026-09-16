@@ -8,12 +8,14 @@ import { useTrashStore } from './stores/trash'
 import { useNameDialog } from './stores/nameDialog'
 import { useMoveDialog } from './stores/moveDialog'
 import { useGitStore } from './stores/git'
+import { useSearchStore } from './stores/search'
 import { useNoteActions } from './composables/actions'
 import SideBar from './components/SideBar.vue'
 import NameDialog from './components/NameDialog.vue'
 import MoveDialog from './components/MoveDialog.vue'
 import GitAssociateDialog from './components/GitAssociateDialog.vue'
 import ConflictResolutionDialog from './components/ConflictResolutionDialog.vue'
+import SearchDialog from './components/SearchDialog.vue'
 import WelcomeView from './views/WelcomeView.vue'
 import EditorView from './views/EditorView.vue'
 import TrashView from './views/TrashView.vue'
@@ -26,6 +28,25 @@ const tree = useTreeStore()
 const editor = useEditorStore()
 const trash = useTrashStore()
 const git = useGitStore()
+const search = useSearchStore()
+
+/** 从搜索结果打开笔记 */
+async function handleOpenNoteFromSearch(vault: string, path: string) {
+  try {
+    // 先加载笔记内容
+    const result = await window.trace.readNote(vault, path)
+    if (result.ok && result.content !== undefined) {
+      // 切换到编辑器视图
+      app.view = { name: 'editor' }
+      // 打开笔记
+      editor.openNote(vault, path, result.content)
+    } else {
+      ElMessage.error(result.error || '打开笔记失败')
+    }
+  } catch (e) {
+    ElMessage.error('打开笔记失败')
+  }
+}
 
 // 侧栏不可见（手动收起或专注模式）时显示迷你导航条
 const railVisible = computed(() => app.zenMode || !app.sidebarVisible)
@@ -103,6 +124,10 @@ function onGlobalKeydown(e: KeyboardEvent): void {
     if (e.key.toLowerCase() === 'n' && !e.shiftKey) {
       e.preventDefault()
       void newNoteFromContext()
+    }
+    if (e.key.toLowerCase() === 'f') {
+      e.preventDefault()
+      search.openSearch()
     }
   }
 }
@@ -237,6 +262,11 @@ onMounted(async () => {
     :initial-files="git.conflictResolution.files"
     @close="git.closeConflictResolution()"
     @resolved="git.onConflictResolved()"
+  />
+  <SearchDialog
+    :visible="search.visible"
+    @close="search.closeSearch()"
+    @open-note="handleOpenNoteFromSearch"
   />
 
   <!-- 批量导出进度（悬浮条，完成即消失） -->

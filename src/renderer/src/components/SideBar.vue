@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { useAppStore } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import { useTrashStore } from '../stores/trash'
 import { useNoteActions } from '../composables/actions'
 import { useGitStore } from '../stores/git'
+import { useSearchStore } from '../stores/search'
 import type { VaultInfo } from '@shared/types'
 import VaultNode from './VaultNode.vue'
 
@@ -13,6 +15,7 @@ const app = useAppStore()
 const tree = useTreeStore()
 const trash = useTrashStore()
 const git = useGitStore()
+const search = useSearchStore()
 const actions = useNoteActions()
 
 function toggleSection(): void {
@@ -151,6 +154,9 @@ defineProps<{ vaults?: VaultInfo[] }>()
     <div class="sidebar-header">
       <div class="sidebar-logo">迹</div>
       <div class="sidebar-title">Trace 笔迹</div>
+      <button class="sidebar-search-btn" title="全局搜索 (Ctrl+F)" @click="search.openSearch()">
+        <el-icon><Search /></el-icon>
+      </button>
     </div>
 
     <div class="sidebar-scroll">
@@ -419,5 +425,24 @@ defineProps<{ vaults?: VaultInfo[] }>()
 .color-custom-label {
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+/* 侧栏搜索按钮 */
+.sidebar-search-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-search-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
 }
 </style>

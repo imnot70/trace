@@ -42,6 +42,7 @@ export interface IpcDeps {
   plugins: PluginHost
   autoSync: import('../services/autoSync').AutoSyncService
   exportPdf: import('../services/exportPdf').ExportService
+  search: import('../services/search').SearchService
   getWindow: () => BrowserWindow | null
 }
 
@@ -483,5 +484,61 @@ export function registerIpc(deps: IpcDeps): void {
   // ---------- 插件 -> 渲染进程通知 ----------
   ipcMain.on('plugin:notify', (_e, message: string) => {
     send('plugin:notify', message)
+  })
+
+  // ---------- 搜索 ----------
+  handle('search:buildIndex', async (force?: boolean) => {
+    try {
+      await deps.search.buildIndex(force)
+      const status = deps.search.getIndexStatus()
+      return { ok: true, ...status }
+    } catch (e) {
+      return { ok: false, error: errMessage(e) }
+    }
+  })
+
+  handle('search:search', (query: string, maxResults?: number) => {
+    try {
+      const result = deps.search.search(query, maxResults)
+      return result
+    } catch (e) {
+      return { ok: false, error: errMessage(e) }
+    }
+  })
+
+  handle('search:getIndexStatus', () => {
+    try {
+      const status = deps.search.getIndexStatus()
+      return { ok: true, ...status }
+    } catch (e) {
+      return { ok: false, error: errMessage(e) }
+    }
+  })
+
+  handle('search:updateFile', async (vault: string, filePath: string) => {
+    try {
+      await deps.search.updateFileIndex(vault, filePath)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: errMessage(e) }
+    }
+  })
+
+  handle('search:removeFile', (vault: string, filePath: string) => {
+    try {
+      deps.search.removeFileIndex(vault, filePath)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: errMessage(e) }
+    }
+  })
+
+  handle('search:clearIndex', () => {
+    try {
+      deps.search.clearIndex()
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: errMessage(e) }
+    }
   })
 }

@@ -96,7 +96,15 @@ const api: TraceApi = {
 
   onFsChanged: (cb) => subscribe<FsChangedPayload>('fs:changed', cb),
   onGitEvent: (cb) => subscribe<GitEventPayload>('git:event', cb),
-  onPluginNotify: (cb) => subscribe<string>('plugin:notify', cb)
+  onPluginNotify: (cb) => subscribe<string>('plugin:notify', cb),
+
+  // 搜索
+  searchBuildIndex: (force?) => ipcRenderer.invoke('search:buildIndex', force),
+  searchQuery: (query, maxResults?) => ipcRenderer.invoke('search:search', query, maxResults),
+  getSearchIndexStatus: () => ipcRenderer.invoke('search:getIndexStatus'),
+  updateSearchIndex: (vault, filePath) => ipcRenderer.invoke('search:updateFile', vault, filePath),
+  removeSearchIndex: (vault, filePath) => ipcRenderer.invoke('search:removeFile', vault, filePath),
+  clearSearchIndex: () => ipcRenderer.invoke('search:clearIndex')
 }
 
 contextBridge.exposeInMainWorld('trace', api)

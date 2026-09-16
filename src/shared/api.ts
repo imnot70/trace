@@ -16,6 +16,7 @@ import type {
   RecentItem,
   RemoteRepo,
   SaveImageResult,
+  SearchResult,
   SyncResult,
   TagItem,
   ThemePackage,
@@ -135,4 +136,18 @@ export interface TraceApi {
   onFsChanged(cb: (payload: FsChangedPayload) => void): () => void
   onGitEvent(cb: (payload: GitEventPayload) => void): () => void
   onPluginNotify(cb: (message: string) => void): () => void
+
+  // ---- 搜索 ----
+  /** 构建搜索索引（应用启动时调用） */
+  searchBuildIndex(force?: boolean): Promise<OpResult & { totalFiles?: number; isIndexing?: boolean }>
+  /** 执行搜索查询 */
+  searchQuery(query: string, maxResults?: number): Promise<SearchResult>
+  /** 获取搜索索引状态 */
+  getSearchIndexStatus(): Promise<OpResult & { totalFiles?: number; isIndexing?: boolean }>
+  /** 更新单个文件的索引 */
+  updateSearchIndex(vault: string, filePath: string): Promise<OpResult>
+  /** 删除单个文件的索引 */
+  removeSearchIndex(vault: string, filePath: string): Promise<OpResult>
+  /** 清空搜索索引 */
+  clearSearchIndex(): Promise<OpResult>
 }

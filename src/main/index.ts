@@ -18,6 +18,7 @@ import {
   ExportService,
   RecentsService,
   resolveBundledGitPath,
+  SearchService,
   SettingsService,
   TagsService,
   ThemeService,
@@ -254,6 +255,13 @@ app.whenReady().then(() => {
     logger.warn('回收站启动清理失败', e)
   }
 
+  const search = new SearchService(
+    (vault) => vaults.vaultPath(vault),
+    () => vaults.list().map((v) => v.name)
+  )
+  // 应用启动后构建搜索索引
+  void search.buildIndex()
+
   registerIpc({
     settings: settingsService,
     workspace,
@@ -272,6 +280,7 @@ app.whenReady().then(() => {
     plugins,
     autoSync,
     exportPdf,
+    search,
     getWindow: () => mainWindow
   })
 
