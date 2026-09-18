@@ -1,8 +1,8 @@
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { AutoSyncService, type AutoSyncDeps } from '../src/main/services/autoSync'
-
-const fs = require('node:fs') as typeof import('node:fs')
-const fsp = require('node:path') as typeof import('node:path')
 
 /** 极简 fake：记录调用；sync 可被 gate 挂起以模拟慢同步 */
 function makeDeps(overrides?: Partial<AutoSyncDeps>): AutoSyncDeps & { syncCalls: string[] } {
@@ -38,15 +38,15 @@ function makeDeps(overrides?: Partial<AutoSyncDeps>): AutoSyncDeps & { syncCalls
 
 function makeWorkspace(root: string): void {
   for (const name of ['库A', '库B-未关联', '非仓库']) {
-    fs.mkdirSync(fsp.join(root, name), { recursive: true })
+    fs.mkdirSync(path.join(root, name), { recursive: true })
   }
   for (const name of ['库A', '库B-未关联']) {
-    fs.mkdirSync(fsp.join(root, name, '.git'), { recursive: true })
+    fs.mkdirSync(path.join(root, name, '.git'), { recursive: true })
   }
 }
 
 function root(): string {
-  return fs.mkdtempSync(fsp.join(require('node:os').tmpdir(), 'as-'))
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'as-'))
 }
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -61,7 +61,7 @@ describe('AutoSyncService：变更触发模式', () => {
     await wait(20)
     expect(deps.syncCalls).toHaveLength(0) // 窗口内未触发
     await wait(300)
-    expect(deps.syncCalls).toEqual([fsp.join(ws, '库A')]) // 仅已关联库
+    expect(deps.syncCalls).toEqual([path.join(ws, '库A')]) // 仅已关联库
     fs.rmSync(ws, { recursive: true, force: true })
   })
 
@@ -99,7 +99,7 @@ describe('AutoSyncService：变更触发模式', () => {
       getRoot: () => ws,
       git: {
         isRepo: (p: string) => !p.includes('非仓库'),
-        status: async (p: string) => ({
+        status: async (_p: string) => ({
           associated: true,
           repoFullName: 'a/b',
           remoteUrl: 'x',

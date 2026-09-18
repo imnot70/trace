@@ -51,13 +51,18 @@ function toggleUnresolvedView(): void {
   }
 }
 
-// 笔记保存后刷新断链计数
-const fsChangedHandler = (): void => { void loadUnresolvedCount() }
+// 笔记保存后刷新断链计数。主进程双链索引异步增量更新，延迟一拍再查询拿到的才是新数据
+const fsChangedHandler = (): void => {
+  if (unresolvedRefreshTimer) clearTimeout(unresolvedRefreshTimer)
+  unresolvedRefreshTimer = setTimeout(() => void loadUnresolvedCount(), 600)
+}
+let unresolvedRefreshTimer: ReturnType<typeof setTimeout> | null = null
 onMounted(() => {
   void loadUnresolvedCount()
   window.trace.onFsChanged(fsChangedHandler)
 })
 onBeforeUnmount(() => {
+  if (unresolvedRefreshTimer) clearTimeout(unresolvedRefreshTimer)
   // 注意：onFsChanged 返回取消函数，但这里不做取消（与全局订阅生命周期一致）
 })
 
@@ -272,8 +277,8 @@ defineProps<{ vaults?: VaultInfo[] }>()
         </div>
       </div>
 
-      <!-- 断链引用：TODO 暂时隐藏，待反向链接面板修复后恢复 -->
-      <!-- <div class="side-section" v-if="unresolvedCount > 0">
+      <!-- 断链引用：仅有未解析 [[...]] 引用时显示 -->
+      <div class="side-section" v-if="unresolvedCount > 0">
         <div
           class="side-section-header"
           :class="{ active: app.view.name === 'grid' && app.view.section === 'unresolved' }"
@@ -283,7 +288,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
           <span>断链引用</span>
           <span class="side-section-count">{{ unresolvedCount }}</span>
         </div>
-      </div> -->
+      </div>
 
       <!-- 回收站：点击标题直接进入 -->
       <div class="side-section">

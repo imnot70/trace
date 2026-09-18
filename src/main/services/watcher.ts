@@ -12,10 +12,14 @@ export class WatcherService {
   private suspendDepth = 0
   private pending = new Map<string, Set<string>>()
   private timer: NodeJS.Timeout | null = null
+  /** 挂起期间有事件被丢弃（git 同步/自动同步拉取的文件变更），resume 后需补偿刷新 */
+  private droppedWhileSuspended = false
 
   constructor(
     private getRoot: () => string | null,
-    private emit: (payload: FsChangedPayload) => void
+    private emit: (payload: FsChangedPayload) => void,
+    /** 挂起期丢弃过事件时在 resume 后触发（用于刷新依赖文件事件的索引，如双链索引） */
+    private onEventsDropped?: () => void
   ) {}
 
   start(): void {
@@ -33,7 +37,10 @@ export class WatcherService {
       }
     })
     const onChange = (p: string): void => {
-      if (this.suspendDepth > 0) return
+      if (this.suspendDepth > 0) {
+        this.droppedWhileSuspended = true
+        return
+      }
       const r = this.getRoot()
       if (!r) return
       const rel = path.relative(r, p)
@@ -65,6 +72,11 @@ export class WatcherService {
 
   resume(): void {
     this.suspendDepth = Math.max(0, this.suspendDepth - 1)
+    // 挂起结束且期间丢弃过事件：异步触发补偿刷新（rebase 拉取的文件不会再来事件）
+    if (this.suspendDepth === 0 && this.droppedWhileSuspended) {
+      this.droppedWhileSuspended = false
+      this.onEventsDropped?.()
+    }
   }
 
   /** 工作区目录切换后重建监听 */
@@ -76,6 +88,7 @@ export class WatcherService {
     if (this.timer) clearTimeout(this.timer)
     this.timer = null
     this.pending.clear()
+    this.droppedWhileSuspended = false
     void this.watcher?.close()
     this.watcher = null
   }

@@ -1,21 +1,15 @@
 <template>
-  <div class="backlink-panel" v-if="visible">
+  <!-- 无引用时不渲染：不占编辑区空间 -->
+  <div class="backlink-panel" v-if="visible && backlinks.length > 0">
     <div class="backlink-header" @click="collapsed = !collapsed">
       <span class="backlink-title">反向链接</span>
       <span v-if="backlinks.length" class="backlink-count">{{ backlinks.length }}</span>
       <el-icon class="backlink-arrow" :class="{ 'is-collapsed': collapsed }"><ArrowDown /></el-icon>
     </div>
     <div v-if="!collapsed" class="backlink-list">
-      <div v-if="loading" class="backlink-loading">
-        <el-icon class="is-loading"><Loading /></el-icon>
-        <span>加载中...</span>
-      </div>
-      <div v-else-if="backlinks.length === 0" class="backlink-empty">
-        暂无引用
-      </div>
       <div
-        v-for="item in backlinks"
-        :key="`${item.vault}-${item.path}-${item.line}`"
+        v-for="(item, i) in backlinks"
+        :key="`${item.vault}-${item.path}-${item.line}-${i}`"
         class="backlink-item"
         @click="openNote(item)"
       >
@@ -27,9 +21,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { ArrowDown, Loading } from '@element-plus/icons-vue'
-import type { BacklinkRef } from '@shared/types'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ArrowDown } from '@element-plus/icons-vue'
+import type { BacklinkRef, FsChangedPayload } from '@shared/types'
 
 const props = defineProps<{
   visible: boolean
@@ -42,32 +36,49 @@ const emit = defineEmits<{
 }>()
 
 const backlinks = ref<BacklinkRef[]>([])
-const loading = ref(false)
 const collapsed = ref(false)
+
+async function fetchBacklinks(): Promise<void> {
+  if (!props.visible || !props.vault || !props.notePath) {
+    backlinks.value = []
+    return
+  }
+  try {
+    const result = await window.trace.wikilinkBacklinks(props.vault, props.notePath)
+    // 请求期间可能已切换笔记
+    if (!props.visible || !props.vault || !props.notePath) return
+    backlinks.value = result.ok && result.backlinks ? result.backlinks : []
+  } catch {
+    backlinks.value = []
+  }
+}
 
 watch(
   () => [props.visible, props.vault, props.notePath],
-  async () => {
-    if (!props.visible || !props.vault || !props.notePath) {
-      backlinks.value = []
-      return
-    }
-    loading.value = true
-    try {
-      const result = await window.trace.wikilinkBacklinks(props.vault, props.notePath)
-      if (result.ok && result.backlinks) {
-        backlinks.value = result.backlinks
-      } else {
-        backlinks.value = []
-      }
-    } catch {
-      backlinks.value = []
-    } finally {
-      loading.value = false
-    }
+  () => {
+    collapsed.value = false // 切换笔记重置为展开
+    void fetchBacklinks()
   },
   { immediate: true }
 )
+
+// 保存 / 外部编辑 / 同步都会经 fs:changed 到达；主进程索引异步更新，稍等再查询。
+// 自身保存的回声事件无害——数据以磁盘内容为准，重查一遍即可
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
+let unsubscribeFsChanged: (() => void) | null = null
+function onFsChanged(payload: FsChangedPayload): void {
+  if (!props.visible || payload.vault !== props.vault) return
+  if (refreshTimer) clearTimeout(refreshTimer)
+  refreshTimer = setTimeout(() => void fetchBacklinks(), 500)
+}
+onMounted(() => {
+  // 面板随 EditorView 反复挂载，退订防止监听器泄漏
+  unsubscribeFsChanged = window.trace.onFsChanged(onFsChanged)
+})
+onBeforeUnmount(() => {
+  if (refreshTimer) clearTimeout(refreshTimer)
+  unsubscribeFsChanged?.()
+})
 
 function openNote(item: BacklinkRef) {
   emit('open-note', item.vault, item.path)
@@ -75,7 +86,8 @@ function openNote(item: BacklinkRef) {
 
 function highlightTarget(snippet: string, targetName: string): string {
   if (!targetName) return escapeHtml(snippet)
-  const escaped = targetName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  // 目标名同样经过 HTML 转义后再参与匹配，含 & < > " 的笔记名才能命中转义后的片段
+  const escaped = escapeHtml(targetName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const regex = new RegExp(`(\\[\\[${escaped}(?:\\|[^\\]]*?)?\\]\\])`, 'gi')
   return escapeHtml(snippet).replace(regex, '<mark>$1</mark>')
 }
@@ -143,16 +155,6 @@ function escapeHtml(text: string): string {
 .backlink-list {
   overflow-y: auto;
   padding: 0 8px 6px;
-}
-
-.backlink-loading,
-.backlink-empty {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  padding: 8px 4px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .backlink-item {

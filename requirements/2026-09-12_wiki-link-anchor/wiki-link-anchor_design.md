@@ -1,9 +1,9 @@
 # 双链 P1 + 页内锚点 + 锚点补全设计
 
-> 状态：**已实施**——P1 随 v0.4.0 发布（双链渲染 / 锚点跳转 / 锚点补全）；编辑器 `[[` 笔记路径补全（原 P2）已随 P1 一并实现，v0.4.1 修复路径形式双链解析，wiki-link-p2 分支增强「选中补全自动闭合 `]]`」。
-> 关联：FR-2.4（笔记编辑器）；FR-2.4.8（链接跳转，扩展双链和锚点支持）
-> 涉及代码：`src/renderer/src/lib/markdown.ts`、`src/renderer/src/components/MarkdownPreview.vue`、`src/renderer/src/components/MarkdownEditor.vue`、`src/main/services/fsTree.ts`、`src/main/ipc/registerIpc.ts`、`src/shared/api.ts`、`src/preload/index.ts`
-> 设计决策：双链按名称全局匹配（同名取第一个）；锚点复用 markdown 自动生成的标题 id；锚点补全从文档内容提取。
+> 状态：**已实施**——P1 随 v0.4.0 发布（双链渲染 / 锚点跳转 / 锚点补全）；编辑器 `[[` 笔记路径补全（原 P2）已随 P1 一并实现，v0.4.1 修复路径形式双链解析，wiki-link-p2 分支增强「选中补全自动闭合 `]]`」；**P3 已实施待发版**（反向链接 / 断链引用 / 重命名改写，见第 7 节）。
+> 关联：FR-2.4（笔记编辑器）；FR-2.4.8（链接跳转，扩展双链和锚点支持）；FR-2.4.11.1 / FR-2.4.11.2（双链反向链接与改写）
+> 涉及代码：`src/renderer/src/lib/markdown.ts`、`src/renderer/src/components/MarkdownPreview.vue`、`src/renderer/src/components/MarkdownEditor.vue`、`src/main/services/fsTree.ts`、`src/main/services/wikilink.ts`（P3）、`src/main/ipc/registerIpc.ts`、`src/shared/api.ts`、`src/preload/index.ts`
+> 设计决策：双链按名称在库内匹配（同名取第一个）；锚点复用 markdown 自动生成的标题 id；锚点补全从文档内容提取。
 
 ---
 
@@ -151,3 +151,40 @@ autocompletion({
 - 同名笔记只取第一个匹配，不做消歧（P3 时加 UI 消歧）
 - 仅改写 `[[双链]]` 语法，不处理其他笔记中引用被移动文件的路径（已由移动功能的引用改写覆盖部分场景）
 - 标题 id 的 slug 规则由项目内 `slugify` 函数统一生成，markdown-it 渲染器和编辑器补全共用
+
+---
+
+## 7. 双链 P3：反向链接 / 断链引用 / 重命名改写（已实施待发版）
+
+### 7.1 架构
+
+```
+chokidar 监听（含应用内保存 / 外部编辑 / 删除 / 还原）
+  → WatcherService 防抖聚合（400ms）
+    → WikilinkService.updateFileIndex（单文件增量，删除按文件不存在处理）
+    → fs:changed → 渲染进程（反向链接面板 / 侧栏断链计数延迟一拍刷新）
+git 同步 / 自动同步挂起期间丢弃的事件 → resume 后 buildIndex(true) 全量重建
+重命名 → fsTree.renameNode 改写库内 [[旧名]] + WikilinkService.renameNoteInIndex 迁移索引
+```
+
+`WikilinkService`（`src/main/services/wikilink.ts`）维护三张表：
+
+- `forwardIndex: Map<vault:path, WikilinkEntry[]>`——每个笔记的引用列表；
+- `reverseIndex: Map<叶子名, Set<detailKey>>`——被引用方的反向索引；
+- `refDetails: Map<vault:path:idx, BacklinkRef>`——引用详情（snippet 高亮用）。
+
+IPC：`wikilink:backlinks / unresolved / rebuildIndex / getIndexStatus`。
+
+### 7.2 关键语义（首版实现缺陷的修正）
+
+| 决策 | 内容 |
+| --- | --- |
+| 索引按叶子名归属 | `[[子目录/笔记C]]` 与 `[[笔记C]]` 同样计入对「笔记C」的引用，与预览解析（先完整路径后叶子名）一致；路径形式双链不误报断链 |
+| 引用详情按行内序号存取 | detailKey 形如 `vault:path:idx`（原按行号，同一行多个引用互相覆盖） |
+| 反向链接限同库 | 双链只在库内解析（`resolveByName`），跨库同名引用不计入 |
+| 索引活性 | 文件监听驱动增量更新（首版只在启动时构建一次，运行期永不变更是面板「显示有 bug」被隐藏的根因）；git 同步挂起期丢弃的变更在 resume 后全量重建补偿 |
+| 面板空态 | 当前笔记无引用时整个面板不渲染，不占编辑区空间 |
+
+### 7.3 测试
+
+`tests/wikilink.test.ts` 12 项：索引构建统计、同名 / 路径形式 / 自身引用、同行多引用、断链检测（含按库过滤）、增量更新（新增 / 修改 / 删除 / 直接移除）、重命名迁移索引无幽灵条目。

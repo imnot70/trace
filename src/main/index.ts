@@ -36,6 +36,7 @@ import type { AppSettings } from '@shared/types'
 let mainWindow: BrowserWindow | null = null
 let exportPdf: ExportService | null = null
 let settingsService: SettingsService | null = null
+let wikilink: WikilinkService | null = null
 
 // 自定义协议：预览中的相对路径图片（trace-vault://<库名>/<库内路径>）
 protocol.registerSchemesAsPrivileged([
@@ -210,10 +211,20 @@ app.whenReady().then(() => {
         resolveBundledGitPath(process.resourcesPath)
       )
   })
-  const watcher = new WatcherService(() => workspace.getRoot(), (payload) => {
-    for (const w of BrowserWindow.getAllWindows()) w.webContents.send('fs:changed', payload)
-    autoSync.onChanged()
-  })
+  const watcher = new WatcherService(
+    () => workspace.getRoot(),
+    (payload) => {
+      for (const w of BrowserWindow.getAllWindows()) w.webContents.send('fs:changed', payload)
+      // 双链索引增量更新：应用内保存 / 外部编辑 / 删除都会经 chokidar 到达（unlink 由
+      // updateFileIndex 内部按文件不存在处理）。 wikilink 在下方才创建，判空防启动窗口期
+      for (const p of payload.paths) {
+        if (p.endsWith('.md')) void wikilink?.updateFileIndex(payload.vault, p)
+      }
+      autoSync.onChanged()
+    },
+    // git 同步 / 自动同步挂起期间丢弃的事件不会重放，resume 后全量重建双链索引
+    () => void wikilink?.buildIndex(true)
+  )
   watcher.start()
 
   const plugins = new PluginHost(
@@ -263,7 +274,7 @@ app.whenReady().then(() => {
   // 应用启动后构建搜索索引
   void search.buildIndex()
 
-  const wikilink = new WikilinkService(
+  wikilink = new WikilinkService(
     (vault) => vaults.vaultPath(vault),
     () => vaults.list().map((v) => v.name)
   )

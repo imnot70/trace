@@ -43,7 +43,7 @@ async function handleOpenNoteFromSearch(vault: string, path: string) {
     } else {
       ElMessage.error(result.error || '打开笔记失败')
     }
-  } catch (e) {
+  } catch {
     ElMessage.error('打开笔记失败')
   }
 }

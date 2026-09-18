@@ -77,7 +77,7 @@ function traceCompletions(context: CompletionContext): CompletionResult | null {
     const completionTo = completionFrom + prefix.length
 
     // 收集当前层级的文件夹和笔记
-    const options: { label: string; detail: string; apply: string | ((view: EditorView, _c: any, from: number, to: number) => void) }[] = []
+    const options: { label: string; detail: string; apply?: string | ((view: EditorView, _c: any, from: number, to: number) => void) }[] = []
     for (const node of currentNodes) {
       if (node.name.startsWith('.')) continue
       if (node.kind === 'dir') {
