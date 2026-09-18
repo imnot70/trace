@@ -233,6 +233,14 @@ body {
   padding: 4px 8px;
 }
 
+/* 侧栏分组分隔线：快捷入口区（常用/收藏/标签/断链引用/回收站）与笔记库区之间 */
+.side-divider {
+  height: 1px;
+  margin: 7px 12px;
+  background: var(--border-color);
+  flex-shrink: 0;
+}
+
 .side-section-header {
   display: flex;
   align-items: center;

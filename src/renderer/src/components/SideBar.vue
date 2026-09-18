@@ -70,6 +70,16 @@ function toggleSection(): void {
   tree.vaultSectionOpen = !tree.vaultSectionOpen
 }
 
+/** 分组分隔线：笔记库之上是否还有可见的快捷分区（断链引用仅在确有断链时计入） */
+const hasQuickSections = computed(
+  () =>
+    app.settings.sidebarMenus.recents ||
+    app.settings.sidebarMenus.favorites ||
+    app.settings.sidebarMenus.tags ||
+    (app.settings.sidebarMenus.unresolved && unresolvedCount.value > 0) ||
+    app.settings.sidebarMenus.trash
+)
+
 /** 点击库行：展开/收起，并更新位置上下文（Ctrl+N 新建目标） */
 function clickVaultRow(vault: string): void {
   tree.toggleVault(vault)
@@ -304,6 +314,9 @@ defineProps<{ vaults?: VaultInfo[] }>()
           }}</span>
         </div>
       </div>
+
+      <!-- 分组分隔线：上方快捷入口区与笔记库区之间（上方全部隐藏时不显示） -->
+      <div v-if="hasQuickSections" class="side-divider"></div>
 
       <!-- 笔记库：箭头展开树，标题打开库网格 -->
       <div class="side-section">
