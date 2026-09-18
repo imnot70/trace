@@ -500,6 +500,7 @@ onBeforeUnmount(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  position: relative; /* 反向链接悬浮入口的定位锚 */
   background: var(--bg-primary);
   border-radius: 8px;
   overflow: hidden;
