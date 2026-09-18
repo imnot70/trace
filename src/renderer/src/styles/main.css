@@ -751,16 +751,6 @@ body {
   flex-shrink: 0;
 }
 
-/* 侧栏菜单等场景的子开关行：在父项下缩进 */
-.setting-row-sub {
-  padding-left: 24px;
-}
-
-.setting-row-sub .setting-label {
-  width: auto;
-  font-size: 13px;
-}
-
 /* 树节点缩进行 */
 .tree-row {
   display: flex;
