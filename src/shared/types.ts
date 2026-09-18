@@ -120,6 +120,21 @@ export interface AppSettings {
   windowGlassEffect: 'auto' | 'none' | 'mica' | 'acrylic' | 'vibrancy'
   /** 窗口透明度 50-100，50 半透明，100 完全不透明（下限 50 保证界面可读） */
   windowOpacity: number
+  /** 侧栏菜单分区显示开关（「笔记库」分区始终显示，不在开关之列） */
+  sidebarMenus: {
+    /** 常用 */
+    recents: boolean
+    /** 收藏 */
+    favorites: boolean
+    /** 标签 */
+    tags: boolean
+    /** 断链引用 */
+    unresolved: boolean
+    /** 回收站 */
+    trash: boolean
+  }
+  /** 编辑区右下角反向链接入口（「断链引用」的子开关） */
+  showBacklinks: boolean
 }
 
 /** 自定义主题包：一组 CSS 变量覆盖（light/dark 两套），存 userData/themes/<id>.json */

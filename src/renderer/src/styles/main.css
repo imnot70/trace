@@ -54,6 +54,8 @@ body,
   height: 100%;
   margin: 0;
   overflow: hidden;
+  /* 底部两角圆角：与系统标题栏的顶部圆角视觉一致（窗口默认透明，圆角外透出桌面/模糊层） */
+  border-radius: 0 0 10px 10px;
 }
 
 body {
@@ -66,7 +68,8 @@ body {
     sans-serif;
   font-size: 14px;
   color: var(--text-primary);
-  background: var(--bg-secondary);
+  /* 透明背景：让 #app 的底部圆角外区域透出窗口外（玻璃效果/桌面） */
+  background: transparent;
 }
 
 /* ========== 全局布局：灰色画布上的圆角卡片 ========== */
@@ -738,6 +741,16 @@ body {
   width: 90px;
   color: var(--text-secondary);
   flex-shrink: 0;
+}
+
+/* 侧栏菜单等场景的子开关行：在父项下缩进 */
+.setting-row-sub {
+  padding-left: 24px;
+}
+
+.setting-row-sub .setting-label {
+  width: auto;
+  font-size: 13px;
 }
 
 /* 树节点缩进行 */

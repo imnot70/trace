@@ -503,6 +503,55 @@ async function resetGitSource(): Promise<void> {
         </div>
 
         <div class="settings-block">
+          <h3>侧栏菜单</h3>
+          <p class="settings-desc">控制左侧栏显示哪些菜单分区；「笔记库」始终显示。</p>
+          <div class="setting-row">
+            <span class="setting-label">常用</span>
+            <el-switch
+              :model-value="app.settings.sidebarMenus.recents"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, recents: Boolean(v) } })"
+            />
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">收藏</span>
+            <el-switch
+              :model-value="app.settings.sidebarMenus.favorites"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, favorites: Boolean(v) } })"
+            />
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">标签</span>
+            <el-switch
+              :model-value="app.settings.sidebarMenus.tags"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, tags: Boolean(v) } })"
+            />
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">断链引用</span>
+            <el-switch
+              :model-value="app.settings.sidebarMenus.unresolved"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, unresolved: Boolean(v) } })"
+            />
+            <span class="settings-desc" style="margin: 0">存在无法跳转的 [[双链]] 时在侧栏提示（仅有断链时显示）</span>
+          </div>
+          <div class="setting-row setting-row-sub">
+            <span class="setting-label">在编辑区显示反向链接</span>
+            <el-switch
+              :model-value="app.settings.showBacklinks"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ showBacklinks: Boolean(v) })"
+            />
+            <span class="settings-desc" style="margin: 0">编辑卡右下角的「反向链接」入口，显示引用当前笔记的笔记</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">回收站</span>
+            <el-switch
+              :model-value="app.settings.sidebarMenus.trash"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, trash: Boolean(v) } })"
+            />
+          </div>
+        </div>
+
+        <div class="settings-block">
           <h3>编辑器</h3>
           <div class="setting-row">
             <span class="setting-label">字号</span>

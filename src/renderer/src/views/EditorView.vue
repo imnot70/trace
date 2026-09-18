@@ -436,9 +436,9 @@ onBeforeUnmount(() => {
       />
     </div>
 
-    <!-- 反向链接面板（编辑器底部折叠区域） -->
+    <!-- 反向链接悬浮入口（编辑卡右下角，受「在编辑区显示反向链接」设置控制） -->
     <BacklinkPanel
-      :visible="!!editor.current"
+      :visible="!!editor.current && app.settings.sidebarMenus.unresolved && app.settings.showBacklinks"
       :vault="editor.current?.vault ?? ''"
       :note-path="editor.current?.path ?? ''"
       @open-note="onBacklinkOpenNote"

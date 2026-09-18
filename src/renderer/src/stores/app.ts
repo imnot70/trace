@@ -34,7 +34,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   pluginEnabled: {},
   gitSource: null,
   windowGlassEffect: 'auto',
-  windowOpacity: 100
+  windowOpacity: 100,
+  sidebarMenus: { recents: true, favorites: true, tags: true, unresolved: true, trash: true },
+  showBacklinks: true
 }
 
 function prefersDark(): boolean {

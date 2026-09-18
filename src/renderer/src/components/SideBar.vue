@@ -208,8 +208,8 @@ defineProps<{ vaults?: VaultInfo[] }>()
     </div>
 
     <div class="sidebar-scroll">
-      <!-- 常用：点击标题在主区域打开卡片网格 -->
-      <div class="side-section">
+      <!-- 常用：点击标题在主区域打开卡片网格（可在设置 → 通用 → 侧栏菜单中隐藏） -->
+      <div class="side-section" v-if="app.settings.sidebarMenus.recents">
         <div
           class="side-section-header"
           :class="{ active: isGridOpen('recents') }"
@@ -224,7 +224,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
       </div>
 
       <!-- 收藏：点击标题在主区域打开卡片网格 -->
-      <div class="side-section">
+      <div class="side-section" v-if="app.settings.sidebarMenus.favorites">
         <div
           class="side-section-header"
           :class="{ active: isGridOpen('favorites') }"
@@ -239,7 +239,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
       </div>
 
       <!-- 标签：点击标签筛选笔记（区块标题不随选中标签高亮，如同选中笔记不点亮其父文件夹） -->
-      <div class="side-section">
+      <div class="side-section" v-if="app.settings.sidebarMenus.tags">
         <div
           class="side-section-header"
           @click="tree.tags.length ? toggleGrid('tags', tree.tags[0].id) : createTag()"
@@ -277,8 +277,8 @@ defineProps<{ vaults?: VaultInfo[] }>()
         </div>
       </div>
 
-      <!-- 断链引用：仅有未解析 [[...]] 引用时显示 -->
-      <div class="side-section" v-if="unresolvedCount > 0">
+      <!-- 断链引用：开关开启且有未解析 [[...]] 引用时显示 -->
+      <div class="side-section" v-if="app.settings.sidebarMenus.unresolved && unresolvedCount > 0">
         <div
           class="side-section-header"
           :class="{ active: app.view.name === 'grid' && app.view.section === 'unresolved' }"
@@ -291,7 +291,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
       </div>
 
       <!-- 回收站：点击标题直接进入 -->
-      <div class="side-section">
+      <div class="side-section" v-if="app.settings.sidebarMenus.trash">
         <div
           class="side-section-header"
           :class="{ active: app.view.name === 'trash' }"

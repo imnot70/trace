@@ -13,12 +13,13 @@
         <div class="backlink-list">
           <div
             v-for="(item, i) in uniqueBacklinks"
-            :key="`${item.vault}-${item.path}-${item.targetName}-${i}`"
+            :key="`${item.vault}-${item.path}-${i}`"
             class="backlink-item"
+            :title="item.path"
             @click="openNote(item)"
           >
-            <div class="backlink-item-title">{{ item.title }}</div>
-            <div class="backlink-item-snippet" v-html="highlightTarget(item.snippet, item.targetName)" />
+            <el-icon class="backlink-item-icon"><Document /></el-icon>
+            <span class="backlink-item-title">{{ item.title }}</span>
           </div>
         </div>
       </div>
@@ -38,7 +39,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import { Close, Link } from '@element-plus/icons-vue'
+import { Close, Document, Link } from '@element-plus/icons-vue'
 import type { BacklinkRef, FsChangedPayload } from '@shared/types'
 
 const props = defineProps<{
@@ -60,7 +61,7 @@ const uniqueBacklinks = computed(() => {
   const seen = new Set<string>()
   const out: BacklinkRef[] = []
   for (const b of backlinks.value) {
-    const k = `${b.vault}::${b.path}::${b.targetName}`
+    const k = `${b.vault}::${b.path}`
     if (seen.has(k)) continue
     seen.add(k)
     out.push(b)
@@ -132,22 +133,6 @@ function openNote(item: BacklinkRef) {
   open.value = false
   emit('open-note', item.vault, item.path)
 }
-
-function highlightTarget(snippet: string, targetName: string): string {
-  if (!targetName) return escapeHtml(snippet)
-  // 目标名同样经过 HTML 转义后再参与匹配，含 & < > " 的笔记名才能命中转义后的片段
-  const escaped = escapeHtml(targetName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const regex = new RegExp(`(\\[\\[${escaped}(?:\\|[^\\]]*?)?\\]\\])`, 'gi')
-  return escapeHtml(snippet).replace(regex, '<mark>$1</mark>')
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
 </script>
 
 <style scoped>
@@ -206,8 +191,8 @@ function escapeHtml(text: string): string {
   position: absolute;
   bottom: calc(100% + 8px);
   right: 0;
-  width: 380px;
-  max-width: min(70vw, 480px);
+  width: 240px;
+  max-width: min(70vw, 320px);
   max-height: min(320px, 40vh);
   display: flex;
   flex-direction: column;
@@ -264,42 +249,35 @@ function escapeHtml(text: string): string {
 
 .backlink-list {
   overflow-y: auto;
-  padding: 6px 8px;
+  padding: 5px 6px;
 }
 
 .backlink-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 8px;
   border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.1s;
-  margin-bottom: 2px;
 }
 
 .backlink-item:hover {
   background: var(--bg-hover);
 }
 
-.backlink-item-title {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-primary);
-  margin-bottom: 2px;
+.backlink-item-icon {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
 }
 
-.backlink-item-snippet {
-  font-size: 11px;
-  color: var(--text-secondary);
+.backlink-item-title {
+  font-size: 12px;
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 1.3;
-}
-
-.backlink-item-snippet :deep(mark) {
-  background-color: var(--accent-light);
-  color: var(--accent);
-  padding: 0 1px;
-  border-radius: 1px;
 }
 
 /* 弹层出现 / 消失：自胶囊上方轻轻浮出 */

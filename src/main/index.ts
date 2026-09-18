@@ -147,7 +147,9 @@ app.whenReady().then(() => {
     pluginEnabled: {},
     gitSource: null,
     windowGlassEffect: 'auto',
-    windowOpacity: 100
+    windowOpacity: 100,
+    sidebarMenus: { recents: true, favorites: true, tags: true, unresolved: true, trash: true },
+    showBacklinks: true
   })
 
   settingsService = new SettingsService(settingsStore)
