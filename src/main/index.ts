@@ -90,6 +90,9 @@ function createWindow(): void {
     title: 'Trace 笔迹',
     backgroundColor: isTransparent ? '#00000000' : '#f5f6f8',
     transparent: isTransparent,
+    // 透明窗口下系统阴影是方形的，会从内容圆角的透明缺口里透出来
+    // （浅色壁纸上尤其明显，像直角残留）；窗口层次感由内容卡片阴影承担
+    hasShadow: !isTransparent,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
