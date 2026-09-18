@@ -49,7 +49,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'open-note', vault: string, path: string): void
+  (e: 'open-note', vault: string, path: string, line?: number): void
 }>()
 
 const backlinks = ref<BacklinkRef[]>([])
@@ -131,7 +131,7 @@ onBeforeUnmount(() => {
 
 function openNote(item: BacklinkRef) {
   open.value = false
-  emit('open-note', item.vault, item.path)
+  emit('open-note', item.vault, item.path, item.line)
 }
 </script>
 

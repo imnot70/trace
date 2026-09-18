@@ -448,12 +448,12 @@ function firstVisibleLine(): { line: number; ratio: number } | null {
   return { line, ratio }
 }
 
-/** 滚动到指定源码行（0 基），供预览→编辑器同步。
+/** 滚动到指定源码行（0 基），供预览→编辑器同步 / 反向链接定位。
  *  注意 scrollIntoView 接受的是文档字符偏移（pos），须先经 doc.line(n).from 换算 */
-function scrollToLine(line: number): void {
+function scrollToLine(line: number, y: 'start' | 'center' | 'end' | 'nearest' = 'start'): void {
   if (!view) return
   const lineNo = Math.min(line + 1, view.state.doc.lines)
-  view.dispatch({ effects: EditorView.scrollIntoView(view.state.doc.line(lineNo).from, { y: 'start' }) })
+  view.dispatch({ effects: EditorView.scrollIntoView(view.state.doc.line(lineNo).from, { y }) })
 }
 
 defineExpose({

@@ -144,9 +144,14 @@ function onPreviewOpenNote(target: { vault: string; path: string; name: string }
   void actions.openNote(target.vault, target.path, target.name)
 }
 
-function onBacklinkOpenNote(vault: string, path: string): void {
+/** 反向链接点击：打开来源笔记并定位到引用行（line 为 1 基） */
+async function onBacklinkOpenNote(vault: string, path: string, line?: number): Promise<void> {
   const name = path.split('/').pop()?.replace(/\.md$/i, '') ?? ''
-  void actions.openNote(vault, path, name)
+  await actions.openNote(vault, path, name)
+  if (!line) return
+  await nextTick()
+  editorRef.value?.scrollToLine(line - 1, 'center')
+  editorRef.value?.focus()
 }
 
 // Ctrl/Cmd+S 手动保存；Alt+P 呼出/收起悬浮预览；Esc 收起悬浮预览
