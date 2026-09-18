@@ -8,7 +8,19 @@ import type { BacklinkRef } from '@shared/types'
 interface WikilinkEntry {
   targetName: string
   line: number
+  /** 文件内出现序号（0 起）——同一行可能有多个引用，作为索引详情 key 防止互相覆盖 */
+  idx: number
   raw: string
+}
+
+/**
+ * 取双链目标的叶子名（`[[子目录/笔记C]]` → `笔记C`）。
+ * 双链按笔记名在库内解析（先完整路径后叶子名，见 FsTreeService.resolveByName），
+ * 反向索引 / 断链检测统一按叶子名归属，路径形式引用才不会漏配或误报。
+ */
+function leafName(target: string): string {
+  const name = target.split('/').pop() ?? target
+  return name.trim()
 }
 
 /** 双链索引服务：构建 [[笔记名]] 的正向/反向索引，支持反向链接查询和断链检测 */
@@ -84,9 +96,9 @@ export class WikilinkService {
         this.forwardIndex.set(key, entries)
         linkCount += entries.length
 
-        // 构建反向索引
+        // 构建反向索引（按叶子名归属，路径形式引用 [[dir/name]] 也计入对 name 的引用）
         for (const entry of entries) {
-          const detailKey = `${key}:${entry.line}`
+          const detailKey = `${key}:${entry.idx}`
           const ref: BacklinkRef = {
             vault,
             path: relativePath,
@@ -97,10 +109,11 @@ export class WikilinkService {
           }
           this.refDetails.set(detailKey, ref)
 
-          let set = this.reverseIndex.get(entry.targetName)
+          const targetLeaf = leafName(entry.targetName)
+          let set = this.reverseIndex.get(targetLeaf)
           if (!set) {
             set = new Set()
-            this.reverseIndex.set(entry.targetName, set)
+            this.reverseIndex.set(targetLeaf, set)
           }
           set.add(detailKey)
         }
@@ -126,6 +139,7 @@ export class WikilinkService {
         entries.push({
           targetName: match[1].trim(),
           line: i + 1,
+          idx: entries.length,
           raw: match[0]
         })
       }
@@ -138,11 +152,12 @@ export class WikilinkService {
     const oldEntries = this.forwardIndex.get(key)
     if (!oldEntries) return
     for (const entry of oldEntries) {
-      const detailKey = `${key}:${entry.line}`
-      const set = this.reverseIndex.get(entry.targetName)
+      const detailKey = `${key}:${entry.idx}`
+      const targetLeaf = leafName(entry.targetName)
+      const set = this.reverseIndex.get(targetLeaf)
       if (set) {
         set.delete(detailKey)
-        if (set.size === 0) this.reverseIndex.delete(entry.targetName)
+        if (set.size === 0) this.reverseIndex.delete(targetLeaf)
       }
       this.refDetails.delete(detailKey)
     }
@@ -174,7 +189,7 @@ export class WikilinkService {
 
   /**
    * 获取引用指定笔记的反向链接列表
-   * @param vault 当前库名
+   * @param vault 当前库名（双链只在库内解析，跨库同名引用不归属本笔记）
    * @param notePath 笔记相对路径（用于确定笔记显示名）
    */
   getBacklinks(vault: string, notePath: string): BacklinkRef[] {
@@ -185,8 +200,8 @@ export class WikilinkService {
     const results: BacklinkRef[] = []
     for (const dk of detailKeys) {
       const ref = this.refDetails.get(dk)
-      // 排除自身引用
-      if (ref && !(ref.vault === vault && ref.path === notePath)) {
+      // 仅同库引用归属本笔记；排除自身引用
+      if (ref && ref.vault === vault && !(ref.path === notePath)) {
         results.push(ref)
       }
     }
@@ -213,7 +228,8 @@ export class WikilinkService {
     const seen = new Set<string>()
     for (const [detailKey, ref] of this.refDetails) {
       if (vault && ref.vault !== vault) continue
-      if (!knownNames.has(ref.targetName) && !seen.has(detailKey)) {
+      // 路径形式引用 [[dir/name]] 按叶子名判断是否可解析
+      if (!knownNames.has(leafName(ref.targetName)) && !seen.has(detailKey)) {
         seen.add(detailKey)
         results.push(ref)
       }
@@ -243,11 +259,12 @@ export class WikilinkService {
       this.forwardIndex.set(key, entries)
 
       for (const entry of entries) {
-        const detailKey = `${key}:${entry.line}`
+        const detailKey = `${key}:${entry.idx}`
         const ref: BacklinkRef = { vault, path: filePath, title, line: entry.line, snippet: entry.raw, targetName: entry.targetName }
         this.refDetails.set(detailKey, ref)
-        let set = this.reverseIndex.get(entry.targetName)
-        if (!set) { set = new Set(); this.reverseIndex.set(entry.targetName, set) }
+        const targetLeaf = leafName(entry.targetName)
+        let set = this.reverseIndex.get(targetLeaf)
+        if (!set) { set = new Set(); this.reverseIndex.set(targetLeaf, set) }
         set.add(detailKey)
       }
     } catch (e) {
@@ -274,11 +291,26 @@ export class WikilinkService {
     const oldTitle = noteDisplayName(path.basename(oldPath))
     const newTitle = noteDisplayName(path.basename(newPath))
 
-    // 搬移正向索引
+    // 搬移正向索引，并把引用详情 key 从旧路径重映射到新路径
+    // （detailKey 形如 `${vault}:${path}:${idx}`，不重映射的话后续增量清理会漏删旧条目）
     const entries = this.forwardIndex.get(oldKey)
     if (entries) {
       this.forwardIndex.delete(oldKey)
       this.forwardIndex.set(newKey, entries)
+      for (const entry of entries) {
+        const oldDk = `${oldKey}:${entry.idx}`
+        const newDk = `${newKey}:${entry.idx}`
+        const ref = this.refDetails.get(oldDk)
+        if (!ref) continue
+        this.refDetails.delete(oldDk)
+        ref.path = newPath
+        this.refDetails.set(newDk, ref)
+        const set = this.reverseIndex.get(leafName(entry.targetName))
+        if (set) {
+          set.delete(oldDk)
+          set.add(newDk)
+        }
+      }
     }
 
     // 更新所有引用了旧名的反向索引条目

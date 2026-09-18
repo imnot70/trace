@@ -51,19 +51,34 @@ function toggleUnresolvedView(): void {
   }
 }
 
-// 笔记保存后刷新断链计数
-const fsChangedHandler = (): void => { void loadUnresolvedCount() }
+// 笔记保存后刷新断链计数。主进程双链索引异步增量更新，延迟一拍再查询拿到的才是新数据
+const fsChangedHandler = (): void => {
+  if (unresolvedRefreshTimer) clearTimeout(unresolvedRefreshTimer)
+  unresolvedRefreshTimer = setTimeout(() => void loadUnresolvedCount(), 600)
+}
+let unresolvedRefreshTimer: ReturnType<typeof setTimeout> | null = null
 onMounted(() => {
   void loadUnresolvedCount()
   window.trace.onFsChanged(fsChangedHandler)
 })
 onBeforeUnmount(() => {
+  if (unresolvedRefreshTimer) clearTimeout(unresolvedRefreshTimer)
   // 注意：onFsChanged 返回取消函数，但这里不做取消（与全局订阅生命周期一致）
 })
 
 function toggleSection(): void {
   tree.vaultSectionOpen = !tree.vaultSectionOpen
 }
+
+/** 分组分隔线：笔记库之上是否还有可见的快捷分区（断链引用仅在确有断链时计入） */
+const hasQuickSections = computed(
+  () =>
+    app.settings.sidebarMenus.recents ||
+    app.settings.sidebarMenus.favorites ||
+    app.settings.sidebarMenus.tags ||
+    (app.settings.sidebarMenus.unresolved && unresolvedCount.value > 0) ||
+    app.settings.sidebarMenus.trash
+)
 
 /** 点击库行：展开/收起，并更新位置上下文（Ctrl+N 新建目标） */
 function clickVaultRow(vault: string): void {
@@ -203,8 +218,8 @@ defineProps<{ vaults?: VaultInfo[] }>()
     </div>
 
     <div class="sidebar-scroll">
-      <!-- 常用：点击标题在主区域打开卡片网格 -->
-      <div class="side-section">
+      <!-- 常用：点击标题在主区域打开卡片网格（可在设置 → 通用 → 侧栏菜单中隐藏） -->
+      <div class="side-section" v-if="app.settings.sidebarMenus.recents">
         <div
           class="side-section-header"
           :class="{ active: isGridOpen('recents') }"
@@ -219,7 +234,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
       </div>
 
       <!-- 收藏：点击标题在主区域打开卡片网格 -->
-      <div class="side-section">
+      <div class="side-section" v-if="app.settings.sidebarMenus.favorites">
         <div
           class="side-section-header"
           :class="{ active: isGridOpen('favorites') }"
@@ -234,7 +249,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
       </div>
 
       <!-- 标签：点击标签筛选笔记（区块标题不随选中标签高亮，如同选中笔记不点亮其父文件夹） -->
-      <div class="side-section">
+      <div class="side-section" v-if="app.settings.sidebarMenus.tags">
         <div
           class="side-section-header"
           @click="tree.tags.length ? toggleGrid('tags', tree.tags[0].id) : createTag()"
@@ -272,8 +287,8 @@ defineProps<{ vaults?: VaultInfo[] }>()
         </div>
       </div>
 
-      <!-- 断链引用：TODO 暂时隐藏，待反向链接面板修复后恢复 -->
-      <!-- <div class="side-section" v-if="unresolvedCount > 0">
+      <!-- 断链引用：开关开启且有未解析 [[...]] 引用时显示 -->
+      <div class="side-section" v-if="app.settings.sidebarMenus.unresolved && unresolvedCount > 0">
         <div
           class="side-section-header"
           :class="{ active: app.view.name === 'grid' && app.view.section === 'unresolved' }"
@@ -283,10 +298,10 @@ defineProps<{ vaults?: VaultInfo[] }>()
           <span>断链引用</span>
           <span class="side-section-count">{{ unresolvedCount }}</span>
         </div>
-      </div> -->
+      </div>
 
       <!-- 回收站：点击标题直接进入 -->
-      <div class="side-section">
+      <div class="side-section" v-if="app.settings.sidebarMenus.trash">
         <div
           class="side-section-header"
           :class="{ active: app.view.name === 'trash' }"
@@ -299,6 +314,9 @@ defineProps<{ vaults?: VaultInfo[] }>()
           }}</span>
         </div>
       </div>
+
+      <!-- 分组分隔线：上方快捷入口区与笔记库区之间（上方全部隐藏时不显示） -->
+      <div v-if="hasQuickSections" class="side-divider"></div>
 
       <!-- 笔记库：箭头展开树，标题打开库网格 -->
       <div class="side-section">

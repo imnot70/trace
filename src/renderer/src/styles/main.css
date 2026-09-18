@@ -54,6 +54,8 @@ body,
   height: 100%;
   margin: 0;
   overflow: hidden;
+  /* 底部两角圆角：与系统标题栏的顶部圆角视觉一致（窗口默认透明，圆角外透出桌面/模糊层） */
+  border-radius: 0 0 10px 10px;
 }
 
 body {
@@ -66,7 +68,8 @@ body {
     sans-serif;
   font-size: 14px;
   color: var(--text-primary);
-  background: var(--bg-secondary);
+  /* 透明背景：让 #app 的底部圆角外区域透出窗口外（玻璃效果/桌面） */
+  background: transparent;
 }
 
 /* ========== 全局布局：灰色画布上的圆角卡片 ========== */
@@ -228,6 +231,14 @@ body {
 
 .side-section {
   padding: 4px 8px;
+}
+
+/* 侧栏分组分隔线：快捷入口区（常用/收藏/标签/断链引用/回收站）与笔记库区之间 */
+.side-divider {
+  height: 1px;
+  margin: 7px 12px;
+  background: var(--border-color);
+  flex-shrink: 0;
 }
 
 .side-section-header {

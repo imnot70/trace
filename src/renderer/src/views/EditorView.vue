@@ -436,13 +436,13 @@ onBeforeUnmount(() => {
       />
     </div>
 
-    <!-- 反向链接面板（编辑器底部折叠区域）—— TODO: 面板显示有 bug，暂时隐藏 -->
-    <!-- <BacklinkPanel
-      :visible="!!editor.current"
+    <!-- 反向链接悬浮入口（编辑卡右下角，受「在编辑区显示反向链接」设置控制） -->
+    <BacklinkPanel
+      :visible="!!editor.current && app.settings.sidebarMenus.unresolved && app.settings.showBacklinks"
       :vault="editor.current?.vault ?? ''"
       :note-path="editor.current?.path ?? ''"
       @open-note="onBacklinkOpenNote"
-    /> -->
+    />
   </div>
 
   <!-- 分栏拖拽间隙（预览隐藏时一并隐藏） -->
@@ -500,6 +500,7 @@ onBeforeUnmount(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  position: relative; /* 反向链接悬浮入口的定位锚 */
   background: var(--bg-primary);
   border-radius: 8px;
   overflow: hidden;
