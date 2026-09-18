@@ -124,7 +124,7 @@ autocompletion({
 |------|---------|
 | `[[笔记名]]` 匹配到笔记 | 设置 `data-internal`，点击跳转 |
 | `[[笔记名]]` 未匹配到 | 断链校验 watcher 标记 `data-broken`，删除线样式 |
-| `[[笔记名]]` 同名多笔记 | 取第一个匹配，控制台 warn |
+| `[[笔记名]]` 同名多笔记 | 点击弹候选列表消歧（标题 + 完整路径）；data-internal 默认取第一个匹配 |
 | `#anchor` 锚点存在 | `scrollIntoView` 平滑滚动 |
 | `#anchor` 锚点不存在 | toast 提示「锚点不存在」 |
 | 补全无匹配项 | 不显示补全列表 |
@@ -162,7 +162,7 @@ autocompletion({
 chokidar 监听（含应用内保存 / 外部编辑 / 删除 / 还原）
   → WatcherService 防抖聚合（400ms）
     → WikilinkService.updateFileIndex（单文件增量，删除按文件不存在处理）
-    → fs:changed → 渲染进程（反向链接面板 / 侧栏断链计数延迟一拍刷新）
+    → fs:changed → 渲染进程（反向链接弹层 / 侧栏断链计数延迟一拍刷新）
 git 同步 / 自动同步挂起期间丢弃的事件 → resume 后 buildIndex(true) 全量重建
 重命名 → fsTree.renameNode 改写库内 [[旧名]] + WikilinkService.renameNoteInIndex 迁移索引
 ```

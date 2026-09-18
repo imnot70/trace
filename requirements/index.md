@@ -14,7 +14,7 @@
 | [preview-enhancement-design.md](2026-09-09_preview-enhancement/preview-enhancement-design.md) | 预览增强设计：HTML 内嵌（DOMPurify 净化）、a 标签跳转（外部 + 库内笔记）、行级双向同步滚动 | ✅ **已实施**（2026-09-09 发布 v0.3.7） |
 | [bundled-git-design.md](2026-09-10_bundled-git/bundled-git-design.md) | 内置 Git 设计与实施：捆绑 MinGit/dugite + build 时解压 + 触发时检测 + 条件弹窗；含实测体积、决策记录与验证清单 | ✅ **已实施**（Windows 已验证，Linux 待 CI）｜D-BG1–D-BG11 |
 | [move-node_design.md](2026-09-12_move-node/move-node_design.md) | 文件/文件夹移动设计（库内）：树形文件夹选择器 + renameNode 校验管道复用 | ✅ **已实施**（v0.4.0 发布） |
-| [wiki-link-anchor_design.md](2026-09-12_wiki-link-anchor/wiki-link-anchor_design.md) | 双链 P1 + 页内锚点 + 锚点补全：`[[笔记名]]` 可点击、标题 id 生成、锚点跳转、`#` 补全 | ✅ **已实施**（v0.4.0 发布） |
+| [wiki-link-anchor_design.md](2026-09-12_wiki-link-anchor/wiki-link-anchor_design.md) | 双链 P1–P3 + 页内锚点 + 锚点补全：`[[笔记名]]` 可点击、同名消歧、反向链接、重命名改写 | ✅ **已实施**（P1 v0.4.0；P3 含修复与消歧随 v0.4.4 发布） |
 | [floating-preview-scroll-sync_design.md](2026-09-13_floating-preview-scroll-sync/floating-preview-scroll-sync_design.md) | 悬浮预览滚动同步：接入双向滚动，关闭时同步固定预览进度 | ✅ **已实施**（v0.4.0 发布） |
 | [relative-time_design.md](2026-09-13_relative-time/relative-time_design.md) | 常用网格卡片显示相对时间 | ✅ **已实施**（v0.4.0 发布） |
 | [note-info_design.md](2026-09-13_note-info/note-info_design.md) | 笔记「信息」菜单：创建时间 / 最后修改时间 | ✅ **已实施**（v0.4.0 发布） |
@@ -162,7 +162,7 @@
 
 ### 功能规划（已排期讨论，方案见下）
 
-- **笔记互相引用（wiki 双链）**：P1 已实施（v0.4.0：预览可点击 + 断链样式 + 锚点补全）；**P2 已实施**（编辑器 `[[` 自动补全当前库笔记路径，排除自引用、按输入过滤，选中自动闭合 `]]`——随双链 P1 一并实现，此前记录过时已修正）。**P3 已实施**（反向链接面板 + 断链引用入口 + 重命名时自动改写 `[[旧名]]`，待发版；索引由文件监听增量更新，保存 / 外部编辑 / git 同步后均保持新鲜，设计缺陷已修复——索引详情按行内序号区分同行多引用、路径形式双链按叶子名归属不误报断链、跨库同名引用不计入反向链接）
+- **笔记互相引用（wiki 双链）**：P1 已实施（v0.4.0：预览可点击 + 断链样式 + 锚点补全）；**P2 已实施**（编辑器 `[[` 自动补全当前库笔记路径，排除自引用、按输入过滤，选中自动闭合 `]]`——随双链 P1 一并实现，此前记录过时已修正）。**P3 已随 v0.4.4 发布**（反向链接悬浮入口 + 弹层、断链引用入口、重命名时自动改写 `[[旧名]]`；索引由文件监听增量更新，保存 / 外部编辑 / git 同步后均保持新鲜，设计缺陷已修复——索引详情按行内序号区分同行多引用、路径形式双链按叶子名归属不误报断链、跨库同名引用不计入反向链接）。v0.4.4 后追加：点击反向链接定位到引用行；同名双链点击弹候选列表消歧
 
 ### 二期 Backlog（源自 PRD 第 7 节）
 
