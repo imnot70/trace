@@ -436,13 +436,13 @@ onBeforeUnmount(() => {
       />
     </div>
 
-    <!-- 反向链接面板（编辑器底部折叠区域） -->
-    <BacklinkPanel
+    <!-- 反向链接面板（编辑器底部折叠区域）—— TODO: 面板显示有 bug，暂时隐藏 -->
+    <!-- <BacklinkPanel
       :visible="!!editor.current"
       :vault="editor.current?.vault ?? ''"
       :note-path="editor.current?.path ?? ''"
       @open-note="onBacklinkOpenNote"
-    />
+    /> -->
   </div>
 
   <!-- 分栏拖拽间隙（预览隐藏时一并隐藏） -->

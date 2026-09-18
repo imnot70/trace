@@ -272,8 +272,8 @@ defineProps<{ vaults?: VaultInfo[] }>()
         </div>
       </div>
 
-      <!-- 断链引用：点击标题显示未解析的双链引用列表 -->
-      <div class="side-section" v-if="unresolvedCount > 0">
+      <!-- 断链引用：TODO 暂时隐藏，待反向链接面板修复后恢复 -->
+      <!-- <div class="side-section" v-if="unresolvedCount > 0">
         <div
           class="side-section-header"
           :class="{ active: app.view.name === 'grid' && app.view.section === 'unresolved' }"
@@ -283,7 +283,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
           <span>断链引用</span>
           <span class="side-section-count">{{ unresolvedCount }}</span>
         </div>
-      </div>
+      </div> -->
 
       <!-- 回收站：点击标题直接进入 -->
       <div class="side-section">

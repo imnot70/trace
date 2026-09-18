@@ -6,7 +6,7 @@ import { basicSetup } from 'codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { undo, redo } from '@codemirror/commands'
-import { autocompletion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete'
+import { autocompletion, startCompletion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete'
 import { useTreeStore } from '../stores/tree'
 import type { TreeNode } from '@shared/types'
 
@@ -32,16 +32,6 @@ function slugify(text: string): string {
   return text.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\u4e00-\u9fff-]/g, '')
 }
 
-/** 递归收集目录下所有笔记名（去 .md 后缀） */
-function collectNotes(nodes: TreeNode[], prefix = ''): string[] {
-  const result: string[] = []
-  for (const n of nodes) {
-    if (n.kind === 'note') result.push(prefix ? `${prefix}/${n.name}` : n.name)
-    else if (n.kind === 'dir' && n.children) result.push(...collectNotes(n.children, prefix ? `${prefix}/${n.name}` : n.name))
-  }
-  return result
-}
-
 /** 根据相对路径获取目录节点 */
 function getDirAt(tree: TreeNode[], relDir: string): TreeNode[] {
   if (!relDir) return tree
@@ -59,32 +49,71 @@ function getDirAt(tree: TreeNode[], relDir: string): TreeNode[] {
 
 /** 综合补全：[[双链]] 笔记名 + 相对路径 + 锚点 */
 function traceCompletions(context: CompletionContext): CompletionResult | null {
-  // 1. [[双链]] 笔记名补全
+  // 1. [[双链]] 笔记名补全（逐级路径）
   const wikilink = context.matchBefore(/\[\[[^\]]*$/)
   if (wikilink) {
     const prefix = wikilink.text.slice(2) // 去掉 [[
     const tree = useTreeStore()
     const nodes = tree.trees[props.vault] ?? []
-    const notes = collectNotes(nodes)
-    // 排除当前笔记自身（用完整路径比较，避免不同目录下同名笔记被误排除）
-    const currentRel = props.notePath.replace(/\.md$/i, '').toLowerCase()
-    const filtered = notes
-      .filter((n) => n.toLowerCase() !== currentRel)
-      .filter((n) => !prefix || n.toLowerCase().includes(prefix.toLowerCase()))
-    if (filtered.length === 0) return null
-    return {
-      from: wikilink.from + 2,
-      options: filtered.map((n) => ({
-        label: n,
-        detail: '笔记',
-        // 选中后自动闭合 ]]，光标停在闭合符前（便于继续追加 |显示名）
-        apply: (view, _completion, from, to) => {
-          view.dispatch({
-            changes: { from, to, insert: `${n}]]` },
-            selection: { anchor: from + n.length }
+    const currentRel = props.notePath.replace(/\.md$/i, '')
+
+    // 逐级补全：按 "/" 分割，最后一段是当前输入前缀，前面的是已选路径
+    const segments = prefix.split('/')
+    const dirSegments = segments.length > 1 ? segments.slice(0, -1) : []
+    const inputPrefix = segments.length > 1 ? segments[segments.length - 1] : prefix
+
+    // 定位到当前目录节点
+    let currentNodes = nodes
+    for (const seg of dirSegments) {
+      const child = currentNodes.find(
+        (n) => n.kind === 'dir' && n.name.toLowerCase() === seg.toLowerCase()
+      )
+      if (!child || child.kind !== 'dir' || !child.children) return null
+      currentNodes = child.children
+    }
+
+    const basePath = dirSegments.length > 0 ? dirSegments.join('/') + '/' : ''
+    const completionFrom = wikilink.from + 2
+    const completionTo = completionFrom + prefix.length
+
+    // 收集当前层级的文件夹和笔记
+    const options: { label: string; detail: string; apply: string | ((view: EditorView, _c: any, from: number, to: number) => void) }[] = []
+    for (const node of currentNodes) {
+      if (node.name.startsWith('.')) continue
+      if (node.kind === 'dir') {
+        if (!inputPrefix || node.name.toLowerCase().startsWith(inputPrefix.toLowerCase())) {
+          const folderLabel = basePath + node.name + '/'
+          options.push({
+            label: folderLabel,
+            detail: '文件夹',
+            apply: (view: EditorView, _c: any, from: number, to: number) => {
+              // 替换 [[ 和游标之间的文本，光标停在 / 后
+              view.dispatch({
+                changes: { from, to, insert: folderLabel },
+                selection: { anchor: from + folderLabel.length }
+              })
+              // 延迟触发下一轮补全
+              setTimeout(() => startCompletion(view), 50)
+            }
           })
         }
-      }))
+      } else if (node.kind === 'note') {
+        const notePath = basePath + node.name
+        if (notePath.toLowerCase() === currentRel.toLowerCase()) continue
+        if (!inputPrefix || node.name.toLowerCase().startsWith(inputPrefix.toLowerCase())) {
+          // 笔记用简单字符串替换，自动处理闭合 ]] 的逻辑
+          options.push({
+            label: basePath + node.name,
+            detail: '笔记'
+          })
+        }
+      }
+    }
+    if (options.length === 0) return null
+    return {
+      from: completionFrom,
+      to: completionTo,
+      options
     }
   }
 
@@ -221,7 +250,40 @@ const traceTheme = EditorView.theme({
   '.cm-selectionBackground, &.cm-focused .cm-selectionBackground': {
     backgroundColor: 'var(--accent-soft) !important'
   },
-  '.cm-cursor': { borderLeftColor: 'var(--accent)' }
+  '.cm-cursor': { borderLeftColor: 'var(--accent)' },
+  // 补全提示框样式（匹配应用整体风格）
+  '.cm-tooltip': {
+    border: '1px solid var(--border-color)',
+    borderRadius: '6px',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    backgroundColor: 'var(--bg-primary)',
+    overflow: 'hidden'
+  },
+  '.cm-tooltip-autocomplete': {
+    maxHeight: '240px',
+    overflow: 'auto'
+  },
+  '.cm-tooltip-autocomplete > ul': {
+    fontFamily: "'JetBrains Mono', 'Fira Code', 'Sarasa Mono SC', Consolas, monospace",
+    fontSize: '12px'
+  },
+  '.cm-tooltip-autocomplete > ul > li': {
+    padding: '4px 10px',
+    lineHeight: '1.6',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  '.cm-tooltip-autocomplete > ul > li[aria-selected]': {
+    backgroundColor: 'var(--accent)',
+    color: '#fff'
+  },
+  '.cm-completionDetail': {
+    fontSize: '11px',
+    color: 'var(--text-tertiary)',
+    marginLeft: 'auto',
+    fontStyle: 'normal'
+  }
 })
 
 const selfClosers = new Set(['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'])
