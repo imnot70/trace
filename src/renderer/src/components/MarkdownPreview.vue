@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { computed, h, nextTick, ref, watch } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import DOMPurify from 'dompurify'
 import { md } from '../lib/markdown'
 import { maskFrontmatter } from '@shared/noteTags'
@@ -70,8 +70,8 @@ function rewriteInternalLinks(html: string): string {
       const wikilink = match.match(/data-wikilink="([^"]*)"/)?.[1] ?? ''
       if (wikilink) {
         const resolved = wikilinkResolutions.get(wikilink)
-        if (resolved) {
-          return match.replace(' href="', ` data-internal="${resolved.replace(/"/g, '&quot;')}" href="`)
+        if (resolved && resolved.length > 0) {
+          return match.replace(' href="', ` data-internal="${resolved[0].replace(/"/g, '&quot;')}" href="`)
         }
         // 未解析到时标记为断链
         return match.replace(' href="', ` data-internal="${wikilink.replace(/"/g, '&quot;')}" data-broken href="`)
@@ -98,11 +98,11 @@ function rewriteImages(html: string): string {
   })
 }
 
-// [[双链]] 解析结果缓存：wikilink名 → 库内路径
-const wikilinkResolutions = new Map<string, string>()
+// [[双链]] 解析结果缓存：wikilink名 → 同名候选路径列表（0 个 = 断链，>1 个 = 需消歧）
+const wikilinkResolutions = new Map<string, string[]>()
 let wikilinkSeq = 0
 
-/** 异步解析所有 [[双链]] 链接，设置 data-internal */
+/** 异步解析所有 [[双链]] 链接，设置 data-internal / data-ambiguous */
 async function resolveWikilinks(): Promise<void> {
   const seq = ++wikilinkSeq
   await nextTick()
@@ -113,21 +113,27 @@ async function resolveWikilinks(): Promise<void> {
     const name = link.getAttribute('data-wikilink')
     if (!name) continue
     if (wikilinkResolutions.has(name)) {
-      const cached = wikilinkResolutions.get(name)!
-      link.setAttribute('data-internal', cached)
-      link.removeAttribute('data-broken')
+      applyResolution(link, wikilinkResolutions.get(name)!)
       continue
     }
-    const result = await window.trace.resolveByName(props.vault, name)
+    const result = await window.trace.resolveByNameCandidates(props.vault, name)
     if (seq !== wikilinkSeq) return
-    if (result.ok && result.path) {
-      wikilinkResolutions.set(name, result.path)
-      link.setAttribute('data-internal', result.path)
-      link.removeAttribute('data-broken')
+    const paths = result.ok && result.paths ? result.paths : []
+    if (paths.length > 0) {
+      wikilinkResolutions.set(name, paths)
+      applyResolution(link, paths)
     }
   }
   if (seq !== wikilinkSeq) return
   checkBrokenLinks()
+}
+
+/** 把解析结果落到链接上：data-internal 取首个候选，多候选标记 data-ambiguous 供点击消歧 */
+function applyResolution(link: Element, paths: string[]): void {
+  link.setAttribute('data-internal', paths[0])
+  link.removeAttribute('data-broken')
+  if (paths.length > 1) link.setAttribute('data-ambiguous', '')
+  else link.removeAttribute('data-ambiguous')
 }
 
 const html = computed(() => {
@@ -220,6 +226,10 @@ function onPreviewClick(e: MouseEvent): void {
       ElMessage.warning(`笔记不存在：${internal}`)
       return
     }
+    if (anchor.hasAttribute('data-ambiguous')) {
+      void openAmbiguousPicker(anchor.getAttribute('data-wikilink') ?? internal)
+      return
+    }
     emit('open-note', { vault: props.vault, path: internal, name: noteName(internal) })
     return
   }
@@ -243,6 +253,50 @@ function checkBrokenLinks(): void {
       if (seq !== brokenSeq) return
       if (!result.ok) link.setAttribute('data-broken', '')
     }
+  })()
+}
+
+// ---------- 双链同名消歧：点击多候选链接时列出全部同名笔记供选择 ----------
+function openAmbiguousPicker(name: string): void {
+  void (async () => {
+    const result = await window.trace.resolveByNameCandidates(props.vault, name)
+    const paths = result.ok && result.paths ? result.paths : []
+    if (paths.length === 0) {
+      ElMessage.warning(`笔记不存在：${name}`)
+      return
+    }
+    // 只有一个候选（解析后重名已消除）时直接打开
+    if (paths.length === 1) {
+      emit('open-note', { vault: props.vault, path: paths[0], name: noteName(paths[0]) })
+      return
+    }
+    ElMessageBox({
+      title: `「${name}」有 ${paths.length} 篇同名笔记`,
+      message: h(
+        'div',
+        { class: 'wikilink-ambig-list' },
+        paths.map((p) =>
+          h(
+            'div',
+            {
+              class: 'wikilink-ambig-item',
+              onClick: () => {
+                ElMessageBox.close()
+                emit('open-note', { vault: props.vault, path: p, name: noteName(p) })
+              }
+            },
+            [
+              h('span', { class: 'ambig-title' }, noteName(p)),
+              h('span', { class: 'ambig-path' }, p)
+            ]
+          )
+        )
+      ),
+      showConfirmButton: false,
+      showCancelButton: false
+    }).catch(() => {
+      /* 右上角关闭 / Esc */
+    })
   })()
 }
 

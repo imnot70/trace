@@ -166,6 +166,36 @@ describe('目录与笔记', () => {
     expect(fs.existsSync(path.join(vaults.vaultPath('库'), '笔记.md'))).toBe(false)
   })
 
+  it('按名称解析：同名候选全部返回，唯一时返回单个', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    fsTree.createNote('库', '', '同名')
+    fsTree.createDir('库', '', 'a')
+    fsTree.createNote('库', 'a', '同名')
+    fsTree.createDir('库', '', 'b')
+    fsTree.createNote('库', 'b', '同名')
+    fsTree.createNote('库', '', '唯一')
+
+    const all = fsTree.resolveByNameAll('库', '同名')
+    expect(all.ok).toBe(true)
+    expect(all.paths).toHaveLength(3)
+    expect(all.paths).toContain('同名.md')
+    expect(all.paths).toContain('a/同名.md')
+    expect(all.paths).toContain('b/同名.md')
+
+    const one = fsTree.resolveByNameAll('库', '唯一')
+    expect(one.paths).toEqual(['唯一.md'])
+
+    // 路径形式精确匹配，不产生同名候选堆积
+    const pathForm = fsTree.resolveByNameAll('库', 'a/同名')
+    expect(pathForm.paths).toEqual(['a/同名.md'])
+
+    // resolveByName 保持「取第一个」契约且大小写不敏感
+    expect(fsTree.resolveByName('库', '同名').path).toBe('同名.md')
+    expect(fsTree.resolveByName('库', '唯一').path).toBe('唯一.md')
+    expect(fsTree.resolveByName('库', '不存在').ok).toBe(false)
+  })
+
   it('移动文件夹到子文件夹', () => {
     const { vaults, fsTree } = buildStack()
     vaults.create('库')

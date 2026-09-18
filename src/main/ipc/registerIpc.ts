@@ -171,6 +171,9 @@ export function registerIpc(deps: IpcDeps): void {
   handle('note:read', (vault: string, relPath: string) => deps.fsTree.readNote(vault, relPath))
   handle('note:getInfo', (vault: string, relPath: string) => deps.fsTree.noteGetInfo(vault, relPath))
   handle('note:resolveByName', (vault: string, name: string) => deps.fsTree.resolveByName(vault, name))
+  handle('note:resolveByNameCandidates', (vault: string, name: string) =>
+    deps.fsTree.resolveByNameAll(vault, name)
+  )
   handle(
     'note:write',
     (vault: string, relPath: string, content: string, expectedHash: string | null) =>

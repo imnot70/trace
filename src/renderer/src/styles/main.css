@@ -751,6 +751,41 @@ body {
   flex-shrink: 0;
 }
 
+/* 双链同名消歧候选列表（渲染在 ElMessageBox 内，需全局样式） */
+.wikilink-ambig-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wikilink-ambig-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.wikilink-ambig-item:hover {
+  background: var(--bg-hover);
+}
+
+.wikilink-ambig-item .ambig-title {
+  font-size: 13px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.wikilink-ambig-item .ambig-path {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* 树节点缩进行 */
 .tree-row {
   display: flex;

@@ -51,6 +51,8 @@ export interface TraceApi {
   readNote(vault: string, path: string): Promise<NoteContent>
   noteGetInfo(vault: string, path: string): Promise<OpResult & { info?: NoteInfo }>
   resolveByName(vault: string, name: string): Promise<OpResult & { path?: string }>
+  /** 按名称解析所有同名候选（双链同名消歧用） */
+  resolveByNameCandidates(vault: string, name: string): Promise<OpResult & { paths?: string[] }>
   writeNote(vault: string, path: string, content: string, expectedHash: string | null): Promise<OpResult & { hash?: string }>
   saveImage(vault: string, notePath: string, fileName: string, base64: string): Promise<SaveImageResult>
 

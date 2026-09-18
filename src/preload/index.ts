@@ -30,6 +30,7 @@ const api: TraceApi = {
   readNote: (vault, path) => ipcRenderer.invoke('note:read', vault, path),
   noteGetInfo: (vault, path) => ipcRenderer.invoke('note:getInfo', vault, path),
   resolveByName: (vault, name) => ipcRenderer.invoke('note:resolveByName', vault, name),
+  resolveByNameCandidates: (vault, name) => ipcRenderer.invoke('note:resolveByNameCandidates', vault, name),
   writeNote: (vault, path, content, expectedHash) =>
     ipcRenderer.invoke('note:write', vault, path, content, expectedHash),
   saveImage: (vault, notePath, fileName, base64) =>

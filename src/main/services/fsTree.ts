@@ -182,31 +182,38 @@ export class FsTreeService {
 
   /** 按笔记名解析库内路径（大小写不敏感，取第一个匹配） */
   resolveByName(vault: string, name: string): { ok: boolean; path?: string; error?: string } {
+    const result = this.resolveByNameAll(vault, name)
+    if (!result.ok) return result
+    return result.paths?.length ? { ok: true, path: result.paths[0] } : { ok: false, error: '笔记不存在' }
+  }
+
+  /** 按名称解析所有同名候选（大小写不敏感，支持路径形式），供双链同名消歧 */
+  resolveByNameAll(vault: string, name: string): { ok: boolean; paths?: string[]; error?: string } {
     try {
       const target = name.toLowerCase()
-      const found = this.findByName(this.getVaultPath(vault), '', target)
-      return found ? { ok: true, path: found } : { ok: false, error: '笔记不存在' }
+      const paths: string[] = []
+      this.collectByName(this.getVaultPath(vault), '', target, paths)
+      paths.sort((a, b) => a.localeCompare(b))
+      return { ok: true, paths }
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) }
     }
   }
 
-  private findByName(absDir: string, rel: string, target: string): string | null {
+  private collectByName(absDir: string, rel: string, target: string, out: string[]): void {
     for (const e of fs.readdirSync(absDir, { withFileTypes: true })) {
       if (e.name.startsWith('.')) continue
       const childRel = rel ? `${rel}/${e.name}` : e.name
       if (e.isFile() && e.name.toLowerCase().endsWith('.md')) {
         const leaf = noteDisplayName(e.name).toLowerCase()
-        if (leaf === target) return childRel
+        if (leaf === target) out.push(childRel)
         // 支持路径形式的双链，如 [[dir_02/for_test_02]]
-        if (target.includes('/') && childRel.replace(/\.md$/i, '').toLowerCase() === target) return childRel
+        else if (target.includes('/') && childRel.replace(/\.md$/i, '').toLowerCase() === target) out.push(childRel)
       }
       if (e.isDirectory()) {
-        const found = this.findByName(path.join(absDir, e.name), childRel, target)
-        if (found) return found
+        this.collectByName(path.join(absDir, e.name), childRel, target, out)
       }
     }
-    return null
   }
 
   /**
