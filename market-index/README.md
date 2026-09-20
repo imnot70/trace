@@ -10,11 +10,15 @@ Trace 应用内的插件市场（M4）从该仓库拉取 `trace-plugins.json` �
 
 ## 初始化 / 同步方法
 
+**前提：以下命令在 Trace 主仓库根目录执行**（即本 README 所在仓库的根目录，`market-index/` 的上一级）：
+
 ```bash
 git clone git@github.com:imnot70/trace-plugins.git
-cp -r market-index/repo/* market-index/repo/.github trace-plugins/
+cp -r market-index/repo/. trace-plugins/
 cd trace-plugins && git add -A && git commit -m "init: 市场索引" && git push
 ```
+
+说明：`cp -r market-index/repo/. ` 的「/.」写法会复制目录内**全部**内容（含 `.github` 隐藏目录）到 clone 出来的 `trace-plugins/` 文件夹。
 
 之后索引的修改以 trace-plugins 仓库为准，本目录仅作种子备份。
 
