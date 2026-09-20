@@ -157,7 +157,7 @@
 - **M1（0.4.0）**：utilityProcess 插件进程 + 能力网关 + Tier 1 API + 权限确认对话框 + 崩溃守护；示例插件改写为 Tier 1 演示
 - **M2（0.4.x）**：`.trace-plugin` 导入导出；设置页详情（权限/日志/崩溃记录）；插件私有存储（✅ 已实施，实施记录见第 11 节）
 - **M3（0.5.0）**：声明式工具栏按钮 + 状态区；类型包发 npm（✅ 已实施，类型包发布动作待办，实施记录见第 12 节）
-- **M4（0.5.x）**：GitHub 索引市场（浏览/安装/更新检查）
+- **M4（0.5.x）**：GitHub 索引市场（浏览/安装/更新检查）——方案已确认待实施，决策与开发方案见第 13 节
 - 测试基线：能力网关单元测试（权限过滤矩阵）+ 插件进程生命周期集成测试 + RPC 超时/节流测试
 
 ---
@@ -304,3 +304,28 @@ ctx.registerCommand({ id, title, handler }): string                             
 ### 12.3 测试
 
 网关 `ui:status`（2 项：权限拒绝 + set/clear/截断）+ 宿主贡献点（3 项：权限 + 命令注册的过滤组合、停止后消失与广播）。插件测试合计 72 项。
+
+---
+
+## 13. M4 方案（2026-09-20 确认，待实施）
+
+### 13.1 已拍板决策
+
+| # | 决策 | 结论 |
+| --- | --- | --- |
+| D-M4-1 | 索引仓库 | **`imnot70/trace-plugins`**（项目所有者已创建，public）；核心索引文件 `trace-plugins.json`（schemaVersion + plugins[]：id/repo/versions{name → releaseTag/asset/sha256/permissions/releasedAt}/latest） |
+| D-M4-2 | 网络代理 | **市场全部网络请求无条件跟随 `proxyUrl`**（索引拉取 + Release 资产下载，与 git 同步行为一致；不提供独立开关） |
+| D-M4-3 | 首个收录件 | 示例插件（顺带验证作者发布全流程） |
+
+### 13.2 开发方案概要
+
+- **marketService.ts**：fetchIndex（raw.githubusercontent.com 匿名拉取 + ETag 条件请求 + 本地缓存 24h TTL，userData/market-cache.json）/ checkUpdates（已装市场插件 vs 索引 latest）/ 资产下载（跟随 proxyUrl）
+- **安装管线复用 M2**：下载 → **sha256 与索引比对（版本锁定）** → stagePluginZip → 权限确认（市场件显示「已通过市场审阅」）→ 落盘；权限新增由 M1 的确认机制自动处理
+- **来源登记**：userData/market-installed.json 记录市场安装的 {id → repo/version/sha256}；只有市场件参与更新检查；索引中不存在的已装市场件标记「已下架」（保留可用）
+- **渲染端**：设置 → 插件新增市场区块（平铺列表 + 名称过滤 + 刷新按钮 + 可更新标记）；不做分类/全文搜索
+- **仓库治理**：trace-plugins.json 的增改走 PR + 人工审阅；main 分支保护；PR 模板要求附源码地址 / 构建方式 / sha256 计算命令 / 权限说明
+
+### 13.3 工作拆分（2 批次）
+
+1. 索引仓库脚手架 + marketService（拉取/缓存/对比/sha256）+ 单测（约 2~3 天）
+2. 市场 UI + 下载安装/更新/下架标记接 M2 管线 + 作者发布指南（guides/）+ PRD FR-2.11.14 + 实机冒烟（约 2~3 天）
