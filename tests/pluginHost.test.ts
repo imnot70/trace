@@ -3,6 +3,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginHost, type RuntimeHandle, type RuntimeSpawner } from '../src/main/services/pluginHost'
+import type { PluginStorageService } from '../src/main/services/pluginStorage'
+import { exportPluginZip } from '../src/main/services/pluginPackage'
 import type { GatewayServices } from '../src/main/services/pluginGateway'
 import { JsonStore } from '../src/main/lib/jsonStore'
 import type { AppSettings } from '../src/shared/types'
@@ -152,8 +154,13 @@ class FakeRuntime implements RuntimeHandle {
   }
 }
 
-function makeHost(): { host: PluginHost; runtimes: FakeRuntime[] } {
+function makeHost(): {
+  host: PluginHost
+  runtimes: FakeRuntime[]
+  clearedStorages: string[]
+} {
   const runtimes: FakeRuntime[] = []
+  const clearedStorages: string[] = []
   const gateway: GatewayServices = {
     listVaultNames: () => ['vault-a'],
     vaultPath: (name) => (name === 'vault-a' ? path.join(tmp, 'ws', name) : null),
@@ -162,8 +169,21 @@ function makeHost(): { host: PluginHost; runtimes: FakeRuntime[] } {
     writeNote: (_v, p, c) => ({ ok: true, hash: `h2-${p}-${c.length}` }),
     createNote: (_v, pp, n) => ({ ok: true, path: pp ? `${pp}/${n}` : n }),
     notifyUser: (m) => notifications.push(m),
-    log: (level, pluginId, args) => logs.push(`${level}:${pluginId}:${args.join(' ')}`)
+    log: (level, pluginId, args) => logs.push(`${level}:${pluginId}:${args.join(' ')}`),
+    getStorage: () => ({
+      get: (key) => ({ ok: true, value: key in storageData ? storageData[key] : null }),
+      set: (key, value) => {
+        storageData[key] = value
+        return { ok: true }
+      },
+      delete: (key) => {
+        delete storageData[key]
+        return { ok: true }
+      },
+      keys: () => ({ ok: true, keys: Object.keys(storageData) })
+    })
   }
+  const storageData: Record<string, unknown> = {}
   const spawner: RuntimeSpawner = (_bridge, pluginId, pluginDir) => {
     const rt = new FakeRuntime(pluginDir, pluginId)
     runtimes.push(rt)
@@ -175,9 +195,29 @@ function makeHost(): { host: PluginHost; runtimes: FakeRuntime[] } {
     settings,
     bridgePath: '/bridge.js',
     spawnRuntime: spawner,
-    gateway
+    gateway,
+    storage: {
+      backend: () => ({
+        get: (key: string) => ({ ok: true, value: key in storageData ? storageData[key] : null }),
+        set: (key: string, value: unknown) => {
+          storageData[key] = value
+          return { ok: true }
+        },
+        delete: (key: string) => {
+          delete storageData[key]
+          return { ok: true }
+        },
+        keys: () => ({ ok: true, keys: Object.keys(storageData) })
+      }),
+      usageBytes: () => 0,
+      clear: (pluginId: string) => {
+        clearedStorages.push(pluginId)
+      }
+    } as unknown as PluginStorageService,
+    stagingDir: path.join(tmp, 'staging'),
+    logPath: null
   })
-  return { host, runtimes }
+  return { host, runtimes, clearedStorages }
 }
 
 function installPlugin(
@@ -452,6 +492,144 @@ describe('PluginHost v2 · 崩溃守护', () => {
     host.setEnabled('sample', true)
     await flush()
     expect(host.discover()[0].crashCount).toBe(0)
+  })
+})
+
+describe('PluginHost v2 · M2 卸载与导入', () => {
+  function writeZipFor(dirName: string, id: string, version: string, permissions: string[]): string {
+    const dir = path.join(tmp, 'zipsrc', dirName)
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(
+      path.join(dir, 'manifest.json'),
+      JSON.stringify({ id, name: '导入插件', version, description: 'd', main: 'main.js', permissions })
+    )
+    fs.writeFileSync(path.join(dir, 'main.js'), 'exports.activate = () => {}')
+    const zipPath = path.join(tmp, `${dirName}.trace-plugin`)
+    exportPluginZip(dir, zipPath)
+    return zipPath
+  }
+
+  it('崩溃历史写入 discover（时间 + 退出码）', async () => {
+    vi.useFakeTimers()
+    const { host, runtimes } = makeHost()
+    host.init()
+    settings.update((st) => {
+      st.enablePlugins = true
+    })
+    installPlugin('sample', 'exports.activate = () => {}')
+    host.setEnabled('sample', true)
+    await flush()
+    runtimes[0].simulateCrash(3)
+    await flush()
+    const history = host.discover()[0].crashHistory
+    expect(history).toHaveLength(1)
+    expect(history[0].code).toBe(3)
+    expect(new Date(history[0].at).getTime()).toBeGreaterThan(0)
+  })
+
+  it('卸载：停用 + 删目录 + 清权限记录与私有存储', async () => {
+    const { host, runtimes, clearedStorages } = makeHost()
+    host.init()
+    settings.update((st) => {
+      st.enablePlugins = true
+    })
+    installPlugin('sample', 'exports.activate = () => {}', ['notifications'])
+    host.confirmEnable('sample')
+    await flush()
+    expect(fs.existsSync(path.join(tmp, 'plugins', 'sample'))).toBe(true)
+
+    const r = host.uninstall('sample')
+    expect(r.ok).toBe(true)
+    await flush()
+    expect(fs.existsSync(path.join(tmp, 'plugins', 'sample'))).toBe(false)
+    expect(runtimes[0].killed).toBe(true)
+    expect(clearedStorages).toEqual(['sample'])
+    expect(settings.get().pluginEnabled['sample']).toBeUndefined()
+    expect(settings.get().pluginPermissionsConfirmed?.['sample']).toBeUndefined()
+    expect(host.discover()).toHaveLength(0)
+  })
+
+  it('导入：暂存 → 确认安装（新插件，保持停用）', () => {
+    const { host } = makeHost()
+    host.init()
+    const zipPath = writeZipFor('newplug', 'newplug', '1.0.0', ['notifications'])
+    const r = host.beginImport(zipPath)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.isUpgrade).toBe(false)
+
+    const c = host.confirmImport(r.importId)
+    expect(c.ok).toBe(true)
+    expect(fs.existsSync(path.join(tmp, 'plugins', 'newplug', 'main.js'))).toBe(true)
+    // 未启用偏好 → 安装后保持停用
+    expect(host.discover()[0].enabled).toBe(false)
+  })
+
+  it('导入升级：原启用且权限不变 → 覆盖安装并重新激活', async () => {
+    vi.useFakeTimers()
+    const { host, runtimes } = makeHost()
+    host.init()
+    settings.update((st) => {
+      st.enablePlugins = true
+    })
+    installPlugin('upg', 'exports.activate = () => {}', ['notifications'])
+    host.confirmEnable('upg')
+    await flush()
+    expect(host.discover()[0].running).toBe(true)
+
+    const zipPath = writeZipFor('upg-new', 'upg', '2.0.0', ['notifications'])
+    const r = host.beginImport(zipPath)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.isUpgrade).toBe(true)
+
+    const c = host.confirmImport(r.importId)
+    expect(c.ok).toBe(true)
+    expect(c.needsConfirmation).toBeUndefined()
+    expect(fs.readFileSync(path.join(tmp, 'plugins', 'upg', 'manifest.json'), 'utf-8')).toContain('2.0.0')
+    // 权限未变化 → 自动重新激活
+    const info = host.discover()[0]
+    expect(info).toMatchObject({ version: '2.0.0', running: true })
+    expect(runtimes[0].killed).toBe(true) // 旧进程已被停用终止；最后一个是重新激活的新进程
+  })
+
+  it('导入升级：权限变化 → 要求重新确认且开关关闭', async () => {
+    vi.useFakeTimers()
+    const { host } = makeHost()
+    host.init()
+    settings.update((st) => {
+      st.enablePlugins = true
+    })
+    installPlugin('chg', 'exports.activate = () => {}', ['notifications'])
+    host.confirmEnable('chg')
+    await flush()
+
+    const zipPath = writeZipFor('chg-new', 'chg', '2.0.0', ['notifications', 'notes:read'])
+    const r = host.beginImport(zipPath)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    const c = host.confirmImport(r.importId)
+    expect(c.ok).toBe(true)
+    expect(c.needsConfirmation).toBe(true)
+    expect(c.permissions).toEqual(['notifications', 'notes:read'])
+    const info = host.discover()[0]
+    expect(info.enabled).toBe(false)
+    expect(info.permissionsConfirmed).toBe(false)
+  })
+
+  it('取消导入清理暂存目录', () => {
+    const { host } = makeHost()
+    host.init()
+    const zipPath = writeZipFor('cancelme', 'cancelme', '1.0.0', [])
+    const r = host.beginImport(zipPath)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    host.cancelImport(r.importId)
+    expect(fs.existsSync(path.join(tmp, 'staging'))).toBe(true) // 目录本身在，暂存内容已清
+    const leftovers = fs
+      .readdirSync(path.join(tmp, 'staging'))
+      .filter((n) => n.startsWith('cancelme'))
+    expect(leftovers).toHaveLength(0)
   })
 })
 

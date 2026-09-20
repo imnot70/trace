@@ -9,7 +9,7 @@
 | --- | --- | --- |
 | [requirements.md](requirements.md) | 产品需求文档（PRD），当前形态的权威描述；随版本同步更新（覆盖至 FR-2.4.11 / FR-2.7.6 / FR-2.8.14 等） | ✅ 基线文档，所载需求均已实现 |
 | [development-plan.md](development-plan.md) | 初版开发计划：技术选型、架构、里程碑 M0–M6、风险对策 | ✅ M0–M6 已全部完成（v1/v0.2.0 交付）；二期 Backlog 部分被后续设计文档细化 |
-| [plugin-design.md](2026-09-08_plugin-system/plugin-design.md) | 插件系统 v2 设计：独立插件进程 + 能力网关 + require 白名单 + 市场分发 | ✅ **M1 已实施**（进程隔离 + Tier 1 API + 权限确认 + 崩溃守护，实施记录见第 10 节；开发指引见 [guides/plugin-development.md](../../guides/plugin-development.md)）；M2–M4 待做 |
+| [plugin-design.md](2026-09-08_plugin-system/plugin-design.md) | 插件系统 v2 设计：独立插件进程 + 能力网关 + require 白名单 + 市场分发 | ✅ **M1 + M2 已实施**（进程隔离 + Tier 1 API + 权限确认 + 崩溃守护 + .trace-plugin 导入导出 + 私有存储，实施记录见第 10/11 节；开发指引见 [guides/plugin-development.md](../../guides/plugin-development.md)）；M3–M4 待做 |
 | [vault-grid-navigation-design.md](2026-09-08_vault-grid-navigation/vault-grid-navigation-design.md) | 笔记库网格导航设计：双击钻入库内容 + 面包屑 + 三卡片区分 | ✅ **P1 + P2 全部实施**（P1 已发布 v0.3.5，P2 已随 v0.3.6 发布） |
 | [preview-enhancement-design.md](2026-09-09_preview-enhancement/preview-enhancement-design.md) | 预览增强设计：HTML 内嵌（DOMPurify 净化）、a 标签跳转（外部 + 库内笔记）、行级双向同步滚动 | ✅ **已实施**（2026-09-09 发布 v0.3.7） |
 | [bundled-git-design.md](2026-09-10_bundled-git/bundled-git-design.md) | 内置 Git 设计与实施：捆绑 MinGit/dugite + build 时解压 + 触发时检测 + 条件弹窗；含实测体积、决策记录与验证清单 | ✅ **已实施**（Windows 已验证，Linux 待 CI）｜D-BG1–D-BG11 |
@@ -160,7 +160,7 @@
 
 已拍板：独立插件进程（utilityProcess）+ 能力网关 ｜ 仅 Tier 1 能力（笔记读写 / 事件 / 命令）｜ 全局授权 ｜ GitHub 索引市场 + 本地导入并存。
 
-里程碑：**M1 进程隔离与能力网关（✅ 已实施，见设计文档第 10 节实施记录与 API 最终签名）** → M2 `.trace-plugin` 导入导出与设置页增强 → M3 声明式 UI 扩展与类型包 → M4 市场浏览 / 安装 / 更新。
+里程碑：**M1 进程隔离与能力网关（✅ 已实施，第 10 节）** → **M2 `.trace-plugin` 导入导出 / 设置页详情 / 私有存储（✅ 已实施，第 11 节）** → M3 声明式 UI 扩展与类型包 → M4 市场浏览 / 安装 / 更新。
 
 ### 笔记库网格导航 — [vault-grid-navigation-design.md](2026-09-08_vault-grid-navigation/vault-grid-navigation-design.md)
 
@@ -180,7 +180,7 @@
 - 所见即所得编辑模式
 - ~~图形化冲突解决~~（已实施）
 - ~~变更触发自动同步~~（已实施，FR-2.8.14）
-- 插件完整 API 与市场（v2 设计已定稿，见 `requirements/2026-09-08_plugin-system/`；**M1 已实施**，M2–M4 待做）
+- 插件完整 API 与市场（v2 设计已定稿，见 `requirements/2026-09-08_plugin-system/`；**M1 + M2 已实施**，M3–M4 待做）
 - ~~多窗口~~（已作废）
 - ~~导出 HTML~~（已实施，FR-2.4.12）
 - ~~窗口毛玻璃效果~~（已实施）

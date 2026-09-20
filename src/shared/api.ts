@@ -24,7 +24,9 @@ import type {
   TreeNode,
   ExportProgress,
   TrashEntry,
-  VaultInfo
+  VaultInfo,
+  PluginImportPreview,
+  PluginDetail
 } from './types'
 
 /** 渲染进程可用的完整 API（由 preload 通过 contextBridge 注入 window.trace） */
@@ -132,6 +134,20 @@ export interface TraceApi {
   invokePluginCommand(commandId: string): Promise<OpResult>
   /** 向插件广播 note:opened 事件（渲染端打开笔记时上报，fire-and-forget） */
   reportNoteOpened(vault: string, path: string): void
+
+  // ---- 插件包（M2：.trace-plugin 导入导出 / 卸载 / 详情）----
+  /** 弹文件选择框并解析 .trace-plugin，返回导入预览（解压暂存，等待确认） */
+  importPlugin(): Promise<OpResult & { preview?: PluginImportPreview }>
+  /** 确认安装暂存的插件包（若原插件启用中则按权限确认状态重新激活） */
+  confirmImportPlugin(importId: string): Promise<OpResult & { id?: string; needsConfirmation?: boolean; permissions?: string[] }>
+  /** 取消导入并清理暂存 */
+  cancelImportPlugin(importId: string): Promise<OpResult>
+  /** 导出插件为 .trace-plugin（弹保存框，返回保存路径） */
+  exportPlugin(id: string): Promise<OpResult & { path?: string }>
+  /** 卸载插件：停用 + 删目录 + 清权限记录与私有存储 */
+  uninstallPlugin(id: string): Promise<OpResult>
+  /** 插件详情：信息 / 崩溃历史 / 日志行 / 私有存储占用 */
+  pluginDetail(id: string): Promise<OpResult & { detail?: PluginDetail }>
 
   // ---- 标签 ----
   listTags(): Promise<OpResult & { tags?: TagItem[] }>

@@ -294,6 +294,92 @@ async function toggleEnablePlugins(enabled: boolean): Promise<void> {
   await loadPlugins()
 }
 
+// ---------- 插件包导入（.trace-plugin，M2） ----------
+interface PluginImportPreview {
+  importId: string
+  id: string
+  name: string
+  version: string
+  description: string
+  permissions: string[]
+  isUpgrade: boolean
+}
+
+const pendingImport = ref<PluginImportPreview | null>(null)
+
+async function importPlugin(): Promise<void> {
+  const r = await window.trace.importPlugin()
+  if (!r.ok) {
+    if (r.error !== '已取消') ElMessage.error(r.error ?? '导入失败')
+    return
+  }
+  if (r.preview) pendingImport.value = r.preview
+}
+
+async function confirmImport(): Promise<void> {
+  if (!pendingImport.value) return
+  const r = await window.trace.confirmImportPlugin(pendingImport.value.importId)
+  if (!r.ok) ElMessage.error(r.error ?? '安装失败')
+  else if (r.needsConfirmation) ElMessage.warning('插件包已安装：权限有变化，启用前需重新确认')
+  else ElMessage.success('插件已安装')
+  pendingImport.value = null
+  await loadPlugins()
+}
+
+function cancelImport(): void {
+  if (pendingImport.value) void window.trace.cancelImportPlugin(pendingImport.value.importId)
+  pendingImport.value = null
+}
+
+// ---------- 插件详情 / 导出 / 卸载 ----------
+const detailView = ref<{
+  info: PluginRow
+  crashes: { at: string; code: number }[]
+  logs: string[]
+  storageBytes: number
+} | null>(null)
+
+async function openDetail(id: string): Promise<void> {
+  const r = await window.trace.pluginDetail(id)
+  if (r.ok && r.detail) detailView.value = r.detail
+  else ElMessage.error(r.error ?? '获取详情失败')
+}
+
+function closeDetail(): void {
+  detailView.value = null
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleString()
+}
+
+function formatBytes(n: number): string {
+  return n < 1024 ? `${n} B` : `${(n / 1024).toFixed(1)} KB`
+}
+
+async function exportPlugin(id: string): Promise<void> {
+  const r = await window.trace.exportPlugin(id)
+  if (r.ok && r.path) ElMessage.success('已导出到 ' + r.path)
+  else if (r.error !== '已取消') ElMessage.error(r.error ?? '导出失败')
+}
+
+async function uninstallPlugin(id: string): Promise<void> {
+  try {
+    await ElMessageBox.confirm(
+      '将删除插件目录、权限记录与私有存储，不可恢复。确定卸载？',
+      '卸载插件',
+      { type: 'warning', confirmButtonText: '卸载', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  const r = await window.trace.uninstallPlugin(id)
+  if (r.ok) ElMessage.success('插件已卸载')
+  else ElMessage.error(r.error ?? '卸载失败')
+  closeDetail()
+  await loadPlugins()
+}
+
 const themeOptions: { label: string; value: 'light' | 'dark' | 'system' }[] = [
   { label: '浅色', value: 'light' },
   { label: '深色', value: 'dark' },
@@ -426,7 +512,10 @@ async function resetGitSource(): Promise<void> {
         </div>
 
         <div class="settings-block">
-          <h3>已安装的插件</h3>
+          <div class="setting-row" style="margin-bottom: 4px">
+            <h3 style="margin: 0">已安装的插件</h3>
+            <el-button size="small" @click="importPlugin">导入插件…</el-button>
+          </div>
           <el-empty v-if="plugins.length === 0" description="暂无插件" :image-size="60" />
           <div v-for="plugin in plugins" :key="plugin.id" class="setting-row">
             <div style="flex: 1">
@@ -457,10 +546,13 @@ async function resetGitSource(): Promise<void> {
                 </el-button>
               </div>
             </div>
-            <el-switch
-              :model-value="plugin.enabled"
-              @update:model-value="(v: string | number | boolean) => togglePlugin(plugin.id, Boolean(v))"
-            />
+            <div style="display: flex; align-items: center; gap: 8px">
+              <el-button size="small" @click="openDetail(plugin.id)">详情</el-button>
+              <el-switch
+                :model-value="plugin.enabled"
+                @update:model-value="(v: string | number | boolean) => togglePlugin(plugin.id, Boolean(v))"
+              />
+            </div>
           </div>
         </div>
       </el-tab-pane>
@@ -842,6 +934,94 @@ async function resetGitSource(): Promise<void> {
       <template #footer>
         <el-button @click="cancelEnable">取消</el-button>
         <el-button type="primary" @click="confirmEnable">确认并启用</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 插件包导入确认：本地包绕过市场审阅，警告必须显著（设计第 6 节） -->
+    <el-dialog
+      :model-value="pendingImport !== null"
+      title="导入插件"
+      width="480px"
+      :close-on-click-modal="false"
+      @update:model-value="(v: boolean) => { if (!v) cancelImport() }"
+    >
+      <template v-if="pendingImport">
+        <p style="margin: 0 0 8px">
+          {{ pendingImport.isUpgrade ? '升级插件' : '安装插件' }}
+          <strong>「{{ pendingImport.name }}」</strong>（v{{ pendingImport.version }}）
+          <span v-if="pendingImport.isUpgrade" style="color: var(--text-secondary)">——将覆盖已安装的同 id 插件</span>
+        </p>
+        <p v-if="pendingImport.description" class="settings-desc" style="margin: 0 0 8px">{{ pendingImport.description }}</p>
+        <div v-if="pendingImport.permissions.length" style="margin: 0 0 12px">
+          <p style="margin: 0 0 4px">该插件请求以下权限：</p>
+          <ul style="margin: 0; padding-left: 20px; line-height: 1.8">
+            <li v-for="p in pendingImport.permissions" :key="p">
+              <code style="font-size: 12px">{{ p }}</code> — {{ permissionLabel(p) }}
+            </li>
+          </ul>
+        </div>
+        <p v-else class="settings-desc" style="margin: 0 0 12px">该插件未声明任何权限。</p>
+        <el-alert
+          type="warning"
+          :closable="false"
+          show-icon
+          title="此插件未经 Trace 市场审阅，请确认来源可信后再安装"
+        />
+      </template>
+      <template #footer>
+        <el-button @click="cancelImport">取消</el-button>
+        <el-button type="primary" @click="confirmImport">{{ pendingImport?.isUpgrade ? '覆盖安装' : '安装' }}</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 插件详情：状态 / 权限 / 崩溃历史 / 日志 / 私有存储 / 导出 / 卸载 -->
+    <el-dialog
+      :model-value="detailView !== null"
+      :title="detailView ? `插件详情 — ${detailView.info.name}` : '插件详情'"
+      width="640px"
+      @update:model-value="(v: boolean) => { if (!v) closeDetail() }"
+    >
+      <template v-if="detailView">
+        <div class="setting-row">
+          <span class="setting-label">状态</span>
+          <span>
+            <span v-if="detailView.info.running" class="plugin-badge plugin-badge-ok">运行中</span>
+            <span v-else class="plugin-badge">未运行</span>
+            <span v-if="detailView.info.crashCount > 0" class="plugin-badge plugin-badge-warn">
+              连续崩溃 {{ detailView.info.crashCount }} 次
+            </span>
+          </span>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">权限</span>
+          <span class="settings-desc">{{ detailView.info.permissions.length ? detailView.info.permissions.map(permissionLabel).join('、') : '未声明权限' }}</span>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">私有存储</span>
+          <span class="settings-desc">{{ formatBytes(detailView.storageBytes) }}</span>
+        </div>
+        <div style="margin: 8px 0">
+          <p style="margin: 0 0 4px">崩溃历史</p>
+          <p v-if="detailView.crashes.length === 0" class="settings-desc" style="margin: 0">无崩溃记录</p>
+          <ul v-else class="settings-desc" style="margin: 0; padding-left: 20px; line-height: 1.7">
+            <li v-for="(c, i) in detailView.crashes" :key="i">
+              {{ formatTime(c.at) }} — 进程退出码 {{ c.code }}
+            </li>
+          </ul>
+        </div>
+        <div style="margin: 8px 0">
+          <p style="margin: 0 0 4px">最近日志</p>
+          <pre
+            v-if="detailView.logs.length"
+            style="max-height: 200px; overflow: auto; margin: 0; padding: 8px; border-radius: 6px; background: var(--bg-secondary); font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all"
+          >{{ detailView.logs.join('\n') }}</pre>
+          <p v-else class="settings-desc" style="margin: 0">暂无日志</p>
+        </div>
+      </template>
+      <template #footer>
+        <el-button type="danger" plain @click="uninstallPlugin(detailView!.info.id)">卸载</el-button>
+        <el-button @click="exportPlugin(detailView!.info.id)">导出…</el-button>
+        <el-button @click="closeDetail">关闭</el-button>
       </template>
     </el-dialog>
   </div>

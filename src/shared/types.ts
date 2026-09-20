@@ -169,6 +169,37 @@ export interface PluginCommandInfo {
   title: string
 }
 
+/** 插件崩溃记录（本轮启用期内，最近在前，最多 10 条） */
+export interface PluginCrashRecord {
+  /** ISO 时间 */
+  at: string
+  /** 进程退出码 */
+  code: number
+}
+
+/** .trace-plugin 导入预览（安装管线：解压校验后、用户确认前） */
+export interface PluginImportPreview {
+  importId: string
+  id: string
+  name: string
+  version: string
+  description: string
+  permissions: string[]
+  /** 目标位置已存在同 id 插件（本次导入为升级覆盖） */
+  isUpgrade: boolean
+}
+
+/** 插件详情（设置页详情弹层） */
+export interface PluginDetail {
+  info: PluginInfo
+  /** 崩溃历史（最近在前） */
+  crashes: PluginCrashRecord[]
+  /** 主进程日志中该插件最近的输出行 */
+  logs: string[]
+  /** 私有存储占用字节数 */
+  storageBytes: number
+}
+
 export interface PluginInfo {
   id: string
   name: string
@@ -184,6 +215,8 @@ export interface PluginInfo {
   error: string | null
   /** 本轮启用期内连续崩溃次数（守护重启成功后保留计数供展示） */
   crashCount: number
+  /** 崩溃历史（最近在前，最多 10 条） */
+  crashHistory: PluginCrashRecord[]
   /** 已注册的命令 */
   commands: PluginCommandInfo[]
 }

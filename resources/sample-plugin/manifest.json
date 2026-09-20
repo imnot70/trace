@@ -1,8 +1,8 @@
 {
   "id": "sample",
   "name": "示例插件",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Tier 1 能力演示：读取笔记、创建笔记、订阅保存事件、注册命令。启用后在命令按钮「统计首篇笔记」体验。",
   "main": "main.js",
-  "permissions": ["notifications", "notes:read", "notes:write", "events"]
+  "permissions": ["notifications", "notes:read", "notes:write", "events", "settings:persist"]
 }

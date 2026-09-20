@@ -14,6 +14,7 @@ import {
   pickGitBinary,
   PluginHost,
   spawnUtilityRuntime,
+  PluginStorageService,
   AutoSyncService,
   ExportService,
   RecentsService,
@@ -222,7 +223,10 @@ app.whenReady().then(() => {
         resolveBundledGitPath(process.resourcesPath)
       )
   })
-  // 插件宿主 v2（M1）：每个插件一个 utilityProcess，能力调用经网关按 manifest 权限过滤。
+  // 插件私有存储（settings:persist）：应用数据目录内按插件隔离，绝不写入笔记库
+  const pluginStorage = new PluginStorageService(path.join(userData, 'plugin-data'))
+
+  // 插件宿主 v2：每个插件一个 utilityProcess，能力调用经网关按 manifest 权限过滤。
   // 注意声明顺序：watcher 的变更回调要向插件广播 vault:changed，plugins 需先于 watcher 创建
   const plugins = new PluginHost({
     pluginsDir: path.join(userData, 'plugins'),
@@ -262,8 +266,12 @@ app.whenReady().then(() => {
       },
       log: (level, pluginId, args) => {
         logger[level](`[插件 ${pluginId}]`, ...args)
-      }
-    }
+      },
+      getStorage: (pluginId) => pluginStorage.backend(pluginId)
+    },
+    storage: pluginStorage,
+    stagingDir: path.join(userData, 'plugin-staging'),
+    logPath: path.join(userData, 'logs', 'main.log')
   })
   plugins.init()
   plugins.activateAll()

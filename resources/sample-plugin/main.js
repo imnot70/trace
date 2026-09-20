@@ -6,6 +6,7 @@
  * - ctx.notes.vaults / list / read / create / write：笔记读写（notes:read / notes:write 权限）
  * - ctx.on('note:saved')：订阅笔记保存事件（events 权限）
  * - ctx.registerCommand：注册命令（内置），启用插件后在 设置 → 插件 中运行
+ * - ctx.storage.get / set：插件私有 KV 存储（settings:persist 权限，随插件卸载清除）
  *
  * API 约定：
  * - notes.* 全部 resolve 为 { ok: true, ...数据 } 或 { ok: false, error }，用 .ok 判断；
@@ -27,6 +28,11 @@ exports.activate = function activate(ctx) {
     id: 'stats',
     title: '统计首篇笔记',
     handler: async function () {
+      // 私有存储：记录命令执行次数
+      const runsRecord = await ctx.storage.get('runs')
+      const runs = (runsRecord.ok && typeof runsRecord.value === 'number' ? runsRecord.value : 0) + 1
+      await ctx.storage.set('runs', runs)
+
       const vaultsResult = await ctx.notes.vaults()
       if (!vaultsResult.ok || !vaultsResult.vaults.length) {
         await ctx.notify('示例插件：还没有笔记库，先创建一个吧')
@@ -66,7 +72,7 @@ exports.activate = function activate(ctx) {
       ].join('\n')
       const written = await ctx.notes.write(vault, reportPath, report, null)
       if (written.ok) {
-        await ctx.notify('示例插件：「' + firstNote.name + '」共 ' + chars + ' 字，报告已写入 ' + reportName)
+        await ctx.notify('示例插件（第 ' + runs + ' 次）：「' + firstNote.name + '」共 ' + chars + ' 字，报告已写入')
       } else {
         await ctx.notify('示例插件：统计完成 ' + chars + ' 字（写入报告失败：' + written.error + '）')
       }

@@ -22,13 +22,24 @@ export interface GatewayServices {
   notifyUser: (message: string) => void
   /** 结构化日志（脱敏由 lib/logger 统一处理） */
   log: (level: 'info' | 'warn' | 'error', pluginId: string, args: unknown[]) => void
+  /** 插件私有 KV 存储（settings:persist 权限；按插件隔离） */
+  getStorage: (pluginId: string) => StorageBackend
+}
+
+/** 插件私有存储后端（由 PluginStorageService 提供） */
+export interface StorageBackend {
+  get(key: string): { ok: true; value: unknown } | { ok: false; error: string }
+  set(key: string, value: unknown): { ok: boolean; error?: string }
+  delete(key: string): { ok: boolean; error?: string }
+  keys(): { ok: true; keys: string[] } | { ok: false; error: string }
 }
 
 /** 需要声明权限的能力域 -> 对应 permission 标识 */
 export const PERMISSION_REQUIRED: Record<string, string> = {
   notifications: 'notifications',
   'notes:read': 'notes:read',
-  'notes:write': 'notes:write'
+  'notes:write': 'notes:write',
+  storage: 'settings:persist'
 }
 
 export interface GatewayCall {
@@ -165,6 +176,27 @@ export function dispatchCapabilityCall(call: GatewayCall, permissions: ReadonlyS
             : businessFail(r.error ?? '创建失败')
         }
 
+        return fail(`未知方法：${domain}.${method}`)
+      }
+
+      case 'storage': {
+        const storage = services.getStorage(pluginId)
+        if (method === 'get') {
+          const r = storage.get(String(call.args[0] ?? ''))
+          return r.ok ? { ok: true, result: { ok: true, value: r.value } } : businessFail(r.error)
+        }
+        if (method === 'set') {
+          const r = storage.set(String(call.args[0] ?? ''), call.args[1])
+          return r.ok ? { ok: true, result: { ok: true } } : businessFail(r.error ?? '存储失败')
+        }
+        if (method === 'delete') {
+          const r = storage.delete(String(call.args[0] ?? ''))
+          return r.ok ? { ok: true, result: { ok: true } } : businessFail(r.error ?? '删除失败')
+        }
+        if (method === 'keys') {
+          const r = storage.keys()
+          return r.ok ? { ok: true, result: { ok: true, keys: r.keys } } : businessFail(r.error)
+        }
         return fail(`未知方法：${domain}.${method}`)
       }
 

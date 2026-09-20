@@ -102,6 +102,12 @@ function buildContext(): Record<string, unknown> {
       create: (vault: string, parentPath: string, name: string, content?: string) =>
         rpcCallSized('notes:write', 'create', [vault, parentPath, name, content])
     },
+    storage: {
+      get: (key: string) => rpcCall('storage', 'get', [String(key)]),
+      set: (key: string, value: unknown) => rpcCallSized('storage', 'set', [String(key), value]),
+      delete: (key: string) => rpcCall('storage', 'delete', [String(key)]),
+      keys: () => rpcCall('storage', 'keys', [])
+    },
     on: (event: string, handler: (payload: unknown) => void) => {
       if (!isPluginEventName(event) || typeof handler !== 'function') {
         throw new Error(`无效的事件订阅：${String(event)}`)

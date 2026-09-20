@@ -11,6 +11,7 @@ import { dispatchCapabilityCall, type GatewayServices, type GatewayCall } from '
 function makeServices(overrides: Partial<GatewayServices> = {}): GatewayServices & { notifications: string[]; logs: string[] } {
   const notifications: string[] = []
   const logs: string[] = []
+  const data: Record<string, unknown> = {}
   return {
     notifications,
     logs,
@@ -31,6 +32,18 @@ function makeServices(overrides: Partial<GatewayServices> = {}): GatewayServices
     },
     notifyUser: (message) => notifications.push(message),
     log: (level, pluginId, args) => logs.push(`${level}:${pluginId}:${args.join(' ')}`),
+    getStorage: () => ({
+      get: (key) => ({ ok: true, value: key in data ? data[key] : null }),
+      set: (key, value) => {
+        data[key] = value
+        return { ok: true }
+      },
+      delete: (key) => {
+        delete data[key]
+        return { ok: true }
+      },
+      keys: () => ({ ok: true, keys: Object.keys(data) })
+    }),
     ...overrides
   }
 }

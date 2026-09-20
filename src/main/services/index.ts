@@ -22,6 +22,14 @@ export { WatcherService } from './watcher'
 export { PluginHost, type RuntimeHandle, type RuntimeSpawner, type PluginHostDeps } from './pluginHost'
 export { spawnUtilityRuntime } from './pluginRuntime'
 export { dispatchCapabilityCall, type GatewayServices } from './pluginGateway'
+export { PluginStorageService, type PluginStorageBackend } from './pluginStorage'
+export {
+  stagePluginZip,
+  installStaged,
+  exportPluginZip,
+  type StagedPlugin,
+  type PackageLimits
+} from './pluginPackage'
 export type { PluginManifest } from './pluginManifest'
 export { AutoSyncService } from './autoSync'
 export { ExportService, sanitizeFileName } from './exportPdf'

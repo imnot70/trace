@@ -62,6 +62,7 @@ exports.activate = function activate(ctx) {
 | `notes:read` | `ctx.notes.vaults / list / tree / read` |
 | `notes:write` | `ctx.notes.create / write` |
 | `events` | `ctx.on(event, handler)` 订阅事件 |
+| `settings:persist` | `ctx.storage.get / set / delete / keys` 私有 KV 存储 |
 | （无需声明） | `ctx.logger`、`ctx.registerCommand` |
 
 规则：
@@ -115,7 +116,21 @@ ctx.logger.info('调试信息', 123)  // 写入应用日志，前缀「[插件 <
 ctx.logger.warn(...) / ctx.logger.error(...)
 ```
 
-### 3.3 事件（`events` 权限）
+### 3.3 私有存储（`settings:persist` 权限）
+
+宿主托管的插件私有键值存储（按插件隔离，随插件卸载一并清除），适合保存配置、计数器、游标等状态：
+
+```js
+// 与 notes.* 一致：resolve { ok, ... } 形状
+await ctx.storage.set('runs', 42)          // { ok: true }；值必须 JSON 可序列化
+const r = await ctx.storage.get('runs')    // { ok: true, value: 42 }；未设置时 value 为 null
+await ctx.storage.delete('runs')           // { ok: true }
+const k = await ctx.storage.keys()         // { ok: true, keys: ['runs'] }
+```
+
+限制：键最长 200 字符；单值约 256KB；单插件总量约 1MB。需要持久化大量数据时请自建文件（放在插件目录内）。
+
+### 3.4 事件（`events` 权限）
 
 ```js
 const handler = (payload) => { ... }
@@ -132,7 +147,7 @@ ctx.off('note:saved', handler)   // 停用回调里记得取消订阅
 
 订阅了不存在的事件名或 handler 不是函数时，`ctx.on` 会直接抛错。
 
-### 3.4 命令（内置，无需权限）
+### 3.5 命令（内置，无需权限）
 
 ```js
 ctx.registerCommand({
@@ -279,7 +294,15 @@ exports.activate = function activate(ctx) {
 }
 ```
 
-## 9. 常见问题
+## 9. 打包与分享
+
+插件目录可直接压缩为 zip（改名 `.trace-plugin` 后缀）分享，接收方通过「设置 → 插件 → 导入插件…」安装：
+
+- 包内 `manifest.json` 位于根目录（或唯一顶层文件夹内）均可识别
+- 包必须自包含：全部代码与资源都在包内（require 白名单本来就禁止目录外加载）
+- 已安装的插件也可在「详情」中「导出…」生成 `.trace-plugin`
+
+## 10. 常见问题
 
 - **启用时提示需要确认权限**：正常流程——插件声明了权限，确认后即激活；插件新版本加了权限也会重新要求确认
 - **调用 API 收到异常「插件未声明权限…」**：在 manifest.json 的 `permissions` 里补上对应权限（改完记得停用再启用重载）

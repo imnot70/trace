@@ -91,6 +91,12 @@ const api: TraceApi = {
   reportNoteOpened: (vault, path) => {
     void ipcRenderer.invoke('plugin:reportNoteOpened', vault, path)
   },
+  importPlugin: () => ipcRenderer.invoke('plugin:import'),
+  confirmImportPlugin: (importId) => ipcRenderer.invoke('plugin:confirmImport', importId),
+  cancelImportPlugin: (importId) => ipcRenderer.invoke('plugin:cancelImport', importId),
+  exportPlugin: (id) => ipcRenderer.invoke('plugin:export', id),
+  uninstallPlugin: (id) => ipcRenderer.invoke('plugin:uninstall', id),
+  pluginDetail: (id) => ipcRenderer.invoke('plugin:detail', id),
 
   listTags: () => ipcRenderer.invoke('tag:list'),
   createTag: (name, color) => ipcRenderer.invoke('tag:create', name, color),

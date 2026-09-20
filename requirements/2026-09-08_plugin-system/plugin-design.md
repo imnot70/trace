@@ -155,7 +155,7 @@
 ## 9. 实施里程碑（按 D1–D5 推荐方案）
 
 - **M1（0.4.0）**：utilityProcess 插件进程 + 能力网关 + Tier 1 API + 权限确认对话框 + 崩溃守护；示例插件改写为 Tier 1 演示
-- **M2（0.4.x）**：`.trace-plugin` 导入导出；设置页详情（权限/日志/崩溃记录）；插件私有存储
+- **M2（0.4.x）**：`.trace-plugin` 导入导出；设置页详情（权限/日志/崩溃记录）；插件私有存储（✅ 已实施，实施记录见第 11 节）
 - **M3（0.5.0）**：声明式工具栏按钮 + 状态区；类型包发 npm
 - **M4（0.5.x）**：GitHub 索引市场（浏览/安装/更新检查）
 - 测试基线：能力网关单元测试（权限过滤矩阵）+ 插件进程生命周期集成测试 + RPC 超时/节流测试
@@ -233,3 +233,51 @@ ctx.registerCommand({ id, title, handler }): string                             
 ### 10.6 M1 未含（按里程碑顺延）
 
 `.trace-plugin` 打包导入导出、设置页权限/日志/崩溃详情页、插件私有存储（M2）；声明式工具栏/状态区、类型包（M3）；市场（M4）。
+
+---
+
+## 11. M2 实施记录（2026-09-20）
+
+### 11.1 交付物
+
+| 组件 | 位置 | 说明 |
+| --- | --- | --- |
+| `.trace-plugin` 打包管线 | `src/main/services/pluginPackage.ts` | 导入（暂存解压 → 清单校验 → 入口检查）/ 导出 / 安装覆盖 |
+| 插件私有存储 | `src/main/services/pluginStorage.ts` | 每插件一个 JSON（userData/plugin-data/<id>.json），宿主托管 |
+| 网关 storage 域 | `pluginGateway.ts` | 权限 `settings:persist`；get/set/delete/keys |
+| 设置页详情 | `SettingsView.vue` 详情弹层 | 状态 / 权限 / 崩溃历史 / 日志行 / 存储占用 / 导出 / 卸载 |
+| 导入确认弹窗 | 同上 | 权限清单 + 显著提示「未经 Trace 市场审阅」（设计第 6 节要求，不可跳过） |
+
+### 11.2 安装管线（本地导入）
+
+```
+选择 .trace-plugin → stagePluginZip（防 zip-slip / 条目数 / 总大小，manifest 位置兼容
+根目录或唯一顶层文件夹）→ 暂存 userData/plugin-staging → 渲染端确认弹窗
+（权限 + 未经审阅警告）→ confirmImport：停用旧进程（升级时）→ 整体替换 plugins/<id>/
+→ 原启用中的插件按权限确认状态重新激活（权限变化则关闭开关待重确认）
+```
+
+取消导入即清理暂存；导入会话内存态（Map），应用重启自然失效。
+
+### 11.3 私有存储约定
+
+- 权限域 `storage` ↔ manifest 声明 `settings:persist`；未声明调用为致命拒绝（与其他域一致）
+- 插件视角：`ctx.storage.get(key)` → `{ ok: true, value }`（未设置为 null）；`set/delete/keys` 同 `{ ok }` 风格
+- 限制：键 ≤200 字符、单值 ≤256KB、单插件总量 ≤1MB、值必须 JSON 可序列化
+- 卸载（`plugin:uninstall`）= 停用 + 删目录 + 清权限记录与启用开关 + 清私有存储（设计第 5 节）
+
+### 11.4 安全防护
+
+- **zip-slip**：逐条目规范化路径并校验不逃逸暂存目录（绝对路径 / 盘符 / `..` 逃逸拒绝）；守卫函数 `safeEntryTarget` 直接单测覆盖
+- **炸弹防护**：解压总大小 ≤20MB、条目数 ≤2000（默认值）
+- 清单要求 manifest.json 位于包根或唯一顶层文件夹；入口文件存在性校验
+
+### 11.5 崩溃历史
+
+宿主每插件保留最近 10 条崩溃记录（ISO 时间 + 退出码），随 `PluginInfo.crashHistory` 暴露；手动停用清零（与 crashCount 同语义）。
+
+### 11.6 测试
+
+- `tests/pluginPackage.test.ts`（7 项）：导出导入往返、顶层文件夹清单定位、无效清单 / 缺入口拒绝、路径守卫（含手工构造的 `../` 恶意条目包）、上限、升级覆盖
+- `tests/pluginStorage.test.ts`（8 项）：往返持久化、插件隔离、键长 / 单值 / 总量上限、undefined 拒绝、id 路径防御、clear/usage
+- `tests/pluginHost.test.ts` 新增 6 项：崩溃历史、卸载清理（目录 / 权限记录 / 存储）、导入安装、升级重激活、权限变化重确认、取消导入
