@@ -86,6 +86,11 @@ const api: TraceApi = {
 
   listPlugins: () => ipcRenderer.invoke('plugin:list'),
   setPluginEnabled: (id, enabled) => ipcRenderer.invoke('plugin:setEnabled', id, enabled),
+  confirmEnablePlugin: (id) => ipcRenderer.invoke('plugin:confirmEnable', id),
+  invokePluginCommand: (commandId) => ipcRenderer.invoke('plugin:invokeCommand', commandId),
+  reportNoteOpened: (vault, path) => {
+    void ipcRenderer.invoke('plugin:reportNoteOpened', vault, path)
+  },
 
   listTags: () => ipcRenderer.invoke('tag:list'),
   createTag: (name, color) => ipcRenderer.invoke('tag:create', name, color),

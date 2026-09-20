@@ -176,8 +176,11 @@ export function registerIpc(deps: IpcDeps): void {
   )
   handle(
     'note:write',
-    (vault: string, relPath: string, content: string, expectedHash: string | null) =>
-      deps.fsTree.writeNote(vault, relPath, content, expectedHash)
+    (vault: string, relPath: string, content: string, expectedHash: string | null) => {
+      const result = deps.fsTree.writeNote(vault, relPath, content, expectedHash)
+      if (result.ok) deps.plugins.emitEvent('note:saved', { vault, path: relPath })
+      return result
+    }
   )
   handle('note:saveImage', (vault: string, notePath: string, fileName: string, base64: string) =>
     deps.fsTree.saveImage(vault, notePath, fileName, base64, deps.settings.get().attachmentsDir)
@@ -282,6 +285,7 @@ export function registerIpc(deps: IpcDeps): void {
       try {
         const result = await deps.git.sync(deps.vaults.vaultPath(vault))
         send('git:event', { vault, phase: result.ok ? 'done' : 'error', message: result.error })
+        if (result.ok) deps.plugins.emitEvent('sync:done', { vault })
         return result
       } catch (e) {
         const error = errMessage(e)
@@ -480,14 +484,12 @@ export function registerIpc(deps: IpcDeps): void {
   )
 
   handle('plugin:list', () => ({ ok: true, plugins: deps.plugins.discover() }))
-  handle('plugin:setEnabled', (id: string, enabled: boolean) => {
-    deps.plugins.setEnabled(id, enabled)
+  handle('plugin:setEnabled', (id: string, enabled: boolean) => deps.plugins.setEnabled(id, enabled))
+  handle('plugin:confirmEnable', (id: string) => deps.plugins.confirmEnable(id))
+  handle('plugin:invokeCommand', async (commandId: string) => deps.plugins.invokeCommand(commandId))
+  handle('plugin:reportNoteOpened', (vault: string, notePath: string) => {
+    deps.plugins.emitEvent('note:opened', { vault, path: notePath })
     return { ok: true }
-  })
-
-  // ---------- 插件 -> 渲染进程通知 ----------
-  ipcMain.on('plugin:notify', (_e, message: string) => {
-    send('plugin:notify', message)
   })
 
   // ---------- 搜索 ----------

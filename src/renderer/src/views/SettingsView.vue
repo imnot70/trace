@@ -210,7 +210,21 @@ async function applyWorkspace(): Promise<void> {
 }
 
 // ---------- 插件 ----------
-const plugins = ref<{ id: string; name: string; version: string; description: string; enabled: boolean; loaded: boolean; error: string | null }[]>([])
+interface PluginRow {
+  id: string
+  name: string
+  version: string
+  description: string
+  permissions: string[]
+  permissionsConfirmed: boolean
+  enabled: boolean
+  running: boolean
+  error: string | null
+  crashCount: number
+  commands: { id: string; title: string }[]
+}
+
+const plugins = ref<PluginRow[]>([])
 
 async function loadPlugins(): Promise<void> {
   const result = await window.trace.listPlugins()
@@ -225,8 +239,53 @@ watch(
   { immediate: true }
 )
 
+/** 权限标识 -> 中文说明（与主进程能力网关的权限域一一对应） */
+const PERMISSION_LABELS: Record<string, string> = {
+  notifications: '发送通知',
+  'notes:read': '读取笔记内容与列表',
+  'notes:write': '创建和修改笔记',
+  events: '订阅笔记与同步事件'
+}
+
+function permissionLabel(p: string): string {
+  return PERMISSION_LABELS[p] ?? p
+}
+
+/** 待确认权限的插件（启用开关触发，用户确认后调 confirmEnablePlugin） */
+const pendingPermission = ref<PluginRow | null>(null)
+const invokeError = ref('')
+
 async function togglePlugin(id: string, enabled: boolean): Promise<void> {
-  await window.trace.setPluginEnabled(id, enabled)
+  const row = plugins.value.find((p) => p.id === id)
+  const result = await window.trace.setPluginEnabled(id, enabled)
+  if (!result.ok && result.needsConfirmation && row) {
+    // 权限未确认（或 manifest 权限已变化）：弹确认对话框，开关回弹
+    pendingPermission.value = row
+  }
+  await loadPlugins()
+}
+
+async function confirmEnable(): Promise<void> {
+  if (!pendingPermission.value) return
+  await window.trace.confirmEnablePlugin(pendingPermission.value.id)
+  pendingPermission.value = null
+  await loadPlugins()
+}
+
+function cancelEnable(): void {
+  pendingPermission.value = null
+  void loadPlugins()
+}
+
+async function runCommand(commandId: string): Promise<void> {
+  invokeError.value = ''
+  const result = await window.trace.invokePluginCommand(commandId)
+  if (!result.ok) {
+    invokeError.value = result.error ?? '命令执行失败'
+    ElMessage.error(invokeError.value)
+  } else {
+    ElMessage.success('命令已执行')
+  }
   await loadPlugins()
 }
 
@@ -354,7 +413,8 @@ async function resetGitSource(): Promise<void> {
         <div class="settings-block">
           <h3>插件功能</h3>
           <p class="settings-desc">
-            插件系统正在建设中，当前版本提供清单规范与加载器骨架。开启后，放置在工作区插件目录中的插件可被加载。
+            插件运行在独立进程中，通过声明的权限读写笔记、订阅事件、注册命令。
+            插件目录：设置 → 通用 → 工作区同级的用户数据目录 plugins/（示例插件首次启动自动放置）。
           </p>
           <div class="setting-row">
             <span class="setting-label">启用插件</span>
@@ -373,10 +433,28 @@ async function resetGitSource(): Promise<void> {
               <div>
                 <strong>{{ plugin.name }}</strong>
                 <span style="color: var(--text-tertiary); margin-left: 8px">v{{ plugin.version }}</span>
+                <span v-if="plugin.running" class="plugin-badge plugin-badge-ok">运行中</span>
+                <span v-else-if="plugin.enabled && plugin.permissionsConfirmed" class="plugin-badge">未运行</span>
+                <span v-else-if="plugin.enabled && !plugin.permissionsConfirmed" class="plugin-badge plugin-badge-warn">需确认权限</span>
+                <span v-if="plugin.crashCount > 0" class="plugin-badge plugin-badge-warn">崩溃 {{ plugin.crashCount }} 次</span>
               </div>
-              <div class="settings-desc" style="margin: 2px 0 0">
-                {{ plugin.description }}
-                <span v-if="plugin.error" style="color: var(--danger)">（加载失败：{{ plugin.error }}）</span>
+              <div class="settings-desc" style="margin: 2px 0 0">{{ plugin.description }}</div>
+              <div v-if="plugin.permissions.length" class="settings-desc" style="margin: 4px 0 0">
+                权限：{{ plugin.permissions.map(permissionLabel).join('、') }}
+              </div>
+              <div v-if="plugin.error" class="settings-desc" style="margin: 4px 0 0; color: var(--danger)">
+                {{ plugin.error }}
+              </div>
+              <div v-if="plugin.commands.length" class="settings-desc" style="margin: 6px 0 0">
+                <el-button
+                  v-for="cmd in plugin.commands"
+                  :key="cmd.id"
+                  size="small"
+                  style="margin-right: 8px"
+                  @click="runCommand(cmd.id)"
+                >
+                  {{ cmd.title }}
+                </el-button>
               </div>
             </div>
             <el-switch
@@ -739,6 +817,33 @@ async function resetGitSource(): Promise<void> {
         </div>
       </el-tab-pane>
     </el-tabs>
+
+    <!-- 插件权限确认对话框：启用/权限变化时必须经用户同意（设计第 6 节知情同意防线） -->
+    <el-dialog
+      :model-value="pendingPermission !== null"
+      title="启用插件需要确认权限"
+      width="480px"
+      :close-on-click-modal="false"
+      @update:model-value="(v: boolean) => { if (!v) cancelEnable() }"
+    >
+      <template v-if="pendingPermission">
+        <p style="margin: 0 0 8px">
+          插件 <strong>「{{ pendingPermission.name }}」</strong>（v{{ pendingPermission.version }}）请求以下权限：
+        </p>
+        <ul style="margin: 0 0 12px; padding-left: 20px; line-height: 1.8">
+          <li v-for="p in pendingPermission.permissions" :key="p">
+            <code style="font-size: 12px">{{ p }}</code> — {{ permissionLabel(p) }}
+          </li>
+        </ul>
+        <p class="settings-desc" style="margin: 0">
+          请仅启用你信任的插件。插件的笔记读写仅限工作区内；本地安装的插件未经 Trace 市场审阅。
+        </p>
+      </template>
+      <template #footer>
+        <el-button @click="cancelEnable">取消</el-button>
+        <el-button type="primary" @click="confirmEnable">确认并启用</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -907,5 +1012,26 @@ async function resetGitSource(): Promise<void> {
 
 .theme-import-card:hover {
   color: var(--accent);
+}
+
+/* ---------- 插件状态徽标 ---------- */
+.plugin-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  background: var(--bg-tertiary, var(--bg-secondary));
+  color: var(--text-secondary);
+}
+
+.plugin-badge-ok {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
+.plugin-badge-warn {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
 }
 </style>

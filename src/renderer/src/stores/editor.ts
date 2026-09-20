@@ -47,6 +47,8 @@ export const useEditorStore = defineStore('editor', {
       dirParts.pop()
       useTreeStore().setLocation(vault, dirParts.join('/'))
       void window.trace.addRecent(vault, path, name).then(() => useTreeStore().loadRecents())
+      // 插件事件：note:opened（fire-and-forget，声明 events 权限的运行中插件可感知）
+      window.trace.reportNoteOpened(vault, path)
     },
     setContent(content: string): void {
       this.content = content

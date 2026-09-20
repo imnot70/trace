@@ -114,6 +114,8 @@ export interface AppSettings {
   enablePlugins: boolean
   /** 插件 id -> 是否启用 */
   pluginEnabled: Record<string, boolean>
+  /** 插件 id -> 已确认的权限集合（manifest 权限集合变化后需重新确认；确认记录按插件 id 存应用数据目录） */
+  pluginPermissionsConfirmed?: Record<string, string[]>
   /** Git 来源偏好：null = 未选择（首次触发时检测并弹窗），'system' = 使用系统 Git，'bundled' = 使用内置 Git */
   gitSource: 'system' | 'bundled' | null
   /** 窗口玻璃效果：auto 根据平台自动选择，none 关闭，mica Windows 11 Mica，acrylic Windows Acrylic，vibrancy macOS 毛玻璃 */
@@ -157,14 +159,33 @@ export interface RemoteRepo {
   updatedAt: string
 }
 
+/** 插件声明并经用户确认的能力域（权限标识见 plugin-design.md 第 4 节） */
+export type PluginPermission = 'notifications' | 'notes:read' | 'notes:write' | 'events'
+
+/** 插件已注册的命令（ctx.registerCommand；运行中才有内容） */
+export interface PluginCommandInfo {
+  /** 完整命令 id：`<插件id>.<命令id>` */
+  id: string
+  title: string
+}
+
 export interface PluginInfo {
   id: string
   name: string
   version: string
   description: string
+  /** manifest 声明的权限集合 */
+  permissions: string[]
+  /** 已确认的权限是否覆盖当前声明（false 时启用会要求重新确认） */
+  permissionsConfirmed: boolean
   enabled: boolean
-  loaded: boolean
+  /** 插件进程存活（utilityProcess 运行中） */
+  running: boolean
   error: string | null
+  /** 本轮启用期内连续崩溃次数（守护重启成功后保留计数供展示） */
+  crashCount: number
+  /** 已注册的命令 */
+  commands: PluginCommandInfo[]
 }
 
 export interface OpResult {

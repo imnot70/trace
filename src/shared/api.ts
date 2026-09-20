@@ -120,7 +120,18 @@ export interface TraceApi {
 
   // ---- 插件 ----
   listPlugins(): Promise<OpResult & { plugins?: PluginInfo[] }>
-  setPluginEnabled(id: string, enabled: boolean): Promise<OpResult>
+  /**
+   * 启用/停用插件。启用时若权限尚未确认（或 manifest 权限集合已变化），返回
+   * `{ ok: false, needsConfirmation: true, permissions }`，渲染端应弹权限确认对话框，
+   * 用户同意后调用 confirmEnablePlugin。
+   */
+  setPluginEnabled(id: string, enabled: boolean): Promise<OpResult & { needsConfirmation?: boolean; permissions?: string[] }>
+  /** 记录权限确认并启用插件（与 setPluginEnabled(id, true) 等效，附带确认动作） */
+  confirmEnablePlugin(id: string): Promise<OpResult>
+  /** 运行插件注册的命令（完整 id：`<插件id>.<命令id>`） */
+  invokePluginCommand(commandId: string): Promise<OpResult>
+  /** 向插件广播 note:opened 事件（渲染端打开笔记时上报，fire-and-forget） */
+  reportNoteOpened(vault: string, path: string): void
 
   // ---- 标签 ----
   listTags(): Promise<OpResult & { tags?: TagItem[] }>

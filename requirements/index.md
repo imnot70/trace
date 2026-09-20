@@ -156,11 +156,11 @@
 
 ## 三、设计已确认（部分已实施）
 
-### 插件系统 v2（目标 0.4.0）— [plugin-design.md](2026-09-08_plugin-system/plugin-design.md)
+### 插件系统 v2 — [plugin-design.md](2026-09-08_plugin-system/plugin-design.md)
 
-已拍板：独立插件进程（utilityProcess）+ 能力网关 ｜ 仅 Tier 1 能力（笔记读写 / 事件 / 命令）｜ 全局授权 ｜ GitHub 索引市场 + 本地导入并存 ｜ 版本 0.4.0 = M1 进程隔离 + Tier 1 + 权限确认。
+已拍板：独立插件进程（utilityProcess）+ 能力网关 ｜ 仅 Tier 1 能力（笔记读写 / 事件 / 命令）｜ 全局授权 ｜ GitHub 索引市场 + 本地导入并存。
 
-里程碑：M1 进程隔离与能力网关 → M2 `.trace-plugin` 导入导出与设置页增强 → M3 声明式 UI 扩展与类型包 → M4 市场浏览 / 安装 / 更新。
+里程碑：**M1 进程隔离与能力网关（✅ 已实施，见设计文档第 10 节实施记录与 API 最终签名）** → M2 `.trace-plugin` 导入导出与设置页增强 → M3 声明式 UI 扩展与类型包 → M4 市场浏览 / 安装 / 更新。
 
 ### 笔记库网格导航 — [vault-grid-navigation-design.md](2026-09-08_vault-grid-navigation/vault-grid-navigation-design.md)
 
@@ -180,7 +180,7 @@
 - 所见即所得编辑模式
 - ~~图形化冲突解决~~（已实施）
 - ~~变更触发自动同步~~（已实施，FR-2.8.14）
-- 插件完整 API 与市场（v2 设计已定稿，见 `requirements/2026-09-08_plugin-system/`，M1 待启动）
+- 插件完整 API 与市场（v2 设计已定稿，见 `requirements/2026-09-08_plugin-system/`；**M1 已实施**，M2–M4 待做）
 - ~~多窗口~~（已作废）
 - ~~导出 HTML~~（已实施，FR-2.4.12）
 - ~~窗口毛玻璃效果~~（已实施）

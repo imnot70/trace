@@ -1,6 +1,6 @@
 # Trace 插件系统设计（v2 提案）
 
-> 状态：**设计已确认（2026-09-08）**——D1 独立插件进程 ｜ D2 仅 Tier 1 ｜ D3 全局授权 ｜ D4 GitHub 索引市场 ｜ D5 版本 0.4.0。
+> 状态：**设计已确认（2026-09-08）；M1 已实施**（utilityProcess 进程隔离 + 能力网关 + Tier 1 API + 权限确认 + 崩溃守护，实施记录见第 10 节）——D1 独立插件进程 ｜ D2 仅 Tier 1 ｜ D3 全局授权 ｜ D4 GitHub 索引市场 ｜ D5 版本节奏顺延（M1 随 0.5.0 发布）。
 > 起草：2026-09-08 ｜ 基于现有 v1 骨架（`src/main/services/pluginHost.ts`）
 > 目标读者：项目所有者 + 后续开发代理。关键决策见第 8 节，威胁模型详解见第 2 节。
 
@@ -159,3 +159,77 @@
 - **M3（0.5.0）**：声明式工具栏按钮 + 状态区；类型包发 npm
 - **M4（0.5.x）**：GitHub 索引市场（浏览/安装/更新检查）
 - 测试基线：能力网关单元测试（权限过滤矩阵）+ 插件进程生命周期集成测试 + RPC 超时/节流测试
+
+---
+
+## 10. M1 实施记录（2026-09-20）
+
+### 10.1 交付物
+
+| 组件 | 位置 | 说明 |
+| --- | --- | --- |
+| 插件进程桥接脚本 | `src/main/plugin-runtime/bridge.ts`（构建为 `out/main/bridge.js`） | utilityProcess 入口；受限 require + ctx 代理为 RPC |
+| require 白名单 | `src/main/plugin-runtime/requireGuard.ts` | 纯函数，可单测；允许插件目录内文件 + path/util/events，其余拒绝 |
+| RPC 协议 | `src/main/plugin-runtime/protocol.ts` | MessagePort 消息类型与超时/大小常量 |
+| 能力网关 | `src/main/services/pluginGateway.ts` | 纯函数 dispatch；按 manifest.permissions 过滤 |
+| 插件宿主 v2 | `src/main/services/pluginHost.ts` | 进程管理 + 崩溃守护（指数退避，连续 5 次自动停用）+ 事件广播 |
+| 运行时适配 | `src/main/services/pluginRuntime.ts` | electron utilityProcess 适配（PluginHost 不依赖 electron，测试注入桩） |
+| 权限确认 | 设置页对话框 + `pluginPermissionsConfirmed` 设置字段 | 启用前权限集合必须与已确认一致；manifest 权限变化需重新确认 |
+| 示例插件 | `resources/sample-plugin/`（v2.0.0） | Tier 1 全能力演示（vaults/list/read/create/write + note:saved + 命令） |
+
+### 10.2 Tier 1 API 最终签名（作者视角）
+
+```ts
+// 全部 notes.* 调用 resolve 为 { ok: true, ...数据 } 或 { ok: false, error }，用 .ok 判断
+ctx.notes.vaults(): Promise<{ ok: true; vaults: string[] } | { ok: false; error: string }>
+ctx.notes.list(vault): Promise<{ ok: true; tree: TreeNode[] } | { ok: false; error: string }>
+ctx.notes.tree(vault): Promise<{ ok: true; tree: TreeNode[] } | { ok: false; error: string }>  // list 的别名
+ctx.notes.read(vault, path): Promise<{ ok: true; content: string; hash: string } | { ok: false; error: string }>
+ctx.notes.write(vault, path, content, opts?: { expectedHash?: string | null }): Promise<{ ok: true; hash: string } | { ok: false; error: string }>
+ctx.notes.create(vault, parentPath, name, content?): Promise<{ ok: true; path: string } | { ok: false; error: string }>
+ctx.notify(message): Promise<{ ok: true } | { ok: false; error: string }>          // notifications 权限
+ctx.logger.info/warn/error(...args): void                                          // 内置
+ctx.on(event, handler) / ctx.off(event, handler)                                    // events 权限；event ∈ note:saved / note:opened / vault:changed / sync:done
+ctx.registerCommand({ id, title, handler }): string                                // 内置；完整 id = <插件id>.<命令id>
+```
+
+**对设计第 4 节的修订**：
+
+1. **新增 `ctx.notes.vaults()`**（归入 `notes:read` 权限）：设计原表缺少库名枚举能力，插件无从得知 `list(vault)` 的 vault 参数取值，M1 实施时补齐；
+2. **`notes.write` 的防覆盖参数**为可选 `opts.expectedHash`（设计表中 `{expectedHash}` 语义不变）；
+3. **错误语义分层**（测试基线补充）：权限违规 / 未知能力域 / 未知方法一律 **reject**（设计 2.1「调用未声明能力直接抛错」）；业务失败（未知库、重名、外部修改冲突、内容超限）**resolve 为 `{ ok: false, error }`** 由插件判断——两种失败混在一起会让插件无法区分「没权限」和「没写进去」；
+4. **`list` 与 `tree` 同义**（均返回完整树），保留两个名字仅为贴合设计表措辞。
+
+### 10.3 事件来源与节流
+
+| 事件 | 来源 | 节流 |
+| --- | --- | --- |
+| `note:saved` | `note:write` IPC handler 成功后（覆盖编辑器保存；插件写入不经此路径，避免事件回环） | 直传 |
+| `note:opened` | 渲染端 editor store 打开笔记后经 `plugin:reportNoteOpened` 上报 | 直传 |
+| `vault:changed` | chokidar watcher 变更回调 | 每插件 300ms 尾沿合并（保留最新 payload） |
+| `sync:done` | 手动同步（`git:sync` handler）与自动同步（AutoSyncService `onVaultSynced` 回调）成功后 | 直传 |
+
+所有事件只广播给声明了 `events` 权限的运行中插件。
+
+### 10.4 超时与限制（默认值）
+
+| 项 | 值 |
+| --- | --- |
+| ctx RPC 调用超时 | 5s（`RPC_TIMEOUT_MS`） |
+| 命令执行超时 | 10s（宿主与 bridge 双侧兜底） |
+| activate 等待 | 10s，超时终止进程并记错误 |
+| deactivate 宽限 | 5s，超时强杀 |
+| 单次调用内容上限 | 4,000,000 字符（bridge 与网关双侧校验） |
+| 通知长度 | 500 字符 |
+| 崩溃守护 | 退避 1s/2s/4s/8s，连续 5 次自动停用（`pluginEnabled=false` + 错误标记），手动停用计数归零 |
+
+### 10.5 测试基线落地
+
+- `tests/pluginGateway.test.ts`（12 项）：权限过滤矩阵 + 分层语义 + 大小上限；
+- `tests/requireGuard.test.ts`（8 项）：内置白名单、目录逃逸、npm 包拒绝、自包含政策；
+- `tests/pluginHost.test.ts`（20 项）：进程内桩运行时走真实宿主协议——权限确认流程、能力调用、激活失败、停用、命令、崩溃守护退避与上限、事件广播与合并、清单校验。
+- 生产冒烟（Windows 实测）：utilityProcess fork + 桥接激活 + 网关读写真实笔记库 + 命令触发 + 通知送达全链路通过。
+
+### 10.6 M1 未含（按里程碑顺延）
+
+`.trace-plugin` 打包导入导出、设置页权限/日志/崩溃详情页、插件私有存储（M2）；声明式工具栏/状态区、类型包（M3）；市场（M4）。

@@ -4,6 +4,16 @@
 
 ## [未发布]
 
+### 新功能
+
+- **插件系统 M1：进程隔离 + Tier 1 能力 API + 权限确认**（设计见 `requirements/2026-09-08_plugin-system/`，实施记录见其第 10 节）：
+  - **进程隔离**：每个启用的插件运行在独立 `utilityProcess` 中，插件崩溃只影响自身——守护自动按 1s/2s/4s/8s 指数退避重启，连续崩溃 5 次自动停用并标记错误；停用宽限 5s 超时强杀
+  - **能力网关**：插件的全部能力调用按 manifest 声明的权限过滤，未声明权限直接抛错；`require` 白名单限制插件只能加载自身目录文件与 path/util/events 内置模块（自包含政策，禁 npm 依赖）
+  - **Tier 1 API**：`ctx.notes.vaults/list/tree/read/write/create`（notes:read / notes:write 权限，写侧透传防覆盖 hash）、`ctx.on/off` 订阅 `note:saved / note:opened / vault:changed / sync:done` 事件（events 权限）、`ctx.notify`（notifications 权限）、`ctx.logger` 与 `ctx.registerCommand`（内置）；RPC 调用 5s 超时、单次内容 400 万字符上限、`vault:changed` 高频事件 300ms 合并
+  - **权限确认对话框**：首次启用或 manifest 权限集合变化时，设置页弹窗逐项展示权限中文说明，确认后才激活（确认记录按插件 id 存应用数据目录）
+  - **设置页增强**：插件行显示权限清单、运行状态、崩溃计数与命令按钮（点击运行命令）
+  - **示例插件升级 v2**：覆盖 Tier 1 全部能力（读笔记统计字数 + 写入报告笔记 + 订阅保存事件 + 注册命令）
+
 ## [0.4.6] - 2026-09-20
 
 ### 修复
