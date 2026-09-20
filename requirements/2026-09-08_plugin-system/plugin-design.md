@@ -327,5 +327,19 @@ ctx.registerCommand({ id, title, handler }): string                             
 
 ### 13.3 工作拆分（2 批次）
 
-1. 索引仓库脚手架 + marketService（拉取/缓存/对比/sha256）+ 单测（约 2~3 天）
+1. ✅ **批次一已实施**：索引仓库脚手架（`market-index/` 种子目录）+ marketService（拉取/缓存/对比/sha256）+ 单测 11 项（实施明细见 13.4）
 2. 市场 UI + 下载安装/更新/下架标记接 M2 管线 + 作者发布指南（guides/）+ PRD FR-2.11.14 + 实机冒烟（约 2~3 天）
+
+### 13.4 批次一实施记录（2026-09-20）
+
+| 组件 | 位置 | 说明 |
+| --- | --- | --- |
+| 索引仓库种子 | `market-index/`（trace-plugins.json + PR 模板 + README/治理规则） | 内容复制推送到 imnot70/trace-plugins 即完成初始化；之后以该仓库为准 |
+| 市场服务 | `src/main/services/marketService.ts` | fetchIndex（ETag 条件请求 + 24h TTL 缓存 + 失败回退旧缓存 stale 标记 + 非法条目过滤）/ checkUpdates（updates + unlisted 已下架）/ downloadAndVerify（sha256 校验不一致即拒绝并删除） |
+| 网络适配器 | `src/main/services/marketHttp.ts` | 专用 session（trace-market）每次请求按 proxyUrl 设 fixed_servers 代理（无代理走系统），基于 net.request（net.fetch 类型不支持 session）；30s 超时 |
+| 语义化版本比较 | `compareVersions` | 数字段比较，位数不足补 0（不支持预发布标签） |
+
+- 索引校验：schemaVersion 必须为 1；插件条目 id 形如目录名、repo 形如 owner/name、latest 必须存在于 versions；非法条目静默过滤
+- 下载校验：资产名白名单（防路径拼接）；sha256 大小写不敏感比对，不一致删除文件拒绝安装
+- 测试：`tests/marketService.test.ts` 11 项（TTL/force/304/stale 回退/条目过滤/更新与下架判定/校验和一致与篡改拒绝/非法资产名）
+- 待办：用户将 `market-index/repo/` 内容推送至 imnot70/trace-plugins（索引生效前提）
