@@ -24,6 +24,10 @@ export interface GatewayServices {
   log: (level: 'info' | 'warn' | 'error', pluginId: string, args: unknown[]) => void
   /** 插件私有 KV 存储（settings:persist 权限；按插件隔离） */
   getStorage: (pluginId: string) => StorageBackend
+  /** 设置侧栏状态区文字（ui:status 权限；每插件一条） */
+  setStatus: (pluginId: string, text: string) => void
+  /** 清除该插件的状态区文字 */
+  clearStatus: (pluginId: string) => void
 }
 
 /** 插件私有存储后端（由 PluginStorageService 提供） */
@@ -39,7 +43,8 @@ export const PERMISSION_REQUIRED: Record<string, string> = {
   notifications: 'notifications',
   'notes:read': 'notes:read',
   'notes:write': 'notes:write',
-  storage: 'settings:persist'
+  storage: 'settings:persist',
+  'ui:status': 'ui:status'
 }
 
 export interface GatewayCall {
@@ -176,6 +181,20 @@ export function dispatchCapabilityCall(call: GatewayCall, permissions: ReadonlyS
             : businessFail(r.error ?? '创建失败')
         }
 
+        return fail(`未知方法：${domain}.${method}`)
+      }
+
+      case 'ui:status': {
+        if (method === 'set') {
+          const text = contentOf(call.args[0])
+          if (text === null || text.trim().length === 0) return businessFail('状态文字不能为空')
+          services.setStatus(pluginId, text.trim().slice(0, 120))
+          return { ok: true, result: { ok: true } }
+        }
+        if (method === 'clear') {
+          services.clearStatus(pluginId)
+          return { ok: true, result: { ok: true } }
+        }
         return fail(`未知方法：${domain}.${method}`)
       }
 

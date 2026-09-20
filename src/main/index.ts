@@ -226,6 +226,13 @@ app.whenReady().then(() => {
   // 插件私有存储（settings:persist）：应用数据目录内按插件隔离，绝不写入笔记库
   const pluginStorage = new PluginStorageService(path.join(userData, 'plugin-data'))
 
+  // 侧栏状态区文字（ui:status）：宿主维护，变更即全量广播渲染端
+  const pluginStatusTexts = new Map<string, string>()
+  const broadcastPluginStatus = (): void => {
+    const entries = [...pluginStatusTexts.entries()].map(([id, text]) => ({ id, text }))
+    for (const w of BrowserWindow.getAllWindows()) w.webContents.send('plugin:status', entries)
+  }
+
   // 插件宿主 v2：每个插件一个 utilityProcess，能力调用经网关按 manifest 权限过滤。
   // 注意声明顺序：watcher 的变更回调要向插件广播 vault:changed，plugins 需先于 watcher 创建
   const plugins = new PluginHost({
@@ -267,11 +274,24 @@ app.whenReady().then(() => {
       log: (level, pluginId, args) => {
         logger[level](`[插件 ${pluginId}]`, ...args)
       },
-      getStorage: (pluginId) => pluginStorage.backend(pluginId)
+      getStorage: (pluginId) => pluginStorage.backend(pluginId),
+      setStatus: (pluginId, text) => {
+        pluginStatusTexts.set(pluginId, text)
+        broadcastPluginStatus()
+      },
+      clearStatus: (pluginId) => {
+        if (pluginStatusTexts.delete(pluginId)) broadcastPluginStatus()
+      }
     },
     storage: pluginStorage,
     stagingDir: path.join(userData, 'plugin-staging'),
-    logPath: path.join(userData, 'logs', 'main.log')
+    logPath: path.join(userData, 'logs', 'main.log'),
+    broadcastToolbars: (items) => {
+      for (const w of BrowserWindow.getAllWindows()) w.webContents.send('plugin:toolbar', items)
+    },
+    onPluginStopped: (id) => {
+      if (pluginStatusTexts.delete(id)) broadcastPluginStatus()
+    }
   })
   plugins.init()
   plugins.activateAll()

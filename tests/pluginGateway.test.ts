@@ -8,11 +8,17 @@ import { dispatchCapabilityCall, type GatewayServices, type GatewayCall } from '
  * - logger / 命令注册内置开放，不走权限
  */
 
-function makeServices(overrides: Partial<GatewayServices> = {}): GatewayServices & { notifications: string[]; logs: string[] } {
+function makeServices(overrides: Partial<GatewayServices> = {}): GatewayServices & {
+  notifications: string[]
+  logs: string[]
+  statuses: string[]
+} {
   const notifications: string[] = []
   const logs: string[] = []
+  const statuses: string[] = []
   const data: Record<string, unknown> = {}
   return {
+    statuses,
     notifications,
     logs,
     listVaultNames: () => ['vault-a', 'vault-b'],
@@ -44,6 +50,8 @@ function makeServices(overrides: Partial<GatewayServices> = {}): GatewayServices
       },
       keys: () => ({ ok: true, keys: Object.keys(data) })
     }),
+    setStatus: (pluginId, text) => statuses.push(`${pluginId}:${text}`),
+    clearStatus: (pluginId) => statuses.push(`${pluginId}:CLEAR`),
     ...overrides
   }
 }
@@ -150,6 +158,27 @@ describe('能力网关 · 权限过滤矩阵', () => {
     const { result, services } = dispatch({ domain: 'logger', method: 'info', args: ['插件日志'] }, [])
     expect(result.ok).toBe(true)
     expect(services.logs).toEqual(['info:sample:插件日志'])
+  })
+
+  it('ui:status：未声明权限致命拒绝；声明后 set/clear 生效', () => {
+    const denied = dispatch({ domain: 'ui:status', method: 'set', args: ['字数 10'] }, [])
+    expect(denied.result.ok).toBe(false)
+
+    const set = dispatch({ domain: 'ui:status', method: 'set', args: ['  字数 10  '] }, ['ui:status'])
+    expect(set.result.ok).toBe(true)
+    expect(set.services.statuses).toEqual(['sample:字数 10'])
+
+    const clear = dispatch({ domain: 'ui:status', method: 'clear', args: [] }, ['ui:status'])
+    expect(clear.result.ok).toBe(true)
+    expect(clear.services.statuses).toContain('sample:CLEAR')
+  })
+
+  it('ui:status：空文字业务失败、超长截断到 120 字符', () => {
+    const empty = dispatch({ domain: 'ui:status', method: 'set', args: ['   '] }, ['ui:status'])
+    expect(empty.result.result).toMatchObject({ ok: false })
+    const long = dispatch({ domain: 'ui:status', method: 'set', args: ['字'.repeat(200)] }, ['ui:status'])
+    expect(long.result.ok).toBe(true)
+    expect(long.services.statuses).toEqual([`sample:${'字'.repeat(120)}`])
   })
 
   it('未知能力域与未知方法为致命拒绝', () => {

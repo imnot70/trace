@@ -468,6 +468,20 @@ body {
   color: var(--text-primary);
 }
 
+/* 插件状态区（ui:status 权限的插件推送的一行文字，位于侧栏底部） */
+.plugin-status {
+  padding: 0 12px 6px;
+}
+
+.plugin-status-line {
+  overflow: hidden;
+  padding: 2px 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sidebar-footer {
   padding: 10px 14px;
   border-top: 1px solid var(--border-color);

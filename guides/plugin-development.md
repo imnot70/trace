@@ -63,6 +63,8 @@ exports.activate = function activate(ctx) {
 | `notes:write` | `ctx.notes.create / write` |
 | `events` | `ctx.on(event, handler)` 订阅事件 |
 | `settings:persist` | `ctx.storage.get / set / delete / keys` 私有 KV 存储 |
+| `editor:toolbar` | manifest `contributions.toolbar` 编辑工具栏按钮（声明式） |
+| `ui:status` | `ctx.status.set / clear` 侧栏底部状态区 |
 | （无需声明） | `ctx.logger`、`ctx.registerCommand` |
 
 规则：
@@ -131,6 +133,25 @@ const k = await ctx.storage.keys()         // { ok: true, keys: ['runs'] }
 限制：键最长 200 字符；单值约 256KB；单插件总量约 1MB。需要持久化大量数据时请自建文件（放在插件目录内）。
 
 ### 3.4 事件（`events` 权限）
+
+> 状态区：`ctx.status.set('字数 128')` / `ctx.status.clear()`——侧栏底部一行文字（≤120 字符），每插件一条，插件停止自动清除（`ui:status` 权限）。
+
+### 3.4.1 编辑器工具栏按钮（`editor:toolbar` 权限，声明式）
+
+在 manifest.json 声明即可，插件代码无需介入，按钮出现在编辑器工具栏，点击执行对应命令（命令必须已注册）：
+
+```json
+{
+  "permissions": ["editor:toolbar"],
+  "contributions": {
+    "toolbar": [{ "icon": "∑", "title": "统计字数", "command": "stats" }]
+  }
+}
+```
+
+- `icon`：1-4 个字符的 emoji / 文本（缺省 ▸）；`title`：悬停提示
+- `command`：插件内短 id（自动补全为 `<插件id>.<命令id>`）或完整 id
+- 插件停止 / 崩溃 / 卸载时按钮自动消失
 
 ```js
 const handler = (payload) => { ... }
@@ -294,7 +315,23 @@ exports.activate = function activate(ctx) {
 }
 ```
 
-## 9. 打包与分享
+## 9. 类型补全与打包分享
+
+### 类型补全（@trace/plugin-api）
+
+```bash
+npm install -D @trace/plugin-api
+```
+
+```js
+// main.js
+/** @param {import('@trace/plugin-api').PluginContext} ctx */
+exports.activate = function activate(ctx) {
+  // ctx. 全量补全与 JSDoc 提示
+}
+```
+
+### 打包分享
 
 插件目录可直接压缩为 zip（改名 `.trace-plugin` 后缀）分享，接收方通过「设置 → 插件 → 导入插件…」安装：
 

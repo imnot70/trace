@@ -97,6 +97,8 @@ const api: TraceApi = {
   exportPlugin: (id) => ipcRenderer.invoke('plugin:export', id),
   uninstallPlugin: (id) => ipcRenderer.invoke('plugin:uninstall', id),
   pluginDetail: (id) => ipcRenderer.invoke('plugin:detail', id),
+  onPluginStatus: (cb) => subscribe('plugin:status', cb),
+  onPluginToolbar: (cb) => subscribe('plugin:toolbar', cb),
 
   listTags: () => ipcRenderer.invoke('tag:list'),
   createTag: (name, color) => ipcRenderer.invoke('tag:create', name, color),

@@ -3,7 +3,13 @@ import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { logger } from '../lib/logger'
 import { JsonStore } from '../lib/jsonStore'
-import type { AppSettings, PluginCommandInfo, PluginCrashRecord, PluginInfo } from '@shared/types'
+import type {
+  AppSettings,
+  PluginCommandInfo,
+  PluginCrashRecord,
+  PluginInfo,
+  PluginToolbarContribution
+} from '@shared/types'
 import type { PluginManifest } from './pluginManifest'
 import { isValidManifest } from './pluginManifest'
 import { dispatchCapabilityCall, type GatewayServices } from './pluginGateway'
@@ -40,6 +46,10 @@ export interface PluginHostDeps {
   stagingDir: string
   /** 主进程日志文件路径（详情页日志查看用；可为 null） */
   logPath: string | null
+  /** 广播编辑器工具栏按钮（M3，声明式贡献点合并结果） */
+  broadcastToolbars?: (items: PluginToolbarContribution[]) => void
+  /** 插件进程停止后回调（清理状态区文字等） */
+  onPluginStopped?: (id: string) => void
 }
 
 interface PluginState {
@@ -198,7 +208,8 @@ export class PluginHost {
         error: state?.error ?? null,
         crashCount: state?.crashCount ?? 0,
         crashHistory: (state?.crashes ?? []).map((c) => ({ at: new Date(c.at).toISOString(), code: c.code })),
-        commands: state?.running ? state.commands : []
+        commands: state?.running ? state.commands : [],
+        toolbar: state?.running ? this.toolbarItems().filter((t) => t.pluginId === manifest.id) : []
       })
     }
     return result.sort((a, b) => a.id.localeCompare(b.id))
@@ -331,6 +342,7 @@ export class PluginHost {
         state.commands = msg.commands.map((c) => ({ id: c.id, title: c.title }))
         state.error = null
         logger.info(`插件已激活：${id}（命令 ${msg.commands.length} 个）`)
+        this.broadcastToolbars()
         break
       }
       case 'activate-error': {
@@ -345,6 +357,8 @@ export class PluginHost {
         logger.error(`插件激活失败：${id}：${msg.error}`)
         this.killRuntime(state, id)
         state.runtime = null
+        this.deps.onPluginStopped?.(id)
+        this.broadcastToolbars()
         break
       }
       case 'rpc-call': {
@@ -381,6 +395,8 @@ export class PluginHost {
         }
         state.running = false
         state.commands = []
+        this.deps.onPluginStopped?.(id)
+        this.broadcastToolbars()
         const rt = state.runtime
         state.runtime = null
         if (rt) {
@@ -410,6 +426,8 @@ export class PluginHost {
     }
     state.runtime = null
     state.commands = []
+    this.deps.onPluginStopped?.(id)
+    this.broadcastToolbars()
 
     if (state.stopping || !this.settings.get().pluginEnabled[id]) {
       // 正常停用
@@ -445,6 +463,31 @@ export class PluginHost {
     }, backoff)
   }
 
+  /** 合并所有运行中插件声明的工具栏按钮（editor:toolbar 权限 + 命令已注册才有效） */
+  private toolbarItems(): PluginToolbarContribution[] {
+    const items: PluginToolbarContribution[] = []
+    for (const [id, state] of this.states) {
+      if (!state.running) continue
+      if (!manifestPermissions(state.manifest).includes('editor:toolbar')) continue
+      for (const item of state.manifest.contributions?.toolbar ?? []) {
+        if (!item || typeof item.command !== 'string' || typeof item.title !== 'string') continue
+        const full = item.command.includes('.') ? item.command : `${id}.${item.command}`
+        if (!state.commands.some((c) => c.id === full)) continue
+        items.push({
+          icon: String(item.icon ?? '▸').slice(0, 4),
+          title: item.title.slice(0, 50),
+          command: full,
+          pluginId: id
+        })
+      }
+    }
+    return items
+  }
+
+  private broadcastToolbars(): void {
+    this.deps.broadcastToolbars?.(this.toolbarItems())
+  }
+
   private killRuntime(state: PluginState, id: string): void {
     try {
       state.runtime?.kill()
@@ -472,6 +515,8 @@ export class PluginHost {
     state.error = null
     state.crashCount = 0
     state.commands = []
+    this.deps.onPluginStopped?.(id)
+    this.broadcastToolbars()
     for (const [, resolver] of state.commandResolvers) {
       clearTimeout(resolver.timer)
       resolver.resolve({ ok: false, error: '插件已停用' })
@@ -578,6 +623,8 @@ export class PluginHost {
     }
     this.clearPluginMeta(id)
     this.deps.storage.clear(id)
+    this.deps.onPluginStopped?.(id)
+    this.broadcastToolbars()
     logger.info(`插件已卸载：${id}`)
     return { ok: true }
   }
@@ -638,6 +685,7 @@ export class PluginHost {
       this.cancelImport(importId)
     }
     logger.info(`插件包已安装：${id} v${staged.manifest.version}${wasEnabled ? '（升级，原为启用）' : ''}`)
+    this.broadcastToolbars()
 
     if (wasEnabled) {
       const r = this.setEnabled(id, true)

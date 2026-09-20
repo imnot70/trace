@@ -158,9 +158,13 @@ function makeHost(): {
   host: PluginHost
   runtimes: FakeRuntime[]
   clearedStorages: string[]
+  statusUpdates: string[]
+  toolbarBroadcasts: { icon: string; title: string; command: string; pluginId: string }[][]
 } {
   const runtimes: FakeRuntime[] = []
   const clearedStorages: string[] = []
+  const statusUpdates: string[] = []
+  const toolbarBroadcasts: { icon: string; title: string; command: string; pluginId: string }[][] = []
   const gateway: GatewayServices = {
     listVaultNames: () => ['vault-a'],
     vaultPath: (name) => (name === 'vault-a' ? path.join(tmp, 'ws', name) : null),
@@ -170,6 +174,8 @@ function makeHost(): {
     createNote: (_v, pp, n) => ({ ok: true, path: pp ? `${pp}/${n}` : n }),
     notifyUser: (m) => notifications.push(m),
     log: (level, pluginId, args) => logs.push(`${level}:${pluginId}:${args.join(' ')}`),
+    setStatus: (pluginId, text) => statusUpdates.push(`${pluginId}:${text}`),
+    clearStatus: (pluginId) => statusUpdates.push(`${pluginId}:CLEAR`),
     getStorage: () => ({
       get: (key) => ({ ok: true, value: key in storageData ? storageData[key] : null }),
       set: (key, value) => {
@@ -215,9 +221,11 @@ function makeHost(): {
       }
     } as unknown as PluginStorageService,
     stagingDir: path.join(tmp, 'staging'),
-    logPath: null
+    logPath: null,
+    broadcastToolbars: (items) => toolbarBroadcasts.push(items),
+    onPluginStopped: () => {}
   })
-  return { host, runtimes, clearedStorages }
+  return { host, runtimes, clearedStorages, statusUpdates, toolbarBroadcasts }
 }
 
 function installPlugin(
@@ -630,6 +638,81 @@ describe('PluginHost v2 · M2 卸载与导入', () => {
       .readdirSync(path.join(tmp, 'staging'))
       .filter((n) => n.startsWith('cancelme'))
     expect(leftovers).toHaveLength(0)
+  })
+})
+
+describe('PluginHost v2 · M3 声明式贡献点', () => {
+  it('editor:toolbar：声明权限且命令已注册时，discover 返回工具栏按钮并广播', async () => {
+    const { host, toolbarBroadcasts } = makeHost()
+    host.init()
+    settings.update((st) => {
+      st.enablePlugins = true
+    })
+    installPlugin(
+      'sample',
+      `exports.activate = (ctx) => {
+         ctx.registerCommand({ id: 'stats', title: '统计', handler: () => {} })
+       }`,
+      ['editor:toolbar'],
+      { contributions: { toolbar: [{ icon: '∑', title: '统计字数', command: 'stats' }] } }
+    )
+    host.confirmEnable('sample')
+    await flush()
+
+    const info = host.discover()[0]
+    expect(info.toolbar).toEqual([{ icon: '∑', title: '统计字数', command: 'sample.stats', pluginId: 'sample' }])
+    // 至少一次广播包含该按钮
+    expect(toolbarBroadcasts.some((items) => items.some((t) => t.command === 'sample.stats'))).toBe(true)
+  })
+
+  it('未声明 editor:toolbar 权限或命令不存在时不出按钮', async () => {
+    const { host } = makeHost()
+    host.init()
+    settings.update((st) => {
+      st.enablePlugins = true
+    })
+    // 有命令但无权限
+    installPlugin(
+      'a',
+      `exports.activate = (ctx) => { ctx.registerCommand({ id: 'x', title: 'x', handler: () => {} }) }`,
+      [],
+      { contributions: { toolbar: [{ icon: 'A', title: 'A', command: 'x' }] } }
+    )
+    host.confirmEnable('a')
+    await flush()
+    expect(host.discover().find((p) => p.id === 'a')?.toolbar).toEqual([])
+
+    // 有权限但命令未注册
+    installPlugin('b', 'exports.activate = () => {}', ['editor:toolbar'], {
+      contributions: { toolbar: [{ icon: 'B', title: 'B', command: 'ghost' }] }
+    })
+    host.confirmEnable('b')
+    await flush()
+    expect(host.discover().find((p) => p.id === 'b')?.toolbar).toEqual([])
+  })
+
+  it('插件停止后工具栏按钮消失（广播为空）', async () => {
+    vi.useFakeTimers()
+    const { host, toolbarBroadcasts } = makeHost()
+    host.init()
+    settings.update((st) => {
+      st.enablePlugins = true
+    })
+    installPlugin(
+      'sample',
+      `exports.activate = (ctx) => { ctx.registerCommand({ id: 'x', title: 'x', handler: () => {} }) }`,
+      ['editor:toolbar'],
+      { contributions: { toolbar: [{ icon: 'X', title: 'X', command: 'x' }] } }
+    )
+    host.confirmEnable('sample')
+    await flush()
+    expect(host.discover()[0].toolbar).toHaveLength(1)
+
+    host.setEnabled('sample', false)
+    await flush()
+    expect(host.discover()[0].toolbar).toEqual([])
+    const last = toolbarBroadcasts[toolbarBroadcasts.length - 1]
+    expect(last).toEqual([])
   })
 })
 

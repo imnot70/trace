@@ -169,6 +169,24 @@ export interface PluginCommandInfo {
   title: string
 }
 
+/** 编辑器工具栏按钮贡献（editor:toolbar 权限；声明式，插件不碰 DOM） */
+export interface PluginToolbarContribution {
+  /** 按钮显示文本（1-4 个字符的 emoji / 文本） */
+  icon: string
+  /** 悬停提示 */
+  title: string
+  /** 点击触发的完整命令 id：`<插件id>.<命令id>` */
+  command: string
+  /** 贡献该按钮的插件 id（渲染展示用） */
+  pluginId: string
+}
+
+/** 侧栏底部状态区一条文字（ui:status 权限，每插件一条） */
+export interface PluginStatusEntry {
+  id: string
+  text: string
+}
+
 /** 插件崩溃记录（本轮启用期内，最近在前，最多 10 条） */
 export interface PluginCrashRecord {
   /** ISO 时间 */
@@ -219,6 +237,8 @@ export interface PluginInfo {
   crashHistory: PluginCrashRecord[]
   /** 已注册的命令 */
   commands: PluginCommandInfo[]
+  /** 编辑器工具栏按钮（运行中且声明 editor:toolbar 权限时非空） */
+  toolbar: PluginToolbarContribution[]
 }
 
 export interface OpResult {

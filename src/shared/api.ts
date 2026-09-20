@@ -26,7 +26,9 @@ import type {
   TrashEntry,
   VaultInfo,
   PluginImportPreview,
-  PluginDetail
+  PluginDetail,
+  PluginStatusEntry,
+  PluginToolbarContribution
 } from './types'
 
 /** 渲染进程可用的完整 API（由 preload 通过 contextBridge 注入 window.trace） */
@@ -148,6 +150,10 @@ export interface TraceApi {
   uninstallPlugin(id: string): Promise<OpResult>
   /** 插件详情：信息 / 崩溃历史 / 日志行 / 私有存储占用 */
   pluginDetail(id: string): Promise<OpResult & { detail?: PluginDetail }>
+  /** 订阅侧栏状态区（ui:status 权限的插件推送的文字，每次为全量条目） */
+  onPluginStatus(cb: (entries: PluginStatusEntry[]) => void): () => void
+  /** 订阅编辑器工具栏按钮（editor:toolbar 权限的运行中插件，每次为全量列表） */
+  onPluginToolbar(cb: (items: PluginToolbarContribution[]) => void): () => void
 
   // ---- 标签 ----
   listTags(): Promise<OpResult & { tags?: TagItem[] }>

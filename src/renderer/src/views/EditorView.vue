@@ -189,6 +189,12 @@ function pinPeek(): void {
 }
 
 /** 定位：在侧栏树中展开并高亮当前笔记（专注模式下以浮层侧栏展示） */
+/** 运行插件工具栏按钮绑定的命令（M3 editor:toolbar 贡献点） */
+async function invokePluginCommand(commandId: string): Promise<void> {
+  const r = await window.trace.invokePluginCommand(commandId)
+  if (!r.ok) ElMessage.error(r.error ?? '插件命令执行失败')
+}
+
 function locateCurrent(): void {
   if (!editor.current) return
   void tree.revealNode(editor.current.vault, editor.current.path, 'note')
@@ -414,6 +420,12 @@ onBeforeUnmount(() => {
       <TipButton tip="公式块" @click="toolbarInsert('\n$$\n', '\n$$\n')">
         ∫
       </TipButton>
+    <template v-if="app.pluginToolbars.length">
+      <span class="toolbar-sep"></span>
+      <TipButton v-for="btn in app.pluginToolbars" :key="btn.command" :tip="`${btn.title}（${btn.pluginId}）`" @click="invokePluginCommand(btn.command)">
+        <span style="font-size: 13px">{{ btn.icon }}</span>
+      </TipButton>
+    </template>
     </div>
     </div>
 

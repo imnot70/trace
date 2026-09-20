@@ -95,9 +95,9 @@
 
 ### Tier 2（v2.x，M3）
 
-- `editor:toolbar`：在编辑工具栏贡献按钮（manifest 声明 icon/title/command，渲染进程渲染，点击发命令——**声明式，插件不碰 DOM**）；
-- `ui:status`：侧栏底部状态区一行文字（如字数统计插件）；
-- `settings:persist`：插件私有 KV 存储（宿主托管 JSON，避免插件自己写文件）。
+- `editor:toolbar`：在编辑工具栏贡献按钮（manifest 声明 icon/title/command，渲染进程渲染，点击发命令——**声明式，插件不碰 DOM**）（✅ 已实施）；
+- `ui:status`：侧栏底部状态区一行文字（如字数统计插件）（✅ 已实施）；
+- `settings:persist`：插件私有 KV 存储（宿主托管 JSON，避免插件自己写文件）（✅ 已于 M2 提前实施）。
 
 ### Tier 3（远期，设计预留）
 
@@ -156,7 +156,7 @@
 
 - **M1（0.4.0）**：utilityProcess 插件进程 + 能力网关 + Tier 1 API + 权限确认对话框 + 崩溃守护；示例插件改写为 Tier 1 演示
 - **M2（0.4.x）**：`.trace-plugin` 导入导出；设置页详情（权限/日志/崩溃记录）；插件私有存储（✅ 已实施，实施记录见第 11 节）
-- **M3（0.5.0）**：声明式工具栏按钮 + 状态区；类型包发 npm
+- **M3（0.5.0）**：声明式工具栏按钮 + 状态区；类型包发 npm（✅ 已实施，类型包发布动作待办，实施记录见第 12 节）
 - **M4（0.5.x）**：GitHub 索引市场（浏览/安装/更新检查）
 - 测试基线：能力网关单元测试（权限过滤矩阵）+ 插件进程生命周期集成测试 + RPC 超时/节流测试
 
@@ -281,3 +281,26 @@ ctx.registerCommand({ id, title, handler }): string                             
 - `tests/pluginPackage.test.ts`（7 项）：导出导入往返、顶层文件夹清单定位、无效清单 / 缺入口拒绝、路径守卫（含手工构造的 `../` 恶意条目包）、上限、升级覆盖
 - `tests/pluginStorage.test.ts`（8 项）：往返持久化、插件隔离、键长 / 单值 / 总量上限、undefined 拒绝、id 路径防御、clear/usage
 - `tests/pluginHost.test.ts` 新增 6 项：崩溃历史、卸载清理（目录 / 权限记录 / 存储）、导入安装、升级重激活、权限变化重确认、取消导入
+
+---
+
+## 12. M3 实施记录（2026-09-20）
+
+### 12.1 交付物
+
+| 组件 | 位置 | 说明 |
+| --- | --- | --- |
+| 工具栏贡献点 | manifest `contributions.toolbar` + `PluginHost.toolbarItems()` | 声明式：权限 `editor:toolbar` + 命令已注册才生效；命令短 id 自动补全为 `<插件id>.<命令id>` |
+| 编辑器工具栏渲染 | `EditorView.vue` 工具栏尾部 | 主进程 `plugin:toolbar` 事件广播全量按钮，点击经 `invokePluginCommand` 执行 |
+| 状态区 | 网关 `ui:status` 域 + `ctx.status.set/clear` | 权限 `ui:status`；每插件一条，≤120 字符自动截断；`plugin:status` 事件全量广播渲染端，侧栏底部渲染，插件停止自动清除 |
+| `@trace/plugin-api` | `packages/plugin-api/`（index.d.ts + README） | 只含类型与 JSDoc；npm 发布为发布动作（构建产物已就绪，待 npm 账号执行 publish） |
+
+### 12.2 行为约定
+
+- **工具栏**：manifest `contributions.toolbar: [{icon, title, command}]`；icon 为 1-4 字符 emoji/文本（缺省 ▸）；仅当（a）声明 `editor:toolbar` 权限、（b）插件运行中、（c）command 已注册 三者同时满足才渲染；插件停止 / 崩溃 / 卸载自动消失
+- **状态区**：`ctx.status.set(text)`（trim 后 ≤120 字符，超出截断）/ `ctx.status.clear()`；插件停止即清除；每插件一条、互不覆盖
+- 渲染端订阅：`plugin:status` / `plugin:toolbar` 均为全量条目广播（无增量合并复杂度）
+
+### 12.3 测试
+
+网关 `ui:status`（2 项：权限拒绝 + set/clear/截断）+ 宿主贡献点（3 项：权限 + 命令注册的过滤组合、停止后消失与广播）。插件测试合计 72 项。

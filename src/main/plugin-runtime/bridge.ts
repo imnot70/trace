@@ -102,6 +102,10 @@ function buildContext(): Record<string, unknown> {
       create: (vault: string, parentPath: string, name: string, content?: string) =>
         rpcCallSized('notes:write', 'create', [vault, parentPath, name, content])
     },
+    status: {
+      set: (text: string) => rpcCallSized('ui:status', 'set', [String(text)]),
+      clear: () => rpcCall('ui:status', 'clear', [])
+    },
     storage: {
       get: (key: string) => rpcCall('storage', 'get', [String(key)]),
       set: (key: string, value: unknown) => rpcCallSized('storage', 'set', [String(key), value]),

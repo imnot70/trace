@@ -7,6 +7,8 @@
  * - ctx.on('note:saved')：订阅笔记保存事件（events 权限）
  * - ctx.registerCommand：注册命令（内置），启用插件后在 设置 → 插件 中运行
  * - ctx.storage.get / set：插件私有 KV 存储（settings:persist 权限，随插件卸载清除）
+ * - manifest contributions.toolbar：编辑工具栏按钮（editor:toolbar 权限，声明式）
+ * - ctx.status.set / clear：侧栏底部状态区一行文字（ui:status 权限）
  *
  * API 约定：
  * - notes.* 全部 resolve 为 { ok: true, ...数据 } 或 { ok: false, error }，用 .ok 判断；
@@ -20,6 +22,10 @@ exports.activate = function activate(ctx) {
   // 事件：保存笔记时在日志里记录（不弹通知，避免打扰）
   const onNoteSaved = function onNoteSaved(payload) {
     ctx.logger.info('检测到笔记保存：' + payload.vault + ' / ' + payload.path)
+    // 状态区：在侧栏底部显示最近保存信息
+    ctx.notes.read(payload.vault, payload.path).then(function (r) {
+      if (r.ok) ctx.status.set('最近保存 ' + payload.path + '（' + r.content.length + ' 字）')
+    })
   }
   ctx.on('note:saved', onNoteSaved)
 
@@ -81,6 +87,7 @@ exports.activate = function activate(ctx) {
 
   return function deactivate() {
     ctx.off('note:saved', onNoteSaved)
+    ctx.status.clear()
     ctx.logger.info('示例插件已停用')
   }
 }
