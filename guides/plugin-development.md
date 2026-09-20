@@ -99,7 +99,7 @@ ctx.logger.info('内容长度：' + note.content.length)
 | `ctx.notes.tree(vault)` | 同 `list` | 别名 |
 | `ctx.notes.read(vault, path)` | `{ ok: true, content, hash }` | 读取笔记全文；`hash` 可用于防覆盖写入 |
 | `ctx.notes.write(vault, path, content, opts?)` | `{ ok: true, hash }` | 覆盖写入；`opts.expectedHash` 传读取时的 `hash` 可做防冲突（磁盘内容已变时返回 `{ ok: false, error }`） |
-| `ctx.notes.create(vault, parentPath, name, content?)` | `{ ok: true, path }` | 新建笔记；`parentPath` 为 `''` 表示库根目录；重名时返回 `{ ok: false, error }` |
+| `ctx.notes.create(vault, parentPath, name, content?)` | `{ ok: true, path }` | 新建笔记；`parentPath` 为 `''` 表示库根目录，**父文件夹必须已存在**（Tier 1 无创建文件夹的 API）；重名时返回 `{ ok: false, error }` |
 
 路径约定：
 
@@ -255,18 +255,18 @@ exports.activate = function activate(ctx) {
       }
       const vault = v.vaults[0]
 
-      // 已存在则直接提示；不存在则用模板创建（重名业务失败被当作「已存在」处理）
-      const path = `日记/${today()}.md`
-      const created = await ctx.notes.create(
-        vault,
-        '日记',
-        `${today()}.md`,
-        `# ${today()}\n\n- [ ] 待办一\n- [ ] 待办二\n\n## 随笔\n\n`
-      )
+      // 优先放进「日记」文件夹；该文件夹不存在时回退到库根目录
+      // （create 的父文件夹必须已存在，Tier 1 没有创建文件夹的 API）
+      const template = `# ${today()}\n\n- [ ] 待办一\n- [ ] 待办二\n\n## 随笔\n\n`
+      let created = await ctx.notes.create(vault, '日记', `${today()}.md`, template)
+      if (!created.ok && /父目录不存在/.test(created.error)) {
+        created = await ctx.notes.create(vault, '', `${today()}.md`, template)
+      }
       if (!created.ok && !/已存在|重名|同名/.test(created.error)) {
         await ctx.notify('创建失败：' + created.error)
         return
       }
+      const path = created.ok ? created.path : `日记/${today()}.md`
 
       const note = await ctx.notes.read(vault, path)
       if (note.ok) await ctx.notify(`今日笔记共 ${note.content.length} 字`)
@@ -286,3 +286,4 @@ exports.activate = function activate(ctx) {
 - **写入返回 `{ ok: false, error: '外部修改冲突…' }`**：磁盘上的内容比你读取时新。重新 `read` 拿到新 `hash`，合并内容后再带新 `hash` 写入，或不带 `expectedHash` 直接覆盖（谨慎）
 - **插件被自动停用**：日志里会有崩溃记录，先在本地排查入口代码（常见：顶层抛错、activate 未导出、require 了白名单外的模块）
 - **command id 为什么带前缀**：完整命令 id = `<插件id>.<命令id>`，避免不同插件之间冲突；`ctx.registerCommand` 的返回值就是完整 id
+- **创建笔记报「父目录不存在」**：`notes.create` 不会自动创建文件夹（Tier 1 无建夹 API），请使用已存在的文件夹，或回退到库根目录（`parentPath` 传 `''`）
