@@ -58,6 +58,12 @@ body,
   border-radius: 0 0 10px 10px;
 }
 
+/* 窗口不透明时（Windows 平台，或关闭玻璃效果）：圆角缺口没有透明可透，
+   深色主题下还会露出浅色窗口底色；Windows 11 由系统自动圆化真实窗口角 */
+html.window-opaque #app {
+  border-radius: 0;
+}
+
 body {
   font-family:
     'PingFang SC',

@@ -11,6 +11,8 @@ function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
 }
 
 const api: TraceApi = {
+  platform: process.platform,
+
   getWorkspace: () => ipcRenderer.invoke('workspace:get'),
   setWorkspace: (root) => ipcRenderer.invoke('workspace:set', root),
   chooseDirectory: (current) => ipcRenderer.invoke('workspace:choose', current),

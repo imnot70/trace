@@ -175,6 +175,14 @@ const mainView = computed(() => {
 
 onMounted(async () => {
   await app.init()
+  // 窗口是否透明由主进程创建窗口时决定（Windows 一律不透明，见 createWindow 注释）。
+  // 不透明窗口下内容区底部圆角没有透明缺口可透，深色主题反而会露出浅色窗口底色；
+  // Windows 11 已由系统自动圆化真实窗口角——此时禁用内容区圆角
+  const windowTransparent =
+    app.settings.windowGlassEffect !== 'none' &&
+    app.settings.windowGlassEffect !== undefined &&
+    window.trace.platform !== 'win32'
+  if (!windowTransparent) document.documentElement.classList.add('window-opaque')
   await tree.refreshAll()
   void trash.load() // 侧栏回收站计数
   window.addEventListener('keydown', onGlobalKeydown)

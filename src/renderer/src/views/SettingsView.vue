@@ -17,6 +17,10 @@ const git = useGitStore()
 const tree = useTreeStore()
 const editor = useEditorStore()
 
+// Windows 下窗口保持原生边框（透明窗口会失去标题栏，见主进程 createWindow），
+// 毛玻璃材质不可用，玻璃效果仅窗口透明度生效
+const isWindows = window.trace.platform === 'win32'
+
 const tab = computed<'account' | 'plugins' | 'general'>({
   get: () => (app.view.name === 'settings' ? app.view.tab : 'general'),
   set: (value: string) => {
@@ -481,7 +485,7 @@ async function resetGitSource(): Promise<void> {
               <el-option label="Acrylic（Windows）" value="acrylic" />
               <el-option label="毛玻璃（macOS）" value="vibrancy" />
             </el-select>
-            <span class="settings-desc" style="margin: 0">窗口半透明和毛玻璃效果，不同平台支持程度不同</span>
+            <span class="settings-desc" style="margin: 0">{{ isWindows ? 'Windows 下毛玻璃暂不可用（保持原生标题栏），仅窗口透明度生效' : '窗口半透明和毛玻璃效果，不同平台支持程度不同' }}</span>
           </div>
           <div class="setting-row">
             <span class="setting-label">窗口透明度</span>

@@ -80,7 +80,12 @@ function createWindow(): void {
   const settings = settingsService?.get()
 
   // 根据窗口效果设置决定是否启用透明
-  const isTransparent = settings?.windowGlassEffect !== 'none' && settings?.windowGlassEffect !== undefined
+  // ⚠️ Windows 必须排除：Electron 在 Windows 上 transparent: true 会剥离原生标题栏
+  // 与可调边框（实测 WS_CAPTION / WS_THICKFRAME 被移除，透明仅在无边框窗口生效），
+  // 窗口因此无法移动 / 关闭、失去系统圆角。Windows 一律创建带原生边框的不透明窗口，
+  // 玻璃效果降级为仅窗口不透明度（setOpacity 在带边框窗口上正常工作）
+  const glassEnabled = settings?.windowGlassEffect !== 'none' && settings?.windowGlassEffect !== undefined
+  const isTransparent = glassEnabled && process.platform !== 'win32'
 
   mainWindow = new BrowserWindow({
     width: 1440,

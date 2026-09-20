@@ -29,6 +29,10 @@ import type {
 
 /** 渲染进程可用的完整 API（由 preload 通过 contextBridge 注入 window.trace） */
 export interface TraceApi {
+  // ---- 环境信息 ----
+  /** 运行平台（process.platform），渲染端按平台调整窗口相关样式（如 Windows 不透明窗口的内容圆角） */
+  readonly platform: 'win32' | 'darwin' | 'linux' | string
+
   // ---- 工作区 ----
   getWorkspace(): Promise<OpResult & { root?: string; defaultRoot?: string }>
   setWorkspace(root: string): Promise<OpResult>
