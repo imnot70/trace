@@ -54,8 +54,14 @@ src/
 │  ├─ ipc/registerIpc.ts  # IPC handler 注册（按域划分通道）
 │  ├─ services/           # workspace / vaults / fsTree / trash / favorites
 │  │                      # / gitService / github / account / settings / themes
-│  │                      # / watcher(chokidar) / pluginHost
+│  │                      # / watcher(chokidar) / search / wikilink / autoSync
+│  │                      # / exportPdf / bundledGit / windowEffect
+│  │                      # / pluginHost(进程隔离+能力网关) / pluginPackage
+│  │                      # / pluginStorage / pluginRuntime / pluginGateway
+│  ├─ plugin-runtime/     # 插件进程桥接 bridge.ts（独立构建为 out/main/bridge.js）
+│  │                      # / 协议 protocol.ts / require 白名单 requireGuard.ts
 │  └─ lib/                # errMessage / jsonStore / logger(脱敏) / paths / themePackage
+├─ packages/plugin-api/   # @trace/plugin-api 类型包（d.ts + JSDoc，发布 npm 用）
 ├─ preload/index.ts       # contextBridge 暴露类型化 IPC API（window.trace）
 ├─ renderer/src/          # 纯 UI
 │  ├─ views/              # EditorView / SettingsView / TrashView / WelcomeView
@@ -69,7 +75,7 @@ src/
    └─ validate.ts         # 名称校验规则（前后端共用，保证一致）
 ```
 
-- **IPC 通道按域划分**：`workspace:*`、`vault:*`、`fsTree:*`、`trash:*`、`favorite:*`、`git:*`、`account:*`、`settings:*`、`theme:*`、`plugin:*`（插件启停/权限确认/命令/事件上报）；主 → 渲染事件：`fs:changed`（外部改动）、`git:progress`、`git:conflict`、`plugin:notify`（插件通知）。
+- **IPC 通道按域划分**：`workspace:*`、`vault:*`、`fsTree:*`、`trash:*`、`favorite:*`、`git:*`、`account:*`、`settings:*`、`theme:*`、`plugin:*`（插件启停/权限确认/命令/事件上报）；主 → 渲染事件：`fs:changed`（外部改动）、`git:progress`、`git:conflict`、`plugin:notify`（插件通知）、`plugin:status`（侧栏状态区）、`plugin:toolbar`（编辑器工具栏按钮）。
 - **磁盘布局**：工作区（默认 `~/Trace`）下每个笔记库 = 一个 git 仓库；回收站在 `<工作区>/.trash/`；应用元数据（设置、收藏、最近打开、凭据）存 Electron `userData` 目录的 JSON 文件，**绝不写入笔记库**。
 - 新增 IPC 能力的路径：先在 `shared/types.ts` 定类型、`shared/api.ts` 加方法签名 → 主进程 `services/` 实现 → `ipc/registerIpc.ts` 注册 → `preload/index.ts` 暴露 → 渲染进程经 `window.trace` 调用。
 

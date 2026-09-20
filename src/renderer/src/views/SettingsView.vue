@@ -244,7 +244,10 @@ const PERMISSION_LABELS: Record<string, string> = {
   notifications: '发送通知',
   'notes:read': '读取笔记内容与列表',
   'notes:write': '创建和修改笔记',
-  events: '订阅笔记与同步事件'
+  events: '订阅笔记与同步事件',
+  'settings:persist': '保存插件私有数据',
+  'editor:toolbar': '在编辑器工具栏添加按钮',
+  'ui:status': '在侧栏底部显示状态文字'
 }
 
 function permissionLabel(p: string): string {
