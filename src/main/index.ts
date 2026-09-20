@@ -2,7 +2,6 @@ import { app, BrowserWindow, Menu, protocol, shell } from 'electron'
 import path from 'node:path'
 import os from 'node:os'
 import fs from 'node:fs'
-import { createRequire } from 'node:module'
 import { initLogger, logger } from './lib/logger'
 import { resolveWithin } from './lib/paths'
 import { JsonStore } from './lib/jsonStore'
@@ -14,6 +13,8 @@ import {
   GithubService,
   pickGitBinary,
   PluginHost,
+  spawnUtilityRuntime,
+  PluginStorageService,
   AutoSyncService,
   ExportService,
   RecentsService,
@@ -153,6 +154,7 @@ app.whenReady().then(() => {
     autoSyncIntervalMin: 5,
     enablePlugins: false,
     pluginEnabled: {},
+    pluginPermissionsConfirmed: {},
     gitSource: null,
     windowGlassEffect: 'auto',
     windowOpacity: 100,
@@ -221,6 +223,79 @@ app.whenReady().then(() => {
         resolveBundledGitPath(process.resourcesPath)
       )
   })
+  // 插件私有存储（settings:persist）：应用数据目录内按插件隔离，绝不写入笔记库
+  const pluginStorage = new PluginStorageService(path.join(userData, 'plugin-data'))
+
+  // 侧栏状态区文字（ui:status）：宿主维护，变更即全量广播渲染端
+  const pluginStatusTexts = new Map<string, string>()
+  const broadcastPluginStatus = (): void => {
+    const entries = [...pluginStatusTexts.entries()].map(([id, text]) => ({ id, text }))
+    for (const w of BrowserWindow.getAllWindows()) w.webContents.send('plugin:status', entries)
+  }
+
+  // 插件宿主 v2：每个插件一个 utilityProcess，能力调用经网关按 manifest 权限过滤。
+  // 注意声明顺序：watcher 的变更回调要向插件广播 vault:changed，plugins 需先于 watcher 创建
+  const plugins = new PluginHost({
+    pluginsDir: path.join(userData, 'plugins'),
+    sampleDir: app.isPackaged
+      ? path.join(process.resourcesPath, 'sample-plugin')
+      : path.join(app.getAppPath(), 'resources', 'sample-plugin'),
+    settings: settingsStore,
+    // bridge.js 与主进程同目录构建（out/main/bridge.js），dev 与打包后路径一致
+    bridgePath: path.join(__dirname, 'bridge.js'),
+    spawnRuntime: spawnUtilityRuntime,
+    gateway: {
+      listVaultNames: () => vaults.list().map((v) => v.name),
+      vaultPath: (name) => {
+        try {
+          const p = vaults.vaultPath(name)
+          return fs.existsSync(p) ? p : null
+        } catch {
+          return null
+        }
+      },
+      listTree: (vault) => fsTree.listTree(vault),
+      readNote: (vault, relPath) => fsTree.readNote(vault, relPath),
+      writeNote: (vault, relPath, content, expectedHash) =>
+        fsTree.writeNote(vault, relPath, content, expectedHash),
+      createNote: (vault, parentPath, name, content) => {
+        const created = fsTree.createNote(vault, parentPath, name)
+        if (!created.ok) return created
+        const notePath = created.path
+        if (content && notePath) {
+          const written = fsTree.writeNote(vault, notePath, content, null)
+          if (!written.ok) return { ok: false, error: written.error ?? '写入笔记内容失败' }
+        }
+        return created
+      },
+      notifyUser: (message) => {
+        for (const w of BrowserWindow.getAllWindows()) w.webContents.send('plugin:notify', message)
+      },
+      log: (level, pluginId, args) => {
+        logger[level](`[插件 ${pluginId}]`, ...args)
+      },
+      getStorage: (pluginId) => pluginStorage.backend(pluginId),
+      setStatus: (pluginId, text) => {
+        pluginStatusTexts.set(pluginId, text)
+        broadcastPluginStatus()
+      },
+      clearStatus: (pluginId) => {
+        if (pluginStatusTexts.delete(pluginId)) broadcastPluginStatus()
+      }
+    },
+    storage: pluginStorage,
+    stagingDir: path.join(userData, 'plugin-staging'),
+    logPath: path.join(userData, 'logs', 'main.log'),
+    broadcastToolbars: (items) => {
+      for (const w of BrowserWindow.getAllWindows()) w.webContents.send('plugin:toolbar', items)
+    },
+    onPluginStopped: (id) => {
+      if (pluginStatusTexts.delete(id)) broadcastPluginStatus()
+    }
+  })
+  plugins.init()
+  plugins.activateAll()
+
   const watcher = new WatcherService(
     () => workspace.getRoot(),
     (payload) => {
@@ -230,6 +305,7 @@ app.whenReady().then(() => {
       for (const p of payload.paths) {
         if (p.endsWith('.md')) void wikilink?.updateFileIndex(payload.vault, p)
       }
+      plugins.emitEvent('vault:changed', { vault: payload.vault, paths: payload.paths })
       autoSync.onChanged()
     },
     // git 同步 / 自动同步挂起期间丢弃的事件不会重放，resume 后全量重建双链索引
@@ -237,27 +313,13 @@ app.whenReady().then(() => {
   )
   watcher.start()
 
-  const plugins = new PluginHost(
-    path.join(userData, 'plugins'),
-    app.isPackaged ? path.join(process.resourcesPath, 'sample-plugin') : path.join(app.getAppPath(), 'resources', 'sample-plugin'),
-    settingsStore,
-    () => ({
-      notify: (message: string) => {
-        for (const w of BrowserWindow.getAllWindows()) w.webContents.send('plugin:notify', message)
-      },
-      logger
-    }),
-    createRequire(__filename)
-  )
-  plugins.init()
-  plugins.activateAll()
-
   exportPdf = new ExportService(() => mainWindow)
 
   const autoSync = new AutoSyncService({
     getRoot: () => workspace.getRoot(),
     git,
     watcher,
+    onVaultSynced: (vault) => plugins.emitEvent('sync:done', { vault }),
     getConfig: () => {
       const s = settingsStore.get()
       // 兼容旧设置：v0.4.2 的 autoSyncEnabled=true 迁移为 interval 模式

@@ -15,6 +15,8 @@ export interface AutoSyncDeps {
   getConfig: () => { mode: AutoSyncMode; intervalMin: number }
   /** 变更触发防抖时长（毫秒，默认 5000；测试可缩短） */
   debounceMs?: number
+  /** 单库同步成功后的回调（插件事件 sync:done 广播用；可选） */
+  onVaultSynced?: (vault: string) => void
 }
 
 /**
@@ -96,6 +98,7 @@ export class AutoSyncService {
           const result = await this.deps.git.sync(vaultPath)
           if (!result.ok) logger.warn(`自动同步失败（${vault}）：${result.error ?? '未知错误'}`)
           else if (result.conflicts?.length) logger.warn(`自动同步存在冲突（${vault}）：${result.conflicts.join('、')}`)
+          else this.deps.onVaultSynced?.(vault)
         } catch (e) {
           logger.warn(`自动同步异常（${vault}）`, e)
         } finally {

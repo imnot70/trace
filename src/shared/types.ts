@@ -114,6 +114,8 @@ export interface AppSettings {
   enablePlugins: boolean
   /** 插件 id -> 是否启用 */
   pluginEnabled: Record<string, boolean>
+  /** 插件 id -> 已确认的权限集合（manifest 权限集合变化后需重新确认；确认记录按插件 id 存应用数据目录） */
+  pluginPermissionsConfirmed?: Record<string, string[]>
   /** Git 来源偏好：null = 未选择（首次触发时检测并弹窗），'system' = 使用系统 Git，'bundled' = 使用内置 Git */
   gitSource: 'system' | 'bundled' | null
   /** 窗口玻璃效果：auto 根据平台自动选择，none 关闭，mica Windows 11 Mica，acrylic Windows Acrylic，vibrancy macOS 毛玻璃 */
@@ -157,14 +159,86 @@ export interface RemoteRepo {
   updatedAt: string
 }
 
+/** 插件声明并经用户确认的能力域（权限标识见 plugin-design.md 第 4 节） */
+export type PluginPermission = 'notifications' | 'notes:read' | 'notes:write' | 'events'
+
+/** 插件已注册的命令（ctx.registerCommand；运行中才有内容） */
+export interface PluginCommandInfo {
+  /** 完整命令 id：`<插件id>.<命令id>` */
+  id: string
+  title: string
+}
+
+/** 编辑器工具栏按钮贡献（editor:toolbar 权限；声明式，插件不碰 DOM） */
+export interface PluginToolbarContribution {
+  /** 按钮显示文本（1-4 个字符的 emoji / 文本） */
+  icon: string
+  /** 悬停提示 */
+  title: string
+  /** 点击触发的完整命令 id：`<插件id>.<命令id>` */
+  command: string
+  /** 贡献该按钮的插件 id（渲染展示用） */
+  pluginId: string
+}
+
+/** 侧栏底部状态区一条文字（ui:status 权限，每插件一条） */
+export interface PluginStatusEntry {
+  id: string
+  text: string
+}
+
+/** 插件崩溃记录（本轮启用期内，最近在前，最多 10 条） */
+export interface PluginCrashRecord {
+  /** ISO 时间 */
+  at: string
+  /** 进程退出码 */
+  code: number
+}
+
+/** .trace-plugin 导入预览（安装管线：解压校验后、用户确认前） */
+export interface PluginImportPreview {
+  importId: string
+  id: string
+  name: string
+  version: string
+  description: string
+  permissions: string[]
+  /** 目标位置已存在同 id 插件（本次导入为升级覆盖） */
+  isUpgrade: boolean
+}
+
+/** 插件详情（设置页详情弹层） */
+export interface PluginDetail {
+  info: PluginInfo
+  /** 崩溃历史（最近在前） */
+  crashes: PluginCrashRecord[]
+  /** 主进程日志中该插件最近的输出行 */
+  logs: string[]
+  /** 私有存储占用字节数 */
+  storageBytes: number
+}
+
 export interface PluginInfo {
   id: string
   name: string
   version: string
   description: string
+  /** manifest 声明的权限集合 */
+  permissions: string[]
+  /** 已确认的权限是否覆盖当前声明（false 时启用会要求重新确认） */
+  permissionsConfirmed: boolean
   enabled: boolean
-  loaded: boolean
+  /** 插件进程存活（utilityProcess 运行中） */
+  running: boolean
   error: string | null
+  /** 本轮启用期内连续崩溃次数（守护重启成功后保留计数供展示） */
+  crashCount: number
+  /** 崩溃历史（最近在前，最多 10 条） */
+  crashHistory: PluginCrashRecord[]
+  /** 已注册的命令 */
+  commands: PluginCommandInfo[]
+  /** 编辑器工具栏按钮（运行中且声明 editor:toolbar 权限时非空） */
+  toolbar: PluginToolbarContribution[]
 }
 
 export interface OpResult {

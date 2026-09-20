@@ -176,8 +176,11 @@ export function registerIpc(deps: IpcDeps): void {
   )
   handle(
     'note:write',
-    (vault: string, relPath: string, content: string, expectedHash: string | null) =>
-      deps.fsTree.writeNote(vault, relPath, content, expectedHash)
+    (vault: string, relPath: string, content: string, expectedHash: string | null) => {
+      const result = deps.fsTree.writeNote(vault, relPath, content, expectedHash)
+      if (result.ok) deps.plugins.emitEvent('note:saved', { vault, path: relPath })
+      return result
+    }
   )
   handle('note:saveImage', (vault: string, notePath: string, fileName: string, base64: string) =>
     deps.fsTree.saveImage(vault, notePath, fileName, base64, deps.settings.get().attachmentsDir)
@@ -282,6 +285,7 @@ export function registerIpc(deps: IpcDeps): void {
       try {
         const result = await deps.git.sync(deps.vaults.vaultPath(vault))
         send('git:event', { vault, phase: result.ok ? 'done' : 'error', message: result.error })
+        if (result.ok) deps.plugins.emitEvent('sync:done', { vault })
         return result
       } catch (e) {
         const error = errMessage(e)
@@ -480,15 +484,60 @@ export function registerIpc(deps: IpcDeps): void {
   )
 
   handle('plugin:list', () => ({ ok: true, plugins: deps.plugins.discover() }))
-  handle('plugin:setEnabled', (id: string, enabled: boolean) => {
-    deps.plugins.setEnabled(id, enabled)
+  handle('plugin:setEnabled', (id: string, enabled: boolean) => deps.plugins.setEnabled(id, enabled))
+  handle('plugin:confirmEnable', (id: string) => deps.plugins.confirmEnable(id))
+  handle('plugin:invokeCommand', async (commandId: string) => deps.plugins.invokeCommand(commandId))
+  handle('plugin:reportNoteOpened', (vault: string, notePath: string) => {
+    deps.plugins.emitEvent('note:opened', { vault, path: notePath })
     return { ok: true }
   })
 
-  // ---------- 插件 -> 渲染进程通知 ----------
-  ipcMain.on('plugin:notify', (_e, message: string) => {
-    send('plugin:notify', message)
+  // ---------- 插件包（M2：.trace-plugin 导入导出 / 卸载 / 详情） ----------
+  handle('plugin:import', async () => {
+    const win = deps.getWindow()
+    const picked = await dialog.showOpenDialog(win ?? new BrowserWindow({ show: false }), {
+      title: '导入插件',
+      filters: [
+        { name: 'Trace 插件包', extensions: ['trace-plugin', 'zip'] },
+        { name: '所有文件', extensions: ['*'] }
+      ],
+      properties: ['openFile']
+    })
+    if (picked.canceled || picked.filePaths.length === 0) return { ok: false, error: '已取消' }
+    const r = deps.plugins.beginImport(picked.filePaths[0])
+    if (!r.ok) return { ok: false, error: r.error }
+    return {
+      ok: true,
+      preview: {
+        importId: r.importId,
+        id: r.manifest.id,
+        name: r.manifest.name,
+        version: r.manifest.version,
+        description: r.manifest.description ?? '',
+        permissions: r.manifest.permissions ?? [],
+        isUpgrade: r.isUpgrade
+      }
+    }
   })
+  handle('plugin:confirmImport', (importId: string) => deps.plugins.confirmImport(importId))
+  handle('plugin:cancelImport', (importId: string) => {
+    deps.plugins.cancelImport(importId)
+    return { ok: true }
+  })
+  handle('plugin:export', async (id: string) => {
+    const info = deps.plugins.discover().find((p) => p.id === id)
+    const win = deps.getWindow()
+    const saved = await dialog.showSaveDialog(win ?? new BrowserWindow({ show: false }), {
+      title: '导出插件',
+      defaultPath: `${id}-${info?.version ?? '1.0.0'}.trace-plugin`,
+      filters: [{ name: 'Trace 插件包', extensions: ['trace-plugin'] }]
+    })
+    if (saved.canceled || !saved.filePath) return { ok: false, error: '已取消' }
+    const r = deps.plugins.exportPlugin(id, saved.filePath)
+    return r.ok ? { ok: true, path: saved.filePath } : r
+  })
+  handle('plugin:uninstall', (id: string) => deps.plugins.uninstall(id))
+  handle('plugin:detail', (id: string) => deps.plugins.detail(id))
 
   // ---------- 搜索 ----------
   handle('search:buildIndex', async (force?: boolean) => {

@@ -24,7 +24,11 @@ import type {
   TreeNode,
   ExportProgress,
   TrashEntry,
-  VaultInfo
+  VaultInfo,
+  PluginImportPreview,
+  PluginDetail,
+  PluginStatusEntry,
+  PluginToolbarContribution
 } from './types'
 
 /** 渲染进程可用的完整 API（由 preload 通过 contextBridge 注入 window.trace） */
@@ -120,7 +124,36 @@ export interface TraceApi {
 
   // ---- 插件 ----
   listPlugins(): Promise<OpResult & { plugins?: PluginInfo[] }>
-  setPluginEnabled(id: string, enabled: boolean): Promise<OpResult>
+  /**
+   * 启用/停用插件。启用时若权限尚未确认（或 manifest 权限集合已变化），返回
+   * `{ ok: false, needsConfirmation: true, permissions }`，渲染端应弹权限确认对话框，
+   * 用户同意后调用 confirmEnablePlugin。
+   */
+  setPluginEnabled(id: string, enabled: boolean): Promise<OpResult & { needsConfirmation?: boolean; permissions?: string[] }>
+  /** 记录权限确认并启用插件（与 setPluginEnabled(id, true) 等效，附带确认动作） */
+  confirmEnablePlugin(id: string): Promise<OpResult>
+  /** 运行插件注册的命令（完整 id：`<插件id>.<命令id>`） */
+  invokePluginCommand(commandId: string): Promise<OpResult>
+  /** 向插件广播 note:opened 事件（渲染端打开笔记时上报，fire-and-forget） */
+  reportNoteOpened(vault: string, path: string): void
+
+  // ---- 插件包（M2：.trace-plugin 导入导出 / 卸载 / 详情）----
+  /** 弹文件选择框并解析 .trace-plugin，返回导入预览（解压暂存，等待确认） */
+  importPlugin(): Promise<OpResult & { preview?: PluginImportPreview }>
+  /** 确认安装暂存的插件包（若原插件启用中则按权限确认状态重新激活） */
+  confirmImportPlugin(importId: string): Promise<OpResult & { id?: string; needsConfirmation?: boolean; permissions?: string[] }>
+  /** 取消导入并清理暂存 */
+  cancelImportPlugin(importId: string): Promise<OpResult>
+  /** 导出插件为 .trace-plugin（弹保存框，返回保存路径） */
+  exportPlugin(id: string): Promise<OpResult & { path?: string }>
+  /** 卸载插件：停用 + 删目录 + 清权限记录与私有存储 */
+  uninstallPlugin(id: string): Promise<OpResult>
+  /** 插件详情：信息 / 崩溃历史 / 日志行 / 私有存储占用 */
+  pluginDetail(id: string): Promise<OpResult & { detail?: PluginDetail }>
+  /** 订阅侧栏状态区（ui:status 权限的插件推送的文字，每次为全量条目） */
+  onPluginStatus(cb: (entries: PluginStatusEntry[]) => void): () => void
+  /** 订阅编辑器工具栏按钮（editor:toolbar 权限的运行中插件，每次为全量列表） */
+  onPluginToolbar(cb: (items: PluginToolbarContribution[]) => void): () => void
 
   // ---- 标签 ----
   listTags(): Promise<OpResult & { tags?: TagItem[] }>

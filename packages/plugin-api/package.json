@@ -1,0 +1,17 @@
+{
+  "name": "@trace/plugin-api",
+  "version": "0.1.0",
+  "description": "Trace（笔迹）插件 API 类型定义：为 Trace 插件开发提供 ctx 的完整类型与 JSDoc 补全",
+  "types": "index.d.ts",
+  "files": [
+    "index.d.ts",
+    "README.md"
+  ],
+  "keywords": [
+    "trace",
+    "markdown",
+    "plugin",
+    "types"
+  ],
+  "license": "MIT"
+}

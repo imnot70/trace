@@ -7,7 +7,7 @@
 **Trace（笔迹）** 是一款本地优先的轻量级 Markdown 笔记桌面应用：
 
 - 笔记以纯 `.md` 文件存储，无私有格式；每个**笔记库**是一个独立 git 仓库，通过 GitHub PAT 实现多设备同步；
-- 支持 LaTeX 公式、图片粘贴、回收站、收藏/常用、浅色/深色主题与插件骨架（实验性）；
+- 支持 LaTeX 公式、图片粘贴、回收站、收藏/常用、浅色/深色主题与插件系统（v2 M1–M3：进程隔离 + 能力 API + 权限确认 + .trace-plugin 导入导出 + 私有存储 + 声明式工具栏/状态区；M4 见 `requirements/2026-09-08_plugin-system/`）；
 - 跨平台：Windows / Linux（Ubuntu、Debian 为主），macOS 仅支持源码构建。
 
 ## 技术栈
@@ -54,8 +54,14 @@ src/
 │  ├─ ipc/registerIpc.ts  # IPC handler 注册（按域划分通道）
 │  ├─ services/           # workspace / vaults / fsTree / trash / favorites
 │  │                      # / gitService / github / account / settings / themes
-│  │                      # / watcher(chokidar) / pluginHost
+│  │                      # / watcher(chokidar) / search / wikilink / autoSync
+│  │                      # / exportPdf / bundledGit / windowEffect
+│  │                      # / pluginHost(进程隔离+能力网关) / pluginPackage
+│  │                      # / pluginStorage / pluginRuntime / pluginGateway
+│  ├─ plugin-runtime/     # 插件进程桥接 bridge.ts（独立构建为 out/main/bridge.js）
+│  │                      # / 协议 protocol.ts / require 白名单 requireGuard.ts
 │  └─ lib/                # errMessage / jsonStore / logger(脱敏) / paths / themePackage
+├─ packages/plugin-api/   # @trace/plugin-api 类型包（d.ts + JSDoc，发布 npm 用）
 ├─ preload/index.ts       # contextBridge 暴露类型化 IPC API（window.trace）
 ├─ renderer/src/          # 纯 UI
 │  ├─ views/              # EditorView / SettingsView / TrashView / WelcomeView
@@ -69,7 +75,7 @@ src/
    └─ validate.ts         # 名称校验规则（前后端共用，保证一致）
 ```
 
-- **IPC 通道按域划分**：`workspace:*`、`vault:*`、`fsTree:*`、`trash:*`、`favorite:*`、`git:*`、`account:*`、`settings:*`、`theme:*`；主 → 渲染事件：`fs:changed`（外部改动）、`git:progress`、`git:conflict`。
+- **IPC 通道按域划分**：`workspace:*`、`vault:*`、`fsTree:*`、`trash:*`、`favorite:*`、`git:*`、`account:*`、`settings:*`、`theme:*`、`plugin:*`（插件启停/权限确认/命令/事件上报）；主 → 渲染事件：`fs:changed`（外部改动）、`git:progress`、`git:conflict`、`plugin:notify`（插件通知）、`plugin:status`（侧栏状态区）、`plugin:toolbar`（编辑器工具栏按钮）。
 - **磁盘布局**：工作区（默认 `~/Trace`）下每个笔记库 = 一个 git 仓库；回收站在 `<工作区>/.trash/`；应用元数据（设置、收藏、最近打开、凭据）存 Electron `userData` 目录的 JSON 文件，**绝不写入笔记库**。
 - 新增 IPC 能力的路径：先在 `shared/types.ts` 定类型、`shared/api.ts` 加方法签名 → 主进程 `services/` 实现 → `ipc/registerIpc.ts` 注册 → `preload/index.ts` 暴露 → 渲染进程经 `window.trace` 调用。
 
@@ -90,7 +96,7 @@ src/
 - `el-tooltip` **只允许包裹非交互元素**（图标、纯文本）。禁止：tooltip 嵌套 tooltip；tooltip 包裹按钮（点击被拦截）；tooltip 包裹 `el-dropdown` 触发器（下拉事件绑定失效，菜单弹不出）。需要给按钮/触发器加提示时用原生 `title`。任何「点击后移除下拉菜单锚点元素」的操作（删除行、收起容器等）需延迟 ≥300ms 或保持锚点可见（参考 `menu-hold` 模式），否则 popper 会在左上角闪现残影。
 - 全界面颜色必须走 CSS 变量（`--bg-*` / `--text-*` / `--accent` / `--danger` 等），新增颜色先看 `styles/themes.css` 是否已有对应变量；Element Plus 变量映射到同一套变量。
 - 代码风格由 ESLint + Prettier 约束（`.prettierrc.json`）；提交前至少跑 `npm run lint` 与 `npm run typecheck`。
-- 核心服务（gitService、trash、favorites、validate、pluginHost 等）有单元测试（`tests/`，Vitest，110+ 项含 git 同步/冲突集成测试、渲染/净化与错误文案映射）；修改这些服务时同步补充/更新测试。
+- 核心服务（gitService、trash、favorites、validate、pluginHost 等）有单元测试（`tests/`，Vitest，200+ 项含 git 同步/冲突集成测试、渲染/净化与错误文案映射、插件能力网关/生命周期/require 白名单）；修改这些服务时同步补充/更新测试。
   ⚠️ Windows 上 `tests/gitService.test.ts` 的 6 项集成测试会因超出 Vitest 默认 5s 超时而失败：Windows 下每次 git 子进程调用约 1~1.7s（Linux 仅几十毫秒），完整关联+同步流程需 5~10s。功能本身正常（已手动复现验证），用 `npx vitest run --testTimeout=30000` 验证即可，勿误判为产品代码 bug。
   ⚠️ Linux（Ubuntu 24.04+，含本机 Ubuntu 26.04）重新 `npm install` 后 Electron 可能启动失败：`The SUID sandbox helper binary was found, but is not configured correctly`。原因是 AppArmor 限制非特权用户命名空间（`kernel.apparmor_restrict_unprivileged_userns=1`），npm 又总是以当前用户安装 `chrome-sandbox`（无法带 SUID 位）。修复：`sudo chown root:root node_modules/electron/dist/chrome-sandbox && sudo chmod 4755 node_modules/electron/dist/chrome-sandbox`（每次重装依赖后需重做）。
 - 版本号在 `package.json`，是**唯一版本来源**：「关于 Trace」（`app.getVersion()`）、安装包文件名（electron-builder `artifactName`）、CI 工件命名全部自动读取它；git tag 必须与其一致（CI 在 tag 触发时会校验，不一致构建失败）。**发版流程**：更新 `CHANGELOG.md` → `npm version <patch|minor|major 或 x.y.z>`（自动改版本号 + commit + 打 `v` 标签，要求工作区干净；经 `postversion` 钩子自动 `git push --follow-tags` 触发 Release）。
@@ -126,4 +132,4 @@ src/
 
 ## 二期规划（未实现，不要顺手实现）
 
-~~全局搜索~~（已实现）、所见即所得模式、~~图形化冲突解决~~（已实现）、~~定时/变更自动同步~~（已实现）、插件完整 API 与市场（v2 设计已定稿，见 `requirements/2026-09-08_plugin-system/`，原定 0.4.0 已顺延）、~~标签~~（已实现）、~~多窗口~~（已作废）、~~导出 PDF/HTML~~（已实现）、~~窗口毛玻璃效果~~（已实现）、~~笔记双链引用~~（P1–P3 已实现）。
+~~全局搜索~~（已实现）、所见即所得模式、~~图形化冲突解决~~（已实现）、~~定时/变更自动同步~~（已实现）、插件完整 API 与市场（v2 设计已定稿，见 `requirements/2026-09-08_plugin-system/`；M1–M3 已实施，M4 待做）、~~标签~~（已实现）、~~多窗口~~（已作废）、~~导出 PDF/HTML~~（已实现）、~~窗口毛玻璃效果~~（已实现）、~~笔记双链引用~~（P1–P3 已实现）。

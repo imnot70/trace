@@ -205,6 +205,13 @@ onMounted(async () => {
   window.trace.onPluginNotify((message) => {
     ElMessage.info(message)
   })
+  // 插件状态区文字与工具栏按钮（M3，主进程广播全量条目）
+  window.trace.onPluginStatus((entries) => {
+    app.pluginStatuses = entries
+  })
+  window.trace.onPluginToolbar((items) => {
+    app.pluginToolbars = items
+  })
 })
 </script>
 

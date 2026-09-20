@@ -4,6 +4,31 @@
 
 ## [未发布]
 
+### 新功能
+
+- **插件系统 M1：进程隔离 + Tier 1 能力 API + 权限确认**（设计见 `requirements/2026-09-08_plugin-system/`，实施记录见其第 10 节）：
+  - **进程隔离**：每个启用的插件运行在独立 `utilityProcess` 中，插件崩溃只影响自身——守护自动按 1s/2s/4s/8s 指数退避重启，连续崩溃 5 次自动停用并标记错误；停用宽限 5s 超时强杀
+  - **能力网关**：插件的全部能力调用按 manifest 声明的权限过滤，未声明权限直接抛错；`require` 白名单限制插件只能加载自身目录文件与 path/util/events 内置模块（自包含政策，禁 npm 依赖）
+  - **Tier 1 API**：`ctx.notes.vaults/list/tree/read/write/create`（notes:read / notes:write 权限，写侧透传防覆盖 hash）、`ctx.on/off` 订阅 `note:saved / note:opened / vault:changed / sync:done` 事件（events 权限）、`ctx.notify`（notifications 权限）、`ctx.logger` 与 `ctx.registerCommand`（内置）；RPC 调用 5s 超时、单次内容 400 万字符上限、`vault:changed` 高频事件 300ms 合并
+  - **权限确认对话框**：首次启用或 manifest 权限集合变化时，设置页弹窗逐项展示权限中文说明，确认后才激活（确认记录按插件 id 存应用数据目录）
+  - **设置页增强**：插件行显示权限清单、运行状态、崩溃计数与命令按钮（点击运行命令）
+  - **示例插件升级 v2**：覆盖 Tier 1 全部能力（读笔记统计字数 + 写入报告笔记 + 订阅保存事件 + 注册命令）
+  - 文档：使用说明见 [guides/user-guide.md](guides/user-guide.md) 第 15 节；插件开发指引见 [guides/plugin-development.md](guides/plugin-development.md)
+
+### 插件系统 M2（同版本随上）：.trace-plugin 打包导入导出 + 私有存储 + 设置页详情
+
+- **插件包导入**：设置 → 插件 → 「导入插件…」选择 `.trace-plugin`（zip 格式）文件；解压暂存后弹窗预览（名称/版本/描述/权限清单 + 显著提示「未经 Trace 市场审阅」），确认后安装；同 id 重复导入为升级覆盖，原启用中的插件权限未变时自动重新激活，权限有变化则要求重新确认。解压带 zip-slip 与炸弹防护（总大小 ≤20MB、条目数 ≤2000）
+- **插件包导出**：插件详情中「导出…」把已装插件打包为 `.trace-plugin` 分享
+- **插件卸载**：详情中「卸载」= 停用 + 删除目录 + 清除权限记录与私有存储（红色确认）
+- **插件详情**：设置页插件行「详情」显示运行状态、权限、崩溃历史（时间 + 退出码，最近 10 条）、最近日志（按插件过滤主日志）、私有存储占用
+- **插件私有存储**（`settings:persist` 权限）：`ctx.storage.get/set/delete/keys` 宿主托管的插件私有 KV 存储（按插件隔离，随卸载清除；键 ≤200 字符、单值 ≤256KB、总量 ≤1MB）；示例插件升级 v2.1.0 演示（记录命令执行次数）
+
+### 插件系统 M3（同版本随上）：声明式工具栏按钮 + 状态区 + 类型包
+
+- **编辑器工具栏按钮**（`editor:toolbar` 权限）：插件在 manifest `contributions.toolbar` 声明 `{icon, title, command}`，编辑器工具栏自动出现按钮，点击执行对应插件命令——完全声明式，插件代码不碰 DOM；命令未注册或插件停止时按钮自动消失
+- **侧栏状态区**（`ui:status` 权限）：`ctx.status.set/clear` 在侧栏底部显示一行文字（≤120 字符，如字数统计），每插件一条互不覆盖，插件停止自动清除
+- **`@trace/plugin-api` 类型包**：`packages/plugin-api/` 提供 `ctx` 完整 TypeScript 类型与 JSDoc（npm 发布待办）；示例插件升级 v2.2.0 演示工具栏按钮与状态区
+
 ## [0.4.6] - 2026-09-20
 
 ### 修复

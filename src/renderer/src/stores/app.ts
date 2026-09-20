@@ -45,6 +45,9 @@ function prefersDark(): boolean {
 
 export const useAppStore = defineStore('app', {
   state: () => ({
+    // 插件状态区文字（ui:status）与编辑器工具栏按钮（editor:toolbar），由主进程广播
+    pluginStatuses: [] as { id: string; text: string }[],
+    pluginToolbars: [] as { icon: string; title: string; command: string; pluginId: string }[],
     workspaceRoot: '',
     defaultRoot: '',
     view: { name: 'welcome' } as ActiveView,

@@ -1,6 +1,6 @@
 # Trace 插件系统设计（v2 提案）
 
-> 状态：**设计已确认（2026-09-08）**——D1 独立插件进程 ｜ D2 仅 Tier 1 ｜ D3 全局授权 ｜ D4 GitHub 索引市场 ｜ D5 版本 0.4.0。
+> 状态：**设计已确认（2026-09-08）；M1 已实施**（utilityProcess 进程隔离 + 能力网关 + Tier 1 API + 权限确认 + 崩溃守护，实施记录见第 10 节）——D1 独立插件进程 ｜ D2 仅 Tier 1 ｜ D3 全局授权 ｜ D4 GitHub 索引市场 ｜ D5 版本节奏顺延（M1 随 0.5.0 发布）。
 > 起草：2026-09-08 ｜ 基于现有 v1 骨架（`src/main/services/pluginHost.ts`）
 > 目标读者：项目所有者 + 后续开发代理。关键决策见第 8 节，威胁模型详解见第 2 节。
 
@@ -95,9 +95,9 @@
 
 ### Tier 2（v2.x，M3）
 
-- `editor:toolbar`：在编辑工具栏贡献按钮（manifest 声明 icon/title/command，渲染进程渲染，点击发命令——**声明式，插件不碰 DOM**）；
-- `ui:status`：侧栏底部状态区一行文字（如字数统计插件）；
-- `settings:persist`：插件私有 KV 存储（宿主托管 JSON，避免插件自己写文件）。
+- `editor:toolbar`：在编辑工具栏贡献按钮（manifest 声明 icon/title/command，渲染进程渲染，点击发命令——**声明式，插件不碰 DOM**）（✅ 已实施）；
+- `ui:status`：侧栏底部状态区一行文字（如字数统计插件）（✅ 已实施）；
+- `settings:persist`：插件私有 KV 存储（宿主托管 JSON，避免插件自己写文件）（✅ 已于 M2 提前实施）。
 
 ### Tier 3（远期，设计预留）
 
@@ -140,7 +140,7 @@
 - `@trace/plugin-api` 类型包（只发 d.ts + JSDoc），npm 安装即有补全；
 - 示例插件升级：覆盖 Tier 1 全部能力的演示（读写笔记 + 订阅保存事件 + 注册命令）；
 - 设置页插件详情：权限清单、运行状态、崩溃历史、日志查看（复用 logger）；
-- 文档一篇：`docs/plugin-development.md`（或仓库 wiki）。
+- 文档一篇：`docs/plugin-development.md`（或仓库 wiki）。（✅ 已于 M1 提前落地为 `guides/plugin-development.md`：API 参考、错误约定、白名单、调试方法与完整示例）
 
 ## 8. 决策记录（项目所有者已确认，2026-09-08）
 
@@ -155,7 +155,152 @@
 ## 9. 实施里程碑（按 D1–D5 推荐方案）
 
 - **M1（0.4.0）**：utilityProcess 插件进程 + 能力网关 + Tier 1 API + 权限确认对话框 + 崩溃守护；示例插件改写为 Tier 1 演示
-- **M2（0.4.x）**：`.trace-plugin` 导入导出；设置页详情（权限/日志/崩溃记录）；插件私有存储
-- **M3（0.5.0）**：声明式工具栏按钮 + 状态区；类型包发 npm
+- **M2（0.4.x）**：`.trace-plugin` 导入导出；设置页详情（权限/日志/崩溃记录）；插件私有存储（✅ 已实施，实施记录见第 11 节）
+- **M3（0.5.0）**：声明式工具栏按钮 + 状态区；类型包发 npm（✅ 已实施，类型包发布动作待办，实施记录见第 12 节）
 - **M4（0.5.x）**：GitHub 索引市场（浏览/安装/更新检查）
 - 测试基线：能力网关单元测试（权限过滤矩阵）+ 插件进程生命周期集成测试 + RPC 超时/节流测试
+
+---
+
+## 10. M1 实施记录（2026-09-20）
+
+### 10.1 交付物
+
+| 组件 | 位置 | 说明 |
+| --- | --- | --- |
+| 插件进程桥接脚本 | `src/main/plugin-runtime/bridge.ts`（构建为 `out/main/bridge.js`） | utilityProcess 入口；受限 require + ctx 代理为 RPC |
+| require 白名单 | `src/main/plugin-runtime/requireGuard.ts` | 纯函数，可单测；允许插件目录内文件 + path/util/events，其余拒绝 |
+| RPC 协议 | `src/main/plugin-runtime/protocol.ts` | MessagePort 消息类型与超时/大小常量 |
+| 能力网关 | `src/main/services/pluginGateway.ts` | 纯函数 dispatch；按 manifest.permissions 过滤 |
+| 插件宿主 v2 | `src/main/services/pluginHost.ts` | 进程管理 + 崩溃守护（指数退避，连续 5 次自动停用）+ 事件广播 |
+| 运行时适配 | `src/main/services/pluginRuntime.ts` | electron utilityProcess 适配（PluginHost 不依赖 electron，测试注入桩） |
+| 权限确认 | 设置页对话框 + `pluginPermissionsConfirmed` 设置字段 | 启用前权限集合必须与已确认一致；manifest 权限变化需重新确认 |
+| 示例插件 | `resources/sample-plugin/`（v2.0.0） | Tier 1 全能力演示（vaults/list/read/create/write + note:saved + 命令） |
+
+### 10.2 Tier 1 API 最终签名（作者视角）
+
+```ts
+// 全部 notes.* 调用 resolve 为 { ok: true, ...数据 } 或 { ok: false, error }，用 .ok 判断
+ctx.notes.vaults(): Promise<{ ok: true; vaults: string[] } | { ok: false; error: string }>
+ctx.notes.list(vault): Promise<{ ok: true; tree: TreeNode[] } | { ok: false; error: string }>
+ctx.notes.tree(vault): Promise<{ ok: true; tree: TreeNode[] } | { ok: false; error: string }>  // list 的别名
+ctx.notes.read(vault, path): Promise<{ ok: true; content: string; hash: string } | { ok: false; error: string }>
+ctx.notes.write(vault, path, content, opts?: { expectedHash?: string | null }): Promise<{ ok: true; hash: string } | { ok: false; error: string }>
+ctx.notes.create(vault, parentPath, name, content?): Promise<{ ok: true; path: string } | { ok: false; error: string }>
+ctx.notify(message): Promise<{ ok: true } | { ok: false; error: string }>          // notifications 权限
+ctx.logger.info/warn/error(...args): void                                          // 内置
+ctx.on(event, handler) / ctx.off(event, handler)                                    // events 权限；event ∈ note:saved / note:opened / vault:changed / sync:done
+ctx.registerCommand({ id, title, handler }): string                                // 内置；完整 id = <插件id>.<命令id>
+```
+
+**对设计第 4 节的修订**：
+
+1. **新增 `ctx.notes.vaults()`**（归入 `notes:read` 权限）：设计原表缺少库名枚举能力，插件无从得知 `list(vault)` 的 vault 参数取值，M1 实施时补齐；
+2. **`notes.write` 的防覆盖参数**为可选 `opts.expectedHash`（设计表中 `{expectedHash}` 语义不变）；
+3. **错误语义分层**（测试基线补充）：权限违规 / 未知能力域 / 未知方法一律 **reject**（设计 2.1「调用未声明能力直接抛错」）；业务失败（未知库、重名、外部修改冲突、内容超限）**resolve 为 `{ ok: false, error }`** 由插件判断——两种失败混在一起会让插件无法区分「没权限」和「没写进去」；
+4. **`list` 与 `tree` 同义**（均返回完整树），保留两个名字仅为贴合设计表措辞。
+
+### 10.3 事件来源与节流
+
+| 事件 | 来源 | 节流 |
+| --- | --- | --- |
+| `note:saved` | `note:write` IPC handler 成功后（覆盖编辑器保存；插件写入不经此路径，避免事件回环） | 直传 |
+| `note:opened` | 渲染端 editor store 打开笔记后经 `plugin:reportNoteOpened` 上报 | 直传 |
+| `vault:changed` | chokidar watcher 变更回调 | 每插件 300ms 尾沿合并（保留最新 payload） |
+| `sync:done` | 手动同步（`git:sync` handler）与自动同步（AutoSyncService `onVaultSynced` 回调）成功后 | 直传 |
+
+所有事件只广播给声明了 `events` 权限的运行中插件。
+
+### 10.4 超时与限制（默认值）
+
+| 项 | 值 |
+| --- | --- |
+| ctx RPC 调用超时 | 5s（`RPC_TIMEOUT_MS`） |
+| 命令执行超时 | 10s（宿主与 bridge 双侧兜底） |
+| activate 等待 | 10s，超时终止进程并记错误 |
+| deactivate 宽限 | 5s，超时强杀 |
+| 单次调用内容上限 | 4,000,000 字符（bridge 与网关双侧校验） |
+| 通知长度 | 500 字符 |
+| 崩溃守护 | 退避 1s/2s/4s/8s，连续 5 次自动停用（`pluginEnabled=false` + 错误标记），手动停用计数归零 |
+
+### 10.5 测试基线落地
+
+- `tests/pluginGateway.test.ts`（12 项）：权限过滤矩阵 + 分层语义 + 大小上限；
+- `tests/requireGuard.test.ts`（8 项）：内置白名单、目录逃逸、npm 包拒绝、自包含政策；
+- `tests/pluginHost.test.ts`（20 项）：进程内桩运行时走真实宿主协议——权限确认流程、能力调用、激活失败、停用、命令、崩溃守护退避与上限、事件广播与合并、清单校验。
+- 生产冒烟（Windows 实测）：utilityProcess fork + 桥接激活 + 网关读写真实笔记库 + 命令触发 + 通知送达全链路通过。
+
+### 10.6 M1 未含（按里程碑顺延）
+
+`.trace-plugin` 打包导入导出、设置页权限/日志/崩溃详情页、插件私有存储（M2）；声明式工具栏/状态区、类型包（M3）；市场（M4）。
+
+---
+
+## 11. M2 实施记录（2026-09-20）
+
+### 11.1 交付物
+
+| 组件 | 位置 | 说明 |
+| --- | --- | --- |
+| `.trace-plugin` 打包管线 | `src/main/services/pluginPackage.ts` | 导入（暂存解压 → 清单校验 → 入口检查）/ 导出 / 安装覆盖 |
+| 插件私有存储 | `src/main/services/pluginStorage.ts` | 每插件一个 JSON（userData/plugin-data/<id>.json），宿主托管 |
+| 网关 storage 域 | `pluginGateway.ts` | 权限 `settings:persist`；get/set/delete/keys |
+| 设置页详情 | `SettingsView.vue` 详情弹层 | 状态 / 权限 / 崩溃历史 / 日志行 / 存储占用 / 导出 / 卸载 |
+| 导入确认弹窗 | 同上 | 权限清单 + 显著提示「未经 Trace 市场审阅」（设计第 6 节要求，不可跳过） |
+
+### 11.2 安装管线（本地导入）
+
+```
+选择 .trace-plugin → stagePluginZip（防 zip-slip / 条目数 / 总大小，manifest 位置兼容
+根目录或唯一顶层文件夹）→ 暂存 userData/plugin-staging → 渲染端确认弹窗
+（权限 + 未经审阅警告）→ confirmImport：停用旧进程（升级时）→ 整体替换 plugins/<id>/
+→ 原启用中的插件按权限确认状态重新激活（权限变化则关闭开关待重确认）
+```
+
+取消导入即清理暂存；导入会话内存态（Map），应用重启自然失效。
+
+### 11.3 私有存储约定
+
+- 权限域 `storage` ↔ manifest 声明 `settings:persist`；未声明调用为致命拒绝（与其他域一致）
+- 插件视角：`ctx.storage.get(key)` → `{ ok: true, value }`（未设置为 null）；`set/delete/keys` 同 `{ ok }` 风格
+- 限制：键 ≤200 字符、单值 ≤256KB、单插件总量 ≤1MB、值必须 JSON 可序列化
+- 卸载（`plugin:uninstall`）= 停用 + 删目录 + 清权限记录与启用开关 + 清私有存储（设计第 5 节）
+
+### 11.4 安全防护
+
+- **zip-slip**：逐条目规范化路径并校验不逃逸暂存目录（绝对路径 / 盘符 / `..` 逃逸拒绝）；守卫函数 `safeEntryTarget` 直接单测覆盖
+- **炸弹防护**：解压总大小 ≤20MB、条目数 ≤2000（默认值）
+- 清单要求 manifest.json 位于包根或唯一顶层文件夹；入口文件存在性校验
+
+### 11.5 崩溃历史
+
+宿主每插件保留最近 10 条崩溃记录（ISO 时间 + 退出码），随 `PluginInfo.crashHistory` 暴露；手动停用清零（与 crashCount 同语义）。
+
+### 11.6 测试
+
+- `tests/pluginPackage.test.ts`（7 项）：导出导入往返、顶层文件夹清单定位、无效清单 / 缺入口拒绝、路径守卫（含手工构造的 `../` 恶意条目包）、上限、升级覆盖
+- `tests/pluginStorage.test.ts`（8 项）：往返持久化、插件隔离、键长 / 单值 / 总量上限、undefined 拒绝、id 路径防御、clear/usage
+- `tests/pluginHost.test.ts` 新增 6 项：崩溃历史、卸载清理（目录 / 权限记录 / 存储）、导入安装、升级重激活、权限变化重确认、取消导入
+
+---
+
+## 12. M3 实施记录（2026-09-20）
+
+### 12.1 交付物
+
+| 组件 | 位置 | 说明 |
+| --- | --- | --- |
+| 工具栏贡献点 | manifest `contributions.toolbar` + `PluginHost.toolbarItems()` | 声明式：权限 `editor:toolbar` + 命令已注册才生效；命令短 id 自动补全为 `<插件id>.<命令id>` |
+| 编辑器工具栏渲染 | `EditorView.vue` 工具栏尾部 | 主进程 `plugin:toolbar` 事件广播全量按钮，点击经 `invokePluginCommand` 执行 |
+| 状态区 | 网关 `ui:status` 域 + `ctx.status.set/clear` | 权限 `ui:status`；每插件一条，≤120 字符自动截断；`plugin:status` 事件全量广播渲染端，侧栏底部渲染，插件停止自动清除 |
+| `@trace/plugin-api` | `packages/plugin-api/`（index.d.ts + README） | 只含类型与 JSDoc；npm 发布为发布动作（构建产物已就绪，待 npm 账号执行 publish） |
+
+### 12.2 行为约定
+
+- **工具栏**：manifest `contributions.toolbar: [{icon, title, command}]`；icon 为 1-4 字符 emoji/文本（缺省 ▸）；仅当（a）声明 `editor:toolbar` 权限、（b）插件运行中、（c）command 已注册 三者同时满足才渲染；插件停止 / 崩溃 / 卸载自动消失
+- **状态区**：`ctx.status.set(text)`（trim 后 ≤120 字符，超出截断）/ `ctx.status.clear()`；插件停止即清除；每插件一条、互不覆盖
+- 渲染端订阅：`plugin:status` / `plugin:toolbar` 均为全量条目广播（无增量合并复杂度）
+
+### 12.3 测试
+
+网关 `ui:status`（2 项：权限拒绝 + set/clear/截断）+ 宿主贡献点（3 项：权限 + 命令注册的过滤组合、停止后消失与广播）。插件测试合计 72 项。
