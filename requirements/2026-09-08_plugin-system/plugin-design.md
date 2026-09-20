@@ -140,7 +140,7 @@
 - `@trace/plugin-api` 类型包（只发 d.ts + JSDoc），npm 安装即有补全；
 - 示例插件升级：覆盖 Tier 1 全部能力的演示（读写笔记 + 订阅保存事件 + 注册命令）；
 - 设置页插件详情：权限清单、运行状态、崩溃历史、日志查看（复用 logger）；
-- 文档一篇：`docs/plugin-development.md`（或仓库 wiki）。
+- 文档一篇：`docs/plugin-development.md`（或仓库 wiki）。（✅ 已于 M1 提前落地为 `guides/plugin-development.md`：API 参考、错误约定、白名单、调试方法与完整示例）
 
 ## 8. 决策记录（项目所有者已确认，2026-09-08）
 
