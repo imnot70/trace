@@ -333,6 +333,14 @@ exports.activate = function activate(ctx) {
 }
 ```
 
+#### 类型包发版（维护者）
+
+类型包随应用发版由 CI 自动发布（`.github/workflows/build.yml` 的 `publish-plugin-api` job，npm Trusted Publishing / OIDC，免 token）：
+
+1. 前提（一次性，npmjs.com 手动配置）：[trace-plugin-api](https://www.npmjs.com/package/trace-plugin-api) → Package → Settings → **Trusted Publisher**，登记 `imnot70` / `trace` / `build.yml`（Environment 留空）。字段大小写必须与仓库完全一致。
+2. 发版：改 `packages/plugin-api/package.json` 的 `version` 后随应用正常发版（`npm version …`）。CI 比对该版本与 npm 线上版本，**不同才发布**，相同自动跳过——所以应用发版不必然触发类型包发布。发布自带 provenance。
+3. 手动兜底：在 `packages/plugin-api/` 目录执行 `npm publish`（账号需 2FA 验证）。注意 `repository.url` 字段必须指向 `imnot70/trace`（provenance 校验要求），勿删。
+
 ### 打包分享
 
 插件目录可直接压缩为 zip（改名 `.trace-plugin` 后缀）分享，接收方通过「设置 → 插件 → 导入插件…」安装：

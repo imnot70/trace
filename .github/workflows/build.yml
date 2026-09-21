@@ -123,3 +123,42 @@ jobs:
             artifacts/**/*.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 插件类型包 trace-plugin-api 自动发布：npm Trusted Publishing（OIDC，免 token）
+  # 前提（一次性，npmjs.com 手动配置）：trace-plugin-api → Settings → Trusted Publisher
+  #   登记为 imnot70 / trace / build.yml（环境留空）。见 guides/plugin-development.md 第 9 节。
+  # 仅当本地版本 ≠ npm 线上版本时才发布——应用发版不必然携带类型包变更，版本相同则跳过
+  publish-plugin-api:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write       # OIDC 令牌：Trusted Publishing 必需
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Trusted Publishing 要求 npm >= 11.5.1（Node 22 自带的 npm 10.x 不满足）
+      - name: Upgrade npm for trusted publishing support
+        run: npm install -g npm@latest
+
+      # 与 npm 线上版本比对：不同（通常是更高）才发布
+      - name: Compare local version with npm registry
+        id: version
+        run: |
+          LOCAL="$(node -p "require('./packages/plugin-api/package.json').version")"
+          PUBLISHED="$(npm view trace-plugin-api version 2>/dev/null || true)"
+          echo "本地版本: $LOCAL / npm 线上版本: ${PUBLISHED:-（未发布）}"
+          if [ "$LOCAL" != "$PUBLISHED" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish trace-plugin-api to npm
+        if: steps.version.outputs.publish == 'true'
+        working-directory: packages/plugin-api
+        run: npm publish
