@@ -128,3 +128,12 @@ tests/livePreview.test.ts      # 新增单测（jsdom）
 | `md.render` 在 Widget 中调用与预览全局状态冲突（headingSeen 等） | md 实例本就单例复用（预览同样多次调用）；heading id 生成对编辑器无影响，无需隔离 |
 | block 级 replace 装饰在行折叠（fold gutter）下表现 | 首版验证折叠 + 渲染并存；异常则所见即所得模式下隐藏 fold gutter |
 | Ctrl+E 与未来浏览器习惯冲突 | 登记在速查表；如反馈强烈再评估可配置（需求阶段已记录不在首版） |
+
+## 10. 实施记录（2026-09-21，分支 feature/wysiwyg-editor）
+
+已全部实施并通过验证（lint / 双 typecheck / 258 项单测含 11 项 livePreview / 真机 CDP 冒烟 13 项 DOM 断言全过、切换往返与源码保真验证）。实施中对设计的两处修正，均为 CodeMirror 硬性约束（真机冒烟发现）：
+
+1. **块级装饰必须经 StateField 提供**：ViewPlugin 提供 `block: true` 装饰会被 CM 抛 `Block decorations may not be specified via plugins`。实际落地为双层结构——StateField 承载块级（frontmatter / 公式块 / 表格 / HTML 块 / HR，全文档计算，随 docChanged / selection 重算）；ViewPlugin 承载行内（visibleRanges 增量计算 + IME 冻结）。两路 atomic 合并供给 `EditorView.atomicRanges`。
+2. **含 StateField 的扩展必须自首次挂载常驻，且重算条件需显式比较 facet 引用**：Compartment 不允许经重配置增删 StateField（会抛错且 dispatch 被中止）；且 Compartment 重配置前后插件 / 字段是同一模块单例、不会重建——纯配置切换不触发 doc / selection / viewport 变化，重算条件必须加入 facet 引用比较（buildLivePreview 每次生成新配置对象）。为此 `LivePreviewConfig` 增加 `enabled` 开关，`buildLivePreview` 恒返回完整结构。
+
+另：净化函数抽取为 `lib/markdown.ts` 的 `sanitizeHtml`，预览 / 导出 HTML / 编辑器 Widget 三处共用（消除了 MarkdownPreview 与 noteExportHtml 的重复配置）。
