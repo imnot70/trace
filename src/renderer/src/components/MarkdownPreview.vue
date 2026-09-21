@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, h, nextTick, ref, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import DOMPurify from 'dompurify'
-import { md } from '../lib/markdown'
+import { computed, nextTick, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import { md, resolveAssetUrl, resolveRelRef, sanitizeHtml } from '../lib/markdown'
+import { noteDisplayName, openWikilinkByName } from '../lib/wikilink'
 import { maskFrontmatter } from '@shared/noteTags'
 
 const props = defineProps<{
@@ -30,25 +30,10 @@ md.renderer.rules.link_open = (tokens: any[], idx: number, options: any, env: an
   return defaultLink(tokens, idx, options, env, self)
 }
 
-/** POSIX 风格相对路径解析（渲染进程无 node:path，自己实现最小版本） */
-function resolveRelRef(notePath: string, ref: string): string {
-  const normRef = ref.split('\\').join('/')
-  if (/^[a-z]+:/i.test(normRef) || normRef.startsWith('/')) return normRef
-  const parts = (notePath || '').split('/')
-  parts.pop()
-  const segments = [...parts, ...normRef.split('/')]
-  const stack: string[] = []
-  for (const seg of segments) {
-    if (!seg || seg === '.') continue
-    if (seg === '..') stack.pop()
-    else stack.push(seg)
-  }
-  return stack.join('/')
-}
+/** POSIX 风格相对路径解析与图片协议改写在 lib/markdown（预览 / 编辑器所见即所得共用） */
 
 function noteName(path: string): string {
-  const base = path.split('/').pop() ?? path
-  return base.toLowerCase().endsWith('.md') ? base.slice(0, -3) : base
+  return noteDisplayName(path)
 }
 
 /** 相对路径 .md 链接打上 data-internal（含解析后的库内路径），点击走应用内打开 */
@@ -86,15 +71,8 @@ function rewriteInternalLinks(html: string): string {
 /** 相对路径图片改写为 trace-vault:// 协议 */
 function rewriteImages(html: string): string {
   return html.replace(/<img[^>]*\ssrc="([^"]*)"[^>]*>/g, (match, src: string) => {
-    if (/^[a-z]+:/i.test(src) || src.startsWith('/') || src.startsWith('#')) return match
-    const rel = resolveRelRef(props.notePath, decodeURIComponent(src))
-    return match.replace(
-      src,
-      `trace-vault://${encodeURIComponent(props.vault)}/${rel
-        .split('/')
-        .map(encodeURIComponent)
-        .join('/')}`
-    )
+    const resolved = resolveAssetUrl(props.vault, props.notePath, src)
+    return resolved ? match.replace(src, resolved) : match
   })
 }
 
@@ -139,14 +117,8 @@ function applyResolution(link: Element, paths: string[]): void {
 const html = computed(() => {
   try {
     // 管道顺序：掩码 frontmatter（保留行号映射，行级滚动同步不错位）→ markdown-it 渲染（含 KaTeX/高亮）
-    // → DOMPurify 白名单净化 → 相对链接/图片改写。
-    // 净化剥除脚本与事件属性（默认），并显式禁用表单/样式注入/base 等视觉钓鱼与
-    // 导航劫持向量（DOMPurify 默认保留合法的 form/input，此处收紧；CSP form-action 兜底）。
-    // 笔记经 git 同步传播，内嵌 HTML 必须过净化再进 v-html。
-    const sanitized = DOMPurify.sanitize(md.render(maskFrontmatter(props.content ?? '')), {
-      FORBID_TAGS: ['style', 'base', 'form', 'input', 'button', 'select', 'textarea', 'iframe', 'object', 'embed', 'meta', 'link'],
-      FORBID_ATTR: ['srcdoc', 'target']
-    })
+    // → DOMPurify 白名单净化（sanitizeHtml，与导出 HTML / 编辑器所见即所得共用）→ 相对链接/图片改写
+    const sanitized = sanitizeHtml(md.render(maskFrontmatter(props.content ?? '')))
     return rewriteImages(rewriteInternalLinks(sanitized))
   } catch {
     return `<p style="color:var(--danger)">渲染出错，请检查 Markdown 语法</p>`
@@ -256,48 +228,9 @@ function checkBrokenLinks(): void {
   })()
 }
 
-// ---------- 双链同名消歧：点击多候选链接时列出全部同名笔记供选择 ----------
+// ---------- 双链同名消歧：点击多候选链接时列出全部同名笔记供选择（共享逻辑见 lib/wikilink） ----------
 function openAmbiguousPicker(name: string): void {
-  void (async () => {
-    const result = await window.trace.resolveByNameCandidates(props.vault, name)
-    const paths = result.ok && result.paths ? result.paths : []
-    if (paths.length === 0) {
-      ElMessage.warning(`笔记不存在：${name}`)
-      return
-    }
-    // 只有一个候选（解析后重名已消除）时直接打开
-    if (paths.length === 1) {
-      emit('open-note', { vault: props.vault, path: paths[0], name: noteName(paths[0]) })
-      return
-    }
-    ElMessageBox({
-      title: `「${name}」有 ${paths.length} 篇同名笔记`,
-      message: h(
-        'div',
-        { class: 'wikilink-ambig-list' },
-        paths.map((p) =>
-          h(
-            'div',
-            {
-              class: 'wikilink-ambig-item',
-              onClick: () => {
-                ElMessageBox.close()
-                emit('open-note', { vault: props.vault, path: p, name: noteName(p) })
-              }
-            },
-            [
-              h('span', { class: 'ambig-title' }, noteName(p)),
-              h('span', { class: 'ambig-path' }, p)
-            ]
-          )
-        )
-      ),
-      showConfirmButton: false,
-      showCancelButton: false
-    }).catch(() => {
-      /* 右上角关闭 / Esc */
-    })
-  })()
+  void openWikilinkByName(props.vault, name, (target) => emit('open-note', target))
 }
 
 watch(

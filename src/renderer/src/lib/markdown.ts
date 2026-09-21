@@ -1,6 +1,8 @@
 /** Markdown 渲染管道（独立模块便于单测）：highlight.js 语言注册 + markdown-it 实例
- *  + KaTeX(texmath) + 源码行号注入（data-source-line，供编辑器/预览双向行级滚动同步） */
+ *  + KaTeX(texmath) + 源码行号注入（data-source-line，供编辑器/预览双向行级滚动同步）
+ *  + 共用净化（DOMPurify 收紧白名单，预览 / 导出 HTML / 编辑器所见即所得 Widget 三处同一套） */
 import MarkdownIt from 'markdown-it'
+import DOMPurify from 'dompurify'
 import texmath from 'markdown-it-texmath'
 import katex from 'katex'
 import hljs from 'highlight.js/lib/core'
@@ -178,3 +180,40 @@ md.render = (src: string, env?: Record<string, unknown>) => {
 }
 
 export { md }
+
+/** 共用 HTML 净化：剥脚本与事件属性（DOMPurify 默认），并显式禁用表单/样式注入/base
+ *  等视觉钓鱼与导航劫持向量（DOMPurify 默认保留合法的 form/input，此处收紧；CSP form-action 兜底）。
+ *  笔记经 git 同步传播，内嵌 HTML 必须过净化再进 innerHTML / v-html */
+export function sanitizeHtml(html: string): string {
+  return DOMPurify.sanitize(html, {
+    FORBID_TAGS: ['style', 'base', 'form', 'input', 'button', 'select', 'textarea', 'iframe', 'object', 'embed', 'meta', 'link'],
+    FORBID_ATTR: ['srcdoc', 'target']
+  })
+}
+
+/** POSIX 风格相对路径解析（渲染进程无 node:path，自己实现最小版本）。
+ *  返回相对库根的规范路径；协议链接与绝对路径原样返回 */
+export function resolveRelRef(notePath: string, ref: string): string {
+  const normRef = ref.split('\\').join('/')
+  if (/^[a-z]+:/i.test(normRef) || normRef.startsWith('/')) return normRef
+  const parts = (notePath || '').split('/')
+  parts.pop()
+  const segments = [...parts, ...normRef.split('/')]
+  const stack: string[] = []
+  for (const seg of segments) {
+    if (!seg || seg === '.') continue
+    if (seg === '..') stack.pop()
+    else stack.push(seg)
+  }
+  return stack.join('/')
+}
+
+/** 相对路径图片/资源引用改写为 trace-vault:// 协议地址（协议链接、绝对路径、锚点返回 null） */
+export function resolveAssetUrl(vault: string, notePath: string, src: string): string | null {
+  if (/^[a-z]+:/i.test(src) || src.startsWith('/') || src.startsWith('#')) return null
+  const rel = resolveRelRef(notePath, decodeURIComponent(src))
+  return `trace-vault://${encodeURIComponent(vault)}/${rel
+    .split('/')
+    .map(encodeURIComponent)
+    .join('/')}`
+}

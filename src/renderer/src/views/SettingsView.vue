@@ -868,6 +868,18 @@ async function resetGitSource(): Promise<void> {
             </span>
           </div>
           <div class="setting-row">
+            <span class="setting-label">默认编辑模式</span>
+            <el-select
+              :model-value="app.settings.defaultEditMode"
+              style="width: 150px"
+              @update:model-value="(v: string) => app.updateSettings({ defaultEditMode: v as 'source' | 'wysiwyg' })"
+            >
+              <el-option value="source" label="源码模式" />
+              <el-option value="wysiwyg" label="所见即所得" />
+            </el-select>
+            <span class="settings-desc" style="margin: 0">打开笔记时使用的编辑模式；编辑器内 Ctrl+E 随时切换</span>
+          </div>
+          <div class="setting-row">
             <span class="setting-label">自动保存</span>
             <el-switch
               :model-value="app.settings.autoSave"

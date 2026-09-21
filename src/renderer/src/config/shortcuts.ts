@@ -20,6 +20,7 @@ export const SHORTCUTS: ShortcutItem[] = [
   { keys: 'Alt + V', desc: '显示 / 隐藏预览区', group: '全局' },
   { keys: 'Ctrl + N', desc: '新建笔记（自动定位到当前上下文所在文件夹）', group: '全局' },
   { keys: 'Esc', desc: '分级回退：关闭悬浮预览 → 返回上级文件夹 → 关闭网格', group: '全局' },
+  { keys: 'Ctrl + E', desc: '切换源码 / 所见即所得编辑模式（编辑视图内）', group: '编辑器' },
   { keys: 'Ctrl + B', desc: '加粗选中文字（无选中时插入占位符）', group: '编辑器' },
   { keys: 'Ctrl + I', desc: '斜体', group: '编辑器' },
   { keys: 'Ctrl + Shift + X', desc: '删除线', group: '编辑器' },
