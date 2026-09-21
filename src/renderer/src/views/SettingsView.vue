@@ -596,47 +596,6 @@ async function resetGitSource(): Promise<void> {
 
         <div class="settings-block">
           <div class="setting-row" style="margin-bottom: 4px">
-            <h3 style="margin: 0">插件市场</h3>
-            <el-button size="small" :loading="marketLoading" @click="loadMarket">刷新</el-button>
-          </div>
-          <p v-if="marketStale" class="settings-desc" style="margin: 0 0 8px; color: var(--danger)">
-            市场索引拉取失败，当前显示的是本地缓存（可能过期）。
-          </p>
-          <el-empty v-if="!marketLoading && marketPlugins.length === 0" description="市场暂无插件" :image-size="60" />
-          <div v-for="row in marketPlugins" :key="row.id" class="setting-row">
-            <div style="flex: 1">
-              <div>
-                <strong>{{ row.name }}</strong>
-                <span style="color: var(--text-tertiary); margin-left: 8px">v{{ row.latest }}</span>
-                <span v-if="row.author" style="color: var(--text-tertiary); margin-left: 8px">@{{ row.author }}</span>
-                <span v-if="isMarketInstalled(row.id)" class="plugin-badge plugin-badge-ok">
-                  已安装 v{{ marketVersionLabel(row.id) }}
-                </span>
-                <span v-if="isDelisted(row.id) && !isMarketInstalled(row.id)" class="plugin-badge">已下架</span>
-              </div>
-              <div class="settings-desc" style="margin: 2px 0 0">{{ row.description }}</div>
-              <div
-                v-if="row.versions[row.latest]?.permissions?.length"
-                class="settings-desc"
-                style="margin: 4px 0 0"
-              >
-                权限：{{ row.versions[row.latest].permissions.map(permissionLabel).join('、') }}
-              </div>
-            </div>
-            <el-button
-              v-if="!isMarketInstalled(row.id)"
-              size="small"
-              type="primary"
-              plain
-              @click="installFromMarket(row)"
-            >
-              安装
-            </el-button>
-          </div>
-        </div>
-
-        <div class="settings-block">
-          <div class="setting-row" style="margin-bottom: 4px">
             <h3 style="margin: 0">已安装的插件</h3>
             <el-button size="small" @click="importPlugin">导入插件…</el-button>
           </div>
@@ -690,7 +649,48 @@ async function resetGitSource(): Promise<void> {
             </div>
           </div>
         </div>
-      </el-tab-pane>
+      <div class="settings-block">
+          <div class="setting-row" style="margin-bottom: 4px">
+            <h3 style="margin: 0">插件市场</h3>
+            <el-button size="small" :loading="marketLoading" @click="loadMarket">刷新</el-button>
+          </div>
+          <p v-if="marketStale" class="settings-desc" style="margin: 0 0 8px; color: var(--danger)">
+            市场索引拉取失败，当前显示的是本地缓存（可能过期）。
+          </p>
+          <el-empty v-if="!marketLoading && marketPlugins.length === 0" description="市场暂无插件" :image-size="60" />
+          <div v-for="row in marketPlugins" :key="row.id" class="setting-row">
+            <div style="flex: 1">
+              <div>
+                <strong>{{ row.name }}</strong>
+                <span style="color: var(--text-tertiary); margin-left: 8px">v{{ row.latest }}</span>
+                <span v-if="row.author" style="color: var(--text-tertiary); margin-left: 8px">@{{ row.author }}</span>
+                <span v-if="isMarketInstalled(row.id)" class="plugin-badge plugin-badge-ok">
+                  已安装 v{{ marketVersionLabel(row.id) }}
+                </span>
+                <span v-if="isDelisted(row.id) && !isMarketInstalled(row.id)" class="plugin-badge">已下架</span>
+              </div>
+              <div class="settings-desc" style="margin: 2px 0 0">{{ row.description }}</div>
+              <div
+                v-if="row.versions[row.latest]?.permissions?.length"
+                class="settings-desc"
+                style="margin: 4px 0 0"
+              >
+                权限：{{ row.versions[row.latest].permissions.map(permissionLabel).join('、') }}
+              </div>
+            </div>
+            <el-button
+              v-if="!isMarketInstalled(row.id)"
+              size="small"
+              type="primary"
+              plain
+              @click="installFromMarket(row)"
+            >
+              安装
+            </el-button>
+          </div>
+        </div>
+
+        </el-tab-pane>
 
       <!-- 通用 -->
       <el-tab-pane label="通用" name="general">
