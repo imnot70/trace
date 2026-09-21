@@ -56,6 +56,7 @@ function fakeHttp(overrides: Partial<MarketHttpClient> = {}): MarketHttpClient &
 function makeService(http: MarketHttpClient, opts: { ttlMs?: number; now?: () => number } = {}) {
   return new MarketService({
     cachePath,
+    installedPath: path.join(tmp, 'market-installed.json'),
     http,
     ttlMs: opts.ttlMs,
     now: opts.now
@@ -159,15 +160,18 @@ describe('MarketService · 索引拉取与缓存', () => {
 })
 
 describe('MarketService · 更新检查', () => {
-  const svc = makeService(fakeHttp())
+  // describe 体在收集期执行，tmp 尚未初始化——服务在各用例内构造
+  const getSvc = () => makeService(fakeHttp())
 
   it('有更高版本 → updates；版本相同 → 不提示', () => {
+    const svc = getSvc()
     const index = VALID_INDEX
     expect(svc.checkUpdates(index, [{ id: 'word-count', version: '1.1.0' }]).updates).toHaveLength(1)
     expect(svc.checkUpdates(index, [{ id: 'word-count', version: '1.2.0' }]).updates).toHaveLength(0)
   })
 
   it('索引中不存在的市场插件 → unlisted（已下架）', () => {
+    const svc = getSvc()
     const r = svc.checkUpdates(VALID_INDEX, [
       { id: 'word-count', version: '1.0.0' },
       { id: 'ghost', version: '1.0.0' }
@@ -185,6 +189,28 @@ describe('compareVersions · 语义化版本比较', () => {
     expect(compareVersions('1.2.10', '1.2.9')).toBe(1)
     expect(compareVersions('1.0', '1.0.1')).toBe(-1)
     expect(compareVersions('2.0.0', '1.9.9')).toBe(1)
+  })
+})
+
+describe('MarketService · 来源登记', () => {
+  it('record → getInstalled → removeInstalled 往返与清除', () => {
+    const svc = makeService(fakeHttp())
+    svc.recordInstalled('word-count', { repo: 'alice/word-count', version: '1.2.0', sha256: 'a'.repeat(64) })
+    svc.recordInstalled('other', { repo: 'b/other', version: '0.1.0', sha256: 'b'.repeat(64) })
+    expect(svc.getInstalled()['word-count']).toMatchObject({ version: '1.2.0' })
+
+    svc.removeInstalled('word-count')
+    expect(svc.getInstalled()['word-count']).toBeUndefined()
+    expect(svc.getInstalled()['other']).toBeDefined()
+  })
+
+  it('覆盖同 id 记录（升级场景）；无记录 remove 为幂等', () => {
+    const svc = makeService(fakeHttp())
+    svc.recordInstalled('wc', { repo: 'a/wc', version: '1.0.0', sha256: 'x' })
+    svc.recordInstalled('wc', { repo: 'a/wc', version: '2.0.0', sha256: 'y' })
+    expect(svc.getInstalled()['wc']).toMatchObject({ version: '2.0.0' })
+    svc.removeInstalled('never-existed')
+    expect(Object.keys(svc.getInstalled())).toEqual(['wc'])
   })
 })
 

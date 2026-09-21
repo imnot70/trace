@@ -317,6 +317,8 @@ exports.activate = function activate(ctx) {
 
 ## 9. 类型补全与打包分享
 
+> 上架市场（Release + 索引 PR）的完整流程见 [plugin-release.md](plugin-release.md)。
+
 ### 类型补全（@trace/plugin-api）
 
 ```bash

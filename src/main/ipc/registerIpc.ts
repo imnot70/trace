@@ -44,6 +44,7 @@ export interface IpcDeps {
   exportPdf: import('../services/exportPdf').ExportService
   search: import('../services/search').SearchService
   wikilink: import('../services/wikilink').WikilinkService
+  market: import('../services/marketService').MarketService
   getWindow: () => BrowserWindow | null
 }
 
@@ -538,6 +539,56 @@ export function registerIpc(deps: IpcDeps): void {
   })
   handle('plugin:uninstall', (id: string) => deps.plugins.uninstall(id))
   handle('plugin:detail', (id: string) => deps.plugins.detail(id))
+
+  // ---------- 插件市场（M4） ----------
+  handle('plugin:marketList', async () => {
+    const installed = deps.market.getInstalled()
+    const r = await deps.market.fetchIndex()
+    if (!r.ok || !r.index) return { ok: false, error: r.error ?? '市场索引不可用', installed }
+    const { updates, unlisted } = deps.market.checkUpdates(
+      r.index,
+      Object.entries(installed).map(([id, v]) => ({ id, version: v.version }))
+    )
+    return {
+      ok: true,
+      plugins: r.index.plugins,
+      installed,
+      updates,
+      unlisted,
+      stale: r.stale ?? false
+    }
+  })
+
+  handle('plugin:marketInstall', async (id: string, version?: string) => {
+    // 强制拉新索引：安装时以最新登记为准（版本锁定 + sha256 校验）
+    const r = await deps.market.fetchIndex(true)
+    if (!r.ok || !r.index) return { ok: false, error: r.error ?? '市场索引不可用' }
+    const plugin = r.index.plugins.find((p) => p.id === id)
+    if (!plugin) return { ok: false, error: `市场中不存在该插件：${id}` }
+    const ver = version ?? plugin.latest
+    const entry = plugin.versions[ver]
+    if (!entry) return { ok: false, error: `版本不存在：${ver}` }
+
+    const dl = await deps.market.downloadAndVerify(
+      plugin.repo,
+      entry.releaseTag,
+      entry.asset,
+      entry.sha256,
+      deps.plugins.getStagingDir()
+    )
+    if (!dl.ok || !dl.filePath) return { ok: false, error: dl.error ?? '下载失败' }
+
+    // 复用本地导入管线：zip-slip/清单校验（beginImport）+ 安装与权限处理（confirmImport）
+    const imp = deps.plugins.beginImport(dl.filePath)
+    fs.rmSync(dl.filePath, { force: true })
+    if (!imp.ok) return { ok: false, error: imp.error }
+    const c = deps.plugins.confirmImport(imp.importId)
+    if (!c.ok) return { ok: false, error: c.error }
+
+    deps.market.recordInstalled(id, { repo: plugin.repo, version: ver, sha256: entry.sha256 })
+    logger.info(`市场插件已安装：${id} v${ver}（${plugin.repo}）`)
+    return { ok: true, id, needsConfirmation: c.needsConfirmation, permissions: c.permissions }
+  })
 
   // ---------- 搜索 ----------
   handle('search:buildIndex', async (force?: boolean) => {

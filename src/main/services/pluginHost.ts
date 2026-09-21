@@ -50,6 +50,8 @@ export interface PluginHostDeps {
   broadcastToolbars?: (items: PluginToolbarContribution[]) => void
   /** 插件进程停止后回调（清理状态区文字等） */
   onPluginStopped?: (id: string) => void
+  /** 卸载时清除市场安装来源登记（M4） */
+  clearMarketRecord?: (id: string) => void
 }
 
 interface PluginState {
@@ -165,6 +167,11 @@ export class PluginHost {
 
   private pluginDir(id: string): string {
     return path.join(this.deps.pluginsDir, id)
+  }
+
+  /** 导入暂存目录（市场下载目标也放这里） */
+  getStagingDir(): string {
+    return this.deps.stagingDir
   }
 
   private readManifest(id: string): PluginManifest | null {
@@ -623,6 +630,7 @@ export class PluginHost {
     }
     this.clearPluginMeta(id)
     this.deps.storage.clear(id)
+    this.deps.clearMarketRecord?.(id)
     this.deps.onPluginStopped?.(id)
     this.broadcastToolbars()
     logger.info(`插件已卸载：${id}`)

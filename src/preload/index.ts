@@ -99,6 +99,8 @@ const api: TraceApi = {
   pluginDetail: (id) => ipcRenderer.invoke('plugin:detail', id),
   onPluginStatus: (cb) => subscribe('plugin:status', cb),
   onPluginToolbar: (cb) => subscribe('plugin:toolbar', cb),
+  marketList: () => ipcRenderer.invoke('plugin:marketList'),
+  marketInstall: (id, version) => ipcRenderer.invoke('plugin:marketInstall', id, version),
 
   listTags: () => ipcRenderer.invoke('tag:list'),
   createTag: (name, color) => ipcRenderer.invoke('tag:create', name, color),

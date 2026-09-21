@@ -187,6 +187,48 @@ export interface PluginStatusEntry {
   text: string
 }
 
+/** 市场索引中的插件版本条目（trace-plugins.json） */
+export interface MarketVersion {
+  releaseTag: string
+  asset: string
+  sha256: string
+  permissions: string[]
+  releasedAt: string
+}
+
+/** 市场索引中的插件条目 */
+export interface MarketPlugin {
+  id: string
+  name: string
+  description: string
+  author: string
+  repo: string
+  latest: string
+  versions: Record<string, MarketVersion>
+}
+
+/** 市场索引 */
+export interface MarketIndex {
+  schemaVersion: number
+  plugins: MarketPlugin[]
+}
+
+/** 可更新的市场插件 */
+export interface MarketUpdateInfo {
+  id: string
+  name: string
+  repo: string
+  currentVersion: string
+  latestVersion: string
+}
+
+/** 市场安装来源登记（userData/market-installed.json；随卸载清除） */
+export interface MarketInstalledRecord {
+  repo: string
+  version: string
+  sha256: string
+}
+
 /** 插件崩溃记录（本轮启用期内，最近在前，最多 10 条） */
 export interface PluginCrashRecord {
   /** ISO 时间 */

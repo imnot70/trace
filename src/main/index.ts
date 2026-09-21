@@ -15,6 +15,8 @@ import {
   PluginHost,
   spawnUtilityRuntime,
   PluginStorageService,
+  MarketService,
+  createMarketHttpClient,
   AutoSyncService,
   ExportService,
   RecentsService,
@@ -226,6 +228,13 @@ app.whenReady().then(() => {
   // 插件私有存储（settings:persist）：应用数据目录内按插件隔离，绝不写入笔记库
   const pluginStorage = new PluginStorageService(path.join(userData, 'plugin-data'))
 
+  // 插件市场（M4）：索引拉取/缓存/更新对比/下载校验；网络跟随 proxyUrl（D-M4-2）
+  const market = new MarketService({
+    cachePath: path.join(userData, 'market-cache.json'),
+    installedPath: path.join(userData, 'market-installed.json'),
+    http: createMarketHttpClient(() => settingsStore.get().proxyUrl ?? null)
+  })
+
   // 侧栏状态区文字（ui:status）：宿主维护，变更即全量广播渲染端
   const pluginStatusTexts = new Map<string, string>()
   const broadcastPluginStatus = (): void => {
@@ -291,7 +300,8 @@ app.whenReady().then(() => {
     },
     onPluginStopped: (id) => {
       if (pluginStatusTexts.delete(id)) broadcastPluginStatus()
-    }
+    },
+    clearMarketRecord: (id) => market.removeInstalled(id)
   })
   plugins.init()
   plugins.activateAll()
@@ -375,6 +385,7 @@ app.whenReady().then(() => {
     exportPdf,
     search,
     wikilink,
+    market,
     getWindow: () => mainWindow
   })
 

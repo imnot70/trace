@@ -7,3 +7,4 @@ coverage/
 
 # 内置 Git 二进制（由 scripts/fetch-git.mjs 在打包前获取，不入库）
 vendor/
+trace-plugins/

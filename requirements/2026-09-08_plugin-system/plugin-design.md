@@ -328,7 +328,7 @@ ctx.registerCommand({ id, title, handler }): string                             
 ### 13.3 工作拆分（2 批次）
 
 1. ✅ **批次一已实施**：索引仓库脚手架（`market-index/` 种子目录）+ marketService（拉取/缓存/对比/sha256）+ 单测 11 项（实施明细见 13.4）
-2. 市场 UI + 下载安装/更新/下架标记接 M2 管线 + 作者发布指南（guides/）+ PRD FR-2.11.14 + 实机冒烟（约 2~3 天）
+2. ✅ **批次二已实施**：市场 UI（安装/更新/已下架标记）接 M2 管线 + 作者发布指南（`guides/plugin-release.md`）+ PRD FR-2.11.14；实机 marketList 冒烟通过（安装全链路冒烟待首个 Release 资产上架后补测）
 
 ### 13.4 批次一实施记录（2026-09-20）
 

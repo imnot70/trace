@@ -28,7 +28,10 @@ import type {
   PluginImportPreview,
   PluginDetail,
   PluginStatusEntry,
-  PluginToolbarContribution
+  PluginToolbarContribution,
+  MarketInstalledRecord,
+  MarketPlugin,
+  MarketUpdateInfo
 } from './types'
 
 /** 渲染进程可用的完整 API（由 preload 通过 contextBridge 注入 window.trace） */
@@ -154,6 +157,18 @@ export interface TraceApi {
   onPluginStatus(cb: (entries: PluginStatusEntry[]) => void): () => void
   /** 订阅编辑器工具栏按钮（editor:toolbar 权限的运行中插件，每次为全量列表） */
   onPluginToolbar(cb: (items: PluginToolbarContribution[]) => void): () => void
+
+  // ---- 插件市场（M4）----
+  /** 拉取市场列表（含缓存；同时返回已装来源、可更新与已下架信息） */
+  marketList(): Promise<OpResult & {
+    plugins?: MarketPlugin[]
+    installed?: Record<string, MarketInstalledRecord>
+    updates?: MarketUpdateInfo[]
+    unlisted?: string[]
+    stale?: boolean
+  }>
+  /** 安装/更新市场插件（下载 → sha256 校验 → 复用导入管线；权限变化时返回 needsConfirmation） */
+  marketInstall(id: string, version?: string): Promise<OpResult & { id?: string; needsConfirmation?: boolean; permissions?: string[] }>
 
   // ---- 标签 ----
   listTags(): Promise<OpResult & { tags?: TagItem[] }>

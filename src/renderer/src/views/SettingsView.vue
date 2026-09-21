@@ -234,7 +234,10 @@ async function loadPlugins(): Promise<void> {
 watch(
   () => tab.value,
   (t) => {
-    if (t === 'plugins') void loadPlugins()
+    if (t === 'plugins') {
+      void loadPlugins()
+      void loadMarket()
+    }
   },
   { immediate: true }
 )
@@ -297,6 +300,77 @@ async function toggleEnablePlugins(enabled: boolean): Promise<void> {
   await loadPlugins()
 }
 
+// ---------- 插件市场（M4） ----------
+interface MarketRow {
+  id: string
+  name: string
+  description: string
+  author: string
+  repo: string
+  latest: string
+  versions: Record<string, { permissions: string[] }>
+}
+
+const marketPlugins = ref<MarketRow[]>([])
+const marketInstalled = ref<Record<string, { repo: string; version: string; sha256: string }>>({})
+const marketUpdates = ref<{ id: string; latestVersion: string }[]>([])
+const marketUnlisted = ref<string[]>([])
+const marketLoading = ref(false)
+const marketStale = ref(false)
+
+async function loadMarket(): Promise<void> {
+  marketLoading.value = true
+  const r = await window.trace.marketList()
+  marketLoading.value = false
+  if (!r.ok) {
+    ElMessage.error(r.error ?? '市场列表加载失败')
+    return
+  }
+  marketPlugins.value = r.plugins ?? []
+  marketInstalled.value = r.installed ?? {}
+  marketUpdates.value = r.updates ?? []
+  marketUnlisted.value = r.unlisted ?? []
+  marketStale.value = Boolean(r.stale)
+}
+
+function isMarketInstalled(id: string): boolean {
+  return id in marketInstalled.value
+}
+
+function marketVersionLabel(id: string): string {
+  return marketInstalled.value[id]?.version ?? ''
+}
+
+function marketUpdateVersion(id: string): string | null {
+  return marketUpdates.value.find((u) => u.id === id)?.latestVersion ?? null
+}
+
+function isDelisted(id: string): boolean {
+  return marketUnlisted.value.includes(id)
+}
+
+/** 从市场条目构建安装预览并弹出确认（权限展示不可跳过），确认后走 marketInstall */
+async function installFromMarket(row: MarketRow, version?: string): Promise<void> {
+  const ver = version ?? row.latest
+  const entry = row.versions[ver]
+  pendingImport.value = {
+    importId: '',
+    source: 'market',
+    id: row.id,
+    name: row.name,
+    version: ver,
+    description: row.description,
+    permissions: entry?.permissions ?? [],
+    isUpgrade: isMarketInstalled(row.id)
+  }
+}
+
+function previewMarketInstallById(id: string): void {
+  const row = marketPlugins.value.find((r) => r.id === id)
+  if (row) installFromMarket(row)
+  else ElMessage.error('市场数据未加载，请刷新后重试')
+}
+
 // ---------- 插件包导入（.trace-plugin，M2） ----------
 interface PluginImportPreview {
   importId: string
@@ -308,7 +382,7 @@ interface PluginImportPreview {
   isUpgrade: boolean
 }
 
-const pendingImport = ref<PluginImportPreview | null>(null)
+const pendingImport = ref<(PluginImportPreview & { source?: 'local' | 'market' }) | null>(null)
 
 async function importPlugin(): Promise<void> {
   const r = await window.trace.importPlugin()
@@ -321,12 +395,18 @@ async function importPlugin(): Promise<void> {
 
 async function confirmImport(): Promise<void> {
   if (!pendingImport.value) return
-  const r = await window.trace.confirmImportPlugin(pendingImport.value.importId)
+  const item = pendingImport.value
+  let r
+  if (item.source === 'market') {
+    r = await window.trace.marketInstall(item.id, item.version)
+  } else {
+    r = await window.trace.confirmImportPlugin(item.importId)
+  }
   if (!r.ok) ElMessage.error(r.error ?? '安装失败')
   else if (r.needsConfirmation) ElMessage.warning('插件包已安装：权限有变化，启用前需重新确认')
-  else ElMessage.success('插件已安装')
+  else ElMessage.success(item.source === 'market' ? `插件已安装（市场 v${item.version}）` : '插件已安装')
   pendingImport.value = null
-  await loadPlugins()
+  await Promise.all([loadPlugins(), loadMarket()])
 }
 
 function cancelImport(): void {
@@ -516,6 +596,47 @@ async function resetGitSource(): Promise<void> {
 
         <div class="settings-block">
           <div class="setting-row" style="margin-bottom: 4px">
+            <h3 style="margin: 0">插件市场</h3>
+            <el-button size="small" :loading="marketLoading" @click="loadMarket">刷新</el-button>
+          </div>
+          <p v-if="marketStale" class="settings-desc" style="margin: 0 0 8px; color: var(--danger)">
+            市场索引拉取失败，当前显示的是本地缓存（可能过期）。
+          </p>
+          <el-empty v-if="!marketLoading && marketPlugins.length === 0" description="市场暂无插件" :image-size="60" />
+          <div v-for="row in marketPlugins" :key="row.id" class="setting-row">
+            <div style="flex: 1">
+              <div>
+                <strong>{{ row.name }}</strong>
+                <span style="color: var(--text-tertiary); margin-left: 8px">v{{ row.latest }}</span>
+                <span v-if="row.author" style="color: var(--text-tertiary); margin-left: 8px">@{{ row.author }}</span>
+                <span v-if="isMarketInstalled(row.id)" class="plugin-badge plugin-badge-ok">
+                  已安装 v{{ marketVersionLabel(row.id) }}
+                </span>
+                <span v-if="isDelisted(row.id) && !isMarketInstalled(row.id)" class="plugin-badge">已下架</span>
+              </div>
+              <div class="settings-desc" style="margin: 2px 0 0">{{ row.description }}</div>
+              <div
+                v-if="row.versions[row.latest]?.permissions?.length"
+                class="settings-desc"
+                style="margin: 4px 0 0"
+              >
+                权限：{{ row.versions[row.latest].permissions.map(permissionLabel).join('、') }}
+              </div>
+            </div>
+            <el-button
+              v-if="!isMarketInstalled(row.id)"
+              size="small"
+              type="primary"
+              plain
+              @click="installFromMarket(row)"
+            >
+              安装
+            </el-button>
+          </div>
+        </div>
+
+        <div class="settings-block">
+          <div class="setting-row" style="margin-bottom: 4px">
             <h3 style="margin: 0">已安装的插件</h3>
             <el-button size="small" @click="importPlugin">导入插件…</el-button>
           </div>
@@ -529,6 +650,17 @@ async function resetGitSource(): Promise<void> {
                 <span v-else-if="plugin.enabled && plugin.permissionsConfirmed" class="plugin-badge">未运行</span>
                 <span v-else-if="plugin.enabled && !plugin.permissionsConfirmed" class="plugin-badge plugin-badge-warn">需确认权限</span>
                 <span v-if="plugin.crashCount > 0" class="plugin-badge plugin-badge-warn">崩溃 {{ plugin.crashCount }} 次</span>
+                <span v-if="isDelisted(plugin.id)" class="plugin-badge plugin-badge-warn">已下架</span>
+                <el-button
+                  v-if="marketUpdateVersion(plugin.id)"
+                  size="small"
+                  type="primary"
+                  plain
+                  style="margin-left: 8px"
+                  @click="previewMarketInstallById(plugin.id)"
+                >
+                  更新到 v{{ marketUpdateVersion(plugin.id) }}
+                </el-button>
               </div>
               <div class="settings-desc" style="margin: 2px 0 0">{{ plugin.description }}</div>
               <div v-if="plugin.permissions.length" class="settings-desc" style="margin: 4px 0 0">
@@ -965,10 +1097,10 @@ async function resetGitSource(): Promise<void> {
         </div>
         <p v-else class="settings-desc" style="margin: 0 0 12px">该插件未声明任何权限。</p>
         <el-alert
-          type="warning"
+          :type="pendingImport.source === 'market' ? 'info' : 'warning'"
           :closable="false"
           show-icon
-          title="此插件未经 Trace 市场审阅，请确认来源可信后再安装"
+          :title="pendingImport.source === 'market' ? '该插件已通过 Trace 市场审阅（安装时将再次校验 sha256）' : '此插件未经 Trace 市场审阅，请确认来源可信后再安装'"
         />
       </template>
       <template #footer>

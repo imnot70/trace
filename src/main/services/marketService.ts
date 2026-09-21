@@ -16,28 +16,15 @@ export const DEFAULT_INDEX_URL =
   'https://raw.githubusercontent.com/imnot70/trace-plugins/main/trace-plugins.json'
 export const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000
 
-export interface MarketVersion {
-  releaseTag: string
-  asset: string
-  sha256: string
-  permissions: string[]
-  releasedAt: string
-}
+import type {
+  MarketIndex,
+  MarketInstalledRecord,
+  MarketPlugin,
+  MarketUpdateInfo,
+  MarketVersion
+} from '@shared/types'
 
-export interface MarketPlugin {
-  id: string
-  name: string
-  description: string
-  author: string
-  repo: string
-  latest: string
-  versions: Record<string, MarketVersion>
-}
-
-export interface MarketIndex {
-  schemaVersion: number
-  plugins: MarketPlugin[]
-}
+export type { MarketIndex, MarketInstalledRecord, MarketPlugin, MarketUpdateInfo, MarketVersion }
 
 export interface MarketHttpClient {
   /** 拉取文本；HTTP 304 时 body 为空 */
@@ -48,6 +35,8 @@ export interface MarketHttpClient {
 export interface MarketDeps {
   /** 本地缓存文件（userData/market-cache.json） */
   cachePath: string
+  /** 市场安装来源登记文件（userData/market-installed.json） */
+  installedPath: string
   http: MarketHttpClient
   indexUrl?: string
   ttlMs?: number
@@ -65,14 +54,6 @@ export interface FetchIndexResult {
 }
 
 const FETCH_FAIL = (error: string): FetchIndexResult => ({ ok: false, fromCache: false, error })
-
-export interface MarketUpdateInfo {
-  id: string
-  name: string
-  repo: string
-  currentVersion: string
-  latestVersion: string
-}
 
 interface CacheFile {
   etag?: string
@@ -264,6 +245,49 @@ export class MarketService {
       return { ok: true, filePath }
     } catch (e) {
       return { ok: false, error: `读取下载文件失败：${e instanceof Error ? e.message : String(e)}` }
+    }
+  }
+
+  // ---------- 市场安装来源登记（D-M4 设计：只有市场件参与更新检查与下架标记） ----------
+
+  private readInstalled(): Record<string, MarketInstalledRecord> {
+    try {
+      const raw = JSON.parse(fs.readFileSync(this.deps.installedPath, 'utf-8')) as Record<string, MarketInstalledRecord>
+      return raw && typeof raw === 'object' ? raw : {}
+    } catch {
+      return {}
+    }
+  }
+
+  getInstalled(): Record<string, MarketInstalledRecord> {
+    return this.readInstalled()
+  }
+
+  recordInstalled(id: string, record: MarketInstalledRecord): void {
+    const data = this.readInstalled()
+    data[id] = record
+    try {
+      fs.mkdirSync(path.dirname(this.deps.installedPath), { recursive: true })
+      const tmp = `${this.deps.installedPath}.tmp`
+      fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf-8')
+      fs.renameSync(tmp, this.deps.installedPath)
+    } catch (e) {
+      logger.warn('市场安装记录写入失败', e)
+    }
+  }
+
+  /** 卸载插件时清除来源登记 */
+  removeInstalled(id: string): void {
+    const data = this.readInstalled()
+    if (!(id in data)) return
+    delete data[id]
+    try {
+      fs.mkdirSync(path.dirname(this.deps.installedPath), { recursive: true })
+      const tmp = `${this.deps.installedPath}.tmp`
+      fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf-8')
+      fs.renameSync(tmp, this.deps.installedPath)
+    } catch (e) {
+      logger.warn('市场安装记录清除失败', e)
     }
   }
 }
