@@ -183,6 +183,10 @@ onMounted(async () => {
     app.settings.windowGlassEffect !== undefined &&
     window.trace.platform !== 'win32'
   if (!windowTransparent) document.documentElement.classList.add('window-opaque')
+  // Linux 浅色壁纸下底部圆角缺口仍会露出系统合成器的方形轮廓（深色壁纸正常，疑似系统侧
+  // 限制、应用侧无法彻底消除，排查记录见 AGENTS.md 已知局限）——Linux 一律去掉底部圆角规避
+  if (window.trace.platform === 'linux')
+    document.documentElement.classList.add('no-bottom-radius')
   await tree.refreshAll()
   void trash.load() // 侧栏回收站计数
   window.addEventListener('keydown', onGlobalKeydown)

@@ -64,6 +64,12 @@ html.window-opaque #app {
   border-radius: 0;
 }
 
+/* Linux 平台（含透明窗口时）一律禁用底部圆角：浅色壁纸下圆角缺口仍会残留
+   系统合成器的方形直角轮廓（深色壁纸正常，应用侧无法彻底消除），见 AGENTS.md 已知局限 */
+html.no-bottom-radius #app {
+  border-radius: 0;
+}
+
 body {
   font-family:
     'PingFang SC',

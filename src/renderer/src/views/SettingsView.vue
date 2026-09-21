@@ -689,8 +689,7 @@ async function resetGitSource(): Promise<void> {
             </el-button>
           </div>
         </div>
-
-        </el-tab-pane>
+</el-tab-pane>
 
       <!-- 通用 -->
       <el-tab-pane label="通用" name="general">
