@@ -2,11 +2,19 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [未发布]
+## [0.5.1] - 2026-09-21
 
 ### 优化
 
 - 插件设置页区块重排：「已安装的插件」移至「插件市场」之前——市场插件增多时，已安装列表不再被挤出首屏
+
+### 修复
+
+- **Linux 移除窗口底部圆角**：浅色壁纸下内容区底部圆角缺口仍会残留系统合成器的方形直角轮廓（深色壁纸正常，疑似系统侧限制、应用侧无法彻底消除）——Linux 平台一律去掉底部圆角规避；Windows / macOS 不受影响（Windows 不透明窗口本就不启用内容区圆角）
+
+### 构建
+
+- 插件类型包 `trace-plugin-api` 改为 CI 自动发布（npm Trusted Publishing / OIDC，免 token）：应用打版本标签时，CI 比对 `packages/plugin-api` 本地版本与 npm 线上版本，不同才发布（自带 provenance）；补齐 package.json `repository` 字段（provenance 校验要求）。首次使用前需在 npmjs.com 登记一次 Trusted Publisher，见 `guides/plugin-development.md` 第 9 节
 
 ## [0.5.0] - 2026-09-21
 
