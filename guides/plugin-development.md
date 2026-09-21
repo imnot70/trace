@@ -319,15 +319,15 @@ exports.activate = function activate(ctx) {
 
 > 上架市场（Release + 索引 PR）的完整流程见 [plugin-release.md](plugin-release.md)。
 
-### 类型补全（@trace/plugin-api）
+### 类型补全（trace-plugin-api）
 
 ```bash
-npm install -D @trace/plugin-api
+npm install -D trace-plugin-api
 ```
 
 ```js
 // main.js
-/** @param {import('@trace/plugin-api').PluginContext} ctx */
+/** @param {import('trace-plugin-api').PluginContext} ctx */
 exports.activate = function activate(ctx) {
   // ctx. 全量补全与 JSDoc 提示
 }

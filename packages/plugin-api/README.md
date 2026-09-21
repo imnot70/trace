@@ -1,16 +1,16 @@
-# @trace/plugin-api
+# trace-plugin-api
 
 Trace（笔迹）插件 API 类型定义。为 Trace 插件开发提供 `ctx` 的完整 TypeScript 类型与 JSDoc 补全。
 
 ```bash
-npm install -D @trace/plugin-api
+npm install -D trace-plugin-api
 ```
 
 ```js
 // main.js / main.ts
-import type { PluginContext } from '@trace/plugin-api'
+import type { PluginContext } from 'trace-plugin-api'
 
-/** @param {import('@trace/plugin-api').PluginContext} ctx */
+/** @param {import('trace-plugin-api').PluginContext} ctx */
 exports.activate = function activate(ctx) {
   ctx.registerCommand({
     id: 'hello',

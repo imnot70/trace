@@ -62,7 +62,7 @@ src/
 │  ├─ plugin-runtime/     # 插件进程桥接 bridge.ts（独立构建为 out/main/bridge.js）
 │  │                      # / 协议 protocol.ts / require 白名单 requireGuard.ts
 │  └─ lib/                # errMessage / jsonStore / logger(脱敏) / paths / themePackage
-├─ packages/plugin-api/   # @trace/plugin-api 类型包（d.ts + JSDoc，发布 npm 用）
+├─ packages/plugin-api/   # trace-plugin-api 类型包（d.ts + JSDoc，发布 npm 用）
 ├─ preload/index.ts       # contextBridge 暴露类型化 IPC API（window.trace）
 ├─ renderer/src/          # 纯 UI
 │  ├─ views/              # EditorView / SettingsView / TrashView / WelcomeView

@@ -2,9 +2,9 @@
  * Trace（笔迹）插件 API 类型定义
  *
  * 用法：
- *   npm install -D @trace/plugin-api
+ *   npm install -D trace-plugin-api
  *   // 在插件入口文件中：
- *   import type { PluginContext } from '@trace/plugin-api'
+ *   import type { PluginContext } from 'trace-plugin-api'
  *   export function activate(ctx: PluginContext): void { ... }
  *
  * 能力与权限对照（manifest.json 的 permissions 字段）：

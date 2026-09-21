@@ -27,7 +27,7 @@
 
 - **编辑器工具栏按钮**（`editor:toolbar` 权限）：插件在 manifest `contributions.toolbar` 声明 `{icon, title, command}`，编辑器工具栏自动出现按钮，点击执行对应插件命令——完全声明式，插件代码不碰 DOM；命令未注册或插件停止时按钮自动消失
 - **侧栏状态区**（`ui:status` 权限）：`ctx.status.set/clear` 在侧栏底部显示一行文字（≤120 字符，如字数统计），每插件一条互不覆盖，插件停止自动清除
-- **`@trace/plugin-api` 类型包**：`packages/plugin-api/` 提供 `ctx` 完整 TypeScript 类型与 JSDoc（npm 发布待办）；示例插件升级 v2.2.0 演示工具栏按钮与状态区
+- **`trace-plugin-api` 类型包**：`packages/plugin-api/` 提供 `ctx` 完整 TypeScript 类型与 JSDoc（npm 发布待办）；示例插件升级 v2.2.0 演示工具栏按钮与状态区
 
 ### 插件系统 M4（同版本随上）：插件市场
 

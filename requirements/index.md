@@ -44,7 +44,7 @@
   - **设置页详情与卸载**：状态 / 权限 / 崩溃历史 / 日志 / 存储占用；卸载清除目录、权限记录与私有存储
   - **声明式 UI 扩展**：编辑器工具栏按钮（contributions.toolbar）与侧栏状态区（ctx.status），插件不碰 DOM
   - **应用内插件市场**：索引仓库 `imnot70/trace-plugins`（PR 审阅治理），浏览 / 安装（下载 → sha256 版本锁定 → 复用导入管线）/ 更新检查 / 下架标记；网络跟随代理设置
-  - **`@trace/plugin-api` 类型包**（packages/plugin-api，npm 发布待办）；示例插件 v2.2.0 覆盖全部能力演示
+  - **`trace-plugin-api` 类型包**（packages/plugin-api，npm 发布待办）；示例插件 v2.2.0 覆盖全部能力演示
   - 详见 [plugin-design.md](2026-09-08_plugin-system/plugin-design.md) 第 10–13 节实施记录；开发指引 [guides/plugin-development.md](../../guides/plugin-development.md)、发布指引 [guides/plugin-release.md](../../guides/plugin-release.md)
 
 ### v0.4.6（2026-09-20）

@@ -137,7 +137,7 @@
 
 ## 7. 开发者体验
 
-- `@trace/plugin-api` 类型包（只发 d.ts + JSDoc），npm 安装即有补全；
+- `trace-plugin-api` 类型包（只发 d.ts + JSDoc），npm 安装即有补全；
 - 示例插件升级：覆盖 Tier 1 全部能力的演示（读写笔记 + 订阅保存事件 + 注册命令）；
 - 设置页插件详情：权限清单、运行状态、崩溃历史、日志查看（复用 logger）；
 - 文档一篇：`docs/plugin-development.md`（或仓库 wiki）。（✅ 已于 M1 提前落地为 `guides/plugin-development.md`：API 参考、错误约定、白名单、调试方法与完整示例）
@@ -293,7 +293,7 @@ ctx.registerCommand({ id, title, handler }): string                             
 | 工具栏贡献点 | manifest `contributions.toolbar` + `PluginHost.toolbarItems()` | 声明式：权限 `editor:toolbar` + 命令已注册才生效；命令短 id 自动补全为 `<插件id>.<命令id>` |
 | 编辑器工具栏渲染 | `EditorView.vue` 工具栏尾部 | 主进程 `plugin:toolbar` 事件广播全量按钮，点击经 `invokePluginCommand` 执行 |
 | 状态区 | 网关 `ui:status` 域 + `ctx.status.set/clear` | 权限 `ui:status`；每插件一条，≤120 字符自动截断；`plugin:status` 事件全量广播渲染端，侧栏底部渲染，插件停止自动清除 |
-| `@trace/plugin-api` | `packages/plugin-api/`（index.d.ts + README） | 只含类型与 JSDoc；npm 发布为发布动作（构建产物已就绪，待 npm 账号执行 publish） |
+| `trace-plugin-api` | `packages/plugin-api/`（index.d.ts + README） | 只含类型与 JSDoc；npm 发布为发布动作（构建产物已就绪，待 npm 账号执行 publish） |
 
 ### 12.2 行为约定
 

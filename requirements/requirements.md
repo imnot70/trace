@@ -177,7 +177,7 @@ Trace（中文名「笔迹」）是一款**本地优先**的轻量级 Markdown �
 - FR-2.11.10（v2 M2）**插件私有存储**：`settings:persist` 权限对应的宿主托管 KV（`ctx.storage`），按插件隔离、随卸载清除。
 - FR-2.11.11（v2 M2）**设置页详情与卸载**：运行状态 / 权限 / 崩溃历史 / 日志查看 / 存储占用；卸载 = 停用 + 删目录 + 清权限记录与私有存储。
 - FR-2.11.12（v2 M3）**声明式 UI 扩展**：`editor:toolbar` 工具栏按钮（manifest `contributions.toolbar` 声明，命令驱动，插件不碰 DOM）与 `ui:status` 侧栏状态区（`ctx.status`，每插件一行，随插件停止清除）。
-- FR-2.11.13（v2 M3）**类型包**：`@trace/plugin-api`（packages/plugin-api，d.ts + JSDoc）提供 ctx 完整类型补全；npm 发布待办。
+- FR-2.11.13（v2 M3）**类型包**：`trace-plugin-api`（packages/plugin-api，d.ts + JSDoc）提供 ctx 完整类型补全；npm 发布待办。
 - FR-2.11.14（v2 M4）**插件市场**：索引仓库 `imnot70/trace-plugins`（trace-plugins.json 登记 id/版本/资产/sha256/权限，增改走 PR 审阅）；应用内浏览安装（下载 → sha256 校验 → 复用导入管线）、更新检查与一键更新（权限新增需重确认）、下架标记（已装保留可用）；市场请求跟随 HTTP/HTTPS 代理设置。
 - 完整 API 签名与实施记录见 `requirements/2026-09-08_plugin-system/plugin-design.md` 第 4 / 10–13 节。
 
