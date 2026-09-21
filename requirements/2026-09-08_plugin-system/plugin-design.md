@@ -293,7 +293,7 @@ ctx.registerCommand({ id, title, handler }): string                             
 | 工具栏贡献点 | manifest `contributions.toolbar` + `PluginHost.toolbarItems()` | 声明式：权限 `editor:toolbar` + 命令已注册才生效；命令短 id 自动补全为 `<插件id>.<命令id>` |
 | 编辑器工具栏渲染 | `EditorView.vue` 工具栏尾部 | 主进程 `plugin:toolbar` 事件广播全量按钮，点击经 `invokePluginCommand` 执行 |
 | 状态区 | 网关 `ui:status` 域 + `ctx.status.set/clear` | 权限 `ui:status`；每插件一条，≤120 字符自动截断；`plugin:status` 事件全量广播渲染端，侧栏底部渲染，插件停止自动清除 |
-| `trace-plugin-api` | `packages/plugin-api/`（index.d.ts + README） | 只含类型与 JSDoc；npm 发布为发布动作（构建产物已就绪，待 npm 账号执行 publish） |
+| `trace-plugin-api` | `packages/plugin-api/`（index.d.ts + README） | 只含类型与 JSDoc；✅ 已发布 npm（v0.1.0，2026-09-21）。注：原定名 @trace/plugin-api 因 npm 用户名 trace 已被占而更名 |
 
 ### 12.2 行为约定
 
@@ -342,4 +342,5 @@ ctx.registerCommand({ id, title, handler }): string                             
 - 索引校验：schemaVersion 必须为 1；插件条目 id 形如目录名、repo 形如 owner/name、latest 必须存在于 versions；非法条目静默过滤
 - 下载校验：资产名白名单（防路径拼接）；sha256 大小写不敏感比对，不一致删除文件拒绝安装
 - 测试：`tests/marketService.test.ts` 11 项（TTL/force/304/stale 回退/条目过滤/更新与下架判定/校验和一致与篡改拒绝/非法资产名）
-- 待办：用户将 `market-index/repo/` 内容推送至 imnot70/trace-plugins（索引生效前提）
+- 索引仓库已初始化上线（2026-09-20），main 分支保护已配置（PR 必走、禁 force push/删除）
+- 首收录件 sample 2.2.0 的 Release v2.2.0 已发布，安装全链路（下载 → sha256 → 权限确认 → 激活 → 命令/工具栏）实机冒烟通过（2026-09-21）
