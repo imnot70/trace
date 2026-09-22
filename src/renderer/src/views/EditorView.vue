@@ -211,6 +211,24 @@ watch(
   }
 )
 
+// ---------- 所见即所得 ↔ 分栏预览联动（需求 D2） ----------
+// 进入：记忆当前分栏状态并收起预览（编辑区占满）；退出：恢复进入前的分栏。
+// 预览的强制收起语义由 app store 的 setPreviewVisible 守卫兜底（Alt+V 等外部入口）
+let previewBeforeWysiwyg: boolean | null = null
+watch(
+  () => app.editorWysiwyg,
+  (on) => {
+    if (on) {
+      if (previewBeforeWysiwyg === null) previewBeforeWysiwyg = app.previewVisible
+      app.setPreviewVisible(false)
+    } else if (previewBeforeWysiwyg !== null) {
+      app.setPreviewVisible(previewBeforeWysiwyg)
+      previewBeforeWysiwyg = null
+    }
+  },
+  { immediate: true }
+)
+
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
   rebindScrollSync()
@@ -362,17 +380,27 @@ onBeforeUnmount(() => {
 
       <span class="toolbar-sep"></span>
       <el-tooltip
-        content="点击：显示/隐藏预览；长按或 Alt+P：悬浮预览"
+        :content="app.editorWysiwyg ? '所见即所得（预览已合并进编辑区，Ctrl+E 切回源码）' : '点击：显示/隐藏预览；长按或 Alt+P：悬浮预览'"
         placement="bottom"
         :hide-after="0"
       >
         <button
           class="tool-btn"
+          :class="{ 'tool-dimmed': app.editorWysiwyg }"
           @pointerdown="onPreviewBtnDown"
           @pointerup="onPreviewBtnUp"
           @pointerleave="onPreviewBtnLeave"
         >
           <el-icon><Expand v-if="!app.previewVisible && !app.floatingPreview" /><Fold v-else /></el-icon>
+        </button>
+      </el-tooltip>
+      <el-tooltip content="所见即所得编辑（Ctrl+E 切换）" placement="bottom" :hide-after="0">
+        <button
+          class="tool-btn"
+          :class="{ 'wysiwyg-on': app.editorWysiwyg }"
+          @click="app.toggleEditorMode(); editorRef?.focus()"
+        >
+          <el-icon><MagicStick /></el-icon>
         </button>
       </el-tooltip>
       <el-tooltip :content="app.zenMode ? '退出专注模式' : '专注模式（隐藏侧栏与预览）'" placement="bottom">
@@ -447,9 +475,11 @@ onBeforeUnmount(() => {
         :font-size="app.settings.editorFontSize"
         :vault="editor.current.vault"
         :note-path="editor.current.path"
+        :wysiwyg="app.editorWysiwyg"
         @update:model-value="onEditorUpdate"
         @save="editor.flushSave()"
         @image="(name: string, b64: string) => onImage(name, b64)"
+        @open-note="onPreviewOpenNote"
       />
     </div>
 

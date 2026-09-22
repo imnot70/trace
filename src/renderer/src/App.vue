@@ -129,6 +129,11 @@ function onGlobalKeydown(e: KeyboardEvent): void {
       e.preventDefault()
       search.openSearch()
     }
+    // Ctrl+E：源码 ↔ 所见即所得编辑模式切换（仅编辑视图，FR-W1）
+    if (e.key.toLowerCase() === 'e' && app.view.name === 'editor' && editor.current) {
+      e.preventDefault()
+      app.toggleEditorMode()
+    }
   }
 }
 

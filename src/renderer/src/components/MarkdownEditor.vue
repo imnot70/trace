@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { EditorState } from '@codemirror/state'
+import { Compartment, EditorState } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
@@ -8,6 +8,7 @@ import { languages } from '@codemirror/language-data'
 import { undo, redo } from '@codemirror/commands'
 import { autocompletion, startCompletion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete'
 import { useTreeStore } from '../stores/tree'
+import { livePreview } from '../lib/livePreview'
 import type { TreeNode } from '@shared/types'
 
 const props = defineProps<{
@@ -15,18 +16,24 @@ const props = defineProps<{
   fontSize: number
   vault: string
   notePath: string
+  /** 所见即所得模式（Live Preview）：true 时挂载装饰扩展 */
+  wysiwyg?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
   (e: 'save'): void
   (e: 'image', fileName: string, base64: string): void
+  (e: 'open-note', target: { vault: string; path: string; name: string }): void
 }>()
 
 const container = ref<HTMLDivElement | null>(null)
 let view: EditorView | null = null
 /** 是否由外部（props）导致的文档替换，避免回环 */
 let applyingExternal = false
+
+/** livePreview 扩展挂载点：模式开关 / 换库换笔记都经 Compartment 重配置（不重建视图） */
+const livePreviewCompartment = new Compartment()
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\u4e00-\u9fff-]/g, '')
@@ -310,6 +317,7 @@ function createView(initialDoc: string): EditorView {
       markdown({ base: markdownLanguage, codeLanguages: languages }),
       EditorView.lineWrapping,
       traceTheme,
+      livePreviewCompartment.of(buildLivePreview()),
       keymap.of([
         {
           key: 'Mod-s',
@@ -341,6 +349,40 @@ function createView(initialDoc: string): EditorView {
   })
   return new EditorView({ state, parent: container.value! })
 }
+
+/** 组装所见即所得扩展：结构（含 StateField）必须常驻挂载——Compartment 不允许增删
+ *  StateField，只能重配 Facet 值，故以 enabled 开关门控（开关即重配，无重建） */
+function buildLivePreview() {
+  return livePreview({
+    enabled: props.wysiwyg ?? false,
+    vault: props.vault,
+    notePath: props.notePath,
+    resolveName: (name: string) => {
+      const tree = useTreeStore()
+      const nodes = tree.trees[props.vault] ?? []
+      const target = name.toLowerCase()
+      const match = (list: TreeNode[]): boolean =>
+        list.some((n) =>
+          n.kind === 'note'
+            ? n.name.toLowerCase() === `${target}.md` || n.name.toLowerCase() === target
+            : n.kind === 'dir' && n.children
+              ? match(n.children)
+              : false
+        )
+      return match(nodes)
+    },
+    openNote: (target) => emit('open-note', target),
+    openExternal: (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
+  })
+}
+
+watch(
+  () => [props.wysiwyg, props.vault, props.notePath] as const,
+  () => {
+    if (!view) return
+    view.dispatch({ effects: livePreviewCompartment.reconfigure(buildLivePreview()) })
+  }
+)
 
 onMounted(() => {
   view = createView(props.modelValue)

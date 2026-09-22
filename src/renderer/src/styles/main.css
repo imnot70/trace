@@ -664,6 +664,16 @@ body {
   color: var(--text-primary);
 }
 
+/* 所见即所得开关：激活态用主题色描边；所见即所得期间预览开关降透明度（强制收起，点击无效果） */
+.tool-btn.wysiwyg-on {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.tool-btn.tool-dimmed {
+  opacity: 0.4;
+}
+
 .toolbar-sep {
   width: 1px;
   height: 16px;

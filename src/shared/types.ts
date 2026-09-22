@@ -137,6 +137,8 @@ export interface AppSettings {
   }
   /** 编辑区右下角反向链接入口（「断链引用」的子开关） */
   showBacklinks: boolean
+  /** 默认编辑模式：source 源码模式 / wysiwyg 所见即所得（Live Preview，FR-W1） */
+  defaultEditMode: 'source' | 'wysiwyg'
 }
 
 /** 自定义主题包：一组 CSS 变量覆盖（light/dark 两套），存 userData/themes/<id>.json */

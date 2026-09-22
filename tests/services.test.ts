@@ -39,7 +39,8 @@ function buildStack() {
     windowGlassEffect: 'auto',
     windowOpacity: 100,
     sidebarMenus: { recents: true, favorites: true, tags: true, unresolved: true, trash: true },
-    showBacklinks: true
+    showBacklinks: true,
+    defaultEditMode: 'source'
   })
   const workspace = new WorkspaceService(settings, path.join(tmp, 'ws'))
   workspace.initDefault()

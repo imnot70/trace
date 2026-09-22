@@ -26,6 +26,7 @@
 | [note-export_design.md](note-export/note-export_design.md) | 笔记导出 PDF：单篇 / 文件夹 / 整库递归（可跨库），图片内联自包含；支持合并为单个 PDF | ✅ **已实施**（main，随下版本发布） |
 | [pdf-merge_design.md](pdf-merge/pdf-merge_design.md) | PDF 合并导出设计：多篇 → 单个 PDF，pdf-lib 拼接管线 | ✅ **已实施**（随下版本发布） |
 | [note-export-html_design.md](2026-09-15_note-export-html/note-export-html_design.md) | 笔记导出 HTML：自包含单文件，深浅色自适应阅读排版 | ✅ **已实施**（main，随下版本发布） |
+| [wysiwyg.md](2026-09-21_wysiwyg/wysiwyg.md) + [wysiwyg_design.md](2026-09-21_wysiwyg/wysiwyg_design.md) | 所见即所得编辑模式（Live Preview，Obsidian 式）：需求（D1–D4）与技术设计（D1–D6，CM6 StateField+ViewPlugin 双层装饰）、节点映射表、IME 冻结 | ✅ **已实施**（分支 `feature/wysiwyg-editor`，随下版本发布，实施记录见设计文档第 10 节） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
@@ -33,6 +34,10 @@
 ---
 
 ## 一、已实现（v0.1.0 → v0.5.1，发布状态见子节）
+
+### 待发版（feature/wysiwyg-editor 分支）
+
+- **所见即所得编辑模式（Live Preview，FR-2.4.13）**：顶栏魔法棒按钮 / `Ctrl+E` 切换；非光标区渲染呈现（标题 / 粗斜体删除线 / 行内码 / 引用 / 可点击任务列表 / 表格 / 公式 / 图片 / 双链 / 内嵌 HTML / frontmatter 折叠），光标处回落源码；进入自动收起预览分栏；中文输入法组词保护；文件始终为纯 Markdown。设置新增「默认编辑模式」。净化管道抽取 `sanitizeHtml` 三处共用。详见 [2026-09-21_wysiwyg/](2026-09-21_wysiwyg/wysiwyg.md)
 
 ### v0.5.1（2026-09-21）
 
@@ -196,7 +201,7 @@
 ### 二期 Backlog（源自 PRD 第 7 节）
 
 - ~~全局搜索~~（已实施）
-- 所见即所得编辑模式
+- ~~所见即所得编辑模式~~（已实施：Live Preview 形态，见 [2026-09-21_wysiwyg/wysiwyg.md](2026-09-21_wysiwyg/wysiwyg.md)；二期 Backlog 至此全部完成或作废）
 - ~~图形化冲突解决~~（已实施）
 - ~~变更触发自动同步~~（已实施，FR-2.8.14）
 - ~~插件完整 API 与市场~~（**已全部实施**：M1–M4，见 `requirements/2026-09-08_plugin-system/plugin-design.md`）

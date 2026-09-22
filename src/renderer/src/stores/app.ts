@@ -36,7 +36,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   windowGlassEffect: 'auto',
   windowOpacity: 100,
   sidebarMenus: { recents: true, favorites: true, tags: true, unresolved: true, trash: true },
-  showBacklinks: true
+  showBacklinks: true,
+  defaultEditMode: 'source'
 }
 
 function prefersDark(): boolean {
@@ -67,6 +68,8 @@ export const useAppStore = defineStore('app', {
     focusEditorOnce: false,
     /** 悬浮预览卡片（长按预览按钮触发，会话级不持久化） */
     floatingPreview: false,
+    /** 所见即所得（Live Preview）编辑模式：运行态开关，初始值取设置 defaultEditMode（会话级） */
+    editorWysiwyg: false,
     /** 网格/列表视图模式（localStorage 持久化） */
     viewMode: 'grid' as ViewMode,
     /** 已导入的自定义主题（userData/themes），与内置预设在 UI 中并列 */
@@ -131,12 +134,18 @@ export const useAppStore = defineStore('app', {
       this.setPreviewVisible(!this.previewVisible)
     },
     setPreviewVisible(v: boolean): void {
+      // 所见即所得模式下预览分栏强制收起（需求 D2）：Alt+V / 预览按钮不得展开
+      if (v && this.editorWysiwyg) return
       this.previewVisible = v
       try {
         localStorage.setItem('trace.previewVisible', v ? '1' : '0')
       } catch {
         /* ignore */
       }
+    },
+    /** 切换所见即所得编辑模式；分栏预览的收起/恢复由 EditorView 监听联动 */
+    toggleEditorMode(): void {
+      this.editorWysiwyg = !this.editorWysiwyg
     },
     toggleZen(): void {
       this.zenMode = !this.zenMode
@@ -145,7 +154,8 @@ export const useAppStore = defineStore('app', {
         this.previewBeforeZen = this.previewVisible
         this.previewVisible = false
       } else {
-        this.previewVisible = this.previewBeforeZen
+        // 退出专注：所见即所得模式下预览保持收起
+        this.previewVisible = this.previewBeforeZen && !this.editorWysiwyg
       }
       try {
         localStorage.setItem('trace.zenMode', this.zenMode ? '1' : '0')
@@ -188,6 +198,8 @@ export const useAppStore = defineStore('app', {
       if (settings.ok && settings.settings) this.settings = settings.settings
       if (themes.ok && themes.themes) this.customThemes = themes.themes
       this.version = version.version ?? ''
+      // 所见即所得模式的会话初始值来自设置默认编辑模式（FR-W1）
+      this.editorWysiwyg = this.settings.defaultEditMode === 'wysiwyg'
       this.applyTheme()
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
         if (this.settings.theme === 'system') this.applyTheme()

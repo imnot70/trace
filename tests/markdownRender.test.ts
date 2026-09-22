@@ -1,13 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import DOMPurify from 'dompurify'
-import { md, slugify } from '../src/renderer/src/lib/markdown'
-
-// 与生产一致的净化配置（MarkdownPreview.vue）
-const SANITIZE_CONFIG = {
-  FORBID_TAGS: ['style', 'base', 'form', 'input', 'button', 'select', 'textarea', 'iframe', 'object', 'embed', 'meta', 'link'],
-  FORBID_ATTR: ['srcdoc', 'target']
-}
+import { md, sanitizeHtml, slugify } from '../src/renderer/src/lib/markdown'
 
 describe('markdown 渲染管道：源码行号注入（data-source-line）', () => {
   it('顶层块携带正确的 0 基行号', () => {
@@ -33,33 +26,21 @@ describe('markdown 渲染管道：源码行号注入（data-source-line）', () 
 
 describe('DOMPurify 净化：内嵌 HTML 安全子集', () => {
   it('安全标签保留', () => {
-    const clean = DOMPurify.sanitize(
-      '<div class="x"><details><summary>折叠</summary><p>内容</p></details></div><table><tr><td>1</td></tr></table>'
-      ,
-      SANITIZE_CONFIG
-    )
+    const clean = sanitizeHtml('<div class="x"><details><summary>折叠</summary><p>内容</p></details></div><table><tr><td>1</td></tr></table>')
     expect(clean).toContain('<details')
     expect(clean).toContain('<table>')
     expect(clean).toContain('<td>1</td>')
   })
 
   it('脚本与事件属性剥除', () => {
-    const clean = DOMPurify.sanitize(
-      '<script>alert(1)</script><div onclick="evil()">t</div><img src="x" onerror="evil()">'
-      ,
-      SANITIZE_CONFIG
-    )
+    const clean = sanitizeHtml('<script>alert(1)</script><div onclick="evil()">t</div><img src="x" onerror="evil()">')
     expect(clean).not.toContain('<script')
     expect(clean).not.toContain('onclick')
     expect(clean).not.toContain('onerror')
   })
 
   it('视觉钓鱼 / 导航劫持向量剥除', () => {
-    const clean = DOMPurify.sanitize(
-      '<style>body{display:none}</style><base href="https://evil.invalid/"><form action="https://evil.invalid/p"><input name="pw"></form>'
-      ,
-      SANITIZE_CONFIG
-    )
+    const clean = sanitizeHtml('<style>body{display:none}</style><base href="https://evil.invalid/"><form action="https://evil.invalid/p"><input name="pw"></form>')
     expect(clean).not.toContain('<style')
     expect(clean).not.toContain('<base')
     expect(clean).not.toContain('<form')
@@ -68,13 +49,13 @@ describe('DOMPurify 净化：内嵌 HTML 安全子集', () => {
 
   it('KaTeX 输出兼容（span + class + style 属性保留）', () => {
     const html = md.render('$e^{i\\pi}+1=0$\n')
-    const clean = DOMPurify.sanitize(html, SANITIZE_CONFIG)
+    const clean = sanitizeHtml(html)
     // 公式容器与样式类存活
     expect(clean).toContain('katex')
   })
 
   it('javascript: 链接剥除', () => {
-    const clean = DOMPurify.sanitize('<a href="javascript:evil()">点我</a>', SANITIZE_CONFIG)
+    const clean = sanitizeHtml('<a href="javascript:evil()">点我</a>')
     expect(clean).not.toContain('javascript:')
   })
 })
@@ -140,7 +121,7 @@ describe('[[双链]] 渲染', () => {
 
   it('双链标签通过 DOMPurify 净化保留', () => {
     const html = md.render('[[测试笔记]]\n')
-    const clean = DOMPurify.sanitize(html, SANITIZE_CONFIG)
+    const clean = sanitizeHtml(html)
     expect(clean).toContain('data-wikilink="测试笔记"')
   })
 })
