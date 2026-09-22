@@ -70,6 +70,48 @@ html.no-bottom-radius #app {
   border-radius: 0;
 }
 
+/* 玻璃模式：卡片背景半透明透出 backgroundMaterial 材质，文字层保持不透明 */
+html.glass-on .sidebar-card,
+html.glass-on .editor-card,
+html.glass-on .preview-card,
+html.glass-on .page-card,
+html.glass-on .floating-preview,
+html.glass-on .sidebar-rail {
+  background: color-mix(in srgb, var(--bg-primary) 82%, transparent);
+}
+
+/* ========== Windows WCO 标题栏条（custom-titlebar 设计 §3.2） ========== */
+/* 应用名 + 拖拽区（双击最大化）；右侧 env(titlebar-area-width) 之外是系统原生按钮区 */
+.win-titlebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: env(titlebar-area-height, 36px);
+  /* 拖拽区只覆盖按钮区以外的宽度（titlebar-area-x 即按钮区左缘） */
+  width: env(titlebar-area-width, 100%);
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  padding-left: 12px;
+  z-index: 500;
+  user-select: none;
+}
+
+.win-titlebar-title {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* 标题栏条占位：卡片画布整体下移（仅 Windows 渲染 .win-titlebar 元素） */
+html.platform-win .app-shell {
+  padding-top: calc(10px + env(titlebar-area-height, 36px));
+}
+
+/* 玻璃模式：卡片背景半透明透出材质，文字层保持不透明（可读性不降级） */
+html.glass-on .app-shell {
+  background: color-mix(in srgb, var(--bg-secondary) 55%, transparent);
+}
+
 body {
   font-family:
     'PingFang SC',

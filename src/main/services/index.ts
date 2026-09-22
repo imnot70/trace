@@ -35,7 +35,7 @@ export {
 export type { PluginManifest } from './pluginManifest'
 export { AutoSyncService } from './autoSync'
 export { ExportService, sanitizeFileName } from './exportPdf'
-export { applyWindowGlassEffect } from './windowEffect'
+export { applyWindowGlassEffect, applyOverlayTheme, overlayThemeFor } from './windowEffect'
 export { SearchService } from './search'
 export { WikilinkService } from './wikilink'
 export type { PluginInfo } from '@shared/types'

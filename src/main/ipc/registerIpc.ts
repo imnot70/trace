@@ -4,7 +4,8 @@ import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import { errMessage } from '../lib/errMessage'
 import { logger } from '../lib/logger'
 import { resolveWithin } from '../lib/paths'
-import { readGitVersion, resolveBundledGitPath, applyWindowGlassEffect } from '../services'
+import { nativeTheme } from 'electron'
+import { readGitVersion, resolveBundledGitPath, applyWindowGlassEffect, applyOverlayTheme } from '../services'
 import type { AppSettings, ThemePackage } from '@shared/types'
 import type {
   AccountService,
@@ -355,6 +356,12 @@ export function registerIpc(deps: IpcDeps): void {
           logger.warn('应用窗口效果失败', e)
         }
       }
+    }
+
+    // 主题变化时同步 WCO 标题栏按钮区配色（仅 Windows 生效）
+    if (patch.theme !== undefined) {
+      const win = deps.getWindow()
+      if (win && !win.isDestroyed()) applyOverlayTheme(win, settings, nativeTheme.shouldUseDarkColors)
     }
 
     return { ok: true, settings }

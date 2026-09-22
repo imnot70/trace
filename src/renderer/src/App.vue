@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useAppStore } from './stores/app'
 import { exportState } from './composables/exportPdf'
 import { useTreeStore } from './stores/tree'
@@ -178,16 +178,33 @@ const mainView = computed(() => {
   }
 })
 
+const isWindows = window.trace.platform === 'win32'
+/** Windows 玻璃开关：WCO + backgroundMaterial 模式下窗口背景带透明度，材质透出 */
+const isWinGlass = () => isWindows && !!app.settings.windowGlassEffect && app.settings.windowGlassEffect !== 'none'
+/** 窗口视觉透明（内容圆角开启）：macOS/Linux 透明玻璃路径 + Windows 玻璃路径 */
+const isWindowTransparent = () =>
+  isWinGlass() ||
+  (app.settings.windowGlassEffect !== 'none' &&
+    app.settings.windowGlassEffect !== undefined &&
+    !isWindows)
+
+function syncWindowClasses(): void {
+  const el = document.documentElement
+  el.classList.toggle('platform-win', isWindows)
+  el.classList.toggle('window-opaque', !isWindowTransparent())
+  el.classList.toggle('glass-on', isWinGlass())
+}
+
 onMounted(async () => {
   await app.init()
-  // 窗口是否透明由主进程创建窗口时决定（Windows 一律不透明，见 createWindow 注释）。
-  // 不透明窗口下内容区底部圆角没有透明缺口可透，深色主题反而会露出浅色窗口底色；
-  // Windows 11 已由系统自动圆化真实窗口角——此时禁用内容区圆角
-  const windowTransparent =
-    app.settings.windowGlassEffect !== 'none' &&
-    app.settings.windowGlassEffect !== undefined &&
-    window.trace.platform !== 'win32'
-  if (!windowTransparent) document.documentElement.classList.add('window-opaque')
+  // 窗口视觉形态类（macOS/Linux 透明玻璃路径见 createWindow 注释；Windows 走 WCO 玻璃，
+  // 亦不碰 transparent: true——v0.4.4 回归教训，见 AGENTS.md 已知局限）
+  syncWindowClasses()
+  // 设置里切换玻璃效果 / 主题时同步类（无需重载窗口）
+  watch(
+    () => [app.settings.windowGlassEffect, app.settings.theme],
+    () => syncWindowClasses()
+  )
   // Linux 浅色壁纸下底部圆角缺口仍会露出系统合成器的方形轮廓（深色壁纸正常，疑似系统侧
   // 限制、应用侧无法彻底消除，排查记录见 AGENTS.md 已知局限）——Linux 一律去掉底部圆角规避
   if (window.trace.platform === 'linux')
@@ -225,6 +242,10 @@ onMounted(async () => {
 </script>
 
 <template>
+  <!-- Windows WCO 标题栏条：应用名 + 拖拽区（双击最大化）；右侧为系统原生按钮区 -->
+  <div v-if="isWindows" class="win-titlebar">
+    <span class="win-titlebar-title">Trace 笔迹</span>
+  </div>
   <div class="app-shell">
     <SideBar
       v-if="sidebarShown"

@@ -789,7 +789,7 @@ async function resetGitSource(): Promise<void> {
               <el-option label="Acrylic（Windows）" value="acrylic" />
               <el-option label="毛玻璃（macOS）" value="vibrancy" />
             </el-select>
-            <span class="settings-desc" style="margin: 0">{{ isWindows ? 'Windows 下毛玻璃暂不可用（保持原生标题栏），仅窗口透明度生效' : '窗口半透明和毛玻璃效果，不同平台支持程度不同' }}</span>
+            <span class="settings-desc" style="margin: 0">{{ isWindows ? 'Mica / Acrylic 需 Windows 11 22H2+（旧系统自动降级为仅透明度）；毛玻璃建议透明度 100%' : '窗口半透明和毛玻璃效果，不同平台支持程度不同' }}</span>
           </div>
           <div class="setting-row">
             <span class="setting-label">窗口透明度</span>

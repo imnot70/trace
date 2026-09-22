@@ -43,9 +43,14 @@ function settings(patch: Partial<AppSettings>): AppSettings {
 
 }
 
-/** windowEffect 内联读取 process.platform，stub 后需还原 */
-function stubPlatform(value: string): void {
-  vi.stubGlobal('process', { ...process, platform: value })
+/** windowEffect 内联读取 process.platform / getSystemVersion，stub 后需还原 */
+function stubPlatform(value: string, sysVersion?: string): void {
+  vi.stubGlobal('process', {
+    ...process,
+    platform: value,
+    // Electron 专属 API：getSystemVersion 仅在 Electron 运行时存在（按需 stub）
+    ...(sysVersion !== undefined ? { getSystemVersion: () => sysVersion } : {})
+  })
 }
 
 afterEach(() => {
@@ -53,7 +58,7 @@ afterEach(() => {
 })
 
 describe('applyWindowGlassEffect · win32', () => {
-  it('仅应用透明度，不设置任何背景材质', () => {
+  it('无 getSystemVersion（非 Electron 环境）时降级为仅透明度', () => {
     stubPlatform('win32')
     const win = mockWindow()
     applyWindowGlassEffect(win as never, settings({ windowGlassEffect: 'mica', windowOpacity: 80 }))
@@ -69,11 +74,31 @@ describe('applyWindowGlassEffect · win32', () => {
     expect(win.calls.setOpacity).toEqual([[1.0]])
   })
 
-  it('效果为 none 时同样只应用透明度', () => {
-    stubPlatform('win32')
+  it('Win11（build >= 22000）：mica 应用 backgroundMaterial', () => {
+    stubPlatform('win32', '10.0.26200')
+    const win = mockWindow()
+    applyWindowGlassEffect(win as never, settings({ windowGlassEffect: 'mica', windowOpacity: 100 }))
+    expect(win.calls.setBackgroundMaterial).toEqual([['mica']])
+  })
+
+  it('acrylic 材质对应 acrylic', () => {
+    stubPlatform('win32', '10.0.22631')
+    const win = mockWindow()
+    applyWindowGlassEffect(win as never, settings({ windowGlassEffect: 'acrylic', windowOpacity: 100 }))
+    expect(win.calls.setBackgroundMaterial).toEqual([['acrylic']])
+  })
+
+  it('none 时显式关闭材质', () => {
+    stubPlatform('win32', '10.0.26200')
     const win = mockWindow()
     applyWindowGlassEffect(win as never, settings({ windowGlassEffect: 'none', windowOpacity: 100 }))
-    expect(win.calls.setOpacity).toEqual([[1.0]])
+    expect(win.calls.setBackgroundMaterial).toEqual([['none']])
+  })
+
+  it('Win10（build < 22000）降级为仅透明度', () => {
+    stubPlatform('win32', '10.0.19045')
+    const win = mockWindow()
+    applyWindowGlassEffect(win as never, settings({ windowGlassEffect: 'mica', windowOpacity: 100 }))
     expect(win.calls.setBackgroundMaterial).toBeUndefined()
   })
 })

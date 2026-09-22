@@ -2,6 +2,16 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 新功能
+
+- **Windows 自定义标题栏（WCO）+ 毛玻璃恢复**（需求与设计见 `requirements/2026-09-22_custom-titlebar/`）：
+  - Windows 窗口改用 Window Controls Overlay：系统三键与 Win11 贴靠布局保留，顶部新增应用名标题栏条（可拖动、双击最大化）
+  - 「窗口效果」在 Windows 恢复完整功能：Mica / Acrylic 材质（`backgroundMaterial`，需 Windows 11 22H2+，旧系统自动降级为仅透明度）
+  - 玻璃开启时卡片背景转半透明透出材质（文字层不透明，可读性不降级）；深浅主题切换时标题栏按钮配色自动跟随
+  - macOS / Linux 窗口行为不变（平台矩阵严格限定 win32）
+
 ## [0.6.1] - 2026-09-22
 
 ### 修复
