@@ -17,8 +17,8 @@ const git = useGitStore()
 const tree = useTreeStore()
 const editor = useEditorStore()
 
-// Windows 下窗口保持原生边框（透明窗口会失去标题栏，见主进程 createWindow），
-// 毛玻璃材质不可用，玻璃效果仅窗口透明度生效
+// Windows 下使用 WCO 标题栏（透明窗口禁令不变，见主进程 createWindow），
+// 玻璃材质经 backgroundMaterial 支持（Win11 22H2+）
 const isWindows = window.trace.platform === 'win32'
 
 const tab = computed<'account' | 'plugins' | 'general'>({
@@ -789,10 +789,10 @@ async function resetGitSource(): Promise<void> {
               <el-option label="Acrylic（Windows）" value="acrylic" />
               <el-option label="毛玻璃（macOS）" value="vibrancy" />
             </el-select>
-            <span class="settings-desc" style="margin: 0">{{ isWindows ? 'Windows 下毛玻璃暂不可用（保持原生标题栏），仅窗口透明度生效' : '窗口半透明和毛玻璃效果，不同平台支持程度不同' }}</span>
+            <span class="settings-desc" style="margin: 0">{{ isWindows ? 'Mica / Acrylic 需 Windows 11 22H2+（旧系统自动降级为仅透明度）；毛玻璃建议不透明度 100%' : '窗口半透明和毛玻璃效果，不同平台支持程度不同' }}</span>
           </div>
           <div class="setting-row">
-            <span class="setting-label">窗口透明度</span>
+            <span class="setting-label">窗口不透明度</span>
             <el-slider
               :model-value="app.settings.windowOpacity"
               :min="50"
@@ -806,7 +806,7 @@ async function resetGitSource(): Promise<void> {
             </span>
           </div>
           <p class="settings-desc" style="margin: 0 0 0 102px">
-            Windows 11 支持 Mica/Acrylic 效果，macOS 支持毛玻璃效果，Linux 依赖桌面合成器。透明度下限 50%，避免界面难以阅读。
+            Windows 11 支持 Mica/Acrylic 效果，macOS 支持毛玻璃效果，Linux 依赖桌面合成器。不透明度下限 50%，避免界面难以阅读。
           </p>
         </div>
 

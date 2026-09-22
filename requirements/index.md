@@ -26,6 +26,7 @@
 | [note-export_design.md](note-export/note-export_design.md) | 笔记导出 PDF：单篇 / 文件夹 / 整库递归（可跨库），图片内联自包含；支持合并为单个 PDF | ✅ **已实施**（main，随下版本发布） |
 | [pdf-merge_design.md](pdf-merge/pdf-merge_design.md) | PDF 合并导出设计：多篇 → 单个 PDF，pdf-lib 拼接管线 | ✅ **已实施**（随下版本发布） |
 | [note-export-html_design.md](2026-09-15_note-export-html/note-export-html_design.md) | 笔记导出 HTML：自包含单文件，深浅色自适应阅读排版 | ✅ **已实施**（main，随下版本发布） |
+| [custom-titlebar.md](2026-09-22_custom-titlebar/custom-titlebar.md) + [custom-titlebar_design.md](2026-09-22_custom-titlebar/custom-titlebar_design.md) | Windows 自定义标题栏（WCO）+ 毛玻璃恢复：路线拍板 / 布局形态 / 降级矩阵 / 回归清单 | 🔶 **设计完成，实施中**（分支 `feature/custom-titlebar`） |
 | [wysiwyg.md](2026-09-21_wysiwyg/wysiwyg.md) + [wysiwyg_design.md](2026-09-21_wysiwyg/wysiwyg_design.md) | 所见即所得编辑模式（Live Preview，Obsidian 式）：需求（D1–D4）与技术设计（D1–D6，CM6 StateField+ViewPlugin 双层装饰）、节点映射表、IME 冻结 | ✅ **已实施**（分支 `feature/wysiwyg-editor`，随下版本发布，实施记录见设计文档第 10 节） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
@@ -33,7 +34,15 @@
 
 ---
 
-## 一、已实现（v0.1.0 → v0.6.0，发布状态见子节）
+## 一、已实现（v0.1.0 → v0.6.1，发布状态见子节）
+
+### 待发版（feature/custom-titlebar 分支）
+
+- **Windows 自定义标题栏（WCO）+ 毛玻璃恢复**：系统三键与贴靠布局保留的全局标题栏条（应用名 + 拖拽区）；「窗口效果」在 Windows 恢复 Mica / Acrylic（Win11 22H2+，Win10 自动降级为仅透明度）；玻璃模式下卡片半透明透出材质；主题切换联动标题栏按钮配色。详见 [2026-09-22_custom-titlebar/](2026-09-22_custom-titlebar/custom-titlebar.md)
+
+### v0.6.1（2026-09-22）
+
+- **列表项内块级公式修复**（已知局限毕业）：句中 `$$…$$` 行内呈现不再截断句子；texmath 块规则吞尾随文字的显示缺陷规避；所见即所得编辑器同步支持列表内公式（多行块级 + 行内）
 
 ### v0.6.0（2026-09-22）
 

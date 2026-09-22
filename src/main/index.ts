@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, protocol, shell } from 'electron'
+import { app, BrowserWindow, Menu, nativeTheme, protocol, shell } from 'electron'
 import path from 'node:path'
 import os from 'node:os'
 import fs from 'node:fs'
@@ -31,7 +31,9 @@ import {
   WatcherService,
   WorkspaceService,
   WikilinkService,
-  applyWindowGlassEffect
+  applyWindowGlassEffect,
+  applyOverlayTheme,
+  overlayThemeFor
 } from './services'
 import { registerIpc } from './ipc/registerIpc'
 import type { AppSettings } from '@shared/types'
@@ -82,25 +84,36 @@ if (process.env['TRACE_CDP']) {
 function createWindow(): void {
   const settings = settingsService?.get()
 
-  // 根据窗口效果设置决定是否启用透明
-  // ⚠️ Windows 必须排除：Electron 在 Windows 上 transparent: true 会剥离原生标题栏
-  // 与可调边框（实测 WS_CAPTION / WS_THICKFRAME 被移除，透明仅在无边框窗口生效），
-  // 窗口因此无法移动 / 关闭、失去系统圆角。Windows 一律创建带原生边框的不透明窗口，
-  // 玻璃效果降级为仅窗口不透明度（setOpacity 在带边框窗口上正常工作）
+  // 窗口形态（见 requirements/2026-09-22_custom-titlebar/custom-titlebar_design.md）：
+  // - macOS / Linux：原生标题栏 + 透明玻璃路径，与 0.6.x 完全一致（平台矩阵约束，零改动）
+  // - Windows（v0.6.x 起恢复毛玻璃）：WCO 方案——titleBarStyle: 'hidden' + titleBarOverlay
+  //   保留系统绘制三键与 Win11 贴靠布局；⚠️ 仍不碰 transparent: true（AGENTS.md 已知局限：
+  //   transparent 会剥离 WS_CAPTION / WS_THICKFRAME，v0.4.4 严重回归根源），玻璃材质改用
+  //   backgroundMaterial（Win11 22H2+），Win10 / 失败环境自动降级为不透明 + 仅透明度
   const glassEnabled = settings?.windowGlassEffect !== 'none' && settings?.windowGlassEffect !== undefined
-  const isTransparent = glassEnabled && process.platform !== 'win32'
+  const isWin = process.platform === 'win32'
+  const isTransparent = glassEnabled && !isWin
+  const winGlass = isWin && glassEnabled
 
+  // WCO 按钮区配色随主题（浅/深），运行期由主题变化与 nativeTheme 'updated' 动态更新
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 900,
     minWidth: 1080,
     minHeight: 680,
     title: 'Trace 笔迹',
-    backgroundColor: isTransparent ? '#00000000' : '#f5f6f8',
+    backgroundColor: isTransparent ? '#00000000' : winGlass ? '#00000000' : '#f5f6f8',
     transparent: isTransparent,
     // 透明窗口下系统阴影是方形的，会从内容圆角的透明缺口里透出来
-    // （浅色壁纸上尤其明显，像直角残留）；窗口层次感由内容卡片阴影承担
+    // （浅色壁纸上尤其明显，像直角残留）；窗口层次感由内容卡片阴影承担。
+    // win32 走 hidden title bar（保留 WS_THICKFRAME），DWM 阴影正常，恒 true
     hasShadow: !isTransparent,
+    ...(isWin
+      ? {
+          titleBarStyle: 'hidden' as const,
+          titleBarOverlay: overlayThemeFor(settings, nativeTheme.shouldUseDarkColors)
+        }
+      : {}),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -137,6 +150,11 @@ app.whenReady().then(() => {
   // 注意必须显式设为 null：不设置时 Electron 会装配默认菜单（File/Edit/View…），
   // 仅靠窗口 autoHideMenuBar 只是隐藏，按 Alt 仍会弹出。
   Menu.setApplicationMenu(null)
+  // 跟随系统主题变化同步 WCO 标题栏按钮区配色（应用主题为「跟随系统」时）
+  nativeTheme.on('updated', () => {
+    const s = settingsService?.get()
+    if (s && mainWindow && !mainWindow.isDestroyed()) applyOverlayTheme(mainWindow, s, nativeTheme.shouldUseDarkColors)
+  })
   initLogger(path.join(app.getPath('userData'), 'logs'))
   logger.info(`Trace 启动，版本 ${app.getVersion()}`)
 

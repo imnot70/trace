@@ -120,7 +120,7 @@ export interface AppSettings {
   gitSource: 'system' | 'bundled' | null
   /** 窗口玻璃效果：auto 根据平台自动选择，none 关闭，mica Windows 11 Mica，acrylic Windows Acrylic，vibrancy macOS 毛玻璃 */
   windowGlassEffect: 'auto' | 'none' | 'mica' | 'acrylic' | 'vibrancy'
-  /** 窗口透明度 50-100，50 半透明，100 完全不透明（下限 50 保证界面可读） */
+  /** 窗口不透明度 50-100，50 半透明，100 完全不透明（下限 50 保证界面可读） */
   windowOpacity: number
   /** 侧栏菜单分区显示开关（「笔记库」分区始终显示，不在开关之列） */
   sidebarMenus: {

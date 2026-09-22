@@ -129,7 +129,7 @@ src/
 - ~~专注模式与悬浮预览在极窄窗口（<1080px）下编辑区最小宽度受限~~（v0.4.4 已通过 CSS min-width 保护修复）。
 - ~~回收站无容量上限与过期自动清理~~（v0.4.3 已实现）。
 - ~~透明窗口底部圆角在浅色壁纸上仍可能显示直角轮廓~~（v0.5.1 已规避：Linux 平台一律禁用内容区底部圆角，Windows / macOS 保留；根因为 Linux 系统合成器疑似在窗口边界外的方形绘制，应用侧无法彻底消除，将来排查出系统侧对策后可恢复）。
-- **Windows 上不可使用 `transparent: true` 创建窗口**：Electron 在 Windows 上透明窗口会剥离原生标题栏与可调边框（透明仅在无边框窗口生效），窗口无法移动 / 关闭（v0.4.4 曾因此发布过严重回归，已修复待发版）。Windows 一律带原生边框创建，「窗口效果」降级为仅透明度生效（`src/main/index.ts` createWindow 有详细注释）；将来如需恢复毛玻璃，需先实现自定义标题栏（拖拽区 + 最小化/最大化/关闭按钮）。
+- **Windows 上不可使用 `transparent: true` 创建窗口**：Electron 在 Windows 上透明窗口会剥离原生标题栏与可调边框（透明仅在无边框窗口生效），窗口无法移动 / 关闭（v0.4.4 曾因此发布过严重回归，已修复待发版）。Windows 一律带原生边框创建，「窗口效果」降级为仅透明度生效（`src/main/index.ts` createWindow 有详细注释）；~~将来如需恢复毛玻璃，需先实现自定义标题栏（拖拽区 + 最小化/最大化/关闭按钮）~~（已实现：WCO 方案 `titleBarStyle: 'hidden'` + `titleBarOverlay` + `backgroundMaterial`，仍不使用 transparent；见 requirements/2026-09-22_custom-titlebar/）。
 
 ## 二期规划（未实现，不要顺手实现）
 
