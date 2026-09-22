@@ -125,3 +125,43 @@ describe('[[双链]] 渲染', () => {
     expect(clean).toContain('data-wikilink="测试笔记"')
   })
 })
+
+describe('列表项内公式（texmath 块规则守卫 + 行内降级）', () => {
+  it('句中 $$…$$ 降级为行内公式，不破坏句子结构', () => {
+    const html = md.render('- 结论：$$E=mc^2$$')
+    expect(html).toContain('<eq>')
+    expect(html).not.toContain('katex-display')
+    expect(html).toContain('结论：')
+  })
+
+  it('同一行多个公式与尾随文字全部保留（不再被块规则吞掉）', () => {
+    const html = md.render('- $$a$$ 和 $$b$$ 同行')
+    expect(html).toContain('和')
+    expect(html).toContain('同行')
+    expect((html.match(/<eq>/g) ?? []).length).toBe(2)
+  })
+
+  it('行首公式带尾随文字同样降级为行内（原版会静默丢内容）', () => {
+    const html = md.render('$$a$$ 和 $$b$$ 同行')
+    expect(html).toContain('同行')
+    expect(html).not.toContain('katex-display')
+  })
+
+  it('独占列表项 / 独占段落仍为块级展示公式', () => {
+    expect(md.render('- $$x^2$$')).toContain('katex-display')
+    expect(md.render('前文\n\n$$x^2$$\n\n后文')).toContain('katex-display')
+  })
+
+  it('多行块级（含列表项内缩进）不受守卫影响', () => {
+    expect(md.render('$$\nx^2\n$$')).toContain('katex-display')
+    const inList = md.render('- 第一项\n- $$\n  x^2\n  $$\n- 第三项')
+    expect(inList).toContain('katex-display')
+    expect(inList).toContain('第一项')
+    expect(inList).toContain('第三项')
+  })
+
+  it('纯公式段落（多公式各占一行）保持块级展示', () => {
+    const html = md.render('$$a$$\n$$b$$')
+    expect((html.match(/katex-display/g) ?? []).length).toBe(2)
+  })
+})

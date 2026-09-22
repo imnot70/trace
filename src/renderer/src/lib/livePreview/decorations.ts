@@ -80,15 +80,19 @@ interface BlockMathRange extends SimpleRange {
 }
 
 /** 块级公式 $$...$$ 区间扫描（与围栏代码互斥；围栏内不识别公式）。
- *  行内公式由装饰阶段逐行正则处理，此处只收整块区间 */
+ *  行内公式由装饰阶段逐行正则处理，此处只收整块区间。
+ *  列表项内的 $$ 行（`- $$` / `2. $$`）先剥掉一层列表标记再识别，否则起始 $$ 漏判、
+ *  闭合 $$ 被误认成起始，会把两个公式之间的全部内容错配成一个「公式」 */
 function scanBlocks(doc: Text): BlockMathRange[] {
   const mathRanges: BlockMathRange[] = []
   let openMathLine = 0
   let fenceFrom = -1
   let fenceMarker = ''
+  const stripMarker = (s: string): string => s.replace(/^[-*+]\s+/, '').replace(/^\d+[.)]\s+/, '')
   for (let i = 1; i <= doc.lines; i++) {
     const line = doc.line(i)
-    const trimmed = line.text.trim()
+    const rawTrimmed = line.text.trim()
+    const stripped = stripMarker(rawTrimmed)
     const fence = /^(`{3,}|~{3,})/.exec(line.text)
     if (fenceFrom >= 0) {
       if (fence && fence[1][0] === fenceMarker[0]) {
@@ -103,16 +107,20 @@ function scanBlocks(doc: Text): BlockMathRange[] {
       continue
     }
     if (openMathLine > 0) {
-      if (/^\$\$\s*$/.test(trimmed)) {
+      if (/^\$\$\s*$/.test(stripped)) {
         mathRanges.push({ from: doc.line(openMathLine).from, to: line.to, tex: doc.sliceString(doc.line(openMathLine).to + 1, line.from) })
         openMathLine = 0
       }
       continue
     }
-    if (/^\$\$\s*$/.test(trimmed)) {
+    if (/^\$\$\s*$/.test(stripped)) {
       openMathLine = i
-    } else if (trimmed.startsWith('$$') && trimmed.endsWith('$$') && trimmed.length > 4) {
-      mathRanges.push({ from: line.from, to: line.to, tex: trimmed.slice(2, -2) })
+    } else if (stripped.startsWith('$$') && stripped.endsWith('$$') && stripped.length > 4) {
+      // 单行 $$…$$：仅顶行首（无列表标记）时按块级处理——块级 widget 无法从行中段
+      // 开始替换；带列表标记的交给行内正则渲染为行内公式
+      if (rawTrimmed.startsWith('$$')) {
+        mathRanges.push({ from: line.from, to: line.to, tex: stripped.slice(2, -2) })
+      }
     }
   }
   // 未闭合的块级公式不装饰（源码呈现，等闭合后生效）
@@ -337,7 +345,9 @@ export function computeInlineDecorations(
   // ---- 双链（正则，树上无节点）与行内公式（排除代码/公式块/双链区间） ----
   const wikilinks: (SimpleRange & { name: string; display: string })[] = []
   const wikilinkRe = /\[\[([^\][\n]+)\]\]/g
-  const inlineMathRe = /\$([^\s$](?:[^$\n]*[^\s$])?)\$/g
+  // 双美元优先：`$$x$$` 完整匹配（含列表项内带前缀的单行公式），避免只吃内层 `$x$`
+  // 而残留外侧 `$` 符号
+  const inlineMathRe = /\$\$([^$]+?)\$\$|\$([^\s$](?:[^$\n]*[^\s$])?)\$/g
   for (const vis of ranges) {
     for (let n = doc.lineAt(vis.from).number; n <= doc.lineAt(vis.to).number; n++) {
       const line = doc.line(n)
@@ -361,7 +371,7 @@ export function computeInlineDecorations(
         const to = from + m[0].length
         if (overlaps(codeRanges, from, to) || overlaps(mathRanges, from, to) || overlaps(wikilinks, from, to)) continue
         if (!occupied(state, from, to)) {
-          pushReplace(from, to, { widget: new MathWidget(m[1], false) })
+          pushReplace(from, to, { widget: new MathWidget((m[1] ?? m[2]).trim(), false) })
         }
       }
     }

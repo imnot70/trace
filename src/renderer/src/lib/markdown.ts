@@ -63,6 +63,46 @@ const md = new MarkdownIt({
 
 md.use(texmath, { engine: katex, delimiters: 'dollars', katexOptions: { output: 'html' } })
 
+// texmath 块规则守卫：`- $$a$$ 和 $$b$$ 同行` 这类「单行 $$…$$ 后还有尾随文字」的行，
+// 块规则会把整行当作公式吞掉（尾随文字静默丢失，texmath 上游局限）。守卫在闭合 $$ 之后
+// 仍有非空白文字时拒绝块级匹配，交还行内解析（math_inline_double 处理，见下方渲染器）。
+// 多行块级（opener 行 $$ 后无文字）不受影响，缩进在列表项内依旧正常。
+const dollarsRules = (texmath as unknown as { rules: { dollars: { block: { name: string }[] } } }).rules.dollars.block
+const texmathBlock = (texmath as unknown as { block: (rule: never) => (state: unknown, startLine: number, endLine: number, silent: boolean) => boolean }).block
+for (const rule of dollarsRules) {
+  const orig = texmathBlock(rule as never)
+  md.block.ruler.at(rule.name, (state, startLine, endLine, silent) => {
+    const lineText = state.getLines(state.line, state.line + 1, 0, true)
+    const m = /\$\$[^$]+\$\$/.exec(lineText)
+    if (m) {
+      const after = lineText.slice((m.index ?? 0) + m[0].length)
+      if (after.trim()) return false
+    }
+    return orig(state, startLine, endLine, silent)
+  })
+}
+
+// $$…$$ 行内出现（如「- 结论：$$E=mc^2$$」）时 texmath 默认渲染为块级展示公式
+// （<section><eqn> + katex-display，整行居中），在列表项/句子中间会把句子拦腰截断。
+// 重载渲染器：公式独占段落时保持块级展示；与文字同行则降级为行内公式（与编辑器
+// Live Preview 的行内呈现一致）。独占判定 = 段落 children 中除本 token 外无可见内容。
+const defaultInlineDouble = md.renderer.rules.math_inline_double
+// texmath 运行时暴露 render（类型定义未声明），displayMode=false 输出行内 KaTeX
+const texmathRender = (texmath as unknown as { render: (tex: string, displayMode: boolean, options: Record<string, unknown>) => string })
+  .render
+md.renderer.rules.math_inline_double = (tokens, idx, options, env, self) => {
+  const token = tokens[idx]
+  // 段落 children 中只要存在其他可见文字，即视为「与文字同行」→ 行内公式；
+  // 仅由公式与换行组成的段落（各自独占一行）保持块级展示
+  const hasVisibleSibling = tokens.some(
+    (t, i) => i !== idx && t.type === 'text' && !!t.content.trim()
+  )
+  if (hasVisibleSibling || !defaultInlineDouble || !texmathRender) {
+    return `<eq>${texmathRender ? texmathRender(token.content, false, { output: 'html' }) : token.content}</eq>`
+  }
+  return defaultInlineDouble(tokens, idx, options, env, self)
+}
+
 // [[双链]] 语法：[[笔记名]] 或 [[路径|显示名]]
 md.inline.ruler.push('wikilink', (state, silent) => {
   const src = state.src
