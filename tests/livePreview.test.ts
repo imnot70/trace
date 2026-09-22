@@ -123,6 +123,19 @@ describe('所见即所得装饰：公式与块级渲染', () => {
     expect((math[0] as MathWidget).block).toBe(false)
   })
 
+  it('带列表标记的单行 $$…$$ 不做块级（由行内正则渲染为行内公式）', () => {
+    const doc = '- 结论：$$E=mc^2$$'
+    const state = mkState(doc, 0) // 光标避开公式区间（文末贴边也视作占用）
+    const r = computeBlockDecorations(state, cfg)
+    expect(widgetsOf(state, r.decorations).length).toBe(0)
+    const inline = widgetsOf(state, computeInlineDecorations(state, allRanges(state), cfg).decorations).filter(
+      (w) => w instanceof MathWidget
+    ) as MathWidget[]
+    expect(inline.length).toBe(1)
+    expect(inline[0].block).toBe(false)
+    expect(inline[0].tex).toBe('E=mc^2')
+  })
+
   it('块级公式 $$…$$ → 块级 MathWidget，tex 为多行内容', () => {
     const doc = '前段\n\n$$\nE=mc^2\n$$\n\n后段'
     const state = mkState(doc, doc.length)
@@ -145,6 +158,33 @@ describe('所见即所得装饰：公式与块级渲染', () => {
     const inside = mkState(doc, 2) // 光标在表格内
     const r2 = computeBlockDecorations(inside, cfg)
     expect(widgetsOf(inside, r2.decorations).filter((w) => w instanceof RenderedBlockWidget).length).toBe(0)
+  })
+
+  it('列表项内多行块级公式：剥标记识别，不错配吞掉后续内容', () => {
+    const doc = '- 第一项\n- $$\n  x^2\n  $$\n- 第三项'
+    const state = mkState(doc, doc.length)
+    const r = computeBlockDecorations(state, cfg)
+    const math = widgetsOf(state, r.decorations).filter((w) => w instanceof MathWidget) as MathWidget[]
+    expect(math.length).toBe(1)
+    expect(math[0].block).toBe(true)
+    expect(math[0].tex).toBe('x^2')
+    // 覆盖范围仅公式三行，不吞「第三项」
+    const collected: { from: number; to: number }[] = []
+    r.decorations.between(0, state.doc.length, (f, t) => {
+      collected.push({ from: f, to: t })
+    })
+    const thirdItemPos = doc.indexOf('- 第三项')
+    expect(collected.every((c) => c.to <= thirdItemPos)).toBe(true)
+  })
+
+  it('有序列表项内多行块级公式同样识别', () => {
+    const doc = '1. 第一项\n2. $$\n   x^2\n   $$\n3. 第三项'
+    const state = mkState(doc, doc.length)
+    const math = widgetsOf(state, computeBlockDecorations(state, cfg).decorations).filter(
+      (w) => w instanceof MathWidget
+    ) as MathWidget[]
+    expect(math.length).toBe(1)
+    expect(math[0].tex).toBe('x^2')
   })
 
   it('frontmatter：折叠为 FrontmatterWidget 并提取标签；无闭合时保持源码', () => {
