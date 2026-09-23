@@ -139,6 +139,8 @@ export interface AppSettings {
   showBacklinks: boolean
   /** 默认编辑模式：source 源码模式 / wysiwyg 所见即所得（Live Preview，FR-W1） */
   defaultEditMode: 'source' | 'wysiwyg'
+  /** 打字机模式：off 关闭 / center 高位（光标垂直居中）/ bottom 低位（光标锚定在距底边 20% 处） */
+  typewriterMode: 'off' | 'center' | 'bottom'
 }
 
 /** 自定义主题包：一组 CSS 变量覆盖（light/dark 两套），存 userData/themes/<id>.json */

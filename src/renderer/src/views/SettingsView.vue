@@ -904,6 +904,19 @@ async function resetGitSource(): Promise<void> {
             <span class="settings-desc" style="margin: 0">编辑卡右下角的「反向链接」入口，显示引用当前笔记的笔记</span>
           </div>
           <div class="setting-row">
+            <span class="setting-label">打字机模式</span>
+            <el-select
+              :model-value="app.settings.typewriterMode"
+              style="width: 200px"
+              @update:model-value="(v: string) => app.updateSettings({ typewriterMode: v as AppSettings['typewriterMode'] })"
+            >
+              <el-option label="关闭" value="off" />
+              <el-option label="高位（光标垂直居中）" value="center" />
+              <el-option label="低位（光标靠下，文字上移）" value="bottom" />
+            </el-select>
+            <span class="settings-desc" style="margin: 0">光标固定、文字流动；用户滚动查看前文时不干预，下次输入回到锚点</span>
+          </div>
+          <div class="setting-row">
             <span class="setting-label">附件目录</span>
             <el-input
               v-model="attachmentsDirInput"

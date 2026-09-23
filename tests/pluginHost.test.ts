@@ -274,7 +274,8 @@ beforeEach(() => {
     windowOpacity: 100,
     sidebarMenus: { recents: true, favorites: true, tags: true, unresolved: true, trash: true },
     showBacklinks: true,
-    defaultEditMode: 'source'
+    defaultEditMode: 'source',
+    typewriterMode: 'off'
   })
   notifications = []
   logs.length = 0

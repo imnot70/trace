@@ -9,6 +9,7 @@ import { undo, redo } from '@codemirror/commands'
 import { autocompletion, startCompletion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete'
 import { useTreeStore } from '../stores/tree'
 import { livePreview } from '../lib/livePreview'
+import { typewriter, type TypewriterMode } from '../lib/typewriter'
 import type { TreeNode } from '@shared/types'
 
 const props = defineProps<{
@@ -18,6 +19,8 @@ const props = defineProps<{
   notePath: string
   /** 所见即所得模式（Live Preview）：true 时挂载装饰扩展 */
   wysiwyg?: boolean
+  /** 打字机模式：off 关闭 / center 高位 / bottom 低位（见 lib/typewriter.ts） */
+  typewriterMode?: TypewriterMode
 }>()
 
 const emit = defineEmits<{
@@ -34,6 +37,8 @@ let applyingExternal = false
 
 /** livePreview 扩展挂载点：模式开关 / 换库换笔记都经 Compartment 重配置（不重建视图） */
 const livePreviewCompartment = new Compartment()
+/** 打字机扩展挂载点：模式切换经 Compartment 换装（无 StateField，允许增删） */
+const typewriterCompartment = new Compartment()
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\u4e00-\u9fff-]/g, '')
@@ -318,6 +323,7 @@ function createView(initialDoc: string): EditorView {
       EditorView.lineWrapping,
       traceTheme,
       livePreviewCompartment.of(buildLivePreview()),
+      typewriterCompartment.of(typewriter(props.typewriterMode ?? 'off')),
       keymap.of([
         {
           key: 'Mod-s',
@@ -381,6 +387,14 @@ watch(
   () => {
     if (!view) return
     view.dispatch({ effects: livePreviewCompartment.reconfigure(buildLivePreview()) })
+  }
+)
+
+watch(
+  () => props.typewriterMode,
+  (mode) => {
+    if (!view) return
+    view.dispatch({ effects: typewriterCompartment.reconfigure(typewriter(mode ?? 'off')) })
   }
 )
 

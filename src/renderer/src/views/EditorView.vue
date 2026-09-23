@@ -473,6 +473,7 @@ onBeforeUnmount(() => {
         ref="editorRef"
         :model-value="editor.content"
         :font-size="app.settings.editorFontSize"
+        :typewriter-mode="app.settings.typewriterMode"
         :vault="editor.current.vault"
         :note-path="editor.current.path"
         :wysiwyg="app.editorWysiwyg"

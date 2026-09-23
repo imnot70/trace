@@ -180,7 +180,8 @@ app.whenReady().then(() => {
     windowOpacity: 100,
     sidebarMenus: { recents: true, favorites: true, tags: true, unresolved: true, trash: true },
     showBacklinks: true,
-    defaultEditMode: 'source'
+    defaultEditMode: 'source',
+    typewriterMode: 'off'
   })
 
   settingsService = new SettingsService(settingsStore)
