@@ -130,6 +130,7 @@ src/
 - ~~专注模式与悬浮预览在极窄窗口（<1080px）下编辑区最小宽度受限~~（v0.4.4 已通过 CSS min-width 保护修复）。
 - ~~回收站无容量上限与过期自动清理~~（v0.4.3 已实现）。
 - ~~透明窗口底部圆角在浅色壁纸上仍可能显示直角轮廓~~（v0.5.1 已规避：Linux 平台一律禁用内容区底部圆角，Windows / macOS 保留；根因为 Linux 系统合成器疑似在窗口边界外的方形绘制，应用侧无法彻底消除，将来排查出系统侧对策后可恢复）。
+- 中文输入法在行尾组词时会出现「先折行、上屏后撤销」的轻微跳动（拼音比汉字宽：`khy` ≈ 4 个汉字宽，「中文」2 个字；折行按 DOM 实际文本计算）。曾有两次修复尝试均撤除（详见 CHANGELOG）：介入组词行的渲染会破坏 Chromium 的组词锚点（按空格选候选时拼音无法替换成汉字），风险远大于收益，故按已知局限保留。
 - **Windows 上不可使用 `transparent: true` 创建窗口**：Electron 在 Windows 上透明窗口会剥离原生标题栏与可调边框（透明仅在无边框窗口生效），窗口无法移动 / 关闭（v0.4.4 曾因此发布过严重回归，v0.4.6 修复）。Windows 现走 WCO 方案（`titleBarStyle: 'hidden'` + `titleBarOverlay`，v0.7.0）——玻璃材质经 `backgroundMaterial` 实现，**仍不使用 transparent**（`src/main/index.ts` createWindow 有详细注释；详见 requirements/2026-09-22_custom-titlebar/）。
 
 ## 二期规划（已全部完成 / 作废，无未实现项）

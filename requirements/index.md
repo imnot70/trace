@@ -187,6 +187,8 @@
 
 （无待处理项）历史记录：
 
+- **中文输入法行尾组词的轻微跳动**（有意保留，非缺陷）：组词中的拼音比上屏后的汉字宽，折行按 DOM 实际文本计算，故组词时先折行、上屏后撤销。两次修复尝试（行装饰 / 内联样式 + 内容层宽度钉住）均因「介入组词行渲染会破坏 Chromium 组词锚点、导致中文输入失效」而撤除，详见 CHANGELOG 与 `git log`（07791a3 / 440c88c / 2d1510f）。
+
 - ~~透明窗口的底部圆角在浅色壁纸上仍显示为直角~~（已随 v0.5.1 规避：Linux 平台一律禁用内容区底部圆角，Windows / macOS 保留；根因为系统合成器疑似在窗口边界外的方形绘制，深色壁纸下本就正常，若将来排查出系统侧对策可恢复圆角）。
 - ~~Windows 毛玻璃材质不可用~~（已随 v0.7.0 恢复：WCO 自定义标题栏 + `backgroundMaterial`，Mica / Acrylic 在 Windows 11 22H2+ 可用，Win10 自动降级为仅透明度；`transparent: true` 禁令不变——玻璃改由 backgroundMaterial 实现，见 [2026-09-22_custom-titlebar/](2026-09-22_custom-titlebar/custom-titlebar_design.md)）。
 
