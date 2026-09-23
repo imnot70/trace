@@ -712,13 +712,6 @@ body {
   background: var(--accent-soft);
 }
 
-/* 输入法组词期间（「右侧缓冲区」）：组词行的 nowrap 由 lib/ime.ts 用内联样式施加
-   （不经 CM6 装饰，避免重建组词行的 DOM 打断输入法提交）；这里只裁掉横向溢出——
-   不裁的话会出现横向滚动条，其占位又会引入一次布局位移 */
-.cm-editor.cm-ime-active .cm-scroller {
-  overflow-x: hidden;
-}
-
 /* 心流模式开关：激活态同所见即所得（主题色） */
 .tool-btn.flow-on {
   color: var(--accent);
