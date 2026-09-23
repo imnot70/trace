@@ -932,6 +932,27 @@ async function resetGitSource(): Promise<void> {
         </div>
 
         <div class="settings-block">
+          <h3>心流模式</h3>
+          <p class="settings-desc">
+            一键进入沉浸创作：隐藏侧栏与顶栏、切所见即所得、开启打字机（形态沿用上面的「打字机模式」，未开启时默认低位）。
+            按 <b>Alt + W</b> 或编辑卡顶栏的咖啡杯按钮进入；<b>Esc</b> 一键退出并恢复进入前的界面状态。
+          </p>
+          <div class="setting-row">
+            <span class="setting-label">写作栏宽</span>
+            <el-select
+              :model-value="app.settings.flowLineWidth"
+              style="width: 200px"
+              @update:model-value="(v: string) => app.updateSettings({ flowLineWidth: v as AppSettings['flowLineWidth'] })"
+            >
+              <el-option label="窄（约 32 字符）" value="narrow" />
+              <el-option label="中（约 42 字符）" value="medium" />
+              <el-option label="宽（约 52 字符）" value="wide" />
+            </el-select>
+            <span class="settings-desc" style="margin: 0">正文列宽限制并居中，宽屏下长行阅读更省力；仅心流模式内生效</span>
+          </div>
+        </div>
+
+        <div class="settings-block">
           <h3>回收站</h3>
           <div class="setting-row">
             <span class="setting-label">保留天数</span>

@@ -20,6 +20,10 @@ export const useEditorStore = defineStore('editor', {
     saving: false,
     /** 磁盘文件被外部修改且本地有未保存改动 */
     externalChanged: false,
+    /** 最近一次保存成功的时刻（心流模式保存指示的一次性脉冲信号；0 = 尚未保存过） */
+    lastSavedAt: 0,
+    /** 最近一次保存失败（非「外部修改冲突」，如磁盘写入失败） */
+    saveFailed: false,
     saveTimer: null as ReturnType<typeof setTimeout> | null
   }),
   getters: {
@@ -42,6 +46,7 @@ export const useEditorStore = defineStore('editor', {
       this._diskContent = this.content
       this._diskHash = result.hash ?? ''
       this.externalChanged = false
+      this.saveFailed = false
       // 更新位置上下文（Ctrl+N 新建笔记的目标）
       const dirParts = path.split('/')
       dirParts.pop()
@@ -76,9 +81,12 @@ export const useEditorStore = defineStore('editor', {
           this._diskContent = this.content
           this._diskHash = result.hash ?? this._diskHash
           this.externalChanged = false
+          this.saveFailed = false
+          this.lastSavedAt = Date.now()
           return true
         }
         if (result.error?.includes('外部修改')) this.externalChanged = true
+        else this.saveFailed = true
         return false
       } finally {
         this.saving = false

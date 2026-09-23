@@ -41,7 +41,8 @@ function buildStack() {
     sidebarMenus: { recents: true, favorites: true, tags: true, unresolved: true, trash: true },
     showBacklinks: true,
     defaultEditMode: 'source',
-    typewriterMode: 'off'
+    typewriterMode: 'off',
+    flowLineWidth: 'medium',
   })
   const workspace = new WorkspaceService(settings, path.join(tmp, 'ws'))
   workspace.initDefault()

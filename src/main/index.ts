@@ -181,7 +181,8 @@ app.whenReady().then(() => {
     sidebarMenus: { recents: true, favorites: true, tags: true, unresolved: true, trash: true },
     showBacklinks: true,
     defaultEditMode: 'source',
-    typewriterMode: 'off'
+    typewriterMode: 'off',
+    flowLineWidth: 'medium'
   })
 
   settingsService = new SettingsService(settingsStore)

@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import type { AppSettings, ThemePackage } from '@shared/types'
 import { useTreeStore } from './tree'
 import { THEME_PRESETS, buildThemeCss } from '../styles/presets'
+import { effectiveTypewriterMode, flowMeasureEm } from '../lib/flow'
+import type { TypewriterMode } from '../lib/typewriter'
 
 /** 卡片网格视图的区块类型 */
 export type GridSection = 'recents' | 'favorites' | 'vaults' | 'tags' | 'unresolved'
@@ -38,7 +40,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   sidebarMenus: { recents: true, favorites: true, tags: true, unresolved: true, trash: true },
   showBacklinks: true,
   defaultEditMode: 'source',
-  typewriterMode: 'off'
+  typewriterMode: 'off',
+  flowLineWidth: 'medium'
 }
 
 function prefersDark(): boolean {
@@ -71,12 +74,31 @@ export const useAppStore = defineStore('app', {
     floatingPreview: false,
     /** 所见即所得（Live Preview）编辑模式：运行态开关，初始值取设置 defaultEditMode（会话级） */
     editorWysiwyg: false,
+    /** 心流模式（沉浸创作预设，会话级）：进入时快照外围界面状态，退出还原 */
+    flowMode: false,
+    /** 进入所见即所得前的预览分栏状态（会话级；由 setEditorWysiwyg 维护） */
+    previewBeforeWysiwyg: null as boolean | null,
+    /** 进入心流前的外围界面状态快照（侧栏 / 专注 / 预览 / 编辑形态；不持久化） */
+    flowSnapshot: null as null | {
+      sidebarVisible: boolean
+      zenMode: boolean
+      previewVisible: boolean
+      editorWysiwyg: boolean
+    },
     /** 网格/列表视图模式（localStorage 持久化） */
     viewMode: 'grid' as ViewMode,
     /** 已导入的自定义主题（userData/themes），与内置预设在 UI 中并列 */
     customThemes: [] as ThemePackage[]
   }),
   getters: {
+    /** 心流模式内实际生效的打字机形态（关闭 → 默认低位；用户选过则沿用） */
+    effectiveTypewriterMode(state): TypewriterMode {
+      return effectiveTypewriterMode(state.flowMode, state.settings.typewriterMode)
+    },
+    /** 心流模式写作栏宽（em） */
+    flowMeasure(state): number {
+      return flowMeasureEm(state.settings.flowLineWidth)
+    },
     isDark(state): boolean {
       return state.settings.theme === 'dark' || (state.settings.theme === 'system' && prefersDark())
     },
@@ -144,9 +166,69 @@ export const useAppStore = defineStore('app', {
         /* ignore */
       }
     },
-    /** 切换所见即所得编辑模式；分栏预览的收起/恢复由 EditorView 监听联动 */
+    /**
+     * 切换所见即所得编辑模式。预览分栏的收起 / 恢复由这里统一维护
+     * （原先在 EditorView 的 watcher 里：组件重挂载会丢失「进入前分栏状态」的记忆，
+     *  且心流模式的进入 / 退出会与它互相覆盖，实测退出心流后预览未能还原）。
+     */
+    setEditorWysiwyg(on: boolean): void {
+      if (on === this.editorWysiwyg) return
+      if (on) {
+        if (this.previewBeforeWysiwyg === null) this.previewBeforeWysiwyg = this.previewVisible
+        this.previewVisible = false
+      } else if (this.previewBeforeWysiwyg !== null) {
+        this.previewVisible = this.previewBeforeWysiwyg
+        this.previewBeforeWysiwyg = null
+      }
+      this.editorWysiwyg = on
+    },
     toggleEditorMode(): void {
-      this.editorWysiwyg = !this.editorWysiwyg
+      this.setEditorWysiwyg(!this.editorWysiwyg)
+    },
+    /**
+     * 进入心流模式：快照外围界面状态 → 拨动各轴（沉浸）。
+     * 只改会话状态，不改设置项（打字机形态由 effectiveTypewriterMode 推导）。
+     */
+    enterFlow(): void {
+      if (this.flowMode) return
+      this.flowSnapshot = {
+        sidebarVisible: this.sidebarVisible,
+        zenMode: this.zenMode,
+        previewVisible: this.previewVisible,
+        editorWysiwyg: this.editorWysiwyg
+      }
+      this.zenSidebarOverlay = false
+      this.floatingPreview = false
+      this.editorWysiwyg = true
+      this.zenMode = true
+      this.sidebarVisible = false
+      this.previewVisible = false
+      this.flowMode = true
+    },
+    /** 退出心流模式：还原进入前的外围界面状态 */
+    exitFlow(): void {
+      if (!this.flowMode) return
+      const snap = this.flowSnapshot
+      this.flowMode = false
+      this.zenSidebarOverlay = false
+      if (snap) {
+        this.sidebarVisible = snap.sidebarVisible
+        this.zenMode = snap.zenMode
+        this.previewVisible = snap.previewVisible
+        this.editorWysiwyg = snap.editorWysiwyg
+      }
+      this.flowSnapshot = null
+      try {
+        localStorage.setItem('trace.zenMode', this.zenMode ? '1' : '0')
+        localStorage.setItem('trace.sidebarVisible', this.sidebarVisible ? '1' : '0')
+        localStorage.setItem('trace.previewVisible', this.previewVisible ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+    },
+    toggleFlow(): void {
+      if (this.flowMode) this.exitFlow()
+      else this.enterFlow()
     },
     toggleZen(): void {
       this.zenMode = !this.zenMode
@@ -199,8 +281,13 @@ export const useAppStore = defineStore('app', {
       if (settings.ok && settings.settings) this.settings = settings.settings
       if (themes.ok && themes.themes) this.customThemes = themes.themes
       this.version = version.version ?? ''
-      // 所见即所得模式的会话初始值来自设置默认编辑模式（FR-W1）
-      this.editorWysiwyg = this.settings.defaultEditMode === 'wysiwyg'
+      // 所见即所得模式的会话初始值来自设置默认编辑模式（FR-W1）；
+      // 为所见即所得时同步收起预览分栏（保持「内容已所见即所得」的一致语义）
+      if (this.settings.defaultEditMode === 'wysiwyg') {
+        this.previewBeforeWysiwyg = this.previewVisible
+        this.previewVisible = false
+        this.editorWysiwyg = true
+      }
       this.applyTheme()
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
         if (this.settings.theme === 'system') this.applyTheme()

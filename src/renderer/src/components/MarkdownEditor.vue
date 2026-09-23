@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Compartment, EditorState } from '@codemirror/state'
+import { Compartment, EditorState, Prec } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
@@ -324,7 +324,8 @@ function createView(initialDoc: string): EditorView {
       traceTheme,
       livePreviewCompartment.of(buildLivePreview()),
       typewriterCompartment.of(typewriter(props.typewriterMode ?? 'off')),
-      keymap.of([
+      // Prec.high：这些是应用级绑定，必须优先于 basicSetup 内置键位（如 searchKeymap 的 Mod-f）
+      Prec.high(keymap.of([
         {
           key: 'Mod-s',
           preventDefault: true,
@@ -333,17 +334,20 @@ function createView(initialDoc: string): EditorView {
             return true
           }
         },
-        // 禁用编辑器原生 Ctrl+F 搜索，由全局搜索接管
+        // 禁用 CM 原生查找面板，由全局搜索接管。
+        // 必须 return true 才算「消费」该按键：返回 false 表示未处理，会继续落到
+        // basicSetup 的 searchKeymap 上把查找面板弹出来（实测焦点会被面板抢走）。
+        // CM 只 preventDefault、不阻断冒泡，App.vue 的窗口级 Ctrl+F 仍会打开全局搜索
         {
           key: 'Mod-f',
           preventDefault: true,
-          run: () => false
+          run: () => true
         },
         // Markdown 格式化快捷键（复用工具栏的智能插入：有选中包裹 / 无选中插占位）
         { key: 'Mod-b', preventDefault: true, run: () => (insertSnippet('**', '**'), true) },
         { key: 'Mod-i', preventDefault: true, run: () => (insertSnippet('*', '*'), true) },
         { key: 'Mod-Shift-x', preventDefault: true, run: () => (insertSnippet('~~', '~~'), true) }
-      ]),
+      ])),
       EditorView.updateListener.of((update) => {
         if (!update.docChanged) return
         if (applyingExternal) return

@@ -275,7 +275,8 @@ beforeEach(() => {
     sidebarMenus: { recents: true, favorites: true, tags: true, unresolved: true, trash: true },
     showBacklinks: true,
     defaultEditMode: 'source',
-    typewriterMode: 'off'
+    typewriterMode: 'off',
+    flowLineWidth: 'medium',
   })
   notifications = []
   logs.length = 0
