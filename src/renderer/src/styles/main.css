@@ -712,6 +712,16 @@ body {
   background: var(--accent-soft);
 }
 
+/* 输入法组词期间：组词行不折行（拼音比汉字宽，避免「先折行、上屏后撤销」的跳动）。
+   溢出部分由 .cm-ime-active 规则裁掉——不裁的话会出现横向滚动条，滚动条占位又会引入一次布局位移 */
+.cm-line.cm-ime-composing {
+  white-space: nowrap;
+}
+
+.cm-editor.cm-ime-active .cm-scroller {
+  overflow-x: hidden;
+}
+
 /* 心流模式开关：激活态同所见即所得（主题色） */
 .tool-btn.flow-on {
   color: var(--accent);

@@ -10,6 +10,7 @@ import { autocompletion, startCompletion, type CompletionContext, type Completio
 import { useTreeStore } from '../stores/tree'
 import { livePreview } from '../lib/livePreview'
 import { typewriter, type TypewriterMode } from '../lib/typewriter'
+import { imeNoWrap } from '../lib/ime'
 import type { TreeNode } from '@shared/types'
 
 const props = defineProps<{
@@ -354,6 +355,7 @@ function createView(initialDoc: string): EditorView {
         emit('update:modelValue', update.state.doc.toString())
       }),
       autoCloseHtmlTags,
+      imeNoWrap(),
       autocompletion({ override: [traceCompletions] })
     ]
   })
