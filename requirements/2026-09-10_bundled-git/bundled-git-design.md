@@ -1,6 +1,6 @@
 # 内置 Git 设计与实施方案
 
-> 状态：**已实施（2026-09-11）**——Windows 平台已完整验证；Linux 待 CI 验证
+> 状态：**已实施（2026-09-11）**——Windows 平台已完整验证；Linux 已随安装包交付并经 CI 每版构建（`fetch:git` + 打包），手动验证待补；macOS 仅源码构建、不含内置 Git
 > 关联：FR-2.8（Git 云同步）；FR-2.8.13（内置 Git）
 > 涉及代码：`scripts/fetch-git.mjs`、`src/main/services/bundledGit.ts`、`src/main/services/gitService.ts`、`electron-builder.yml`、`.github/workflows/build.yml`
 > 起草：2026-09-10 ｜ 最后更新：2026-09-11（实施完成 + 实测数据校正）
@@ -300,13 +300,13 @@ win:
 
 | 阶段 | 状态 |
 |---|---|
-| P0 二进制准备（下载 / 校验 / 体积核对） | ✅ Windows 完成；Linux 待 CI |
+| P0 二进制准备（下载 / 校验 / 体积核对） | ✅ Windows 完成；Linux 已随 CI 构建产出 |
 | P1 获取脚本 + 解压 + 路径解析 | ✅ |
 | P2 检测与弹窗 + 偏好持久化 | ✅ |
-| P3 打包集成（`extraResources` + 体积实测） | ✅ Windows |
+| P3 打包集成（`extraResources` + 体积实测） | ✅ Windows 实测；Linux 随包交付 |
 | P4 设置页 Git 信息（来源 + 版本） | ✅ |
-| P5 CI（缓存 + fetch 步骤） | ✅ 代码就绪，待实跑 |
-| P6 三平台测试 | 🟡 Windows 完成；Linux/macOS 待办 |
+| P5 CI（缓存 + fetch 步骤） | ✅ 已实跑（v0.4.4 起每版 tag 构建均执行） |
+| P6 三平台测试 | 🟡 Windows 完成；Linux 手动验证待补；macOS 仅源码构建，不含内置 Git |
 
 ### 7.2 后续可选
 

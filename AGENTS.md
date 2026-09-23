@@ -132,6 +132,8 @@ src/
 - ~~透明窗口底部圆角在浅色壁纸上仍可能显示直角轮廓~~（v0.5.1 已规避：Linux 平台一律禁用内容区底部圆角，Windows / macOS 保留；根因为 Linux 系统合成器疑似在窗口边界外的方形绘制，应用侧无法彻底消除，将来排查出系统侧对策后可恢复）。
 - **Windows 上不可使用 `transparent: true` 创建窗口**：Electron 在 Windows 上透明窗口会剥离原生标题栏与可调边框（透明仅在无边框窗口生效），窗口无法移动 / 关闭（v0.4.4 曾因此发布过严重回归，v0.4.6 修复）。Windows 现走 WCO 方案（`titleBarStyle: 'hidden'` + `titleBarOverlay`，v0.7.0）——玻璃材质经 `backgroundMaterial` 实现，**仍不使用 transparent**（`src/main/index.ts` createWindow 有详细注释；详见 requirements/2026-09-22_custom-titlebar/）。
 
-## 二期规划（未实现，不要顺手实现）
+## 二期规划（已全部完成 / 作废，无未实现项）
 
-~~全局搜索~~（已实现）、所见即所得模式、~~图形化冲突解决~~（已实现）、~~定时/变更自动同步~~（已实现）、~~插件完整 API 与市场~~（已全部实施，见 `requirements/2026-09-08_plugin-system/plugin-design.md`）、~~标签~~（已实现）、~~多窗口~~（已作废）、~~导出 PDF/HTML~~（已实现）、~~窗口毛玻璃效果~~（已实现）、~~笔记双链引用~~（P1–P3 已实现）。
+~~全局搜索~~（已实现）、~~所见即所得模式~~（已实现：Live Preview，FR-2.4.13，见 `requirements/2026-09-21_wysiwyg/`）、~~图形化冲突解决~~（已实现）、~~定时/变更自动同步~~（已实现）、~~插件完整 API 与市场~~（M1–M4 已全部实施，见 `requirements/2026-09-08_plugin-system/plugin-design.md`）、~~标签~~（已实现）、~~多窗口~~（已作废）、~~导出 PDF/HTML~~（已实现）、~~窗口毛玻璃效果~~（已实现）、~~笔记双链引用~~（P1–P3 已实现）。
+
+> 二期 Backlog 至此清空。当前仅余验证类事项（Linux 内置 Git 手动验证）与已知局限（见 `requirements/index.md` 第二节），无规划中的新功能。

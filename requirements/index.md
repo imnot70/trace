@@ -1,20 +1,20 @@
 # Trace 需求与实施状态索引
 
-> 更新：2026-09-22 ｜ 发布基线：**v0.7.0**；工作区干净
+> 更新：2026-09-23 ｜ 发布基线：**v0.7.0**；工作区干净（二期 Backlog 已清空，无未开始项）
 > 本文件是 `requirements/` 目录的导览与实施状态总览。各项明细以对应文档与 [CHANGELOG.md](../CHANGELOG.md) 为准。
 
 ## 文档导读
 
 | 文件 | 内容 | 状态 |
 | --- | --- | --- |
-| [requirements.md](requirements.md) | 产品需求文档（PRD），当前形态的权威描述；随版本同步更新（覆盖至 FR-2.4.11 / FR-2.7.6 / FR-2.8.14 等） | ✅ 基线文档，所载需求均已实现 |
+| [requirements.md](requirements.md) | 产品需求文档（PRD），当前形态的权威描述；随版本同步更新（覆盖至 FR-2.4.13 所见即所得 / FR-2.11.14 插件市场 等） | ✅ 基线文档，所载需求均已实现 |
 | [development-plan.md](development-plan.md) | 初版开发计划：技术选型、架构、里程碑 M0–M6、风险对策 | ✅ M0–M6 已全部完成（v1/v0.2.0 交付）；二期 Backlog 部分被后续设计文档细化 |
 | [plugin-design.md](2026-09-08_plugin-system/plugin-design.md) | 插件系统 v2 设计：独立插件进程 + 能力网关 + require 白名单 + 市场分发 | ✅ **M1–M4 全部实施**（进程隔离 + Tier 1 API + 权限确认 + 崩溃守护 + .trace-plugin 导入导出 + 私有存储 + 声明式工具栏/状态区 + 类型包 + 市场，实施记录见第 10–13 节；开发指引见 [guides/plugin-development.md](../../guides/plugin-development.md)、发布指引见 [guides/plugin-release.md](../../guides/plugin-release.md)） |
 | [vault-grid-navigation-design.md](2026-09-08_vault-grid-navigation/vault-grid-navigation-design.md) | 笔记库网格导航设计：双击钻入库内容 + 面包屑 + 三卡片区分 | ✅ **P1 + P2 全部实施**（P1 已发布 v0.3.5，P2 已随 v0.3.6 发布） |
 | [preview-enhancement-design.md](2026-09-09_preview-enhancement/preview-enhancement-design.md) | 预览增强设计：HTML 内嵌（DOMPurify 净化）、a 标签跳转（外部 + 库内笔记）、行级双向同步滚动 | ✅ **已实施**（2026-09-09 发布 v0.3.7） |
-| [bundled-git-design.md](2026-09-10_bundled-git/bundled-git-design.md) | 内置 Git 设计与实施：捆绑 MinGit/dugite + build 时解压 + 触发时检测 + 条件弹窗；含实测体积、决策记录与验证清单 | ✅ **已实施**（Windows 已验证，Linux 待 CI）｜D-BG1–D-BG11 |
+| [bundled-git-design.md](2026-09-10_bundled-git/bundled-git-design.md) | 内置 Git 设计与实施：捆绑 MinGit/dugite + build 时解压 + 触发时检测 + 条件弹窗；含实测体积、决策记录与验证清单 | ✅ **已实施**（Windows 完整验证；Linux 随安装包交付、CI 每版构建，手动验证待补）｜D-BG1–D-BG11 |
 | [move-node_design.md](2026-09-12_move-node/move-node_design.md) | 文件/文件夹移动设计（库内）：树形文件夹选择器 + renameNode 校验管道复用 | ✅ **已实施**（v0.4.0 发布） |
-| [wiki-link-anchor_design.md](2026-09-12_wiki-link-anchor/wiki-link-anchor_design.md) | 双链 P1–P3 + 页内锚点 + 锚点补全：`[[笔记名]]` 可点击、同名消歧、反向链接、重命名改写 | ✅ **已实施**（P1 v0.4.0；P3 含修复与消歧随 v0.4.4 发布） |
+| [wiki-link-anchor_design.md](2026-09-12_wiki-link-anchor/wiki-link-anchor_design.md) | 双链 P1–P3 + 页内锚点 + 锚点补全：`[[笔记名]]` 可点击、同名消歧、反向链接、重命名改写 | ✅ **已实施**（P1 v0.4.0；P3 及索引修复 v0.4.4；定位与消歧 v0.4.5） |
 | [floating-preview-scroll-sync_design.md](2026-09-13_floating-preview-scroll-sync/floating-preview-scroll-sync_design.md) | 悬浮预览滚动同步：接入双向滚动，关闭时同步固定预览进度 | ✅ **已实施**（v0.4.0 发布） |
 | [relative-time_design.md](2026-09-13_relative-time/relative-time_design.md) | 常用网格卡片显示相对时间 | ✅ **已实施**（v0.4.0 发布） |
 | [note-info_design.md](2026-09-13_note-info/note-info_design.md) | 笔记「信息」菜单：创建时间 / 最后修改时间 | ✅ **已实施**（v0.4.0 发布） |
@@ -64,7 +64,7 @@
   - **设置页详情与卸载**：状态 / 权限 / 崩溃历史 / 日志 / 存储占用；卸载清除目录、权限记录与私有存储
   - **声明式 UI 扩展**：编辑器工具栏按钮（contributions.toolbar）与侧栏状态区（ctx.status），插件不碰 DOM
   - **应用内插件市场**：索引仓库 `imnot70/trace-plugins`（PR 审阅治理），浏览 / 安装（下载 → sha256 版本锁定 → 复用导入管线）/ 更新检查 / 下架标记；网络跟随代理设置
-  - **`trace-plugin-api` 类型包**（packages/plugin-api，npm 发布待办）；示例插件 v2.2.0 覆盖全部能力演示
+  - **`trace-plugin-api` 类型包**（packages/plugin-api，**已随 v0.5.1 起由 CI 自动发布至 npm**，线上 0.1.0；发版前提与兜底见 [guides/plugin-development.md](../../guides/plugin-development.md) 第 9 节）；示例插件 v2.2.0 覆盖全部能力演示
   - 详见 [plugin-design.md](2026-09-08_plugin-system/plugin-design.md) 第 10–13 节实施记录；开发指引 [guides/plugin-development.md](../../guides/plugin-development.md)、发布指引 [guides/plugin-release.md](../../guides/plugin-release.md)
 
 ### v0.4.6（2026-09-20）
@@ -182,12 +182,14 @@
 
 ---
 
-## 二、已记录的已知问题（待处理）
+## 二、已知问题
+
+（无待处理项）历史记录：
 
 - ~~透明窗口的底部圆角在浅色壁纸上仍显示为直角~~（已随 v0.5.1 规避：Linux 平台一律禁用内容区底部圆角，Windows / macOS 保留；根因为系统合成器疑似在窗口边界外的方形绘制，深色壁纸下本就正常，若将来排查出系统侧对策可恢复圆角）。
 - ~~Windows 毛玻璃材质不可用~~（已随 v0.7.0 恢复：WCO 自定义标题栏 + `backgroundMaterial`，Mica / Acrylic 在 Windows 11 22H2+ 可用，Win10 自动降级为仅透明度；`transparent: true` 禁令不变——玻璃改由 backgroundMaterial 实现，见 [2026-09-22_custom-titlebar/](2026-09-22_custom-titlebar/custom-titlebar_design.md)）。
 
-## 三、设计已确认（部分已实施）
+## 三、设计已确认（均已实施）
 
 ### 插件系统 v2 — [plugin-design.md](2026-09-08_plugin-system/plugin-design.md)
 
@@ -201,11 +203,13 @@
 
 ---
 
-## 四、规划中、未开始
+## 四、规划与归档
 
-### 功能规划（已排期讨论，方案见下）
+> 当前**无未开始的规划项**：二期 Backlog 已全部完成或作废，PRD 第 7 节所列项目均已落地。下列为历史规划条目的最终状态。
 
-- **笔记互相引用（wiki 双链）**：P1 已实施（v0.4.0：预览可点击 + 断链样式 + 锚点补全）；**P2 已实施**（编辑器 `[[` 自动补全当前库笔记路径，排除自引用、按输入过滤，选中自动闭合 `]]`——随双链 P1 一并实现，此前记录过时已修正）。**P3 已随 v0.4.4 发布**（反向链接悬浮入口 + 弹层、断链引用入口、重命名时自动改写 `[[旧名]]`；索引由文件监听增量更新，保存 / 外部编辑 / git 同步后均保持新鲜，设计缺陷已修复——索引详情按行内序号区分同行多引用、路径形式双链按叶子名归属不误报断链、跨库同名引用不计入反向链接）。**v0.4.5 已发布**：点击反向链接定位到引用行；同名双链点击弹候选列表消歧
+### 功能规划（均已落地）
+
+- **笔记互相引用（wiki 双链）**：P1 随 v0.4.0（预览可点击 + 断链样式 + 锚点补全）；P2 随 P1 一并实现（编辑器 `[[` 路径补全，排除自引用、按输入过滤、选中自动闭合 `]]`）。**P3 随 v0.4.4 发布**（反向链接悬浮入口 + 弹层、断链引用入口、重命名时自动改写 `[[旧名]]`；索引由文件监听增量更新，保存 / 外部编辑 / git 同步后均保持新鲜，同时修复索引建成后不再更新、同行多引用互相覆盖、路径形式双链误报断链、跨库同名误配四项缺陷）。**v0.4.5 追加**：点击反向链接定位到引用行；同名双链点击弹候选列表消歧 → 全部完成。
 
 ### 二期 Backlog（源自 PRD 第 7 节）
 
