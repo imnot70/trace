@@ -8,3 +8,8 @@ coverage/
 # 内置 Git 二进制（由 scripts/fetch-git.mjs 在打包前获取，不入库）
 vendor/
 trace-plugins/
+
+# AI 编码代理的本地工作目录（工具产物，不属于产品代码，不入库）
+.zcode/
+.zcodeignore
+.superpowers/
