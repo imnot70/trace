@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Compartment, EditorState, Prec } from '@codemirror/state'
+import { Compartment, EditorState, Prec, Transaction } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
@@ -10,6 +10,7 @@ import { autocompletion, startCompletion, type CompletionContext, type Completio
 import { useTreeStore } from '../stores/tree'
 import { livePreview } from '../lib/livePreview'
 import { typewriter, type TypewriterMode } from '../lib/typewriter'
+import { createCaretSound } from '../lib/caretSound'
 import type { TreeNode } from '@shared/types'
 
 const props = defineProps<{
@@ -21,6 +22,8 @@ const props = defineProps<{
   wysiwyg?: boolean
   /** 打字机模式：off 关闭 / center 高位 / bottom 低位（见 lib/typewriter.ts） */
   typewriterMode?: TypewriterMode
+  /** 回车音效：启用时回车插入换行播放合成音（心流模式内由父组件置位） */
+  returnSound?: { enabled: boolean; volume: number }
 }>()
 
 const emit = defineEmits<{
@@ -34,6 +37,20 @@ const container = ref<HTMLDivElement | null>(null)
 let view: EditorView | null = null
 /** 是否由外部（props）导致的文档替换，避免回环 */
 let applyingExternal = false
+
+/** 回车音效合成器（懒建 AudioContext；仅在心流模式且开关开启时被调用） */
+const caretSound = createCaretSound()
+
+/** 该事务是否为「插入换行」的用户输入（排除粘贴：粘贴多行不应发声） */
+function isReturnInsertion(tr: Transaction): boolean {
+  const event = tr.annotation(Transaction.userEvent) ?? ''
+  if (!event.startsWith('input') || event.startsWith('input.paste')) return false
+  let hasNewline = false
+  tr.changes.iterChanges((_fromA, _toA, _fromB, _toB, inserted) => {
+    if (inserted.toString().includes('\n')) hasNewline = true
+  })
+  return hasNewline
+}
 
 /** livePreview 扩展挂载点：模式开关 / 换库换笔记都经 Compartment 重配置（不重建视图） */
 const livePreviewCompartment = new Compartment()
@@ -351,6 +368,11 @@ function createView(initialDoc: string): EditorView {
       EditorView.updateListener.of((update) => {
         if (!update.docChanged) return
         if (applyingExternal) return
+        // 回车音效：心流模式内（父组件仅在该模式下置 enabled）且为换行插入时播放
+        const sound = props.returnSound
+        if (sound?.enabled && update.transactions.some(isReturnInsertion)) {
+          caretSound.playReturn(sound.volume)
+        }
         emit('update:modelValue', update.state.doc.toString())
       }),
       autoCloseHtmlTags,
@@ -394,6 +416,14 @@ watch(
   }
 )
 
+// 关闭音效开关即释放音频上下文（验收标准：关闭后无残留音频上下文）
+watch(
+  () => props.returnSound?.enabled,
+  (enabled) => {
+    if (!enabled) caretSound.dispose()
+  }
+)
+
 watch(
   () => props.typewriterMode,
   (mode) => {
@@ -409,6 +439,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   view?.destroy()
   view = null
+  caretSound.dispose()
 })
 
 watch(

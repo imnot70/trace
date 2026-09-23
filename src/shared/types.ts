@@ -143,6 +143,10 @@ export interface AppSettings {
   typewriterMode: 'off' | 'center' | 'bottom'
   /** 心流模式的写作栏宽：窄 32em / 中 42em / 宽 52em（仅心流模式内生效） */
   flowLineWidth: 'narrow' | 'medium' | 'wide'
+  /** 心流模式回车音效开关（默认关闭；仅心流模式内生效） */
+  flowSoundEnabled: boolean
+  /** 心流模式回车音效音量 0-100（默认 60） */
+  flowSoundVolume: number
 }
 
 /** 自定义主题包：一组 CSS 变量覆盖（light/dark 两套），存 userData/themes/<id>.json */

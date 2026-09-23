@@ -277,6 +277,8 @@ beforeEach(() => {
     defaultEditMode: 'source',
     typewriterMode: 'off',
     flowLineWidth: 'medium',
+    flowSoundEnabled: false,
+    flowSoundVolume: 60,
   })
   notifications = []
   logs.length = 0

@@ -28,7 +28,7 @@
 | [note-export-html_design.md](2026-09-15_note-export-html/note-export-html_design.md) | 笔记导出 HTML：自包含单文件，深浅色自适应阅读排版 | ✅ **已实施**（已随 v0.4.3 发布） |
 | [custom-titlebar.md](2026-09-22_custom-titlebar/custom-titlebar.md) + [custom-titlebar_design.md](2026-09-22_custom-titlebar/custom-titlebar_design.md) | Windows 自定义标题栏（WCO）+ 毛玻璃恢复：路线拍板 / 布局形态 / 降级矩阵 / 回归清单 | ✅ **已实施**（已随 v0.7.0 发布） |
 | [wysiwyg.md](2026-09-21_wysiwyg/wysiwyg.md) + [wysiwyg_design.md](2026-09-21_wysiwyg/wysiwyg_design.md) | 所见即所得编辑模式（Live Preview，Obsidian 式）：需求（D1–D4）与技术设计（D1–D6，CM6 StateField+ViewPlugin 双层装饰）、节点映射表、IME 冻结 | ✅ **已实施**（已随 v0.6.0 发布，实施记录见设计文档第 10 节） |
-| [flow-mode.md](2026-09-23_flow-mode/flow-mode.md) + [flow-mode_design.md](2026-09-23_flow-mode/flow-mode_design.md) | 心流模式（打字机高/低位 + 一键沉浸预设 + 写作栏宽 + 回车音效 + 保存指示）：需求（D1–D11，三轴 + 预设模型）与技术设计（D1–D10，CM6 锚点滚动 / Web Audio 合成） | 🚧 **P1 打字机 + P2 心流预设已实施**（FR-2.4.14 / FR-2.9.8，待发版）；P3 音效待实施 |
+| [flow-mode.md](2026-09-23_flow-mode/flow-mode.md) + [flow-mode_design.md](2026-09-23_flow-mode/flow-mode_design.md) | 心流模式（打字机高/低位 + 一键沉浸预设 + 写作栏宽 + 回车音效 + 保存指示）：需求（D1–D11，三轴 + 预设模型）与技术设计（D1–D10，CM6 锚点滚动 / Web Audio 合成） | ✅ **P1–P3 全部实施**（FR-2.4.14 打字机 / FR-2.9.8 心流模式 / FR-2.9.9 回车音效，待发版） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
@@ -214,11 +214,11 @@
 
 > 二期 Backlog 已全部完成或作废（PRD 第 7 节所列项目均已落地）。当前**唯一待实施的规划项为「心流模式」**（2026-09-23 立项，需求与设计已完成，见上方导读表），其余条目为历史归档。
 
-### 进行中：心流模式 — [flow-mode.md](2026-09-23_flow-mode/flow-mode.md)
+### 已完成（待发版）：心流模式 — [flow-mode.md](2026-09-23_flow-mode/flow-mode.md)
 
 - **定位**：沉浸创作形态，确立「三条正交轴（编辑形态 / 环境强度 / 光标锚定）+ 一个一键预设」模型，不新增互斥模式枚举；
 - **范围**：打字机模式（高位居中 / 低位偏下，含滚动规则表）、心流预设（Alt+W 一键进入、Esc 退出、状态快照还原）、写作栏宽、回车音效（Web Audio 合成）、极微弱保存指示；
-- **节奏**：**P1 打字机 + P2 心流预设已实施**（2026-09-23，FR-2.4.14 / FR-2.9.8，见设计文档第 10 节实施记录）→ P3 回车音效待实施，每期独立可发版。
+- **节奏**：**P1–P3 全部实施**（2026-09-23，FR-2.4.14 / FR-2.9.8 / FR-2.9.9，见设计文档第 10 节实施记录）；待人工确认项：回车音色观感、心流模式下行尾字母折行的观感（已登记为待打磨）。
 
 ### 功能规划（均已落地）
 

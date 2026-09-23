@@ -41,7 +41,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   showBacklinks: true,
   defaultEditMode: 'source',
   typewriterMode: 'off',
-  flowLineWidth: 'medium'
+  flowLineWidth: 'medium',
+  flowSoundEnabled: false,
+  flowSoundVolume: 60
 }
 
 function prefersDark(): boolean {

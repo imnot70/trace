@@ -950,6 +950,28 @@ async function resetGitSource(): Promise<void> {
             </el-select>
             <span class="settings-desc" style="margin: 0">正文列宽限制并居中，宽屏下长行阅读更省力；仅心流模式内生效</span>
           </div>
+          <div class="setting-row">
+            <span class="setting-label">回车音效</span>
+            <el-switch
+              :model-value="app.settings.flowSoundEnabled"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ flowSoundEnabled: Boolean(v) })"
+            />
+            <span class="settings-desc" style="margin: 0">回车时播放合成的机械键盘音（程序合成、无音频文件；仅心流模式内生效，连续回车自动限流）</span>
+          </div>
+          <div class="setting-row" v-if="app.settings.flowSoundEnabled">
+            <span class="setting-label">音效音量</span>
+            <el-slider
+              :model-value="app.settings.flowSoundVolume"
+              :min="0"
+              :max="100"
+              :step="5"
+              style="flex: 1; margin-right: 16px"
+              @update:model-value="(v: number | number[]) => app.updateSettings({ flowSoundVolume: Array.isArray(v) ? v[0] : v })"
+            />
+            <span style="width: 40px; text-align: right; color: var(--text-secondary)">
+              {{ app.settings.flowSoundVolume }}%
+            </span>
+          </div>
         </div>
 
         <div class="settings-block">

@@ -182,7 +182,9 @@ app.whenReady().then(() => {
     showBacklinks: true,
     defaultEditMode: 'source',
     typewriterMode: 'off',
-    flowLineWidth: 'medium'
+    flowLineWidth: 'medium',
+    flowSoundEnabled: false,
+    flowSoundVolume: 60
   })
 
   settingsService = new SettingsService(settingsStore)

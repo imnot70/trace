@@ -500,6 +500,7 @@ onBeforeUnmount(() => {
         :model-value="editor.content"
         :font-size="app.settings.editorFontSize"
         :typewriter-mode="app.effectiveTypewriterMode"
+        :return-sound="{ enabled: app.flowMode && app.settings.flowSoundEnabled, volume: app.settings.flowSoundVolume }"
         :vault="editor.current.vault"
         :note-path="editor.current.path"
         :wysiwyg="app.editorWysiwyg"
