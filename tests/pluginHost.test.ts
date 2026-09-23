@@ -279,6 +279,7 @@ beforeEach(() => {
     flowLineWidth: 'medium',
     flowSoundEnabled: false,
     flowSoundVolume: 60,
+    flowSoundVariant: 'wood',
   })
   notifications = []
   logs.length = 0

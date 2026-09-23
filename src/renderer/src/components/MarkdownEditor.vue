@@ -10,7 +10,7 @@ import { autocompletion, startCompletion, type CompletionContext, type Completio
 import { useTreeStore } from '../stores/tree'
 import { livePreview } from '../lib/livePreview'
 import { typewriter, type TypewriterMode } from '../lib/typewriter'
-import { createCaretSound } from '../lib/caretSound'
+import { createCaretSound, type SoundVariant } from '../lib/caretSound'
 import type { TreeNode } from '@shared/types'
 
 const props = defineProps<{
@@ -23,7 +23,7 @@ const props = defineProps<{
   /** 打字机模式：off 关闭 / center 高位 / bottom 低位（见 lib/typewriter.ts） */
   typewriterMode?: TypewriterMode
   /** 回车音效：启用时回车插入换行播放合成音（心流模式内由父组件置位） */
-  returnSound?: { enabled: boolean; volume: number }
+  returnSound?: { enabled: boolean; volume: number; variant: SoundVariant }
 }>()
 
 const emit = defineEmits<{
@@ -371,7 +371,7 @@ function createView(initialDoc: string): EditorView {
         // 回车音效：心流模式内（父组件仅在该模式下置 enabled）且为换行插入时播放
         const sound = props.returnSound
         if (sound?.enabled && update.transactions.some(isReturnInsertion)) {
-          caretSound.playReturn(sound.volume)
+          caretSound.playReturn(sound.volume, sound.variant)
         }
         emit('update:modelValue', update.state.doc.toString())
       }),

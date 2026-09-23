@@ -959,6 +959,20 @@ async function resetGitSource(): Promise<void> {
             <span class="settings-desc" style="margin: 0">回车时播放合成的机械键盘音（程序合成、无音频文件；仅心流模式内生效，连续回车自动限流）</span>
           </div>
           <div class="setting-row" v-if="app.settings.flowSoundEnabled">
+            <span class="setting-label">音色</span>
+            <el-select
+              :model-value="app.settings.flowSoundVariant"
+              style="width: 260px"
+              @update:model-value="(v: string) => app.updateSettings({ flowSoundVariant: v as AppSettings['flowSoundVariant'] })"
+            >
+              <el-option label="木质（薄膜键盘的闷响）" value="wood" />
+              <el-option label="金属（清脆带回声）" value="metal" />
+              <el-option label="打字机（棘齿回车的唰声）" value="ratchet" />
+              <el-option label="轮换（三者依次交替）" value="rotate" />
+            </el-select>
+            <span class="settings-desc" style="margin: 0">可先选「轮换」逐一听过再定</span>
+          </div>
+          <div class="setting-row" v-if="app.settings.flowSoundEnabled">
             <span class="setting-label">音效音量</span>
             <el-slider
               :model-value="app.settings.flowSoundVolume"

@@ -45,6 +45,7 @@ function buildStack() {
     flowLineWidth: 'medium',
     flowSoundEnabled: false,
     flowSoundVolume: 60,
+    flowSoundVariant: 'wood',
   })
   const workspace = new WorkspaceService(settings, path.join(tmp, 'ws'))
   workspace.initDefault()

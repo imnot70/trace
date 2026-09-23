@@ -184,7 +184,8 @@ app.whenReady().then(() => {
     typewriterMode: 'off',
     flowLineWidth: 'medium',
     flowSoundEnabled: false,
-    flowSoundVolume: 60
+    flowSoundVolume: 60,
+    flowSoundVariant: 'wood'
   })
 
   settingsService = new SettingsService(settingsStore)

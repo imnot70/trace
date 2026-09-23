@@ -43,7 +43,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   typewriterMode: 'off',
   flowLineWidth: 'medium',
   flowSoundEnabled: false,
-  flowSoundVolume: 60
+  flowSoundVolume: 60,
+  flowSoundVariant: 'wood'
 }
 
 function prefersDark(): boolean {

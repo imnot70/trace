@@ -147,6 +147,8 @@ export interface AppSettings {
   flowSoundEnabled: boolean
   /** 心流模式回车音效音量 0-100（默认 60） */
   flowSoundVolume: number
+  /** 回车音色：wood 木质 / metal 金属带回声 / ratchet 打字机棘齿 / rotate 三者轮换 */
+  flowSoundVariant: 'wood' | 'metal' | 'ratchet' | 'rotate'
 }
 
 /** 自定义主题包：一组 CSS 变量覆盖（light/dark 两套），存 userData/themes/<id>.json */
