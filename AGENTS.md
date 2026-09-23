@@ -7,7 +7,7 @@
 **Trace（笔迹）** 是一款本地优先的轻量级 Markdown 笔记桌面应用：
 
 - 笔记以纯 `.md` 文件存储，无私有格式；每个**笔记库**是一个独立 git 仓库，通过 GitHub PAT 实现多设备同步；
-- 支持 LaTeX 公式、图片粘贴、回收站、收藏/常用、浅色/深色主题与插件系统（v2 M1–M4：进程隔离 + 能力 API + 权限确认 + .trace-plugin 导入导出 + 私有存储 + 声明式工具栏/状态区 + 应用内市场）；
+- 支持 LaTeX 公式、图片粘贴、回收站、收藏/常用、所见即所得编辑（Live Preview）、全局搜索、双链引用、标签、浅色/深色主题、Windows 毛玻璃与插件系统（v2 M1–M4：进程隔离 + 能力 API + 权限确认 + .trace-plugin 导入导出 + 私有存储 + 声明式工具栏/状态区 + 应用内市场）；
 - 跨平台：Windows / Linux（Ubuntu、Debian 为主），macOS 仅支持源码构建。
 
 ## 技术栈
@@ -69,6 +69,7 @@ src/
 │  ├─ components/         # SideBar / VaultNode / MarkdownEditor / MarkdownPreview 等
 │  ├─ stores/             # pinia：app / tree / editor / git / trash / nameDialog
 │  ├─ composables/        # actions.ts（菜单/操作逻辑）
+│  ├─ lib/                # markdown.ts（渲染管道+sanitizeHtml）/ livePreview/（所见即所得装饰）/ wikilink.ts
 │  └─ styles/             # main.css / markdown.css / themes.css（全部颜色走 CSS 变量）
 └─ shared/                # 主/渲染进程共用
    ├─ api.ts              # TraceApi 接口定义（preload 实现它）
@@ -129,7 +130,7 @@ src/
 - ~~专注模式与悬浮预览在极窄窗口（<1080px）下编辑区最小宽度受限~~（v0.4.4 已通过 CSS min-width 保护修复）。
 - ~~回收站无容量上限与过期自动清理~~（v0.4.3 已实现）。
 - ~~透明窗口底部圆角在浅色壁纸上仍可能显示直角轮廓~~（v0.5.1 已规避：Linux 平台一律禁用内容区底部圆角，Windows / macOS 保留；根因为 Linux 系统合成器疑似在窗口边界外的方形绘制，应用侧无法彻底消除，将来排查出系统侧对策后可恢复）。
-- **Windows 上不可使用 `transparent: true` 创建窗口**：Electron 在 Windows 上透明窗口会剥离原生标题栏与可调边框（透明仅在无边框窗口生效），窗口无法移动 / 关闭（v0.4.4 曾因此发布过严重回归，已修复待发版）。Windows 一律带原生边框创建，「窗口效果」降级为仅透明度生效（`src/main/index.ts` createWindow 有详细注释）；~~将来如需恢复毛玻璃，需先实现自定义标题栏（拖拽区 + 最小化/最大化/关闭按钮）~~（已实现：WCO 方案 `titleBarStyle: 'hidden'` + `titleBarOverlay` + `backgroundMaterial`，仍不使用 transparent；见 requirements/2026-09-22_custom-titlebar/）。
+- **Windows 上不可使用 `transparent: true` 创建窗口**：Electron 在 Windows 上透明窗口会剥离原生标题栏与可调边框（透明仅在无边框窗口生效），窗口无法移动 / 关闭（v0.4.4 曾因此发布过严重回归，v0.4.6 修复）。Windows 现走 WCO 方案（`titleBarStyle: 'hidden'` + `titleBarOverlay`，v0.7.0）——玻璃材质经 `backgroundMaterial` 实现，**仍不使用 transparent**（`src/main/index.ts` createWindow 有详细注释；详见 requirements/2026-09-22_custom-titlebar/）。
 
 ## 二期规划（未实现，不要顺手实现）
 

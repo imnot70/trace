@@ -48,8 +48,10 @@ renderer
 
 ### 3.3 IPC
 
-- shared/api.ts + preload：新增 `setOverlayTheme(opts: { color: string; symbolColor: string })`；
-- registerIpc.ts：`window:set-overlay-theme` handler → `mainWindow.setTitleBarOverlay(opts)`（win32 only，其他平台空实现）。
+> **实施修正（2026-09-22）**：未新增独立 IPC——overlay 配色同步由两处既有机制承载：`settings:set`（patch.theme 变化时主进程直接调 `applyOverlayTheme`）+ `nativeTheme 'updated'` 监听（跟随系统主题）。windowEffect 新增导出 `applyOverlayTheme / overlayThemeFor`，`systemDark` 由调用方传 `nativeTheme.shouldUseDarkColors`（避免 windowEffect 引入 electron 运行时依赖破坏 vitest）。
+
+- shared/api.ts + preload：~~新增 `setOverlayTheme(...)`~~（实施时取消，见上）；
+- ~~registerIpc.ts：`window:set-overlay-theme` handler~~（实施时取消，见上）。
 
 ## 4. 分批实施
 
@@ -68,3 +70,11 @@ renderer
 | 拖拽区吞掉顶栏交互（v0.3.5 tooltip 前科） | 标题栏条独立于卡片顶栏，无交互元素重叠；条内不放任何可点元素 |
 | 主题切换竞态（overlay 颜色与 html.dark 不同步） | 同一调用点顺序执行；IPC 失败静默（颜色滞后一拍可接受） |
 | v0.4.4 回归重演 | 硬约束：不碰 transparent: true；回归清单（需求 §5）逐项真机验收后才可发版 |
+
+## 6. 实施记录（2026-09-22，分支 feature/custom-titlebar，已随 v0.7.0 发布）
+
+已实施并验证（lint / 双 typecheck / 270 项测试含新增 5 项 windowEffect 材质用例；Win11 build 26200 真机：WCO visible、材质应用日志确认、标题栏条与布局正常）。实施中的三处修正 / 发现：
+
+1. **§3.3 IPC 方案简化**：未新增独立 IPC，overlay 配色由 `settings:set` 主题分支 + `nativeTheme 'updated'` 监听承载（见 §3.3 修正注）。
+2. **Win11 版本号陷阱**：Electron `getSystemVersion()` 在 Windows 11 仍返回 "10.0.x"（兼容性保留主版本号），材质支持须按 **build 号 ≥ 22000** 判定——按前缀 '10.' 判定会把 Win11 误降级（真机实测踩中并修复）。
+3. **CDP 合成事件无法驱动系统级行为**：`-webkit-app-region` 拖拽与双击最大化走原生命中测试路径，CDP 注入的合成鼠标事件不触发——自动化验证只能覆盖 WCO visible / env 值 / DOM 结构，拖动与按钮需人工确认（已由用户真机验收）。

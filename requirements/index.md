@@ -21,13 +21,13 @@
 | [grid-list-toggle_design.md](2026-09-13_grid-list-toggle/grid-list-toggle_design.md) | 网格/列表切换视图：常用/收藏/笔记库统一支持，持久化 | ✅ **已实施**（v0.4.1 发布） |
 | [auto-close-tags_design.md](2026-09-13_auto-close-tags/auto-close-tags_design.md) | 编辑器 HTML 标签自动闭合 | ✅ **已实施**（v0.4.1 发布） |
 | [theme-presets_design.md](2026-09-13_theme-presets/theme-presets_design.md) | 预设主题包：暖色/冷色/高对比度 | ✅ **已实施**（v0.4.1 发布） |
-| [theme-import_design.md](2026-09-14_theme-import/theme-import_design.md) | 主题包导入：JSON 变量覆盖 + 白名单校验 + 应用数据目录存储 | ✅ **已实施**（main，随下版本发布） |
+| [theme-import_design.md](2026-09-14_theme-import/theme-import_design.md) | 主题包导入：JSON 变量覆盖 + 白名单校验 + 应用数据目录存储 | ✅ **已实施**（已随 v0.4.3 发布） |
 | [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md) | 标签系统：打标签 / 筛选 / 管理（frontmatter 存储，方案 A） | ✅ **已实施**（v0.4.1 发布） |
-| [note-export_design.md](note-export/note-export_design.md) | 笔记导出 PDF：单篇 / 文件夹 / 整库递归（可跨库），图片内联自包含；支持合并为单个 PDF | ✅ **已实施**（main，随下版本发布） |
-| [pdf-merge_design.md](pdf-merge/pdf-merge_design.md) | PDF 合并导出设计：多篇 → 单个 PDF，pdf-lib 拼接管线 | ✅ **已实施**（随下版本发布） |
-| [note-export-html_design.md](2026-09-15_note-export-html/note-export-html_design.md) | 笔记导出 HTML：自包含单文件，深浅色自适应阅读排版 | ✅ **已实施**（main，随下版本发布） |
-| [custom-titlebar.md](2026-09-22_custom-titlebar/custom-titlebar.md) + [custom-titlebar_design.md](2026-09-22_custom-titlebar/custom-titlebar_design.md) | Windows 自定义标题栏（WCO）+ 毛玻璃恢复：路线拍板 / 布局形态 / 降级矩阵 / 回归清单 | 🔶 **设计完成，实施中**（分支 `feature/custom-titlebar`） |
-| [wysiwyg.md](2026-09-21_wysiwyg/wysiwyg.md) + [wysiwyg_design.md](2026-09-21_wysiwyg/wysiwyg_design.md) | 所见即所得编辑模式（Live Preview，Obsidian 式）：需求（D1–D4）与技术设计（D1–D6，CM6 StateField+ViewPlugin 双层装饰）、节点映射表、IME 冻结 | ✅ **已实施**（分支 `feature/wysiwyg-editor`，随下版本发布，实施记录见设计文档第 10 节） |
+| [note-export_design.md](note-export/note-export_design.md) | 笔记导出 PDF：单篇 / 文件夹 / 整库递归（可跨库），图片内联自包含；支持合并为单个 PDF | ✅ **已实施**（已随 v0.4.3 发布；合并为单个 PDF 已随 v0.4.4 发布） |
+| [pdf-merge_design.md](pdf-merge/pdf-merge_design.md) | PDF 合并导出设计：多篇 → 单个 PDF，pdf-lib 拼接管线 | ✅ **已实施**（已随 v0.4.4 发布） |
+| [note-export-html_design.md](2026-09-15_note-export-html/note-export-html_design.md) | 笔记导出 HTML：自包含单文件，深浅色自适应阅读排版 | ✅ **已实施**（已随 v0.4.3 发布） |
+| [custom-titlebar.md](2026-09-22_custom-titlebar/custom-titlebar.md) + [custom-titlebar_design.md](2026-09-22_custom-titlebar/custom-titlebar_design.md) | Windows 自定义标题栏（WCO）+ 毛玻璃恢复：路线拍板 / 布局形态 / 降级矩阵 / 回归清单 | ✅ **已实施**（已随 v0.7.0 发布） |
+| [wysiwyg.md](2026-09-21_wysiwyg/wysiwyg.md) + [wysiwyg_design.md](2026-09-21_wysiwyg/wysiwyg_design.md) | 所见即所得编辑模式（Live Preview，Obsidian 式）：需求（D1–D4）与技术设计（D1–D6，CM6 StateField+ViewPlugin 双层装饰）、节点映射表、IME 冻结 | ✅ **已实施**（已随 v0.6.0 发布，实施记录见设计文档第 10 节） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
@@ -185,7 +185,7 @@
 ## 二、已记录的已知问题（待处理）
 
 - ~~透明窗口的底部圆角在浅色壁纸上仍显示为直角~~（已随 v0.5.1 规避：Linux 平台一律禁用内容区底部圆角，Windows / macOS 保留；根因为系统合成器疑似在窗口边界外的方形绘制，深色壁纸下本就正常，若将来排查出系统侧对策可恢复圆角）。
-- **Windows 毛玻璃材质不可用**（v0.4.4 功能降级）：Electron 在 Windows 上 `transparent: true` 会剥离原生标题栏（窗口无法移动 / 关闭），故 Windows 一律创建带原生边框的不透明窗口，Mica / Acrylic 材质随之不可见；「窗口效果」在 Windows 降级为仅窗口透明度生效。待将来实现自定义标题栏（拖拽区 + 窗口控制按钮）后再恢复毛玻璃。
+- ~~Windows 毛玻璃材质不可用~~（已随 v0.7.0 恢复：WCO 自定义标题栏 + `backgroundMaterial`，Mica / Acrylic 在 Windows 11 22H2+ 可用，Win10 自动降级为仅透明度；`transparent: true` 禁令不变——玻璃改由 backgroundMaterial 实现，见 [2026-09-22_custom-titlebar/](2026-09-22_custom-titlebar/custom-titlebar_design.md)）。
 
 ## 三、设计已确认（部分已实施）
 
