@@ -712,12 +712,9 @@ body {
   background: var(--accent-soft);
 }
 
-/* 输入法组词期间：组词行不折行（拼音比汉字宽，避免「先折行、上屏后撤销」的跳动）。
-   溢出部分由 .cm-ime-active 规则裁掉——不裁的话会出现横向滚动条，滚动条占位又会引入一次布局位移 */
-.cm-line.cm-ime-composing {
-  white-space: nowrap;
-}
-
+/* 输入法组词期间（「右侧缓冲区」）：组词行的 nowrap 由 lib/ime.ts 用内联样式施加
+   （不经 CM6 装饰，避免重建组词行的 DOM 打断输入法提交）；这里只裁掉横向溢出——
+   不裁的话会出现横向滚动条，其占位又会引入一次布局位移 */
 .cm-editor.cm-ime-active .cm-scroller {
   overflow-x: hidden;
 }
