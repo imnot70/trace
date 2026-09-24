@@ -880,6 +880,20 @@ async function resetGitSource(): Promise<void> {
             <span class="settings-desc" style="margin: 0">打开笔记时使用的编辑模式；编辑器内 Ctrl+E 随时切换</span>
           </div>
           <div class="setting-row">
+            <span class="setting-label">编辑位置</span>
+            <el-select
+              :model-value="app.settings.editPosition"
+              style="width: 150px"
+              @update:model-value="(v: string) => app.updateSettings({ editPosition: v as 'start' | 'end' })"
+            >
+              <el-option value="start" label="从头开始" />
+              <el-option value="end" label="从尾部开始" />
+            </el-select>
+            <span class="settings-desc" style="margin: 0"
+              >打开笔记后光标落在文首还是文末（心流模式内同样生效）；编辑器内 Ctrl+Shift+H / Ctrl+Shift+E 可随时跳到文首 / 文末</span
+            >
+          </div>
+          <div class="setting-row">
             <span class="setting-label">自动保存</span>
             <el-switch
               :model-value="app.settings.autoSave"
@@ -904,6 +918,19 @@ async function resetGitSource(): Promise<void> {
             <span class="settings-desc" style="margin: 0">编辑卡右下角的「反向链接」入口，显示引用当前笔记的笔记</span>
           </div>
           <div class="setting-row">
+            <span class="setting-label">打字机模式</span>
+            <el-select
+              :model-value="app.settings.typewriterMode"
+              style="width: 200px"
+              @update:model-value="(v: string) => app.updateSettings({ typewriterMode: v as AppSettings['typewriterMode'] })"
+            >
+              <el-option label="关闭" value="off" />
+              <el-option label="高位（光标垂直居中）" value="center" />
+              <el-option label="低位（光标靠下，文字上移）" value="bottom" />
+            </el-select>
+            <span class="settings-desc" style="margin: 0">光标固定、文字流动；用户滚动查看前文时不干预，下次输入回到锚点</span>
+          </div>
+          <div class="setting-row">
             <span class="setting-label">附件目录</span>
             <el-input
               v-model="attachmentsDirInput"
@@ -916,6 +943,71 @@ async function resetGitSource(): Promise<void> {
           <p class="settings-desc" style="margin: 0 0 0 102px">
             相对于笔记库根目录，修改后只对之后粘贴的图片生效；已有图片的引用不受影响。
           </p>
+        </div>
+
+        <div class="settings-block">
+          <h3>心流模式</h3>
+          <p class="settings-desc">
+            一键进入沉浸创作：隐藏侧栏与顶栏、切所见即所得、开启打字机（形态沿用上面的「打字机模式」，未开启时默认低位）。
+            按 <b>Alt + W</b> 或编辑卡顶栏的咖啡杯按钮进入；<b>Esc</b> 一键退出并恢复进入前的界面状态。
+          </p>
+          <div class="setting-row">
+            <span class="setting-label">写作栏宽</span>
+            <el-select
+              :model-value="app.settings.flowLineWidth"
+              style="width: 200px"
+              @update:model-value="(v: string) => app.updateSettings({ flowLineWidth: v as AppSettings['flowLineWidth'] })"
+            >
+              <el-option label="窄（约 32 字符）" value="narrow" />
+              <el-option label="中（约 42 字符）" value="medium" />
+              <el-option label="宽（约 52 字符）" value="wide" />
+            </el-select>
+            <span class="settings-desc" style="margin: 0">正文列宽限制并居中，宽屏下长行阅读更省力；仅心流模式内生效</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">回车音效</span>
+            <el-switch
+              :model-value="app.settings.flowSoundEnabled"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ flowSoundEnabled: Boolean(v) })"
+            />
+            <span class="settings-desc" style="margin: 0">回车时播放合成的机械键盘音（程序合成、无音频文件；仅心流模式内生效，连续回车自动限流）</span>
+          </div>
+          <div class="setting-row" v-if="app.settings.flowSoundEnabled">
+            <span class="setting-label">音色</span>
+            <el-select
+              :model-value="app.settings.flowSoundVariant"
+              style="width: 280px"
+              @update:model-value="(v: string) => app.updateSettings({ flowSoundVariant: v as AppSettings['flowSoundVariant'] })"
+            >
+              <el-option label="复古打字机（按键 + 推回车 + 回车铃）" value="retro" />
+              <el-option label="推回车（棘轮）" value="carriage" />
+              <el-option label="回车铃" value="bell" />
+              <el-option label="轮换（三者依次交替）" value="rotate" />
+            </el-select>
+            <span class="settings-desc" style="margin: 0">可先选「轮换」逐一听过再定</span>
+          </div>
+          <div class="setting-row" v-if="app.settings.flowSoundEnabled">
+            <span class="setting-label">连续换行屏蔽音效</span>
+            <el-switch
+              :model-value="app.settings.flowSoundSkipRepeat"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ flowSoundSkipRepeat: Boolean(v) })"
+            />
+            <span class="settings-desc" style="margin: 0">连按回车加空行时只有第一次发声，避免音效叠在一起</span>
+          </div>
+          <div class="setting-row" v-if="app.settings.flowSoundEnabled">
+            <span class="setting-label">音效音量</span>
+            <el-slider
+              :model-value="app.settings.flowSoundVolume"
+              :min="0"
+              :max="100"
+              :step="5"
+              style="flex: 1; margin-right: 16px"
+              @update:model-value="(v: number | number[]) => app.updateSettings({ flowSoundVolume: Array.isArray(v) ? v[0] : v })"
+            />
+            <span style="width: 40px; text-align: right; color: var(--text-secondary)">
+              {{ app.settings.flowSoundVolume }}%
+            </span>
+          </div>
         </div>
 
         <div class="settings-block">

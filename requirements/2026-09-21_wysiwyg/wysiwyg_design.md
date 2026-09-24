@@ -1,6 +1,6 @@
 # 所见即所得（Live Preview）技术设计
 
-> 创建：2026-09-21 ｜ 状态：**设计完成，待实施** ｜ 需求见 [wysiwyg.md](wysiwyg.md)
+> 创建：2026-09-21 ｜ 状态：**已实施（随 v0.6.0 发布）** ｜ 需求见 [wysiwyg.md](wysiwyg.md) ｜ 实施记录见第 10 节
 > 分支：`feature/wysiwyg-editor`
 
 ## 1. 总体方案

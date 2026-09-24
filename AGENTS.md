@@ -7,7 +7,7 @@
 **Trace（笔迹）** 是一款本地优先的轻量级 Markdown 笔记桌面应用：
 
 - 笔记以纯 `.md` 文件存储，无私有格式；每个**笔记库**是一个独立 git 仓库，通过 GitHub PAT 实现多设备同步；
-- 支持 LaTeX 公式、图片粘贴、回收站、收藏/常用、所见即所得编辑（Live Preview）、全局搜索、双链引用、标签、浅色/深色主题、Windows 毛玻璃与插件系统（v2 M1–M4：进程隔离 + 能力 API + 权限确认 + .trace-plugin 导入导出 + 私有存储 + 声明式工具栏/状态区 + 应用内市场）；
+- 支持 LaTeX 公式、图片粘贴、回收站、收藏/常用、所见即所得编辑（Live Preview）、全局搜索、双链引用、标签、浅色/深色主题、Windows 毛玻璃、心流模式（打字机高/低位 + 沉浸预设 + 回车音效）与插件系统（v2 M1–M4：进程隔离 + 能力 API + 权限确认 + .trace-plugin 导入导出 + 私有存储 + 声明式工具栏/状态区 + 应用内市场）；
 - 跨平台：Windows / Linux（Ubuntu、Debian 为主），macOS 仅支持源码构建。
 
 ## 技术栈
@@ -70,6 +70,7 @@ src/
 │  ├─ stores/             # pinia：app / tree / editor / git / trash / nameDialog
 │  ├─ composables/        # actions.ts（菜单/操作逻辑）
 │  ├─ lib/                # markdown.ts（渲染管道+sanitizeHtml）/ livePreview/（所见即所得装饰）/ wikilink.ts
+│  │                      # / typewriter.ts + flow.ts（心流模式：锚点滚动 / 栏宽与形态推导）/ caretSound.ts（回车音效合成）
 │  └─ styles/             # main.css / markdown.css / themes.css（全部颜色走 CSS 变量）
 └─ shared/                # 主/渲染进程共用
    ├─ api.ts              # TraceApi 接口定义（preload 实现它）
@@ -97,6 +98,9 @@ src/
 - UI 用语：一律用「文件夹」（不用「子目录」）、「笔记库」；删除类菜单项红色警示。
 - `el-tooltip` **只允许包裹非交互元素**（图标、纯文本）。禁止：tooltip 嵌套 tooltip；tooltip 包裹按钮（点击被拦截）；tooltip 包裹 `el-dropdown` 触发器（下拉事件绑定失效，菜单弹不出）。需要给按钮/触发器加提示时用原生 `title`。任何「点击后移除下拉菜单锚点元素」的操作（删除行、收起容器等）需延迟 ≥300ms 或保持锚点可见（参考 `menu-hold` 模式），否则 popper 会在左上角闪现残影。
 - 全界面颜色必须走 CSS 变量（`--bg-*` / `--text-*` / `--accent` / `--danger` 等），新增颜色先看 `styles/themes.css` 是否已有对应变量；Element Plus 变量映射到同一套变量。
+- **块级 widget 的几何（所见即所得，2026-09-24 教训，勿再踩）**：CodeMirror 6 的行高记账只取 widget 元素的 border-box，**不含外边距**——块级 widget（公式块 / 表格 / HTML 块 / 水平线）的垂直间距必须落在元素盒内（用 `padding`，或 `display: flow-root` 让内层首尾外边距不再折叠出去），禁止用裸 `margin` 做间距，否则其后所有行号与行号高亮会整体上移并逐块累加（实测 +15 / +27px）。同理：widget 内的渲染产物要令 `white-space: normal`（内容区是 `break-spaces`，标签间换行会变成真实换行），带 `markdown-body` 类的 widget 必须显式归零该类附带的卡片 `padding` 与 `max-width`（预览卡片的留白 / 限宽）。详见 `requirements/2026-09-24_live-preview-render-fix/`。
+- **键位绑定的 `preventDefault: true` 是无条件的（2026-09-24 教训）**：CM 的语义是「绑定上声明了 preventDefault 就阻断默认行为」，**即使命令返回 `false`（未处理）也照样阻断**——`Tab` / `Shift-Tab` 这类「条件性接管」的绑定不要声明它（命令返回 `true` 时 CM 自会 preventDefault）。另两条：`basicSetup` 不开放配置，需要定制折叠按钮等请用自有装配 `traceSetup()`（清单逐项对齐）；`foldGutter` 的 gutter 事件是 **click**（不是 mousedown）。取语法树节点时注意**块边界**：所见即所得下点击渲染态表格会把光标落在块边界，`resolveInner(pos, -1)` 会解析到相邻节点，需要按边界认领。
+- **装饰剪枝必须用「包含」而非「相交」**：遍历语法树时按区间跳过节点（如 frontmatter），条件要写成「节点完全落在区间内」——写成区间相交会连 `Document` 根节点一起匹配，整棵树被剪掉，一切依赖语法树的装饰全部消失（`src/renderer/src/lib/livePreview/decorations.ts` 有详细注释）。
 - 代码风格由 ESLint + Prettier 约束（`.prettierrc.json`）；提交前至少跑 `npm run lint` 与 `npm run typecheck`。
 - 核心服务（gitService、trash、favorites、validate、pluginHost 等）有单元测试（`tests/`，Vitest，200+ 项含 git 同步/冲突集成测试、渲染/净化与错误文案映射、插件能力网关/生命周期/require 白名单）；修改这些服务时同步补充/更新测试。
   ⚠️ Windows 上 `tests/gitService.test.ts` 的 6 项集成测试会因超出 Vitest 默认 5s 超时而失败：Windows 下每次 git 子进程调用约 1~1.7s（Linux 仅几十毫秒），完整关联+同步流程需 5~10s。功能本身正常（已手动复现验证），用 `npx vitest run --testTimeout=30000` 验证即可，勿误判为产品代码 bug。
@@ -130,10 +134,12 @@ src/
 - ~~专注模式与悬浮预览在极窄窗口（<1080px）下编辑区最小宽度受限~~（v0.4.4 已通过 CSS min-width 保护修复）。
 - ~~回收站无容量上限与过期自动清理~~（v0.4.3 已实现）。
 - ~~透明窗口底部圆角在浅色壁纸上仍可能显示直角轮廓~~（v0.5.1 已规避：Linux 平台一律禁用内容区底部圆角，Windows / macOS 保留；根因为 Linux 系统合成器疑似在窗口边界外的方形绘制，应用侧无法彻底消除，将来排查出系统侧对策后可恢复）。
+- 中文输入法在行尾组词时会出现「先折行、上屏后撤销」的轻微跳动（拼音比汉字宽：`khy` ≈ 4 个汉字宽，「中文」2 个字；折行按 DOM 实际文本计算）。曾有两次修复尝试均撤除（详见 CHANGELOG）：介入组词行的渲染会破坏 Chromium 的组词锚点（按空格选候选时拼音无法替换成汉字），风险远大于收益，故按已知局限保留。
+- 心流模式栏宽下，行尾连续拉丁字母按「整词」折行（前几个字母先停在行尾，字符串继续变长后整串换行；CJK 可自由断行，中文写作不受影响）——与多数编辑器一致，2026-09-24 登记为待打磨项（可评估 `overflow-wrap: anywhere`），勿当作新 bug 排查。
 - **Windows 上不可使用 `transparent: true` 创建窗口**：Electron 在 Windows 上透明窗口会剥离原生标题栏与可调边框（透明仅在无边框窗口生效），窗口无法移动 / 关闭（v0.4.4 曾因此发布过严重回归，v0.4.6 修复）。Windows 现走 WCO 方案（`titleBarStyle: 'hidden'` + `titleBarOverlay`，v0.7.0）——玻璃材质经 `backgroundMaterial` 实现，**仍不使用 transparent**（`src/main/index.ts` createWindow 有详细注释；详见 requirements/2026-09-22_custom-titlebar/）。
 
 ## 二期规划（已全部完成 / 作废，无未实现项）
 
 ~~全局搜索~~（已实现）、~~所见即所得模式~~（已实现：Live Preview，FR-2.4.13，见 `requirements/2026-09-21_wysiwyg/`）、~~图形化冲突解决~~（已实现）、~~定时/变更自动同步~~（已实现）、~~插件完整 API 与市场~~（M1–M4 已全部实施，见 `requirements/2026-09-08_plugin-system/plugin-design.md`）、~~标签~~（已实现）、~~多窗口~~（已作废）、~~导出 PDF/HTML~~（已实现）、~~窗口毛玻璃效果~~（已实现）、~~笔记双链引用~~（P1–P3 已实现）。
 
-> 二期 Backlog 至此清空。当前仅余验证类事项（Linux 内置 Git 手动验证）与已知局限（见 `requirements/index.md` 第二节），无规划中的新功能。
+> 二期 Backlog 至此清空。三期（2026-09-23 立项）**心流模式**（打字机高/低位 FR-2.4.14 + 一键沉浸预设 FR-2.9.8 + 回车音效 FR-2.9.9）P1–P3 已全部实施；2026-09-24 又完成两项用户实测反馈的改造——**所见即所得渲染修正**（行号几何 / 列表与引用标记 / 任务复选框 / frontmatter 剪枝缺陷）与**编辑器工具**（折叠按钮样式 FR-2.4.17 + 标题快捷键 FR-2.4.15 + 表格插入 FR-2.4.16）、**编辑位置**（打开笔记落位 FR-2.4.18 + 文首 / 文尾快捷键 FR-2.4.19）、**表格插入增强**（尺寸输入提示 FR-2.4.20 + 表内 Tab 跳转 FR-2.4.21）。以上均在同一分支 `feature/flow-mode`，**待发版**；需求与设计见 `requirements/2026-09-23_flow-mode/`、`requirements/2026-09-24_live-preview-render-fix/`、`requirements/2026-09-24_editor-tools/`、`requirements/2026-09-24_edit-position/`、`requirements/2026-09-24_table-insert-enhance/`。当前仅余验证类事项（Linux 内置 Git 手动验证、打字机 + 中文输入法组词实机验证）与待打磨项 / 已知局限（见 `requirements/index.md` 第二节），无规划中的新功能。

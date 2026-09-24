@@ -20,6 +20,16 @@ export const useEditorStore = defineStore('editor', {
     saving: false,
     /** 磁盘文件被外部修改且本地有未保存改动 */
     externalChanged: false,
+    /** 最近一次保存成功的时刻（心流模式保存指示的一次性脉冲信号；0 = 尚未保存过） */
+    lastSavedAt: 0,
+    /** 最近一次保存失败（非「外部修改冲突」，如磁盘写入失败） */
+    saveFailed: false,
+    /**
+     * 打开笔记后待应用的光标位置（一次性意图，由 MarkdownEditor 消费后清空，见 FR-2.4.18）。
+     * 用「打开事件」而不是「笔记路径变化」驱动：重命名只是原地改 path、外部重载只改 content，
+     * 都不应把光标挪走
+     */
+    pendingPlacement: null as 'start' | 'end' | null,
     saveTimer: null as ReturnType<typeof setTimeout> | null
   }),
   getters: {
@@ -42,6 +52,9 @@ export const useEditorStore = defineStore('editor', {
       this._diskContent = this.content
       this._diskHash = result.hash ?? ''
       this.externalChanged = false
+      this.saveFailed = false
+      // 编辑位置（FR-2.4.18）：记下待落位意图，由 MarkdownEditor 在文档就位后消费
+      this.pendingPlacement = useAppStore().settings.editPosition === 'end' ? 'end' : 'start'
       // 更新位置上下文（Ctrl+N 新建笔记的目标）
       const dirParts = path.split('/')
       dirParts.pop()
@@ -76,9 +89,12 @@ export const useEditorStore = defineStore('editor', {
           this._diskContent = this.content
           this._diskHash = result.hash ?? this._diskHash
           this.externalChanged = false
+          this.saveFailed = false
+          this.lastSavedAt = Date.now()
           return true
         }
         if (result.error?.includes('外部修改')) this.externalChanged = true
+        else this.saveFailed = true
         return false
       } finally {
         this.saving = false

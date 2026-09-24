@@ -712,6 +712,82 @@ body {
   background: var(--accent-soft);
 }
 
+/* 心流模式开关：激活态同所见即所得（主题色） */
+.tool-btn.flow-on {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* ---------- 心流模式（Flow Mode） ---------- */
+/* 写作栏宽：用两侧内边距把内容列收到舒适宽度并居中。
+   不用「滚动层 max-width + 自动外边距」：自动外边距会取代 flex 的 stretch 导致宽度塌成内容宽
+   （实测 630px 变 304px）；且滚动层变窄后滚动条会悬在卡片中间。内边距方案下滚动条仍在卡片右缘，
+   窗口更窄时两侧自动收敛为 0（内容占满）。 */
+.editor-card.flow-mode .cm-scroller {
+  padding-inline: max(0px, calc((100% - var(--flow-measure, 42em)) / 2));
+}
+
+/* 保存指示：编辑卡右下角的极小圆点，不占布局、只在心流模式出现 */
+.flow-save-dot {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* 有未保存变更：微弱可见（写作中几乎无感） */
+.flow-save-dot.dirty {
+  opacity: 0.35;
+}
+
+/* 保存中：呼吸脉冲 */
+.flow-save-dot.saving {
+  opacity: 0.6;
+  animation: flow-save-pulse 0.9s ease-in-out infinite;
+}
+
+/* 保存成功：一次脉冲后淡出 */
+.flow-save-dot.saved {
+  opacity: 0.75;
+  animation: flow-save-flash 0.6s ease-out 1;
+}
+
+/* 保存失败 / 外部修改冲突：红色常亮（重要状态，不淡出） */
+.flow-save-dot.error {
+  opacity: 1;
+  background: var(--danger);
+}
+
+@keyframes flow-save-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.7;
+  }
+}
+
+@keyframes flow-save-flash {
+  0% {
+    transform: scale(1.6);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+}
+
 .tool-btn.tool-dimmed {
   opacity: 0.4;
 }
@@ -934,4 +1010,12 @@ body {
 .dd-instant-hide {
   transition: none !important;
   animation: none !important;
+}
+
+/* 下拉项右侧的快捷键提示（如工具栏「标题」菜单的 Ctrl+1…） */
+.el-dropdown-menu__item .dd-keys {
+  margin-left: auto;
+  padding-left: 24px;
+  font-size: 12px;
+  color: var(--text-tertiary);
 }

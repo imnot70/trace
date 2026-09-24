@@ -48,8 +48,8 @@ async function handleOpenNoteFromSearch(vault: string, path: string) {
   }
 }
 
-// 侧栏不可见（手动收起或专注模式）时显示迷你导航条
-const railVisible = computed(() => app.zenMode || !app.sidebarVisible)
+// 侧栏不可见（手动收起或专注模式）时显示迷你导航条；心流模式下整体隐去（沉浸语义）
+const railVisible = computed(() => !app.flowMode && (app.zenMode || !app.sidebarVisible))
 // 侧栏实际渲染：普通模式按偏好；专注模式仅以浮层临时显示
 const sidebarShown = computed(() => (!app.zenMode && app.sidebarVisible) || app.zenSidebarOverlay)
 
@@ -63,8 +63,32 @@ function isGridOpen(section: 'recents' | 'favorites' | 'vaults'): boolean {
   return app.view.name === 'grid' && app.view.section === section
 }
 
-function onRailKeydown(e: KeyboardEvent): void {
-  if (e.key === 'Escape' && app.zenSidebarOverlay) app.closeZenSidebar()
+/**
+ * Esc 分级回退（唯一处置点），由「层次浅 → 深」依次消费：
+ * 浮层侧栏 → 悬浮预览 → 设置返回编辑（视图级）→ 退出心流模式（模式级）。
+ * 集中在一处的原因：若拆到多个 window 监听器各自判断，同一次 Esc 会因执行顺序
+ * 相互看到被对方改过的状态，导致一次按键退两级（实测：关浮层同时退了心流）。
+ * 视图级优先于模式级：心流中打开设置后按 Esc 先回编辑（仍在心流），再按才退出心流。
+ */
+function onEscape(): void {
+  // 有模态（搜索 / 命名 / 移动 / 消息框）时 Esc 归它：Element Plus 对话框内建 Esc 关闭，
+  // 此处若继续往下处理会出现「关对话框的同时把心流也退了」
+  if (hasModalOpen()) return
+  if (app.zenSidebarOverlay) {
+    app.closeZenSidebar()
+    return
+  }
+  if (app.floatingPreview) {
+    app.closeFloatingPreview()
+    return
+  }
+  if (app.view.name === 'settings') {
+    backFromSettings()
+    return
+  }
+  if (app.flowMode) {
+    app.exitFlow()
+  }
 }
 
 // ---------- 全局快捷键（速查表见 src/renderer/src/config/shortcuts.ts 与设置 → 通用） ----------
@@ -77,13 +101,12 @@ function hasModalOpen(): boolean {
   return nameDialog.visible || moveDialog.visible || !!document.querySelector('.el-message-box__wrapper, .el-overlay:not([style*="display: none"])')
 }
 
+/** Esc 捕获阶段入口：网格内的「返回上级 / 关闭网格」仍由 NoteGridView 自行处理（模式未命中时不消费） */
+function onEscapeCapture(e: KeyboardEvent): void {
+  if (e.key === 'Escape') onEscape()
+}
+
 function onGlobalKeydown(e: KeyboardEvent): void {
-  // Esc 交给各视图自行分级处理（浮层侧栏 / 网格 / 悬浮预览），此处只管浮层侧栏与设置返回
-  if (e.key === 'Escape') {
-    onRailKeydown(e)
-    if (app.view.name === 'settings') backFromSettings()
-    return
-  }
   if (hasModalOpen()) return
 
   // Alt 系：界面视图切换（与 Ctrl 系通用动作分层）
@@ -102,9 +125,15 @@ function onGlobalKeydown(e: KeyboardEvent): void {
     } else if (e.key.toLowerCase() === 'f') {
       e.preventDefault()
       app.toggleZen()
+    } else if (e.key.toLowerCase() === 'w') {
+      // 心流模式：一键进入 / 退出（沉浸创作预设）
+      e.preventDefault()
+      app.toggleFlow()
     } else if (e.key.toLowerCase() === 'b') {
       e.preventDefault()
-      app.toggleSidebar()
+      // 沉浸态（专注 / 心流）下侧栏以浮层呼出；普通态直接切换显示
+      if (app.zenMode || app.flowMode) app.toggleZenSidebar()
+      else app.toggleSidebar()
     } else if (e.key.toLowerCase() === 'v') {
       e.preventDefault()
       app.togglePreview()
@@ -112,8 +141,10 @@ function onGlobalKeydown(e: KeyboardEvent): void {
     return
   }
 
-  // Ctrl 系：应用通用动作
-  if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+  // Ctrl 系：应用通用动作。
+  // 注意：这里必须排除 Shift——Ctrl+Shift+E（跳到文件末尾，FR-2.4.19）等编辑器键位由编辑器处理，
+  // 若只按字母匹配会顺带触发本处的动作（历史缺陷：Ctrl+Shift+E 会误切编辑模式）
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
     if (e.key === ',') {
       e.preventDefault()
       // 开关语义：设置页再按一次返回（编辑笔记在握时回编辑，否则回欢迎页）
@@ -212,6 +243,9 @@ onMounted(async () => {
   await tree.refreshAll()
   void trash.load() // 侧栏回收站计数
   window.addEventListener('keydown', onGlobalKeydown)
+  // Esc 用捕获阶段：必须早于 Element Plus 对话框自身的 Esc 处理，否则等冒泡到窗口时
+  // 对话框已经关闭、「有模态则让位」的判断失效（实测：关对话框的同一次按键把心流也退了）
+  window.addEventListener('keydown', onEscapeCapture, true)
   if (tree.vaults.length > 0) {
     await Promise.all(tree.vaults.map((v) => tree.refreshGitStatus(v.name)))
   }

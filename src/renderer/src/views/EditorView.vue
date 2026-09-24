@@ -9,6 +9,8 @@ import MarkdownEditor from '../components/MarkdownEditor.vue'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
 import TipButton from '../components/TipButton.vue'
 import BacklinkPanel from '../components/BacklinkPanel.vue'
+import TablePromptHud from '../components/TablePromptHud.vue'
+import type { HeadingLevel } from '../lib/heading'
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 
 const app = useAppStore()
@@ -165,9 +167,7 @@ function onKeydown(e: KeyboardEvent): void {
     if (app.floatingPreview) app.closeFloatingPreview()
     else app.openFloatingPreview()
   }
-  if (e.key === 'Escape' && app.floatingPreview) {
-    app.closeFloatingPreview()
-  }
+  // Esc 的分级回退统一由 App.vue 的 onEscape 处置（唯一入口，避免一次按键退两级）
 }
 
 // ---------- 悬浮预览「一瞥」语义：回到写作即自动收回 ----------
@@ -211,23 +211,8 @@ watch(
   }
 )
 
-// ---------- 所见即所得 ↔ 分栏预览联动（需求 D2） ----------
-// 进入：记忆当前分栏状态并收起预览（编辑区占满）；退出：恢复进入前的分栏。
-// 预览的强制收起语义由 app store 的 setPreviewVisible 守卫兜底（Alt+V 等外部入口）
-let previewBeforeWysiwyg: boolean | null = null
-watch(
-  () => app.editorWysiwyg,
-  (on) => {
-    if (on) {
-      if (previewBeforeWysiwyg === null) previewBeforeWysiwyg = app.previewVisible
-      app.setPreviewVisible(false)
-    } else if (previewBeforeWysiwyg !== null) {
-      app.setPreviewVisible(previewBeforeWysiwyg)
-      previewBeforeWysiwyg = null
-    }
-  },
-  { immediate: true }
-)
+// 所见即所得 ↔ 分栏预览联动已移入 app store 的 setEditorWysiwyg（见该处注释）：
+// 组件级 watcher 在重挂载时会丢失「进入前分栏状态」的记忆，且与心流的进入/退出互相覆盖。
 
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
@@ -279,7 +264,34 @@ watch(
 // ---------- 专注隐藏顶栏：热区触发 + 延迟隐藏 ----------
 // 顶栏隐藏时被 overflow:hidden 裁剪，卡片 :hover 无法稳定覆盖「隐藏的顶栏 + 移动路径」，
 // 改为显式热区（卡片顶部横条）与顶栏自身的 mouseenter/mleave 控制，离开后留 300ms 缓冲
-const concealed = computed(() => app.zenMode && app.settings.zenHideTopbar)
+const concealed = computed(() => app.flowMode || (app.zenMode && app.settings.zenHideTopbar))
+
+// ---------- 心流模式：保存指示（FR-F5）----------
+// 数据源全部复用 editor store，不新增状态机：
+// 有未保存变更 → 微弱可见；保存中 → 脉冲；保存成功 → 一次闪烁；失败 / 外部冲突 → 红色常亮
+type SaveDotState = '' | 'dirty' | 'saving' | 'saved' | 'error'
+const justSaved = ref(false)
+let justSavedTimer: ReturnType<typeof setTimeout> | null = null
+watch(
+  () => editor.lastSavedAt,
+  (v, prev) => {
+    if (!v || v === prev) return
+    justSaved.value = true
+    if (justSavedTimer) clearTimeout(justSavedTimer)
+    justSavedTimer = setTimeout(() => (justSaved.value = false), 700)
+  }
+)
+onBeforeUnmount(() => {
+  if (justSavedTimer) clearTimeout(justSavedTimer)
+})
+
+const saveDotState = computed<SaveDotState>(() => {
+  if (editor.externalChanged || editor.saveFailed) return 'error'
+  if (editor.saving) return 'saving'
+  if (justSaved.value) return 'saved'
+  if (editor.dirty) return 'dirty'
+  return ''
+})
 const topbarPeek = ref(false)
 let topbarHideTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -318,9 +330,10 @@ onBeforeUnmount(() => {
   <div
     ref="editorCardRef"
     class="editor-card"
-    :class="{ 'zen-concealed': concealed, peeking: topbarPeek }"
+    :class="{ 'zen-concealed': concealed, peeking: topbarPeek, 'flow-mode': app.flowMode }"
     :style="{
-      flexBasis: app.previewVisible ? (app.zenMode ? '50%' : `${splitPercent}%`) : '100%'
+      flexBasis: app.previewVisible ? (app.zenMode ? '50%' : `${splitPercent}%`) : '100%',
+      '--flow-measure': `${app.flowMeasure}em`
     }"
   >
     <!-- 专注隐藏顶栏时的悬停热区：卡片顶部横条，进入即唤出头部 -->
@@ -403,6 +416,18 @@ onBeforeUnmount(() => {
           <el-icon><MagicStick /></el-icon>
         </button>
       </el-tooltip>
+      <el-tooltip
+        :content="app.flowMode ? '退出心流模式 (Alt+W)' : '心流模式：沉浸创作 (Alt+W)'"
+        placement="bottom"
+      >
+        <button
+          class="tool-btn"
+          :class="{ 'flow-on': app.flowMode }"
+          @click="app.toggleFlow(); editorRef?.focus()"
+        >
+          <el-icon><Coffee /></el-icon>
+        </button>
+      </el-tooltip>
       <el-tooltip :content="app.zenMode ? '退出专注模式' : '专注模式（隐藏侧栏与预览）'" placement="bottom">
         <button class="tool-btn" :class="{ 'zen-on': app.zenMode }" @click="app.toggleZen(); editorRef?.focus()">
           <el-icon><FullScreen /></el-icon>
@@ -425,12 +450,21 @@ onBeforeUnmount(() => {
       <TipButton tip="斜体 (Ctrl+I)" @click="toolbarInsert('*', '*', '斜体文字')"><i>I</i></TipButton>
       <TipButton tip="删除线 (Ctrl+Shift+X)" @click="toolbarInsert('~~', '~~', '删除线')"><s>S</s></TipButton>
       <span style="width: 8px"></span>
-      <TipButton tip="一级标题" @click="toolbarInsert('# ', '', '标题')">
-        H1
-      </TipButton>
-      <TipButton tip="二级标题" @click="toolbarInsert('## ', '', '标题')">
-        H2
-      </TipButton>
+      <!-- 标题层级：一级 ~ 六级 + 清除（触发器不用 el-tooltip 包裹，原生 title） -->
+      <el-dropdown trigger="click" popper-class="dd-instant-hide" @command="(lv: HeadingLevel) => editorRef?.setHeading(lv)">
+        <button class="tool-btn" type="button" title="标题层级 (Ctrl+1~6，Ctrl+0 清除)">H</button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item :command="1">一级标题<span class="dd-keys">Ctrl+1</span></el-dropdown-item>
+            <el-dropdown-item :command="2">二级标题<span class="dd-keys">Ctrl+2</span></el-dropdown-item>
+            <el-dropdown-item :command="3">三级标题<span class="dd-keys">Ctrl+3</span></el-dropdown-item>
+            <el-dropdown-item :command="4">四级标题<span class="dd-keys">Ctrl+4</span></el-dropdown-item>
+            <el-dropdown-item :command="5">五级标题<span class="dd-keys">Ctrl+5</span></el-dropdown-item>
+            <el-dropdown-item :command="6">六级标题<span class="dd-keys">Ctrl+6</span></el-dropdown-item>
+            <el-dropdown-item :command="0" divided>清除标题<span class="dd-keys">Ctrl+0</span></el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
       <TipButton tip="引用" @click="toolbarInsert('> ', '', '引用内容')">❝</TipButton>
       <span style="width: 8px"></span>
       <TipButton tip="行内代码" @click="toolbarInsert('`', '`', 'code')">
@@ -441,6 +475,9 @@ onBeforeUnmount(() => {
       </TipButton>
       <TipButton tip="链接" @click="toolbarInsert('[', '](https://)', '链接文字')">
         <el-icon><Link /></el-icon>
+      </TipButton>
+      <TipButton tip="表格 (Ctrl+T)" @click="editorRef?.beginTablePrompt()">
+        <el-icon><Grid /></el-icon>
       </TipButton>
       <TipButton tip="行内公式" @click="toolbarInsert('$', '$')">
         ∑
@@ -466,6 +503,12 @@ onBeforeUnmount(() => {
       </el-button>
     </div>
 
+    <!-- 心流模式：极微弱的保存指示（不占布局、不打断输入） -->
+    <div v-if="app.flowMode" class="flow-save-dot" :class="saveDotState" title="" />
+
+    <!-- 表格尺寸输入浮层（FR-2.4.20）：跟随光标，实时回显将插入的行列数 -->
+    <TablePromptHud />
+
     <!-- 编辑器主体（填满卡片剩余空间）；点回编辑区 = 一瞥结束 -->
     <div ref="editorWrapRef" class="editor-cm" @mousedown="onEditorBodyMousedown">
       <MarkdownEditor
@@ -473,6 +516,13 @@ onBeforeUnmount(() => {
         ref="editorRef"
         :model-value="editor.content"
         :font-size="app.settings.editorFontSize"
+        :typewriter-mode="app.effectiveTypewriterMode"
+        :return-sound="{
+          enabled: app.flowMode && app.settings.flowSoundEnabled,
+          volume: app.settings.flowSoundVolume,
+          variant: app.settings.flowSoundVariant,
+          skipRepeat: app.settings.flowSoundSkipRepeat
+        }"
         :vault="editor.current.vault"
         :note-path="editor.current.path"
         :wysiwyg="app.editorWysiwyg"
