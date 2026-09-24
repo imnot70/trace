@@ -1,6 +1,6 @@
 # 表格插入增强（尺寸输入 + 表内跳转）需求
 
-> 创建：2026-09-24 ｜ 状态：**已实施（待发版）**——实施记录与实测矩阵见 [table-insert-enhance_design.md](table-insert-enhance_design.md) 第 7 节
+> 创建：2026-09-24 ｜ 状态：**已实施（已随 v0.8.0 发布）**——实施记录与实测矩阵见 [table-insert-enhance_design.md](table-insert-enhance_design.md) 第 7 节
 > 关联：FR-2.4.16（表格插入）—— 本次新增 FR-2.4.20 / FR-2.4.21，并**修订 FR-2.4.16 的交互**
 > 本文档记录需求结论（做什么、为什么）；技术方案见 [table-insert-enhance_design.md](table-insert-enhance_design.md)。
 

@@ -291,8 +291,8 @@ Trace（中文名「笔迹」）是一款**本地优先**的轻量级 Markdown �
 
 ### 三期（2026-09-23 立项）
 
-- **心流模式**（FR-2.4.14 打字机 / FR-2.9.8 沉浸预设 / FR-2.9.9 回车音效）：P1–P3 全部实施，**待发版**；需求与设计见 [2026-09-23_flow-mode/](2026-09-23_flow-mode/flow-mode.md)，待打磨项见 [index.md](index.md) 第二节。
-- **同期（2026-09-24）另完成**：所见即所得渲染修正（FR-2.4.13，见 [2026-09-24_live-preview-render-fix/](2026-09-24_live-preview-render-fix/live-preview-render-fix.md)）、编辑器工具（FR-2.4.15 标题快捷键 / FR-2.4.16 表格插入 / FR-2.4.17 折叠按钮，见 [2026-09-24_editor-tools/](2026-09-24_editor-tools/editor-tools.md)）、编辑位置与文首 / 文尾跳转（FR-2.4.18 / FR-2.4.19，见 [2026-09-24_edit-position/](2026-09-24_edit-position/edit-position.md)）、表格插入增强（FR-2.4.20 尺寸提示 / FR-2.4.21 表内 Tab，见 [2026-09-24_table-insert-enhance/](2026-09-24_table-insert-enhance/table-insert-enhance.md)）。
+- **心流模式**（FR-2.4.14 打字机 / FR-2.9.8 沉浸预设 / FR-2.9.9 回车音效）：P1–P3 全部实施，**已随 v0.8.0 发布**；需求与设计见 [2026-09-23_flow-mode/](2026-09-23_flow-mode/flow-mode.md)，待打磨项见 [index.md](index.md) 第二节。
+- **同期（2026-09-24）另完成（已随 v0.8.0 发布）**：所见即所得渲染修正（FR-2.4.13，见 [2026-09-24_live-preview-render-fix/](2026-09-24_live-preview-render-fix/live-preview-render-fix.md)）、编辑器工具（FR-2.4.15 标题快捷键 / FR-2.4.16 表格插入 / FR-2.4.17 折叠按钮，见 [2026-09-24_editor-tools/](2026-09-24_editor-tools/editor-tools.md)）、编辑位置与文首 / 文尾跳转（FR-2.4.18 / FR-2.4.19，见 [2026-09-24_edit-position/](2026-09-24_edit-position/edit-position.md)）、表格插入增强（FR-2.4.20 尺寸提示 / FR-2.4.21 表内 Tab，见 [2026-09-24_table-insert-enhance/](2026-09-24_table-insert-enhance/table-insert-enhance.md)）。
 - 非目标（留待 P4 评估）：环境音、写作统计 HUD、光标视觉动效。
 
 ## 8. 版本历史

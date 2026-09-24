@@ -1,6 +1,6 @@
 # 心流模式（Flow Mode）需求
 
-> 创建：2026-09-23 ｜ 状态：**已实施（P1–P3 全部交付，待发版）**——实施记录见 [flow-mode_design.md](flow-mode_design.md) 第 10 节；待打磨项见 [../index.md](../index.md) 第二节
+> 创建：2026-09-23 ｜ 状态：**已实施（P1–P3 全部交付，已随 v0.8.0 发布）**——实施记录见 [flow-mode_design.md](flow-mode_design.md) 第 10 节；待打磨项见 [../index.md](../index.md) 第二节
 > 关联：FR-2.4.13（所见即所得）、FR-2.4.14（打字机模式）、FR-2.9.5（专注模式）、FR-2.9.6（悬浮预览）、FR-2.9.8（心流模式）、FR-2.9.9（回车音效）
 > 本文档记录需求结论（做什么、为什么）；技术方案见 [flow-mode_design.md](flow-mode_design.md)。
 

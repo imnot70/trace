@@ -1,6 +1,6 @@
 # 所见即所得渲染修正（Live Preview Render Fix）需求
 
-> 创建：2026-09-24 ｜ 状态：**已实施（待发版）**——实施记录与实测数据见 [live-preview-render-fix_design.md](live-preview-render-fix_design.md) 第 8 节
+> 创建：2026-09-24 ｜ 状态：**已实施（已随 v0.8.0 发布）**——实施记录与实测数据见 [live-preview-render-fix_design.md](live-preview-render-fix_design.md) 第 8 节
 > 关联：FR-2.4.13（所见即所得编辑模式）——本次为其**实现缺陷修复**，不新增 FR 编号
 > 本文档记录缺陷现象与验收标准；根因、方案与技术细节见 [live-preview-render-fix_design.md](live-preview-render-fix_design.md)。
 

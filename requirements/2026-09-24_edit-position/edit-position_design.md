@@ -1,6 +1,6 @@
 # 编辑位置与文首 / 文尾跳转技术设计
 
-> 创建：2026-09-24 ｜ 状态：**已实施（待发版）** ｜ 需求见 [edit-position.md](edit-position.md) ｜ 实施记录见第 7 节
+> 创建：2026-09-24 ｜ 状态：**已实施（已随 v0.8.0 发布）** ｜ 需求见 [edit-position.md](edit-position.md) ｜ 实施记录见第 7 节
 > 分支：`feature/flow-mode`
 
 ## 1. 总体方案

@@ -1,6 +1,6 @@
 # 表格插入增强（尺寸输入 + 表内跳转）技术设计
 
-> 创建：2026-09-24 ｜ 状态：**已实施（待发版）** ｜ 需求见 [table-insert-enhance.md](table-insert-enhance.md) ｜ 实施记录见第 7 节
+> 创建：2026-09-24 ｜ 状态：**已实施（已随 v0.8.0 发布）** ｜ 需求见 [table-insert-enhance.md](table-insert-enhance.md) ｜ 实施记录见第 7 节
 > 分支：`feature/flow-mode`
 
 ## 1. 总体方案

@@ -1,6 +1,6 @@
 # 编辑位置与文首 / 文尾跳转需求
 
-> 创建：2026-09-24 ｜ 状态：**已实施（待发版）**——实施记录与实测矩阵见 [edit-position_design.md](edit-position_design.md) 第 7 节
+> 创建：2026-09-24 ｜ 状态：**已实施（已随 v0.8.0 发布）**——实施记录与实测矩阵见 [edit-position_design.md](edit-position_design.md) 第 7 节
 > 关联：FR-2.4.4（保存）、FR-2.4.14（打字机）、FR-2.9.8（心流模式）—— 本次新增 FR-2.4.18 / FR-2.4.19
 > 本文档记录需求结论（做什么、为什么）；技术方案见 [edit-position_design.md](edit-position_design.md)。
 

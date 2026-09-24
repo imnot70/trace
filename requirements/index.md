@@ -1,13 +1,13 @@
 # Trace 需求与实施状态索引
 
-> 更新：2026-09-24 ｜ 发布基线：**v0.7.0**；工作区干净（**待发版**：心流模式 P1–P3 + 所见即所得渲染修正 + 编辑器工具 + 编辑位置与文首/文尾跳转 + 表格插入增强，见第四节）
+> 更新：2026-09-24 ｜ 发布基线：**v0.8.0**；工作区干净（本批五项改动已随 v0.8.0 发布，见第四节）
 > 本文件是 `requirements/` 目录的导览与实施状态总览。各项明细以对应文档与 [CHANGELOG.md](../CHANGELOG.md) 为准。
 
 ## 文档导读
 
 | 文件 | 内容 | 状态 |
 | --- | --- | --- |
-| [requirements.md](requirements.md) | 产品需求文档（PRD），当前形态的权威描述；随版本同步更新（覆盖至 v0.7.0 + 待发版的心流模式，含 FR-2.4.13 所见即所得 / FR-2.4.14 打字机 / FR-2.9.8 心流模式 / FR-2.9.9 回车音效 / FR-2.11.14 插件市场 等） | ✅ 基线文档，所载需求均已实现（心流模式待发版） |
+| [requirements.md](requirements.md) | 产品需求文档（PRD），当前形态的权威描述；随版本同步更新（覆盖至 v0.7.0 + 待发版的心流模式，含 FR-2.4.13 所见即所得 / FR-2.4.14 打字机 / FR-2.9.8 心流模式 / FR-2.9.9 回车音效 / FR-2.11.14 插件市场 等） | ✅ 基线文档，所载需求均已实现（含 v0.8.0 的心流模式与编辑器改动） |
 | [development-plan.md](development-plan.md) | 初版开发计划：技术选型、架构、里程碑 M0–M6、风险对策 | ✅ M0–M6 已全部完成（v1/v0.2.0 交付）；二期 Backlog 部分被后续设计文档细化 |
 | [plugin-design.md](2026-09-08_plugin-system/plugin-design.md) | 插件系统 v2 设计：独立插件进程 + 能力网关 + require 白名单 + 市场分发 | ✅ **M1–M4 全部实施**（进程隔离 + Tier 1 API + 权限确认 + 崩溃守护 + .trace-plugin 导入导出 + 私有存储 + 声明式工具栏/状态区 + 类型包 + 市场，实施记录见第 10–13 节；开发指引见 [guides/plugin-development.md](../../guides/plugin-development.md)、发布指引见 [guides/plugin-release.md](../../guides/plugin-release.md)） |
 | [vault-grid-navigation-design.md](2026-09-08_vault-grid-navigation/vault-grid-navigation-design.md) | 笔记库网格导航设计：双击钻入库内容 + 面包屑 + 三卡片区分 | ✅ **P1 + P2 全部实施**（P1 已发布 v0.3.5，P2 已随 v0.3.6 发布） |
@@ -28,10 +28,10 @@
 | [note-export-html_design.md](2026-09-15_note-export-html/note-export-html_design.md) | 笔记导出 HTML：自包含单文件，深浅色自适应阅读排版 | ✅ **已实施**（已随 v0.4.3 发布） |
 | [custom-titlebar.md](2026-09-22_custom-titlebar/custom-titlebar.md) + [custom-titlebar_design.md](2026-09-22_custom-titlebar/custom-titlebar_design.md) | Windows 自定义标题栏（WCO）+ 毛玻璃恢复：路线拍板 / 布局形态 / 降级矩阵 / 回归清单 | ✅ **已实施**（已随 v0.7.0 发布） |
 | [wysiwyg.md](2026-09-21_wysiwyg/wysiwyg.md) + [wysiwyg_design.md](2026-09-21_wysiwyg/wysiwyg_design.md) | 所见即所得编辑模式（Live Preview，Obsidian 式）：需求（D1–D4）与技术设计（D1–D6，CM6 StateField+ViewPlugin 双层装饰）、节点映射表、IME 冻结 | ✅ **已实施**（已随 v0.6.0 发布，实施记录见设计文档第 10 节） |
-| [flow-mode.md](2026-09-23_flow-mode/flow-mode.md) + [flow-mode_design.md](2026-09-23_flow-mode/flow-mode_design.md) | 心流模式（打字机高/低位 + 一键沉浸预设 + 写作栏宽 + 回车音效 + 保存指示）：需求（D1–D11，三轴 + 预设模型）与技术设计（D1–D10，CM6 锚点滚动 / Web Audio 合成） | ✅ **P1–P3 全部实施**（FR-2.4.14 打字机 / FR-2.9.8 心流模式 / FR-2.9.9 回车音效，待发版；实施与验收记录见设计文档第 10 节，遗留事项见 10.4、第二节待打磨项） |
-| [live-preview-render-fix.md](2026-09-24_live-preview-render-fix/live-preview-render-fix.md) + [live-preview-render-fix_design.md](2026-09-24_live-preview-render-fix/live-preview-render-fix_design.md) | 所见即所得渲染修正（FR-2.4.13 缺陷修复）：块级 widget 外边距导致的**行号 / 高亮几何漂移**（实测 15–27px）、列表 `-` / 引用 `>` 未隐藏、任务复选框被样式作用域挡住不可见、**带 frontmatter 的笔记装饰全失效**（剪枝在根节点剪掉整棵树） | ✅ **已实施**（待发版；根因与实测数据见设计文档第 2 / 7 / 8 节） |
-| [editor-tools.md](2026-09-24_editor-tools/editor-tools.md) + [editor-tools_design.md](2026-09-24_editor-tools/editor-tools_design.md) | 编辑器工具：折叠按钮（层级 / 块内容）样式与热区优化（FR-2.4.17）、标题层级快捷键 `Ctrl+1`–`Ctrl+6` / `Ctrl+0`（FR-2.4.15）、表格插入（工具栏 + `Ctrl+T`，FR-2.4.16） | ✅ **已实施**（待发版；实施与验收记录见设计文档第 7 节） |
-| [edit-position.md](2026-09-24_edit-position/edit-position.md) + [edit-position_design.md](2026-09-24_edit-position/edit-position_design.md) | 编辑位置与文首 / 文尾跳转：打开笔记后光标落位设置（FR-2.4.18）、主键盘区文首 / 文尾快捷键（FR-2.4.19） | ✅ **已实施**（待发版；实施与实测矩阵见设计文档第 7 节） |
+| [flow-mode.md](2026-09-23_flow-mode/flow-mode.md) + [flow-mode_design.md](2026-09-23_flow-mode/flow-mode_design.md) | 心流模式（打字机高/低位 + 一键沉浸预设 + 写作栏宽 + 回车音效 + 保存指示）：需求（D1–D11，三轴 + 预设模型）与技术设计（D1–D10，CM6 锚点滚动 / Web Audio 合成） | ✅ **P1–P3 全部实施**（FR-2.4.14 打字机 / FR-2.9.8 心流模式 / FR-2.9.9 回车音效，已随 v0.8.0 发布；实施与验收记录见设计文档第 10 节，遗留事项见 10.4、第二节待打磨项） |
+| [live-preview-render-fix.md](2026-09-24_live-preview-render-fix/live-preview-render-fix.md) + [live-preview-render-fix_design.md](2026-09-24_live-preview-render-fix/live-preview-render-fix_design.md) | 所见即所得渲染修正（FR-2.4.13 缺陷修复）：块级 widget 外边距导致的**行号 / 高亮几何漂移**（实测 15–27px）、列表 `-` / 引用 `>` 未隐藏、任务复选框被样式作用域挡住不可见、**带 frontmatter 的笔记装饰全失效**（剪枝在根节点剪掉整棵树） | ✅ **已实施**（已随 v0.8.0 发布；根因与实测数据见设计文档第 2 / 7 / 8 节） |
+| [editor-tools.md](2026-09-24_editor-tools/editor-tools.md) + [editor-tools_design.md](2026-09-24_editor-tools/editor-tools_design.md) | 编辑器工具：折叠按钮（层级 / 块内容）样式与热区优化（FR-2.4.17）、标题层级快捷键 `Ctrl+1`–`Ctrl+6` / `Ctrl+0`（FR-2.4.15）、表格插入（工具栏 + `Ctrl+T`，FR-2.4.16） | ✅ **已实施**（已随 v0.8.0 发布；实施与验收记录见设计文档第 7 节） |
+| [edit-position.md](2026-09-24_edit-position/edit-position.md) + [edit-position_design.md](2026-09-24_edit-position/edit-position_design.md) | 编辑位置与文首 / 文尾跳转：打开笔记后光标落位设置（FR-2.4.18）、主键盘区文首 / 文尾快捷键（FR-2.4.19） | ✅ **已实施**（已随 v0.8.0 发布；实施与实测矩阵见设计文档第 7 节） |
 | [table-insert-enhance.md](2026-09-24_table-insert-enhance/table-insert-enhance.md) + [table-insert-enhance_design.md](2026-09-24_table-insert-enhance/table-insert-enhance_design.md) | 表格插入增强：尺寸输入提示浮层（FR-2.4.20，实时回显行列数 / 逐状态脚注 / 超限提示，无倒计时）、表格内 `Tab` / `Shift+Tab` 跳转（FR-2.4.21，末格追加行） | ✅ **已实施**（待发版；实施与实测矩阵见设计文档第 7 / 8 节） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
@@ -220,13 +220,13 @@
 
 > 二期 Backlog 已全部完成或作废（PRD 第 7 节所列项目均已落地）；三期唯一的规划项「心流模式」也已完成实施，**当前无规划中的新功能**（2026-09-24 时点）。其余条目为历史归档。
 
-### 已完成（待发版，2026-09-23 / 09-24）
+### 已完成（v0.8.0 已发布，2026-09-23 / 09-24）
 
 **① 心流模式** — [flow-mode.md](2026-09-23_flow-mode/flow-mode.md)
 
 - **定位**：沉浸创作形态，确立「三条正交轴（编辑形态 / 环境强度 / 光标锚定）+ 一个一键预设」模型，不新增互斥模式枚举；
 - **范围**：打字机模式（高位居中 / 低位偏下，含滚动规则表）、心流预设（Alt+W 一键进入、Esc 退出、状态快照还原）、写作栏宽、回车音效（Web Audio 合成）、极微弱保存指示；
-- **节奏**：**P1–P3 全部实施**（2026-09-23/24，FR-2.4.14 / FR-2.9.8 / FR-2.9.9，见设计文档第 10 节实施记录）；遗留事项见第二节（回车音色参数迭代、行尾连续字母的折行观感、打字机 + 中文输入法组词的实机验证）与设计文档 10.4。
+- **节奏**：**P1–P3 全部实施**（2026-09-23/24，FR-2.4.14 / FR-2.9.8 / FR-2.9.9，已随 v0.8.0 发布，见设计文档第 10 节实施记录）；遗留事项见第二节（回车音色参数迭代、行尾连续字母的折行观感、打字机 + 中文输入法组词的实机验证）与设计文档 10.4。
 
 **② 所见即所得渲染修正**（用户实测反馈）— [live-preview-render-fix.md](2026-09-24_live-preview-render-fix/live-preview-render-fix.md)
 
