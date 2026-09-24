@@ -461,14 +461,18 @@ function createView(initialDoc: string): EditorView {
       typewriterCompartment.of(typewriter(props.typewriterMode ?? 'off')),
       // 表格尺寸提示态（FR-2.4.20）：最高优先级拦截数字 / 空格 / 回车 / Esc；未激活时一律放行。
       // 「其它按键即取消」用 keymap 的 any 处理器（仅在无具体绑定命中时执行）实现
+      // ⚠️ 这些绑定同样不能带 preventDefault。CM 的语义是「标志只在命令未处理时生效」：
+      //   · 未激活 → 命令返回 false → 标志生效，按键被 CM 标记为已处理并 preventDefault
+      //     （空格与数字 0-9 因此再也打不进编辑器，v0.8.0 的实测缺陷）；
+      //   · 激活 → 命令返回 true → CM 在事件分发里自会 preventDefault，尺寸输入不会漏进正文。
+      // 即「返回 false 时也要 preventDefault」这件事只应交给绑定自己按状态决定，见下方 any 处理器
       Prec.highest(
         keymap.of([
-          { key: 'Escape', preventDefault: true, run: () => promptKey('escape') },
-          { key: 'Enter', preventDefault: true, run: () => promptKey('enter') },
-          { key: 'Space', preventDefault: true, run: () => promptKey('space') },
+          { key: 'Escape', run: () => promptKey('escape') },
+          { key: 'Enter', run: () => promptKey('enter') },
+          { key: 'Space', run: () => promptKey('space') },
           ...'0123456789'.split('').map((d) => ({
             key: d,
-            preventDefault: true,
             run: () => promptKey('digit', d)
           })),
           {

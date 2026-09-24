@@ -359,23 +359,6 @@ body {
   text-align: center;
 }
 
-.side-section-add {
-  margin-left: 4px;
-  background: none;
-  border: none;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  padding: 2px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-}
-
-.side-section-add:hover {
-  color: var(--accent);
-  background: var(--bg-hover);
-}
-
 /* 标签列表 */
 .tag-list {
   padding: 0 0 4px 0;

@@ -130,6 +130,8 @@ async function createTag(): Promise<void> {
   const color = TAG_COLORS[tree.tags.length % TAG_COLORS.length]
   const result = await window.trace.createTag(value.trim(), color)
   if (result.ok) {
+    // 收起状态下区块标题的 + 按钮仍可点：新建后展开，否则新标签建完就「不见了」
+    app.setTagSectionOpen(true)
     await tree.loadTags()
     ElMessage.success('标签已创建')
   } else {
@@ -248,20 +250,24 @@ defineProps<{ vaults?: VaultInfo[] }>()
         </div>
       </div>
 
-      <!-- 标签：点击标签筛选笔记（区块标题不随选中标签高亮，如同选中笔记不点亮其父文件夹） -->
+      <!-- 标签：点击标签筛选笔记（区块标题不随选中标签高亮，如同选中笔记不点亮其父文件夹）；
+           箭头展开 / 收起列表——标签多时收起，避免把下方区块挤出可视区 -->
       <div class="side-section" v-if="app.settings.sidebarMenus.tags">
         <div
           class="side-section-header"
+          :class="{ collapsed: !app.tagSectionOpen }"
           @click="tree.tags.length ? toggleGrid('tags', tree.tags[0].id) : createTag()"
         >
-          <el-icon><PriceTag /></el-icon>
+          <span class="chevron-hit" title="展开 / 收起" @click.stop="app.toggleTagSection()">
+            <el-icon class="chevron"><ArrowDown /></el-icon>
+          </span>
           <span>标签</span>
           <span v-if="tree.tags.length" class="side-section-count">{{ tree.tags.length }}</span>
-          <button class="side-section-add" title="新建标签" @click.stop="createTag()">
+          <button class="row-btn" title="新建标签" @click.stop="createTag()">
             <el-icon><Plus /></el-icon>
           </button>
         </div>
-        <div v-if="tree.tags.length" class="tag-list">
+        <div v-if="tree.tags.length && app.tagSectionOpen" class="tag-list">
           <div
             v-for="tag in tree.tags"
             :key="tag.id"
@@ -501,8 +507,9 @@ defineProps<{ vaults?: VaultInfo[] }>()
   color: var(--text-secondary);
 }
 
-/* 侧栏搜索按钮 */
+/* 侧栏搜索按钮（置于标题行右端：margin-left: auto 吸收标题与按钮之间的空余） */
 .sidebar-search-btn {
+  margin-left: auto;
   background: none;
   border: none;
   cursor: pointer;

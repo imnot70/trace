@@ -1,13 +1,13 @@
 # Trace 需求与实施状态索引
 
-> 更新：2026-09-24 ｜ 发布基线：**v0.8.0**；工作区干净（本批五项改动已随 v0.8.0 发布，见第四节）
+> 更新：2026-09-24 ｜ 发布基线：**v0.8.0**；工作区在 `feature/tag-improvements` 分支，有一批未发布改动（标签区折叠 FR-2.6.11 + 侧栏区块「+」按钮对齐 + 搜索按钮移至标题行右端 + **v0.8.0 编辑器无法输入空格/数字的严重回归修复**，见第四节「待发版」）。⚠️ **v0.8.0 存在 P0 缺陷**（编辑器打不出空格与数字 0-9），修复已在分支上完成并实测，应尽快发 v0.8.1 补丁版。另有一条用户提出的待办（搜索支持标签维度，见第四节「待增补」）
 > 本文件是 `requirements/` 目录的导览与实施状态总览。各项明细以对应文档与 [CHANGELOG.md](../CHANGELOG.md) 为准。
 
 ## 文档导读
 
 | 文件 | 内容 | 状态 |
 | --- | --- | --- |
-| [requirements.md](requirements.md) | 产品需求文档（PRD），当前形态的权威描述；随版本同步更新（覆盖至 v0.7.0 + 待发版的心流模式，含 FR-2.4.13 所见即所得 / FR-2.4.14 打字机 / FR-2.9.8 心流模式 / FR-2.9.9 回车音效 / FR-2.11.14 插件市场 等） | ✅ 基线文档，所载需求均已实现（含 v0.8.0 的心流模式与编辑器改动） |
+| [requirements.md](requirements.md) | 产品需求文档（PRD），当前形态的权威描述；随版本同步更新（覆盖至 v0.8.0，含 FR-2.4.13 所见即所得 / FR-2.4.14 打字机 / FR-2.9.8 心流模式 / FR-2.9.9 回车音效 / FR-2.11.14 插件市场 / FR-2.6.11 标签区折叠 等） | ✅ 基线文档，所载需求均已实现（含 v0.8.0 的心流模式与编辑器改动；FR-2.6.11 待发版） |
 | [development-plan.md](development-plan.md) | 初版开发计划：技术选型、架构、里程碑 M0–M6、风险对策 | ✅ M0–M6 已全部完成（v1/v0.2.0 交付）；二期 Backlog 部分被后续设计文档细化 |
 | [plugin-design.md](2026-09-08_plugin-system/plugin-design.md) | 插件系统 v2 设计：独立插件进程 + 能力网关 + require 白名单 + 市场分发 | ✅ **M1–M4 全部实施**（进程隔离 + Tier 1 API + 权限确认 + 崩溃守护 + .trace-plugin 导入导出 + 私有存储 + 声明式工具栏/状态区 + 类型包 + 市场，实施记录见第 10–13 节；开发指引见 [guides/plugin-development.md](../../guides/plugin-development.md)、发布指引见 [guides/plugin-release.md](../../guides/plugin-release.md)） |
 | [vault-grid-navigation-design.md](2026-09-08_vault-grid-navigation/vault-grid-navigation-design.md) | 笔记库网格导航设计：双击钻入库内容 + 面包屑 + 三卡片区分 | ✅ **P1 + P2 全部实施**（P1 已发布 v0.3.5，P2 已随 v0.3.6 发布） |
@@ -22,7 +22,7 @@
 | [auto-close-tags_design.md](2026-09-13_auto-close-tags/auto-close-tags_design.md) | 编辑器 HTML 标签自动闭合 | ✅ **已实施**（v0.4.1 发布） |
 | [theme-presets_design.md](2026-09-13_theme-presets/theme-presets_design.md) | 预设主题包：暖色/冷色/高对比度 | ✅ **已实施**（v0.4.1 发布） |
 | [theme-import_design.md](2026-09-14_theme-import/theme-import_design.md) | 主题包导入：JSON 变量覆盖 + 白名单校验 + 应用数据目录存储 | ✅ **已实施**（已随 v0.4.3 发布） |
-| [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md) | 标签系统：打标签 / 筛选 / 管理（frontmatter 存储，方案 A） | ✅ **已实施**（v0.4.1 发布） |
+| [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md) | 标签系统：打标签 / 筛选 / 管理（frontmatter 存储，方案 A）+ 标签区折叠 | ✅ **已实施**（v0.4.1 发布；2026-09-24 追加 FR-2.6.11 标签区折叠，待发版） |
 | [note-export_design.md](note-export/note-export_design.md) | 笔记导出 PDF：单篇 / 文件夹 / 整库递归（可跨库），图片内联自包含；支持合并为单个 PDF | ✅ **已实施**（已随 v0.4.3 发布；合并为单个 PDF 已随 v0.4.4 发布） |
 | [pdf-merge_design.md](pdf-merge/pdf-merge_design.md) | PDF 合并导出设计：多篇 → 单个 PDF，pdf-lib 拼接管线 | ✅ **已实施**（已随 v0.4.4 发布） |
 | [note-export-html_design.md](2026-09-15_note-export-html/note-export-html_design.md) | 笔记导出 HTML：自包含单文件，深浅色自适应阅读排版 | ✅ **已实施**（已随 v0.4.3 发布） |
@@ -32,7 +32,7 @@
 | [live-preview-render-fix.md](2026-09-24_live-preview-render-fix/live-preview-render-fix.md) + [live-preview-render-fix_design.md](2026-09-24_live-preview-render-fix/live-preview-render-fix_design.md) | 所见即所得渲染修正（FR-2.4.13 缺陷修复）：块级 widget 外边距导致的**行号 / 高亮几何漂移**（实测 15–27px）、列表 `-` / 引用 `>` 未隐藏、任务复选框被样式作用域挡住不可见、**带 frontmatter 的笔记装饰全失效**（剪枝在根节点剪掉整棵树） | ✅ **已实施**（已随 v0.8.0 发布；根因与实测数据见设计文档第 2 / 7 / 8 节） |
 | [editor-tools.md](2026-09-24_editor-tools/editor-tools.md) + [editor-tools_design.md](2026-09-24_editor-tools/editor-tools_design.md) | 编辑器工具：折叠按钮（层级 / 块内容）样式与热区优化（FR-2.4.17）、标题层级快捷键 `Ctrl+1`–`Ctrl+6` / `Ctrl+0`（FR-2.4.15）、表格插入（工具栏 + `Ctrl+T`，FR-2.4.16） | ✅ **已实施**（已随 v0.8.0 发布；实施与验收记录见设计文档第 7 节） |
 | [edit-position.md](2026-09-24_edit-position/edit-position.md) + [edit-position_design.md](2026-09-24_edit-position/edit-position_design.md) | 编辑位置与文首 / 文尾跳转：打开笔记后光标落位设置（FR-2.4.18）、主键盘区文首 / 文尾快捷键（FR-2.4.19） | ✅ **已实施**（已随 v0.8.0 发布；实施与实测矩阵见设计文档第 7 节） |
-| [table-insert-enhance.md](2026-09-24_table-insert-enhance/table-insert-enhance.md) + [table-insert-enhance_design.md](2026-09-24_table-insert-enhance/table-insert-enhance_design.md) | 表格插入增强：尺寸输入提示浮层（FR-2.4.20，实时回显行列数 / 逐状态脚注 / 超限提示，无倒计时）、表格内 `Tab` / `Shift+Tab` 跳转（FR-2.4.21，末格追加行） | ✅ **已实施**（待发版；实施与实测矩阵见设计文档第 7 / 8 节） |
+| [table-insert-enhance.md](2026-09-24_table-insert-enhance/table-insert-enhance.md) + [table-insert-enhance_design.md](2026-09-24_table-insert-enhance/table-insert-enhance_design.md) | 表格插入增强：尺寸输入提示浮层（FR-2.4.20，实时回显行列数 / 逐状态脚注 / 超限提示，无倒计时）、表格内 `Tab` / `Shift+Tab` 跳转（FR-2.4.21，末格追加行） | ✅ **已实施**（已随 v0.8.0 发布；实施与实测矩阵见设计文档第 7 / 8 节） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
@@ -191,6 +191,8 @@
 
 **待打磨 / 待验证**（2026-09-24 记录）：
 
+- **侧栏区块标题「+」在无计数角标时会贴在标题文字后面**（2026-09-24 发现）：区块标题把尾部 `+` 推到右端靠的是**计数角标的 `margin-left: auto`**，所以该区块计数为 0（角标 `v-if` 不渲染）时，`+` 会紧跟标题文字浮在左侧——同一区块在「0 条」与「≥1 条」两态下 `+` 会横向跳位（实测标签区 0 标签时 `+` 在 x 82–104，「标签 / 笔记库」有角标时在 x 244–266）。修法：把 `margin-left: auto` 挪到标题的尾部按钮自身，不再依赖角标。**未修**（2026-09-24 用户要求本轮只做搜索按钮位移并登记待办）。
+
 - **心流模式回车音效的音色打磨**（2026-09-24）：① 用户提供的实录音效已离线分析并复刻成音色组——**复古打字机**（三段：按键咔 + 推回车棘轮 + 回车铃，1.0s）、**推回车（棘轮）**（0.3s）、**回车铃**（0.8s），均不随包音频文件（分析口径与客观比对见[设计文档 10.5–10.8](2026-09-23_flow-mode/flow-mode_design.md)）；旧的木质 / 金属 / 打字机三色已按下线（旧设置值启动时迁移为「复古打字机」）；② 已无待改的音色实现，后续若再给参考音频照同样口径复刻即可；③ 二轮反馈已落地：棘轮加倍（0.26s）、铃余振 +50% 且音量 +15%（整段 1.0s）、新增设置项「连续换行屏蔽音效」（默认开：连按回车只有第一次发声）；待试听确认的只剩铃的音高配比（`RETRO_BELL_PARTIALS`）与屏蔽窗口时长（`CONSECUTIVE_RETURN_WINDOW_MS`，现 800ms）。需要时再提供参考音频即可照同样口径复刻。
 - **打字机模式 + 中文输入法组词的实机验证**：代码路径已按 `view.composing` 冻结 + `compositionend` 补锚实现，但 CDP 无法驱动真实 IME（自动化验证只能覆盖非 IME 路径），需真机（Windows 微软拼音 / Linux fcitx）确认组词期间候选框不抖动、组词确认后锚定正确（对应需求验收标准第 3 项）。见[设计文档 10.4](2026-09-23_flow-mode/flow-mode_design.md)。
 - **英文连续字母在行尾的折行表现**：心流模式（栏宽限制）下，行尾输入连续字母（如 `kkk`）时，前两个字母先停在行尾、第三个到达后整串字母一起换到下一行，视觉上像是先「溢出」再整块跳过去。疑与 `overflow-wrap` / `word-break` 的设置有关（拉丁字母串被当作一个「词」，CJK 之间却可自由断行），待打磨时排查：可考虑允许行尾字母串逐字母断行（`word-break: break-all` 或 `overflow-wrap: anywhere`），或维持现状（与多数编辑器一致）。
@@ -220,6 +222,29 @@
 
 > 二期 Backlog 已全部完成或作废（PRD 第 7 节所列项目均已落地）；三期唯一的规划项「心流模式」也已完成实施，**当前无规划中的新功能**（2026-09-24 时点）。其余条目为历史归档。
 
+### 待发版（`feature/tag-improvements` 分支，2026-09-24）
+
+**⑥ 标签区折叠**（用户实测反馈，FR-2.6.11）— [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md)
+
+- **问题**：侧栏「标签」区无法折叠，标签越多占位越高，把「断链引用 / 回收站 / 笔记库」挤出可视区。
+- **改动**：标题新增展开箭头（与「笔记库」区同款交互与视觉，各区块标题文字列实测同为 x=50，箭头列同为 x=26），点击收起 / 展开标签列表；收起态保留数量角标与「+」新建按钮；收起时新建标签自动展开；展开状态持久化（localStorage `trace.tagSectionOpen`）。区块标题点击行为不变（仍是打开标签网格）。实机验证：8 个标签收起后下方区块上移 260px，重载后仍保持收起。
+- **顺带对齐**：标签区与笔记库区的「+」按钮原先各用一套样式（`.side-section-add` 17.3px vs `.row-btn` 22px），两个加号错开 4.7px；现统一为 `.row-btn`，两区计数角标与「+」逐像素对齐（角标 left 219.2 / right 238，按钮 left 244 / right 266，两组完全一致）。
+- 设计稿原画了 `▼ 标签 (3)` 的箭头，本次补齐（非新增设计）。
+
+**⑦ 侧栏搜索按钮移至标题行右端**（用户实测反馈）
+
+- 原先搜索图标紧跟「Trace 笔迹」标题，现靠右对齐（`margin-left: auto`），位置与「标签 / 笔记库」区的 `+` 按钮**同列**——实测按钮右边界 266、距侧栏右边界 16px，与 `+` 按钮右边界一致。
+- 实机验证：新位置点开仍正常弹出「全局搜索」对话框（占位符「搜索笔记...」）。使用指引第 14 节入口描述同步为「侧栏标题行右端」。
+- 无 FR 变更（纯 UI 位置调整；全局搜索在 PRD 中本无独立 FR，见本节「待增补」末条的说明）。
+
+**⑧ 修复：编辑器打不出空格与数字 0-9**（用户实测反馈；v0.8.0 回归，**P0，建议尽快发 v0.8.1 补丁版**）— [table-insert-enhance_design.md](2026-09-24_table-insert-enhance/table-insert-enhance_design.md) 第 9 节
+
+- **现象**：笔记编辑区无法输入空格；排查发现数字 `0`-`9` 同样打不进去，字母正常。
+- **根因**：表格尺寸提示态（FR-2.4.20，v0.8.0 随 `506e9dc` 引入）给 `Space` / 数字 / `Enter` / `Escape` 声明了 `preventDefault: true`，而 CM6 的语义是**该标志只在命令返回 `false` 时生效**（还会把按键标记为已处理）——提示态未打开时命令恰好返回 `false`，空格与数字的字符插入被吞。回车 / Esc 不受影响（由 CM 自己处理），字母也不受影响（无绑定匹配）。
+- **修法**：去掉这几个绑定上的 `preventDefault`（与同文件 `Tab` 的既有修法一致）；命令返回 `true` 时 CM 在事件分发里自会 `preventDefault`，尺寸输入不会漏进正文。
+- **实测（隔离实例 + 真实输入管线）**：未激活时空格 / `5` / 字母各插入 1 字符（修复前空格与数字为 0）；激活时输入「5 空格 6」正文零写入、浮层回显「5 行 × 6 列」、按空格插入 6 列表格、`Esc` 取消不插入。
+- 已排查渲染进程其余 `preventDefault: true` 绑定（全在 `Mod-*`、命令均无条件返回 `true`），无同类问题；AGENTS.md 的键位教训条目已补第二次实例。
+
 ### 已完成（v0.8.0 已发布，2026-09-23 / 09-24）
 
 **① 心流模式** — [flow-mode.md](2026-09-23_flow-mode/flow-mode.md)
@@ -247,6 +272,7 @@
 ### 待增补（用户已提出，攒够同类再一起做）
 
 - **表格默认行列值设置**（2026-09-24 用户提出）：在设置中提供 `Ctrl+T` 提示浮层的默认行列数（现为固定 2 行 × 2 列）。用户希望与后续「编辑方面的类似设置项」**攒成一批一起实现**，故暂不单独立项；需求原文登记在 [table-insert-enhance.md](2026-09-24_table-insert-enhance/table-insert-enhance.md) 第 3 节。
+- **搜索支持标签维度**（2026-09-24 用户提出，**待做**）：全局搜索加入 tag 搜索项。现状：搜索索引直接读整份文件内容（`services/search.ts` 的 `content` 含 frontmatter），所以在搜索框里输入标签名只会「碰巧」命中 `tags:` 那一行，**不是结构化标签检索**——无法限定「按标签精确筛库」，也分不清标签名与正文同名词（且该命中会以 frontmatter 行作为结果片段展示，而 frontmatter 在预览里是隐藏的，观感突兀）。具体形态待定：标签筛选下拉 / `tag:xxx` 语法 / 仅把标签并入匹配范围，需与用户确认后再立项。关联 FR：全局搜索当前在 PRD 中**没有独立 FR 编号**（仅 FR-2.9.8 顺带提及 Ctrl+F，v0.4.4 以「FR-2.9 扩展」记于本文件），立项时一并补 FR。
 
 ### 功能规划（均已落地）
 

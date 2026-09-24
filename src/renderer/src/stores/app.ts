@@ -71,6 +71,8 @@ export const useAppStore = defineStore('app', {
     zenMode: false,
     /** 侧栏显示（手动收起/呼出，localStorage 持久化；专注模式强制隐藏与此独立） */
     sidebarVisible: true,
+    /** 侧栏「标签」区展开（localStorage 持久化；标签多时收起，避免把下方区块挤出可视区） */
+    tagSectionOpen: true,
     /** 专注模式下临时浮出的侧栏（浮层，会话级） */
     zenSidebarOverlay: false,
     /** 从设置等视图返回编辑时置位，EditorView 挂载后聚焦编辑器并清除 */
@@ -147,6 +149,7 @@ export const useAppStore = defineStore('app', {
         this.previewVisible = localStorage.getItem('trace.previewVisible') !== '0'
         this.zenMode = localStorage.getItem('trace.zenMode') === '1'
         this.sidebarVisible = localStorage.getItem('trace.sidebarVisible') !== '0'
+        this.tagSectionOpen = localStorage.getItem('trace.tagSectionOpen') !== '0'
         const vm = localStorage.getItem('trace.viewMode')
         if (vm === 'grid' || vm === 'list') this.viewMode = vm
       } catch {
@@ -255,6 +258,19 @@ export const useAppStore = defineStore('app', {
       this.sidebarVisible = !this.sidebarVisible
       try {
         localStorage.setItem('trace.sidebarVisible', this.sidebarVisible ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+    },
+    /** 展开 / 收起侧栏「标签」区（区块标题点击仍是打开标签网格，与「笔记库」区一致） */
+    toggleTagSection(): void {
+      this.setTagSectionOpen(!this.tagSectionOpen)
+    },
+    /** 设置侧栏「标签」区展开状态（收起时 + 按钮仍可点，新建后需自动展开以保证新标签可见） */
+    setTagSectionOpen(open: boolean): void {
+      this.tagSectionOpen = open
+      try {
+        localStorage.setItem('trace.tagSectionOpen', open ? '1' : '0')
       } catch {
         /* ignore */
       }
