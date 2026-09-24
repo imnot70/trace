@@ -77,6 +77,8 @@ export function typewriter(mode: TypewriterMode): Extension {
       /** 鼠标拖选中：拖选期间不重锚（连续滚动会造成眩晕），mouseup 后补一次 */
       private dragging = false
       private resizeObserver: ResizeObserver | null = null
+      /** 光标不在已渲染范围内时已补过一次「滚进视野」，避免反复请求（见 anchor） */
+      private nudged = false
 
       constructor(private view: EditorView) {
         this.applyPadding()
@@ -86,11 +88,21 @@ export function typewriter(mode: TypewriterMode): Extension {
             this.schedule()
           })
           this.resizeObserver.observe(view.scrollDOM)
+          // 同时观察**内容层**（2026-09-24 补，用户实测反馈驱动）：字号调整、切进心流后的
+          // 所见即所得重排、块级 widget / 图片的尺寸变化都会改变内容层盒子，但这类变化
+          // **既没有 CM 事务、也不改滚动容器尺寸**——CM 与只看 scrollDOM 的 RO 都不会知道，
+          // 锚点会静默失效（实测：字号 15→26 后光标从锚点漂到视口外且再不回来）。
+          this.resizeObserver.observe(view.contentDOM)
         }
         view.dom.addEventListener('mousedown', this.onMouseDown, true)
         // mouseup 可能落在编辑器之外（拖出窗口），挂到 window 才能稳定收到
         window.addEventListener('mouseup', this.onMouseUp, true)
         view.dom.addEventListener('compositionend', this.onCompositionEnd)
+        // 新挂载时补一次锚定：本扩展会在「进入心流（设置里是关闭 → 心流内低位）」时被新建，
+        // 以及「打开笔记 / 切换打字机形态」时随视图创建；构造函数跑在 DOM 更新之前
+        // （Vue 的 pre-flush watcher 里 dispatch reconfigure），故只排一帧 rAF，等几何落定再量。
+        // 没有这一步时，切进心流只会写入留白（内容整体下移）而不校正滚动，光标会停在锚点之外。
+        this.schedule()
       }
 
       private onMouseDown = (): void => {
@@ -108,19 +120,37 @@ export function typewriter(mode: TypewriterMode): Extension {
         this.schedule()
       }
 
-      /** 留白量随视口尺寸变化（窗口缩放 / 分栏拖拽 / 栏宽调整） */
+      /**
+       * 留白量随视口尺寸变化（窗口缩放 / 分栏拖拽 / 栏宽调整）。
+       * 写完先比较再写：既避免无谓的样式写入（每次写入都会触发回流），也让本方法可以在
+       * 锚定前反复调用当作不变量校验（见 anchor）。
+       */
       private applyPadding(): void {
         const height = this.view.scrollDOM.clientHeight
         if (!height) return
         const { top, bottom } = typewriterPadding(ratio, height)
-        this.view.contentDOM.style.paddingTop = `${top}px`
-        this.view.contentDOM.style.paddingBottom = `${bottom}px`
+        const style = this.view.contentDOM.style
+        if (style.paddingTop !== `${top}px`) style.paddingTop = `${top}px`
+        if (style.paddingBottom !== `${bottom}px`) style.paddingBottom = `${bottom}px`
       }
 
       update(update: ViewUpdate): void {
-        if (!update.docChanged && !update.selectionSet) return
         // 组词中（中文输入法 IME）：光标位置是临时态，跟随滚动会导致候选框抖动
         if (this.view.composing || this.dragging) return
+        // 几何变化 → 光标行在屏幕上的位置随之位移，锚点失效，必须重锚。CM 的语义是
+        // 「文档被修改，或编辑器 / 其内部元素的尺寸变了」，**不含滚动**（滚动不会置位
+        // Geometry / Height 标志），因此不会违反「用户滚动绝不干预」。
+        // 这条覆盖了三类旧实现漏掉的情形，它们的共同点是「滚动容器尺寸没变 → ResizeObserver
+        // 不再触发 → 没有任何重锚请求」，表现为进心流后光标停在锚点之外（2026-09-24 用户实测反馈）：
+        //   ① 进入心流：编辑卡变宽变高 → 正文重新折行，行高与光标行的 y 位置整体改变；
+        //   ② 模式切换后的延迟重排：切进心流会同时打开所见即所得，块级 widget / 公式的重新
+        //      测量与渲染可能落在锚定之后的一两帧；
+        //   ③ 图片 / 字体异步加载完成导致的回流。
+        if (update.geometryChanged) {
+          this.schedule()
+          return
+        }
+        if (!update.docChanged && !update.selectionSet) return
         const relevant = update.transactions.some((tr) =>
           isAnchorEvent(tr.annotation(Transaction.userEvent) ?? '')
         )
@@ -137,9 +167,29 @@ export function typewriter(mode: TypewriterMode): Extension {
       }
 
       private anchor(): void {
+        // 留白是锚定成立的前提：光标上方内容不足时，靠 paddingTop = ratio × 视口高 才能把首行
+        // 连同光标一起推到锚点线（否则「所需滚动位置为负」→ 只能被夹到 0，光标反而停在靠上处）。
+        // 每次锚定前校验并补写，使留白成为一个自洽的不变量——任何导致它缺失或过期的路径
+        // （某次尺寸变化没触发事件、样式被外部清掉、模式切换中途）都会在下一次锚定时自愈。
+        this.applyPadding()
         const head = this.view.state.selection.main.head
         const coords = this.view.coordsAtPos(head)
-        if (!coords) return
+        if (!coords) {
+          // 光标不在已渲染范围内 → coordsAtPos 返回 null，没有任何屏幕坐标可算。
+          // 切进心流时常见：新建插件写入留白让内容整体下移，而此刻编辑器还停在原滚动位置，
+          // 光标可能整个落在视口之外；旧写法直接 return，于是锚定永久失效（直到用户下次输入）。
+          // 补救：先请 CM 按高度图把它滚进视野（下一帧它必然已渲染），再做精确锚定。
+          // 只补一次：既避免「滚了仍不可见 ↔ 反复滚动」互相触发，也避免与用户滚动抢方向。
+          if (!this.nudged) {
+            this.nudged = true
+            this.view.dispatch({
+              effects: EditorView.scrollIntoView(head, { y: 'center' })
+            })
+            this.schedule()
+          }
+          return
+        }
+        this.nudged = false
         const scroller = this.view.scrollDOM
         const rect = scroller.getBoundingClientRect()
         const target = anchorScrollTop(
