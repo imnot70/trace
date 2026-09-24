@@ -1,13 +1,13 @@
 # Trace 需求与实施状态索引
 
-> 更新：2026-09-24 ｜ 发布基线：**v0.8.0**；工作区在 `feature/tag-improvements` 分支，有一批未发布改动（标签区折叠 FR-2.6.11 + 侧栏区块「+」按钮对齐 + 搜索按钮移至标题行右端 + **v0.8.0 编辑器无法输入空格/数字的严重回归修复**，见第四节「待发版」）。⚠️ **v0.8.0 存在 P0 缺陷**（编辑器打不出空格与数字 0-9），修复已在分支上完成并实测，应尽快发 v0.8.1 补丁版。另有一条用户提出的待办（搜索支持标签维度，见第四节「待增补」）
+> 更新：2026-09-24 ｜ 发布基线：**v0.8.1**；`feature/tag-improvements` 已合并进 main 并发版（标签区折叠 FR-2.6.11 + 侧栏区块「+」按钮对齐 + 搜索按钮移至标题行右端 + **v0.8.0 编辑器无法输入空格/数字的严重回归修复**，见第四节）。⚠️ v0.8.0 存在 P0 缺陷（编辑器打不出空格与数字 0-9），**已随 v0.8.1 修复**。另有一条用户提出的待办（搜索支持标签维度，见第四节「待增补」）
 > 本文件是 `requirements/` 目录的导览与实施状态总览。各项明细以对应文档与 [CHANGELOG.md](../CHANGELOG.md) 为准。
 
 ## 文档导读
 
 | 文件 | 内容 | 状态 |
 | --- | --- | --- |
-| [requirements.md](requirements.md) | 产品需求文档（PRD），当前形态的权威描述；随版本同步更新（覆盖至 v0.8.0，含 FR-2.4.13 所见即所得 / FR-2.4.14 打字机 / FR-2.9.8 心流模式 / FR-2.9.9 回车音效 / FR-2.11.14 插件市场 / FR-2.6.11 标签区折叠 等） | ✅ 基线文档，所载需求均已实现（含 v0.8.0 的心流模式与编辑器改动；FR-2.6.11 待发版） |
+| [requirements.md](requirements.md) | 产品需求文档（PRD），当前形态的权威描述；随版本同步更新（覆盖至 v0.8.0，含 FR-2.4.13 所见即所得 / FR-2.4.14 打字机 / FR-2.9.8 心流模式 / FR-2.9.9 回车音效 / FR-2.11.14 插件市场 / FR-2.6.11 标签区折叠 等） | ✅ 基线文档，所载需求均已实现（含 v0.8.0 的心流模式与编辑器改动、v0.8.1 的标签区折叠与编辑器键位修复） |
 | [development-plan.md](development-plan.md) | 初版开发计划：技术选型、架构、里程碑 M0–M6、风险对策 | ✅ M0–M6 已全部完成（v1/v0.2.0 交付）；二期 Backlog 部分被后续设计文档细化 |
 | [plugin-design.md](2026-09-08_plugin-system/plugin-design.md) | 插件系统 v2 设计：独立插件进程 + 能力网关 + require 白名单 + 市场分发 | ✅ **M1–M4 全部实施**（进程隔离 + Tier 1 API + 权限确认 + 崩溃守护 + .trace-plugin 导入导出 + 私有存储 + 声明式工具栏/状态区 + 类型包 + 市场，实施记录见第 10–13 节；开发指引见 [guides/plugin-development.md](../../guides/plugin-development.md)、发布指引见 [guides/plugin-release.md](../../guides/plugin-release.md)） |
 | [vault-grid-navigation-design.md](2026-09-08_vault-grid-navigation/vault-grid-navigation-design.md) | 笔记库网格导航设计：双击钻入库内容 + 面包屑 + 三卡片区分 | ✅ **P1 + P2 全部实施**（P1 已发布 v0.3.5，P2 已随 v0.3.6 发布） |
@@ -22,7 +22,7 @@
 | [auto-close-tags_design.md](2026-09-13_auto-close-tags/auto-close-tags_design.md) | 编辑器 HTML 标签自动闭合 | ✅ **已实施**（v0.4.1 发布） |
 | [theme-presets_design.md](2026-09-13_theme-presets/theme-presets_design.md) | 预设主题包：暖色/冷色/高对比度 | ✅ **已实施**（v0.4.1 发布） |
 | [theme-import_design.md](2026-09-14_theme-import/theme-import_design.md) | 主题包导入：JSON 变量覆盖 + 白名单校验 + 应用数据目录存储 | ✅ **已实施**（已随 v0.4.3 发布） |
-| [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md) | 标签系统：打标签 / 筛选 / 管理（frontmatter 存储，方案 A）+ 标签区折叠 | ✅ **已实施**（v0.4.1 发布；2026-09-24 追加 FR-2.6.11 标签区折叠，待发版） |
+| [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md) | 标签系统：打标签 / 筛选 / 管理（frontmatter 存储，方案 A）+ 标签区折叠 | ✅ **已实施**（v0.4.1 发布；2026-09-24 追加 FR-2.6.11 标签区折叠，已随 v0.8.1 发布） |
 | [note-export_design.md](note-export/note-export_design.md) | 笔记导出 PDF：单篇 / 文件夹 / 整库递归（可跨库），图片内联自包含；支持合并为单个 PDF | ✅ **已实施**（已随 v0.4.3 发布；合并为单个 PDF 已随 v0.4.4 发布） |
 | [pdf-merge_design.md](pdf-merge/pdf-merge_design.md) | PDF 合并导出设计：多篇 → 单个 PDF，pdf-lib 拼接管线 | ✅ **已实施**（已随 v0.4.4 发布） |
 | [note-export-html_design.md](2026-09-15_note-export-html/note-export-html_design.md) | 笔记导出 HTML：自包含单文件，深浅色自适应阅读排版 | ✅ **已实施**（已随 v0.4.3 发布） |
@@ -32,14 +32,14 @@
 | [live-preview-render-fix.md](2026-09-24_live-preview-render-fix/live-preview-render-fix.md) + [live-preview-render-fix_design.md](2026-09-24_live-preview-render-fix/live-preview-render-fix_design.md) | 所见即所得渲染修正（FR-2.4.13 缺陷修复）：块级 widget 外边距导致的**行号 / 高亮几何漂移**（实测 15–27px）、列表 `-` / 引用 `>` 未隐藏、任务复选框被样式作用域挡住不可见、**带 frontmatter 的笔记装饰全失效**（剪枝在根节点剪掉整棵树） | ✅ **已实施**（已随 v0.8.0 发布；根因与实测数据见设计文档第 2 / 7 / 8 节） |
 | [editor-tools.md](2026-09-24_editor-tools/editor-tools.md) + [editor-tools_design.md](2026-09-24_editor-tools/editor-tools_design.md) | 编辑器工具：折叠按钮（层级 / 块内容）样式与热区优化（FR-2.4.17）、标题层级快捷键 `Ctrl+1`–`Ctrl+6` / `Ctrl+0`（FR-2.4.15）、表格插入（工具栏 + `Ctrl+T`，FR-2.4.16） | ✅ **已实施**（已随 v0.8.0 发布；实施与验收记录见设计文档第 7 节） |
 | [edit-position.md](2026-09-24_edit-position/edit-position.md) + [edit-position_design.md](2026-09-24_edit-position/edit-position_design.md) | 编辑位置与文首 / 文尾跳转：打开笔记后光标落位设置（FR-2.4.18）、主键盘区文首 / 文尾快捷键（FR-2.4.19） | ✅ **已实施**（已随 v0.8.0 发布；实施与实测矩阵见设计文档第 7 节） |
-| [table-insert-enhance.md](2026-09-24_table-insert-enhance/table-insert-enhance.md) + [table-insert-enhance_design.md](2026-09-24_table-insert-enhance/table-insert-enhance_design.md) | 表格插入增强：尺寸输入提示浮层（FR-2.4.20，实时回显行列数 / 逐状态脚注 / 超限提示，无倒计时）、表格内 `Tab` / `Shift+Tab` 跳转（FR-2.4.21，末格追加行） | ✅ **已实施**（已随 v0.8.0 发布；实施与实测矩阵见设计文档第 7 / 8 节） |
+| [table-insert-enhance.md](2026-09-24_table-insert-enhance/table-insert-enhance.md) + [table-insert-enhance_design.md](2026-09-24_table-insert-enhance/table-insert-enhance_design.md) | 表格插入增强：尺寸输入提示浮层（FR-2.4.20，实时回显行列数 / 逐状态脚注 / 超限提示，无倒计时）、表格内 `Tab` / `Shift+Tab` 跳转（FR-2.4.21，末格追加行） | ✅ **已实施**（已随 v0.8.0 发布；v0.8.1 修复其提示态键位导致的**编辑器空格与数字失效**，见设计文档第 9 节） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
 
 ---
 
-## 一、已实现（v0.1.0 → v0.7.0，发布状态见子节）
+## 一、已实现（v0.1.0 → v0.7.0，发布状态见子节；v0.8.x 见第四节）
 
 ### v0.7.0（2026-09-22）
 
@@ -191,7 +191,7 @@
 
 **待打磨 / 待验证**（2026-09-24 记录）：
 
-- **侧栏区块标题「+」在无计数角标时会贴在标题文字后面**（2026-09-24 发现）：区块标题把尾部 `+` 推到右端靠的是**计数角标的 `margin-left: auto`**，所以该区块计数为 0（角标 `v-if` 不渲染）时，`+` 会紧跟标题文字浮在左侧——同一区块在「0 条」与「≥1 条」两态下 `+` 会横向跳位（实测标签区 0 标签时 `+` 在 x 82–104，「标签 / 笔记库」有角标时在 x 244–266）。修法：把 `margin-left: auto` 挪到标题的尾部按钮自身，不再依赖角标。**未修**（2026-09-24 用户要求本轮只做搜索按钮位移并登记待办）。
+- **侧栏区块标题「+」在无计数角标时会贴在标题文字后面**（2026-09-24 发现）：区块标题把尾部 `+` 推到右端靠的是**计数角标的 `margin-left: auto`**，所以该区块计数为 0（角标 `v-if` 不渲染）时，`+` 会紧跟标题文字浮在左侧——同一区块在「0 条」与「≥1 条」两态下 `+` 会横向跳位（实测标签区 0 标签时 `+` 在 x 82–104，「标签 / 笔记库」有角标时在 x 244–266）。修法：把 `margin-left: auto` 挪到标题的尾部按钮自身，不再依赖角标。**未修**（2026-09-24 登记，随 v0.8.1 一并记录）。
 
 - **心流模式回车音效的音色打磨**（2026-09-24）：① 用户提供的实录音效已离线分析并复刻成音色组——**复古打字机**（三段：按键咔 + 推回车棘轮 + 回车铃，1.0s）、**推回车（棘轮）**（0.3s）、**回车铃**（0.8s），均不随包音频文件（分析口径与客观比对见[设计文档 10.5–10.8](2026-09-23_flow-mode/flow-mode_design.md)）；旧的木质 / 金属 / 打字机三色已按下线（旧设置值启动时迁移为「复古打字机」）；② 已无待改的音色实现，后续若再给参考音频照同样口径复刻即可；③ 二轮反馈已落地：棘轮加倍（0.26s）、铃余振 +50% 且音量 +15%（整段 1.0s）、新增设置项「连续换行屏蔽音效」（默认开：连按回车只有第一次发声）；待试听确认的只剩铃的音高配比（`RETRO_BELL_PARTIALS`）与屏蔽窗口时长（`CONSECUTIVE_RETURN_WINDOW_MS`，现 800ms）。需要时再提供参考音频即可照同样口径复刻。
 - **打字机模式 + 中文输入法组词的实机验证**：代码路径已按 `view.composing` 冻结 + `compositionend` 补锚实现，但 CDP 无法驱动真实 IME（自动化验证只能覆盖非 IME 路径），需真机（Windows 微软拼音 / Linux fcitx）确认组词期间候选框不抖动、组词确认后锚定正确（对应需求验收标准第 3 项）。见[设计文档 10.4](2026-09-23_flow-mode/flow-mode_design.md)。
@@ -222,7 +222,9 @@
 
 > 二期 Backlog 已全部完成或作废（PRD 第 7 节所列项目均已落地）；三期唯一的规划项「心流模式」也已完成实施，**当前无规划中的新功能**（2026-09-24 时点）。其余条目为历史归档。
 
-### 待发版（`feature/tag-improvements` 分支，2026-09-24）
+### v0.8.1（2026-09-24，已发布）
+
+> 补丁版：修复 v0.8.0 的 P0 回归（编辑器无法输入空格与数字 0-9），并收一批侧栏 UI 改动。分支 `feature/tag-improvements` 已合并进 main（`--no-ff`）。
 
 **⑥ 标签区折叠**（用户实测反馈，FR-2.6.11）— [tag-system_design.md](2026-09-13_tag-system/tag-system_design.md)
 
@@ -237,7 +239,7 @@
 - 实机验证：新位置点开仍正常弹出「全局搜索」对话框（占位符「搜索笔记...」）。使用指引第 14 节入口描述同步为「侧栏标题行右端」。
 - 无 FR 变更（纯 UI 位置调整；全局搜索在 PRD 中本无独立 FR，见本节「待增补」末条的说明）。
 
-**⑧ 修复：编辑器打不出空格与数字 0-9**（用户实测反馈；v0.8.0 回归，**P0，建议尽快发 v0.8.1 补丁版**）— [table-insert-enhance_design.md](2026-09-24_table-insert-enhance/table-insert-enhance_design.md) 第 9 节
+**⑧ 修复：编辑器打不出空格与数字 0-9**（用户实测反馈；v0.8.0 回归，**P0，已随 v0.8.1 修复**）— [table-insert-enhance_design.md](2026-09-24_table-insert-enhance/table-insert-enhance_design.md) 第 9 节
 
 - **现象**：笔记编辑区无法输入空格；排查发现数字 `0`-`9` 同样打不进去，字母正常。
 - **根因**：表格尺寸提示态（FR-2.4.20，v0.8.0 随 `506e9dc` 引入）给 `Space` / 数字 / `Enter` / `Escape` 声明了 `preventDefault: true`，而 CM6 的语义是**该标志只在命令返回 `false` 时生效**（还会把按键标记为已处理）——提示态未打开时命令恰好返回 `false`，空格与数字的字符插入被吞。回车 / Esc 不受影响（由 CM 自己处理），字母也不受影响（无绑定匹配）。
