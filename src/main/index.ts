@@ -181,12 +181,23 @@ app.whenReady().then(() => {
     sidebarMenus: { recents: true, favorites: true, tags: true, unresolved: true, trash: true },
     showBacklinks: true,
     defaultEditMode: 'source',
+    editPosition: 'start',
     typewriterMode: 'off',
     flowLineWidth: 'medium',
     flowSoundEnabled: false,
     flowSoundVolume: 60,
-    flowSoundVariant: 'wood'
+    flowSoundVariant: 'retro',
+    flowSoundSkipRepeat: true
   })
+
+  // 音色枚举收敛（2026-09-24：木质 / 金属 / 打字机棘齿三种旧音色下线，改为「推回车棘轮 / 回车铃 / 复古打字机 / 轮换」）：
+  // 旧安装里存的 'wood' | 'metal' | 'ratchet' 在这里一次性迁移到 'retro'，避免选择器空值、静默无声
+  const SOUND_VARIANTS = ['carriage', 'bell', 'retro', 'rotate']
+  if (!SOUND_VARIANTS.includes(settingsStore.get().flowSoundVariant)) {
+    settingsStore.update((s) => {
+      s.flowSoundVariant = 'retro'
+    })
+  }
 
   settingsService = new SettingsService(settingsStore)
   const workspace = new WorkspaceService(settingsStore, path.join(os.homedir(), 'Trace'))

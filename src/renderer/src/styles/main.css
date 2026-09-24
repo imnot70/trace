@@ -1011,3 +1011,11 @@ body {
   transition: none !important;
   animation: none !important;
 }
+
+/* 下拉项右侧的快捷键提示（如工具栏「标题」菜单的 Ctrl+1…） */
+.el-dropdown-menu__item .dd-keys {
+  margin-left: auto;
+  padding-left: 24px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}

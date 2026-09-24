@@ -9,6 +9,8 @@ import MarkdownEditor from '../components/MarkdownEditor.vue'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
 import TipButton from '../components/TipButton.vue'
 import BacklinkPanel from '../components/BacklinkPanel.vue'
+import TablePromptHud from '../components/TablePromptHud.vue'
+import type { HeadingLevel } from '../lib/heading'
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 
 const app = useAppStore()
@@ -448,12 +450,21 @@ onBeforeUnmount(() => {
       <TipButton tip="斜体 (Ctrl+I)" @click="toolbarInsert('*', '*', '斜体文字')"><i>I</i></TipButton>
       <TipButton tip="删除线 (Ctrl+Shift+X)" @click="toolbarInsert('~~', '~~', '删除线')"><s>S</s></TipButton>
       <span style="width: 8px"></span>
-      <TipButton tip="一级标题" @click="toolbarInsert('# ', '', '标题')">
-        H1
-      </TipButton>
-      <TipButton tip="二级标题" @click="toolbarInsert('## ', '', '标题')">
-        H2
-      </TipButton>
+      <!-- 标题层级：一级 ~ 六级 + 清除（触发器不用 el-tooltip 包裹，原生 title） -->
+      <el-dropdown trigger="click" popper-class="dd-instant-hide" @command="(lv: HeadingLevel) => editorRef?.setHeading(lv)">
+        <button class="tool-btn" type="button" title="标题层级 (Ctrl+1~6，Ctrl+0 清除)">H</button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item :command="1">一级标题<span class="dd-keys">Ctrl+1</span></el-dropdown-item>
+            <el-dropdown-item :command="2">二级标题<span class="dd-keys">Ctrl+2</span></el-dropdown-item>
+            <el-dropdown-item :command="3">三级标题<span class="dd-keys">Ctrl+3</span></el-dropdown-item>
+            <el-dropdown-item :command="4">四级标题<span class="dd-keys">Ctrl+4</span></el-dropdown-item>
+            <el-dropdown-item :command="5">五级标题<span class="dd-keys">Ctrl+5</span></el-dropdown-item>
+            <el-dropdown-item :command="6">六级标题<span class="dd-keys">Ctrl+6</span></el-dropdown-item>
+            <el-dropdown-item :command="0" divided>清除标题<span class="dd-keys">Ctrl+0</span></el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
       <TipButton tip="引用" @click="toolbarInsert('> ', '', '引用内容')">❝</TipButton>
       <span style="width: 8px"></span>
       <TipButton tip="行内代码" @click="toolbarInsert('`', '`', 'code')">
@@ -464,6 +475,9 @@ onBeforeUnmount(() => {
       </TipButton>
       <TipButton tip="链接" @click="toolbarInsert('[', '](https://)', '链接文字')">
         <el-icon><Link /></el-icon>
+      </TipButton>
+      <TipButton tip="表格 (Ctrl+T)" @click="editorRef?.beginTablePrompt()">
+        <el-icon><Grid /></el-icon>
       </TipButton>
       <TipButton tip="行内公式" @click="toolbarInsert('$', '$')">
         ∑
@@ -492,6 +506,9 @@ onBeforeUnmount(() => {
     <!-- 心流模式：极微弱的保存指示（不占布局、不打断输入） -->
     <div v-if="app.flowMode" class="flow-save-dot" :class="saveDotState" title="" />
 
+    <!-- 表格尺寸输入浮层（FR-2.4.20）：跟随光标，实时回显将插入的行列数 -->
+    <TablePromptHud />
+
     <!-- 编辑器主体（填满卡片剩余空间）；点回编辑区 = 一瞥结束 -->
     <div ref="editorWrapRef" class="editor-cm" @mousedown="onEditorBodyMousedown">
       <MarkdownEditor
@@ -500,7 +517,12 @@ onBeforeUnmount(() => {
         :model-value="editor.content"
         :font-size="app.settings.editorFontSize"
         :typewriter-mode="app.effectiveTypewriterMode"
-        :return-sound="{ enabled: app.flowMode && app.settings.flowSoundEnabled, volume: app.settings.flowSoundVolume, variant: app.settings.flowSoundVariant }"
+        :return-sound="{
+          enabled: app.flowMode && app.settings.flowSoundEnabled,
+          volume: app.settings.flowSoundVolume,
+          variant: app.settings.flowSoundVariant,
+          skipRepeat: app.settings.flowSoundSkipRepeat
+        }"
         :vault="editor.current.vault"
         :note-path="editor.current.path"
         :wysiwyg="app.editorWysiwyg"

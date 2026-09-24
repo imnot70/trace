@@ -25,6 +25,11 @@ export const SHORTCUTS: ShortcutItem[] = [
   { keys: 'Ctrl + B', desc: '加粗选中文字（无选中时插入占位符）', group: '编辑器' },
   { keys: 'Ctrl + I', desc: '斜体', group: '编辑器' },
   { keys: 'Ctrl + Shift + X', desc: '删除线', group: '编辑器' },
+  { keys: 'Ctrl + 1 … Ctrl + 6', desc: '设为一级 ~ 六级标题（已是同级再按一次清除）', group: '编辑器' },
+  { keys: 'Ctrl + 0', desc: '清除标题层级', group: '编辑器' },
+  { keys: 'Ctrl + T', desc: '在光标处插入表格', group: '编辑器' },
+  { keys: 'Ctrl + Shift + H', desc: '光标跳到文件开头（Ctrl+Home 同义）', group: '编辑器' },
+  { keys: 'Ctrl + Shift + E', desc: '光标跳到文件末尾（Ctrl+End 同义）', group: '编辑器' },
   { keys: 'Ctrl + Z / Ctrl + Shift + Z', desc: '撤销 / 重做', group: '编辑器' }
 ]
 

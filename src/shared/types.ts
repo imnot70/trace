@@ -139,6 +139,8 @@ export interface AppSettings {
   showBacklinks: boolean
   /** 默认编辑模式：source 源码模式 / wysiwyg 所见即所得（Live Preview，FR-W1） */
   defaultEditMode: 'source' | 'wysiwyg'
+  /** 编辑位置：打开笔记后光标落在文首（start）还是文末（end），默认文首（FR-2.4.18） */
+  editPosition: 'start' | 'end'
   /** 打字机模式：off 关闭 / center 高位（光标垂直居中）/ bottom 低位（光标锚定在距底边 20% 处） */
   typewriterMode: 'off' | 'center' | 'bottom'
   /** 心流模式的写作栏宽：窄 32em / 中 42em / 宽 52em（仅心流模式内生效） */
@@ -147,8 +149,10 @@ export interface AppSettings {
   flowSoundEnabled: boolean
   /** 心流模式回车音效音量 0-100（默认 60） */
   flowSoundVolume: number
-  /** 回车音色：wood 木质 / metal 金属带回声 / ratchet 打字机棘齿 / rotate 三者轮换 */
-  flowSoundVariant: 'wood' | 'metal' | 'ratchet' | 'rotate'
+  /** 连续换行屏蔽音效：开启时一串快速换行只有第一次发声（默认开启） */
+  flowSoundSkipRepeat: boolean
+  /** 回车音色：carriage 推回车棘轮 / bell 回车铃 / retro 复古打字机（三者合成） / rotate 轮换 */
+  flowSoundVariant: 'carriage' | 'bell' | 'retro' | 'rotate'
 }
 
 /** 自定义主题包：一组 CSS 变量覆盖（light/dark 两套），存 userData/themes/<id>.json */

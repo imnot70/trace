@@ -880,6 +880,20 @@ async function resetGitSource(): Promise<void> {
             <span class="settings-desc" style="margin: 0">打开笔记时使用的编辑模式；编辑器内 Ctrl+E 随时切换</span>
           </div>
           <div class="setting-row">
+            <span class="setting-label">编辑位置</span>
+            <el-select
+              :model-value="app.settings.editPosition"
+              style="width: 150px"
+              @update:model-value="(v: string) => app.updateSettings({ editPosition: v as 'start' | 'end' })"
+            >
+              <el-option value="start" label="从头开始" />
+              <el-option value="end" label="从尾部开始" />
+            </el-select>
+            <span class="settings-desc" style="margin: 0"
+              >打开笔记后光标落在文首还是文末（心流模式内同样生效）；编辑器内 Ctrl+Shift+H / Ctrl+Shift+E 可随时跳到文首 / 文末</span
+            >
+          </div>
+          <div class="setting-row">
             <span class="setting-label">自动保存</span>
             <el-switch
               :model-value="app.settings.autoSave"
@@ -962,15 +976,23 @@ async function resetGitSource(): Promise<void> {
             <span class="setting-label">音色</span>
             <el-select
               :model-value="app.settings.flowSoundVariant"
-              style="width: 260px"
+              style="width: 280px"
               @update:model-value="(v: string) => app.updateSettings({ flowSoundVariant: v as AppSettings['flowSoundVariant'] })"
             >
-              <el-option label="木质（薄膜键盘的闷响）" value="wood" />
-              <el-option label="金属（清脆带回声）" value="metal" />
-              <el-option label="打字机（棘齿回车的唰声）" value="ratchet" />
+              <el-option label="复古打字机（按键 + 推回车 + 回车铃）" value="retro" />
+              <el-option label="推回车（棘轮）" value="carriage" />
+              <el-option label="回车铃" value="bell" />
               <el-option label="轮换（三者依次交替）" value="rotate" />
             </el-select>
             <span class="settings-desc" style="margin: 0">可先选「轮换」逐一听过再定</span>
+          </div>
+          <div class="setting-row" v-if="app.settings.flowSoundEnabled">
+            <span class="setting-label">连续换行屏蔽音效</span>
+            <el-switch
+              :model-value="app.settings.flowSoundSkipRepeat"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ flowSoundSkipRepeat: Boolean(v) })"
+            />
+            <span class="settings-desc" style="margin: 0">连按回车加空行时只有第一次发声，避免音效叠在一起</span>
           </div>
           <div class="setting-row" v-if="app.settings.flowSoundEnabled">
             <span class="setting-label">音效音量</span>

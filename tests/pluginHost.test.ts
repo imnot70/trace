@@ -275,11 +275,13 @@ beforeEach(() => {
     sidebarMenus: { recents: true, favorites: true, tags: true, unresolved: true, trash: true },
     showBacklinks: true,
     defaultEditMode: 'source',
+    editPosition: 'start',
     typewriterMode: 'off',
     flowLineWidth: 'medium',
     flowSoundEnabled: false,
     flowSoundVolume: 60,
-    flowSoundVariant: 'wood',
+    flowSoundVariant: 'retro',
+    flowSoundSkipRepeat: true,
   })
   notifications = []
   logs.length = 0

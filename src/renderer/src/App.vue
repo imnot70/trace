@@ -141,8 +141,10 @@ function onGlobalKeydown(e: KeyboardEvent): void {
     return
   }
 
-  // Ctrl 系：应用通用动作
-  if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+  // Ctrl 系：应用通用动作。
+  // 注意：这里必须排除 Shift——Ctrl+Shift+E（跳到文件末尾，FR-2.4.19）等编辑器键位由编辑器处理，
+  // 若只按字母匹配会顺带触发本处的动作（历史缺陷：Ctrl+Shift+E 会误切编辑模式）
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
     if (e.key === ',') {
       e.preventDefault()
       // 开关语义：设置页再按一次返回（编辑笔记在握时回编辑，否则回欢迎页）
