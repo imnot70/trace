@@ -1,6 +1,6 @@
 # Windows 自定义标题栏 + 毛玻璃恢复需求
 
-> 创建：2026-09-22 ｜ 状态：**需求已确认，待技术设计**
+> 创建：2026-09-22 ｜ 状态：**已实施（随 v0.7.0 发布）**，实施记录见 [custom-titlebar_design.md](custom-titlebar_design.md) 第 6 节
 > 背景：v0.4.4 毛玻璃功能在 Windows 上引发严重回归（transparent 窗口剥离原生标题栏，窗口无法移动 / 关闭），v0.4.6 降级处理——Windows 一律不透明原生窗口，毛玻璃退化为仅透明度。本功能恢复 Windows 的 Mica / Acrylic 体验，前置工程为自定义标题栏。
 
 ## 1. 目标

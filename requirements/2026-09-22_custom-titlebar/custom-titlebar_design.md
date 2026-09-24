@@ -1,6 +1,6 @@
 # Windows 自定义标题栏 + 毛玻璃恢复技术设计
 
-> 创建：2026-09-22 ｜ 状态：**设计完成，待实施** ｜ 需求见 [custom-titlebar.md](custom-titlebar.md)
+> 创建：2026-09-22 ｜ 状态：**已实施（随 v0.7.0 发布）** ｜ 需求见 [custom-titlebar.md](custom-titlebar.md) ｜ 实施记录见第 6 节
 > 分支：`feature/custom-titlebar`
 
 ## 1. 总体方案
