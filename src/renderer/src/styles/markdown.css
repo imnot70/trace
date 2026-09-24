@@ -51,7 +51,12 @@
   list-style: none;
 }
 
-.markdown-body .task-item-checkbox {
+/* 任务复选框：预览（.markdown-body）与所见即所得编辑器（.cm-content）共用同一套样式。
+   编辑器内的 widget 没有 .markdown-body 祖先——若只按前者作用域书写，复选框会退化成
+   无边框无尺寸的行内空元素（实测 display:inline / width:auto / border:0，
+   即用户看到的「[ ] 被吞掉、方框却没出现」） */
+.markdown-body .task-item-checkbox,
+.cm-content .task-item-checkbox {
   display: inline-block;
   width: 1em;
   height: 1em;
@@ -65,11 +70,13 @@
   user-select: none;
 }
 
-.markdown-body .task-item-checkbox[data-checked='true'] {
+.markdown-body .task-item-checkbox[data-checked='true'],
+.cm-content .task-item-checkbox[data-checked='true'] {
   border-color: var(--accent);
 }
 
-.markdown-body .task-item-checkbox[data-checked='true']::after {
+.markdown-body .task-item-checkbox[data-checked='true']::after,
+.cm-content .task-item-checkbox[data-checked='true']::after {
   content: '\2713';
   color: var(--accent);
   font-weight: 700;

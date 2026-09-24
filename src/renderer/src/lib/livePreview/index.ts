@@ -154,8 +154,30 @@ const lpTheme = EditorView.theme({
   '.lp-image img': { maxWidth: '100%', maxHeight: '320px', borderRadius: '6px', verticalAlign: 'middle' },
   '.lp-image-broken': { color: 'var(--text-tertiary)' },
   '.lp-math .katex-error, .lp-math-block .katex-error': { color: 'var(--danger)' },
-  '.lp-math-block': { margin: '0.5em 0', textAlign: 'center', overflowX: 'auto' },
-  '.lp-block': { margin: '0.4em 0' },
+  // 块级 widget 的几何：垂直间距必须落在元素盒内（padding / flow-root 让内层首尾外边距不再折叠出去，
+  // 容器高度即真实占位高度）。CM6 的行高记账取 widget 元素的 border-box、**不含外边距**——
+  // 用 margin 做间距会让行高映射小于真实占位，其后所有行号 / 行号高亮整体上移
+  // （实测：公式块 +15px、表格再 +12px，逐块累加）。
+  // 间距数值与修正前保持一致：公式 0.5em、表格 / HTML 块 0.4em（内层首尾外边距清零，避免叠加）。
+  // white-space：编辑器内容区是 break-spaces（源码要保留空白），而 widget 里是渲染产物——
+  // 渲染 HTML 标签之间的换行 / 空白会被当成真实换行与空格（多出空行、把容器撑高），故还原为 normal。
+  // padding / max-width 必须显式归零：widget 带 markdown-body 类是为了排版，但该类还带卡片级
+  // padding: 20px 28px 48px 与 max-width: 860px（预览卡片的留白与限宽），照搬到 widget 上会
+  // 让水平线上下不对称（实测 20/48）、表格被限宽
+  '.lp-math-block': {
+    margin: '0',
+    padding: '0.5em 0',
+    maxWidth: 'none',
+    display: 'flow-root',
+    whiteSpace: 'normal',
+    textAlign: 'center',
+    overflowX: 'auto'
+  },
+  '.lp-block': { margin: '0', padding: '0.4em 0', maxWidth: 'none', display: 'flow-root', whiteSpace: 'normal' },
+  '.lp-block > :first-child': { marginTop: '0' },
+  '.lp-block > :last-child': { marginBottom: '0' },
+  '.lp-hr': { margin: '0', padding: '0', maxWidth: 'none', display: 'flow-root', whiteSpace: 'normal' },
+  '.lp-bullet': { color: 'var(--text-secondary)', userSelect: 'none' },
   '.lp-frontmatter': {
     display: 'inline-flex',
     alignItems: 'center',

@@ -54,6 +54,21 @@ export class MathWidget extends WidgetType {
   }
 }
 
+/** 无序列表标记：把 `-` / `*` / `+` 渲染为圆点（次级色，不参与文本选择）。
+ *  有序列表保留源编号，不走本 widget（见 decorations 的 ListItem 分支） */
+export class BulletWidget extends WidgetType {
+  eq(_other: BulletWidget): boolean {
+    return true
+  }
+  toDOM(): HTMLElement {
+    const span = document.createElement('span')
+    span.className = 'lp-bullet'
+    span.textContent = '•'
+    span.setAttribute('aria-hidden', 'true')
+    return span
+  }
+}
+
 /** GFM 任务复选框：点击写回源码 `[ ]`↔`[x]`（走正常变更→自动保存流程）。
  *  mousedown 即处理并阻止默认行为——若等 click，光标定位会把该行展开成源码、
  *  widget 被移除，click 永远不会落在原 DOM 上（与下拉菜单闪影同类竞态） */

@@ -10,6 +10,7 @@ import type { SyntaxNode } from '@lezer/common'
 import { getFrontmatterTags } from '@shared/noteTags'
 import { resolveAssetUrl } from '../markdown'
 import {
+  BulletWidget,
   CheckboxWidget,
   FrontmatterWidget,
   HrWidget,
@@ -59,6 +60,58 @@ function occupied(state: EditorState, from: number, to: number): boolean {
 
 function overlaps(list: SimpleRange[], from: number, to: number): boolean {
   return list.some((r) => from < r.to && to > r.from)
+}
+
+/** 标记类装饰的回落判定：光标/选区落在 pos **所在行** 即整行回落源码。
+ *  与标题 / 加粗的「节点区间相交」判定不同——列表标记、任务框、引用标记在行内是
+ *  「半结构」元素，若只按自身区间判定，会出现同一行「标记渲染 + 正文源码」的割裂观感 */
+function lineBusy(state: EditorState, pos: number): boolean {
+  const line = state.doc.lineAt(pos)
+  return occupied(state, line.from, line.to)
+}
+
+/**
+ * 强调类标记（加粗 / 斜体 / 删除线 / 行内码）的露出判定：**只有真的贴到定界符本身**才回落源码——
+ * 光标进入标记内部（多字符标记的两个字符之间：`~~` 两字之间）、紧贴标记外侧（打开标记之前 /
+ * 闭合标记之后），或选区与标记相交（选中了标记）。
+ *
+ * 与 `occupied`（节点区间相交）的区别：光标位于**内容里**（含内容两端）不再露出标记，
+ * 否则在文字里打字时定界符与渲染样式同时可见，观感噪杂（2026-09-24 用户实测反馈：
+ * 编辑 `~~删除~~` 时删除线与两端的波浪号叠在一起）。定界符仍可编辑——方向键向内多按一下、
+ * 或直接拖选跨越标记即露出；一字符标记（反引号）靠「紧贴外侧」露出。
+ */
+function markTouched(state: EditorState, marks: SimpleRange[]): boolean {
+  if (marks.length === 0) return false
+  const first = marks[0]
+  const last = marks[marks.length - 1]
+  for (const r of state.selection.ranges) {
+    if (r.from < r.to) {
+      // 选区：与定界符**严格重叠**才算（含端点贴边不算——选中内容本身的端点正好贴着标记，
+      // 若按端点相交判定，选中「加粗文字」就会把两侧 ** 露出来，与光标规则不一致）
+      if (overlaps(marks, r.from, r.to)) return true
+    } else {
+      const p = r.from
+      if (p === first.from || p === last.to) return true // 紧贴外侧
+      if (marks.some((m) => p > m.from && p < m.to)) return true // 标记内部
+    }
+  }
+  return false
+}
+
+/** 列表项的第一个 ListMark（`-` / `*` / `+` / `1.` / `1)`），无则返回 null */
+function listMarkOf(node: SyntaxNode): SyntaxNode | null {
+  for (let c = node.firstChild; c; c = c.nextSibling) {
+    if (c.name === 'ListMark') return c
+  }
+  return null
+}
+
+/** 列表项是否为 GFM 任务项（`- [ ]`）：语法树结构为 ListItem → Task → TaskMarker */
+function isTaskItem(node: SyntaxNode): boolean {
+  for (let c = node.firstChild; c; c = c.nextSibling) {
+    if (c.name === 'Task') return true
+  }
+  return false
 }
 
 /** frontmatter 区间（文档以 --- 开头且有闭合行）；无闭合不装饰（容错） */
@@ -178,12 +231,14 @@ export function computeBlockDecorations(
 
   // ---- 表格 / HTML 块 / 水平分隔线（语法树整树遍历，块级节点量少成本低） ----
   // 注意：occupied 只对将要装饰的叶子块判断，不能拦截容器节点（Document/Paragraph 等），
-  // 否则光标落在任何祖先区间内都会让整棵子树被跳过
+  // 否则光标落在任何祖先区间内都会让整棵子树被跳过；frontmatter 的剪枝同理，
+  // 必须是「节点完全落在区间内」（写成交集会连根剪掉，详见下面的注释）
   syntaxTree(state).iterate({
     from: 0,
     to: doc.length,
     enter: (ref) => {
-      if (fm && ref.from < fm.to && ref.to > fm.from) return false
+      // 只跳过 frontmatter 内部的节点：Document 根节点与它「相交」但不「包含于」它
+      if (fm && ref.from >= fm.from && ref.to <= fm.to) return false
       switch (ref.name) {
         case 'Table': {
           if (occupied(state, ref.from, ref.to)) return false
@@ -241,6 +296,8 @@ export function computeInlineDecorations(
   const deferredLinks: SyntaxNode[] = []
   const headingRe = /^ATXHeading([1-6])$/
   const setextRe = /^SetextHeading([12])$/
+  /** 已处理的标记起始位置：跨可视区间边界的节点会被重复进入，重复施加相同 replace 会构成重叠装饰 */
+  const seenMarks = new Set<number>()
 
   for (const vis of ranges) {
     syntaxTree(state).iterate({
@@ -248,9 +305,13 @@ export function computeInlineDecorations(
       to: vis.to,
       enter: (ref) => {
         // frontmatter 区间（被误解析为 SetextHeading2 的 --- 块）内的树节点全部跳过。
-        // 注意：不能对 mathRanges 在此做同类剪枝——Document/Paragraph 等祖先节点区间
-        // 必然覆盖公式块区间，整棵树会在根节点被剪掉；行内正则扫描自带 mathRanges 排除
-        if (fmRange && ref.from < fmRange.to && ref.to > fmRange.from) return false
+        // ⚠️ 判定必须是「节点完全落在 frontmatter 内」：若写成区间「相交」，
+        // Document 根节点（0..doc.length）必然与它相交 → 整棵树在根节点被剪掉，
+        // 一切依赖语法树的装饰（列表 / 引用 / 表格 / HTML 块 / 水平线 / 行内样式）全部消失
+        // （实测：带 frontmatter 的笔记在所见即所得下只剩块级公式还能渲染）。
+        // 同理不能对 mathRanges 做同类剪枝——Document / Paragraph 等祖先节点必然覆盖公式块区间；
+        // 行内正则扫描已自带 mathRanges 排除
+        if (fmRange && ref.from >= fmRange.from && ref.to <= fmRange.to) return false
         const heading = headingRe.exec(ref.name)
         const setext = setextRe.exec(ref.name)
         if (heading || setext) {
@@ -304,14 +365,43 @@ export function computeInlineDecorations(
                         : 'lp-inline-code'
                 decorations.push(deco.mark({ class: cls }).range(first.to, last.from))
               }
-              if (!occupied(state, ref.from, ref.to)) {
+              if (!markTouched(state, marks)) {
                 for (const mk of marks) decorations.push(deco.replace({}).range(mk.from, mk.to))
               }
             }
             return false
           }
+          case 'ListItem': {
+            // 列表标记：无序 → 圆点 widget；任务项 → 标记（含其后一个空格）由复选框取代；
+            // 有序 → 保留源编号（编号本身即渲染形态）。光标在本行时整个列表项回落源码
+            const mark = listMarkOf(ref.node)
+            if (mark && !seenMarks.has(mark.from)) {
+              seenMarks.add(mark.from)
+              if (!lineBusy(state, mark.from)) {
+                const isOrdered = /^\d/.test(doc.sliceString(mark.from, mark.to))
+                if (isTaskItem(ref.node)) {
+                  const to = doc.sliceString(mark.to, mark.to + 1) === ' ' ? mark.to + 1 : mark.to
+                  pushReplace(mark.from, to)
+                } else if (!isOrdered) {
+                  pushReplace(mark.from, mark.to, { widget: new BulletWidget() })
+                }
+              }
+            }
+            return true
+          }
+          case 'QuoteMark': {
+            // 引用标记：连同其后一个空格隐藏（只隐藏 `>` 会残留前导空格，与引用条缩进叠加后文字偏右）
+            if (!seenMarks.has(ref.from)) {
+              seenMarks.add(ref.from)
+              if (!lineBusy(state, ref.from)) {
+                const to = doc.sliceString(ref.to, ref.to + 1) === ' ' ? ref.to + 1 : ref.to
+                pushReplace(ref.from, to)
+              }
+            }
+            return false
+          }
           case 'TaskMarker': {
-            if (ref.to - ref.from === 3 && !occupied(state, ref.from, ref.to)) {
+            if (ref.to - ref.from === 3 && !lineBusy(state, ref.from)) {
               const ch = doc.sliceString(ref.from, ref.to)
               if (ch === '[ ]' || ch === '[x]' || ch === '[X]') {
                 pushReplace(ref.from, ref.to, { widget: new CheckboxWidget(ch[1] !== ' ', ref.from) })
