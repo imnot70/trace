@@ -235,18 +235,45 @@ watch(
 )
 watch(
   () => app.previewVisible,
-  () => rebindScrollSync()
+  (visible) => {
+    rebindScrollSync()
+    // 预览初次出现：主动按编辑器当前可视位置同步一次。
+    // 同步逻辑全在 scroll 事件里，而新挂载的预览从顶部（scrollTop=0）起步、编辑器也没滚动
+    // ——双向都收不到事件，预览会停在开头（实测：编辑区滚到 80% 再开预览，预览显示 0%）。
+    if (visible) syncPreviewToEditor()
+  }
 )
 watch(
   () => app.floatingPreview,
   (open) => {
     if (!open && app.previewVisible) {
-      const pos = editorRef.value?.firstVisibleLine()
-      if (pos) previewRef.value?.syncToLine(pos.line, pos.ratio)
+      syncPreviewToEditor(previewRef)
+    } else if (open) {
+      // 悬浮预览初次呼出：与分栏预览同理，主动同步一次（否则从开头显示）
+      syncPreviewToEditor(floatPreviewRef)
     }
     rebindScrollSync()
   }
 )
+
+/**
+ * 把指定预览（默认分栏预览）同步到编辑器当前可视行。nextTick 等待 v-if 挂载完成。
+ * 必须在写预览 scrollTop 之前置位防回环 guard（source=editor）：该写入会触发预览的
+ * scroll 事件 → onPreviewScroll → 编辑器 scrollToLine(此刻读到的行号) → CM 滚动——
+ * 实测会把编辑器拖到完全不同的位置（预览挂载初期布局未稳，读出的行号偏差大）。
+ * guard 的 100ms 窗口让这个紧随的回环事件被既有机制丢弃。
+ */
+function syncPreviewToEditor(
+  target?: typeof previewRef | typeof floatPreviewRef
+): void {
+  void nextTick(() => {
+    const pos = editorRef.value?.firstVisibleLine()
+    if (!pos) return
+    syncGuard.time = Date.now()
+    syncGuard.source = 'editor'
+    ;(target?.value ?? previewRef.value)?.syncToLine(pos.line, pos.ratio)
+  })
+}
 
 const vaultName = computed(() => editor.current?.vault ?? '')
 const vaultGit = computed(() => (vaultName.value ? tree.gitStatuses[vaultName.value] : null))
@@ -258,6 +285,9 @@ watch(
     if (app.floatingPreview) app.closeFloatingPreview()
     await nextTick()
     if (previewRef.value?.scrollElement) previewRef.value.scrollElement.scrollTop = 0
+    // 新笔记的编辑器按「编辑位置」设置落位（可能直接在文末），预览跟随一次，
+    // 避免停在开头等第一次滚动才对齐
+    syncPreviewToEditor()
   }
 )
 
