@@ -534,8 +534,22 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- 顶栏隐藏时（专注隐藏顶栏 / 心流）：右下角长条形状态区。
-         有底色与圆角以区别于正文；聚合 Git 状态与保存状态；悬停唤出顶栏时淡出（避免同屏双份） -->
+         有底色与圆角以区别于正文；编辑模式优先，Git 次之；悬停唤出顶栏时淡出（避免同屏双份） -->
     <div v-if="concealed" class="zen-status-area" :class="{ peeking: topbarPeek }">
+      <!-- 编辑模式：所见即所得（魔法棒，accent 色）/ 源码（代码图标）——写作时最需要确认的状态 -->
+      <el-icon
+        class="zen-status-mode"
+        :class="{ 'mode-wysiwyg': app.editorWysiwyg }"
+        :title="app.editorWysiwyg ? '所见即所得模式' : '源码模式'"
+      >
+        <MagicStick v-if="app.editorWysiwyg" />
+        <Code v-else />
+      </el-icon>
+      <!-- 保存状态文字：无事件时隐去 -->
+      <span class="zen-status-save" :class="saveDotState">
+        {{ saveDotState === 'error' ? '保存失败' : saveDotState === 'saving' ? '保存中…' : saveDotState === 'saved' ? '已保存' : saveDotState === 'dirty' ? '未保存' : '' }}
+      </span>
+      <!-- Git 状态（次要，非所有库都用 git） -->
       <template v-if="vaultGit">
         <el-icon v-if="git.syncing[vaultName]" class="is-loading zen-status-spin" title="同步中">
           <Loading />
@@ -545,9 +559,6 @@ onBeforeUnmount(() => {
         <span v-if="vaultGit.behind" class="zen-status-flag" title="未拉取">↓{{ vaultGit.behind }}</span>
         <span v-if="vaultGit.dirty" class="zen-status-flag" title="有未提交修改">未提交</span>
       </template>
-      <span class="zen-status-save" :class="saveDotState">
-        {{ saveDotState === 'error' ? '保存失败' : saveDotState === 'saving' ? '保存中…' : saveDotState === 'saved' ? '已保存' : saveDotState === 'dirty' ? '未保存' : '' }}
-      </span>
     </div>
 
     <!-- 表格尺寸输入浮层（FR-2.4.20）：跟随光标，实时回显将插入的行列数 -->

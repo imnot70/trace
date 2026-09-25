@@ -754,6 +754,22 @@ body {
   color: var(--accent);
 }
 
+/* 编辑模式图标：所见即所得用 accent 高亮（写作时最关心「现在能不能马上看到效果」） */
+.zen-status-area .zen-status-mode {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.zen-status-area .zen-status-mode.mode-wysiwyg {
+  color: var(--accent);
+}
+
+/* Git 段落与前面内容之间的分隔（Git 是次要状态，视觉上往后靠） */
+.zen-status-area .zen-status-spin,
+.zen-status-area .zen-status-branch {
+  margin-left: 2px;
+}
+
 .zen-status-area .zen-status-spin {
   font-size: 12px;
   color: var(--text-tertiary);
