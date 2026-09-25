@@ -751,6 +751,21 @@ body {
   background: var(--flow-paper);
 }
 
+/* 底色过渡（FR-2.9.8 扩展，用户提出）：写作栏两侧各 10% 栏宽的渐隐带——
+   渐变画在滚动层上（透明 → 底色 → 透明），中段实心区被上方行号槽 / 内容层的实底
+   覆盖，渐隐带与实底之间不会出现接缝；渐变实心区外扩 24px 吸收滚动条宽度差。
+   100% 与栏宽 padding 同口径（scroller 宽度），中心对齐写作栏 */
+.editor-card.flow-mode.flow-paper-on.flow-paper-fade .cm-scroller {
+  background: linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc((100% - var(--flow-measure, 42em)) / 2 - var(--flow-measure, 42em) / 10 - 24px),
+    var(--flow-paper) calc((100% - var(--flow-measure, 42em)) / 2 + 24px),
+    var(--flow-paper) calc((100% + var(--flow-measure, 42em)) / 2 - 24px),
+    transparent calc((100% + var(--flow-measure, 42em)) / 2 + var(--flow-measure, 42em) / 10 + 24px)
+  );
+}
+
 /* ---------- 顶栏隐藏时的右下角状态区（专注隐藏顶栏 / 心流模式） ---------- */
 /* 长条形区域：有底色与圆角以区别于正文；85% 不透明度不喧宾夺主；
    悬停唤出顶栏时淡出——完整状态在顶栏里，避免同屏双份 */

@@ -20,7 +20,7 @@
             @input="handleSearchInput"
             @keydown.down.prevent="moveActive(1)"
             @keydown.up.prevent="moveActive(-1)"
-            @keydown.enter="onEnterKey"
+            @keydown.enter.exact="onEnterKey"
             @keydown.alt.enter.prevent="onPreviewKey"
           >
             <template #prefix>

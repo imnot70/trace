@@ -68,8 +68,8 @@ const props = defineProps<{
   typewriterMode?: TypewriterMode
   /** 回车音效：启用时回车插入换行播放合成音（心流模式内由父组件置位） */
   returnSound?: { enabled: boolean; volume: number; variant: SoundVariant; skipRepeat: boolean }
-  /** 悬浮预览正在展示「补全预览」（FR-2.9.10）：此时 Alt+Enter 语义变为把选中笔记落成引用 */
-  previewingCompletion?: boolean
+  /** 悬浮预览正在展示的笔记（FR-2.9.10）：非空时 Alt+Enter 语义变为把该笔记落成引用 */
+  previewTarget?: { vault: string; path: string; name: string } | null
 }>()
 
 const emit = defineEmits<{
@@ -127,9 +127,29 @@ function previewSelectedCompletion(): boolean {
 }
 
 /**
- * 把当前选中的笔记候选项落成引用（FR-2.9.10 二轮：悬浮预览「插入引用」按钮 / 预览态 Alt+Enter）。
- * 用光标前的 `[[` 起点替换到光标（即整段未完成的 `[[xxx`），写入完整引用 `[[路径]]`。
- * 补全非活动态返回 false，由调用方决定兜底行为。
+ * 笔记候选项落成引用（三条路径共用：Enter 接受补全 / 预览态 Alt+Enter / 预览「插入引用」按钮）。
+ * 吸收光标后紧邻的自动闭合 ]]——closeBrackets 会在输入 [[ 时补出成对括号，不吸收会产生
+ * [[x]]] 三连括号（多余 ] 被并进链接目标，渲染为断链）；无自动闭合时补上 ]]（v0.8.3 行为）。
+ */
+function applyNoteCompletion(target: EditorView, from: number, to: number, label: string): void {
+  let end = to
+  let closed = 0
+  while (closed < 2 && target.state.sliceDoc(end, end + 1) === ']') {
+    end++
+    closed++
+  }
+  const insert = label + (closed ? '' : ']]')
+  target.dispatch({
+    changes: { from, to: end, insert },
+    selection: { anchor: from + insert.length }
+  })
+  target.focus()
+}
+
+/**
+ * 把当前选中的笔记候选项落成引用（FR-2.9.10：悬浮预览「插入引用」按钮 / 预览态 Alt+Enter）。
+ * 用光标前的 `[[` 起点替换到光标（即整段未完成的 `[[xxx`），写入完整引用 `[[路径]]`，
+ * 并吸收光标后紧邻的自动闭合 ]]。补全非活动态返回 false，由调用方决定兜底行为。
  */
 function insertReferenceFromCompletion(): boolean {
   if (!view) return false
@@ -142,13 +162,7 @@ function insertReferenceFromCompletion(): boolean {
   const before = line.text.slice(0, cursor - line.from)
   const start = before.lastIndexOf('[[')
   if (start < 0) return false
-  const from = line.from + start
-  const reference = `[[${notePath}]]`
-  view.dispatch({
-    changes: { from, to: cursor, insert: reference },
-    selection: { anchor: from + reference.length }
-  })
-  view.focus()
+  applyNoteCompletion(view, line.from + start, cursor, notePath)
   return true
 }
 
@@ -275,7 +289,11 @@ function traceCompletions(context: CompletionContext): CompletionResult | null {
                 setTimeout(() => startCompletion(view), 50)
               }
             }
-          : o
+          : {
+              ...o,
+              apply: (view: EditorView, _c: any, from: number, to: number) =>
+                applyNoteCompletion(view, from, to, o.label)
+            }
       )
       // filter: false——源已按前缀过滤，CM 内置的模糊过滤对中文匹配不可靠（实测输入
       // 中文会把候选项全滤光、补全直接关闭），关闭它以源为准
@@ -327,11 +345,15 @@ function traceCompletions(context: CompletionContext): CompletionResult | null {
         const notePath = basePath + node.name
         if (notePath.toLowerCase() === currentRel.toLowerCase()) continue
         if (!inputPrefix || node.name.toLowerCase().startsWith(inputPrefix.toLowerCase())) {
-          // 笔记用简单字符串替换，自动处理闭合 ]] 的逻辑；notePath 供预览 / 插入引用取真实路径
+          // 笔记候选项落成引用走 applyNoteCompletion（吸收 closeBrackets 的自动闭合 ]]）；
+          // notePath 供预览 / 插入引用取真实路径
+          const label = basePath + node.name
           options.push({
-            label: basePath + node.name,
+            label,
             detail: '笔记',
-            notePath
+            notePath,
+            apply: (target: EditorView, _c: any, from: number, to: number) =>
+              applyNoteCompletion(target, from, to, label)
           })
         }
       }
@@ -604,12 +626,19 @@ function createView(initialDoc: string): EditorView {
           // 占用为「接受补全」且是 Prec.highest，Mod+Enter 同样会被其拦下）
           key: 'Alt-Enter',
           run: () => {
-            // 预览态（悬浮预览正展示补全预览）：Alt+Enter = 把选中的笔记落成引用，
-            // 成功后收起悬浮预览（一瞥结束），编辑器已由 insertReferenceFromCompletion 聚焦
-            if (props.previewingCompletion) {
-              const inserted = insertReferenceFromCompletion()
-              if (inserted) useAppStore().closeFloatingPreview()
-              return inserted
+            // 预览态（悬浮预览正展示一篇笔记）：Alt+Enter = 把该笔记落成引用。
+            // 三种情况都必须消费 Enter（落给 CM 默认行为会插入换行——「编辑区闪一下」的来源）：
+            // ① 补全仍活动 → 整段替换并吸收自动闭合 ]]；② 补全已关 → 光标处插入完整引用；
+            // ③ 目标是当前笔记自身 → 不插入（自引用无意义），仅收起预览
+            if (props.previewTarget) {
+              const t = props.previewTarget
+              const rel = t.path.replace(/\.md$/i, '')
+              if (rel !== props.notePath.replace(/\.md$/i, '')) {
+                if (!insertReferenceFromCompletion()) insertText(`[[${rel}]]`)
+              }
+              useAppStore().closeFloatingPreview()
+              view?.focus()
+              return true
             }
             return previewSelectedCompletion()
           }

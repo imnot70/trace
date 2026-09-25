@@ -179,14 +179,18 @@ watch(
 )
 
 /** 悬浮预览头部的「插入引用」按钮（FR-2.9.10）：把正在预览的笔记落成引用。
- *  首选走编辑器的补全插入（替换未完成的 [[xxx 并闭合），补全已不在活动态时
- *  退而在当前光标插入完整引用 */
+ *  目标是当前笔记自身时不插入（自引用无意义），仅收起预览；补全已不在活动态时
+ *  兜底在当前光标插入完整引用 */
 function insertFromPreview(): void {
   const target = completionPreview.value
   if (!target) return
-  const inserted = editorRef.value?.insertReferenceFromCompletion()
-  if (!inserted) {
-    editorRef.value?.insertText(`[[${target.path.replace(/\.md$/i, '')}]]`)
+  const rel = target.path.replace(/\.md$/i, '')
+  const isSelf = editor.current?.vault === target.vault && editor.current?.path.replace(/\.md$/i, '') === rel
+  if (!isSelf) {
+    const inserted = editorRef.value?.insertReferenceFromCompletion()
+    if (!inserted) {
+      editorRef.value?.insertText(`[[${rel}]]`)
+    }
   }
   app.closeFloatingPreview()
   editorRef.value?.focus()
@@ -422,7 +426,8 @@ onBeforeUnmount(() => {
       'zen-concealed': concealed,
       peeking: topbarPeek,
       'flow-mode': app.flowMode,
-      'flow-paper-on': app.flowMode && app.settings.flowPaperEnabled
+      'flow-paper-on': app.flowMode && app.settings.flowPaperEnabled,
+      'flow-paper-fade': app.flowMode && app.settings.flowPaperEnabled && app.settings.flowPaperFade
     }"
     :style="{
       flexBasis: app.previewVisible ? (app.zenMode ? '50%' : `${splitPercent}%`) : '100%',
@@ -667,7 +672,7 @@ onBeforeUnmount(() => {
         :vault="editor.current.vault"
         :note-path="editor.current.path"
         :wysiwyg="app.editorWysiwyg"
-        :previewing-completion="!!completionPreview"
+        :preview-target="completionPreview"
         @update:model-value="onEditorUpdate"
         @save="editor.flushSave()"
         @preview-note="onCompletionPreview"
