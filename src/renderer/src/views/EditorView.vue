@@ -534,31 +534,45 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- 顶栏隐藏时（专注隐藏顶栏 / 心流）：右下角长条形状态区。
-         有底色与圆角以区别于正文；编辑模式优先，Git 次之；悬停唤出顶栏时淡出（避免同屏双份） -->
+         有底色与圆角以区别于正文；Git 状态在左（带分支图标），编辑模式三图标（所见即所得 / 心流 / 专注）在右，各自激活时 accent 高亮；保存为小圆点；悬停唤出顶栏时淡出 -->
     <div v-if="concealed" class="zen-status-area" :class="{ peeking: topbarPeek }">
-      <!-- 编辑模式：所见即所得（魔法棒，accent 色）/ 源码（代码图标）——写作时最需要确认的状态 -->
-      <el-icon
-        class="zen-status-mode"
-        :class="{ 'mode-wysiwyg': app.editorWysiwyg }"
-        :title="app.editorWysiwyg ? '所见即所得模式' : '源码模式'"
-      >
-        <MagicStick v-if="app.editorWysiwyg" />
-        <Code v-else />
-      </el-icon>
-      <!-- 保存状态文字：无事件时隐去 -->
-      <span class="zen-status-save" :class="saveDotState">
-        {{ saveDotState === 'error' ? '保存失败' : saveDotState === 'saving' ? '保存中…' : saveDotState === 'saved' ? '已保存' : saveDotState === 'dirty' ? '未保存' : '' }}
-      </span>
-      <!-- Git 状态（次要，非所有库都用 git） -->
+      <!-- Git 状态（有分支图标；非所有库都用 git，vaultGit 为空则整段不渲染） -->
       <template v-if="vaultGit">
         <el-icon v-if="git.syncing[vaultName]" class="is-loading zen-status-spin" title="同步中">
           <Loading />
+        </el-icon>
+        <el-icon class="zen-status-git-icon" title="Git 分支">
+          <Share />
         </el-icon>
         <span class="zen-status-branch">{{ vaultGit.branch }}</span>
         <span v-if="vaultGit.ahead" class="zen-status-flag" title="未推送">↑{{ vaultGit.ahead }}</span>
         <span v-if="vaultGit.behind" class="zen-status-flag" title="未拉取">↓{{ vaultGit.behind }}</span>
         <span v-if="vaultGit.dirty" class="zen-status-flag" title="有未提交修改">未提交</span>
       </template>
+      <span class="zen-status-dot" :class="saveDotState" title=""></span>
+      <!-- 编辑模式三图标：所见即所得（魔法棒）/ 心流（咖啡杯）/ 专注（全屏）；
+           各自激活时 accent 高亮——从顶栏隐藏后仍能确认当前处于哪些模式 -->
+      <el-icon
+        class="zen-status-mode"
+        :class="{ 'mode-on': app.editorWysiwyg }"
+        :title="app.editorWysiwyg ? '所见即所得：开' : '所见即所得：关'"
+      >
+        <MagicStick />
+      </el-icon>
+      <el-icon
+        class="zen-status-mode"
+        :class="{ 'mode-on': app.flowMode }"
+        :title="app.flowMode ? '心流模式：开' : '心流模式：关'"
+      >
+        <Coffee />
+      </el-icon>
+      <el-icon
+        class="zen-status-mode"
+        :class="{ 'mode-on': app.zenMode }"
+        :title="app.zenMode ? '专注模式：开' : '专注模式：关'"
+      >
+        <FullScreen />
+      </el-icon>
     </div>
 
     <!-- 表格尺寸输入浮层（FR-2.4.20）：跟随光标，实时回显将插入的行列数 -->
