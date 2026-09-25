@@ -12,6 +12,9 @@ export class WatcherService {
   private suspendDepth = 0
   private pending = new Map<string, Set<string>>()
   private timer: NodeJS.Timeout | null = null
+  /** 防抖最大等待：持续写入会不断重置尾沿计时器，超过该时限强制发出一批 */
+  private maxWaitTimer: NodeJS.Timeout | null = null
+  private static MAX_WAIT_MS = 2_000
   /** 挂起期间有事件被丢弃（git 同步/自动同步拉取的文件变更），resume 后需补偿刷新 */
   private droppedWhileSuspended = false
 
@@ -87,21 +90,38 @@ export class WatcherService {
   close(): void {
     if (this.timer) clearTimeout(this.timer)
     this.timer = null
+    if (this.maxWaitTimer) clearTimeout(this.maxWaitTimer)
+    this.maxWaitTimer = null
     this.pending.clear()
     this.droppedWhileSuspended = false
     void this.watcher?.close()
     this.watcher = null
   }
 
-  private schedule(): void {
-    if (this.timer) clearTimeout(this.timer)
-    this.timer = setTimeout(() => {
+  /** 发出当前积攒的一批变更（防抖尾沿或 max-wait 到期时触发） */
+  private flush(): void {
+    if (this.timer) {
+      clearTimeout(this.timer)
       this.timer = null
-      const batch = new Map(this.pending)
-      this.pending.clear()
-      for (const [vault, paths] of batch) {
-        this.emit({ vault, paths: [...paths] })
-      }
-    }, 400)
+    }
+    if (this.maxWaitTimer) {
+      clearTimeout(this.maxWaitTimer)
+      this.maxWaitTimer = null
+    }
+    const batch = new Map(this.pending)
+    this.pending.clear()
+    for (const [vault, paths] of batch) {
+      this.emit({ vault, paths: [...paths] })
+    }
+  }
+
+  private schedule(): void {
+    // 尾沿防抖 400ms；另有 max-wait 兜底——持续写入时尾沿被不断重置，
+    // 不能让渲染端 / 索引无限期等不到通知
+    if (!this.timer && !this.maxWaitTimer && this.pending.size > 0) {
+      this.maxWaitTimer = setTimeout(() => this.flush(), WatcherService.MAX_WAIT_MS)
+    }
+    if (this.timer) clearTimeout(this.timer)
+    this.timer = setTimeout(() => this.flush(), 400)
   }
 }

@@ -149,3 +149,32 @@ describe('GitService（本地 bare 远端）', () => {
     expect(await git.isRepo(v1)).toBe(true)
   })
 })
+
+describe('GitService 安全防护', () => {
+  it('resolveConflict 拒绝库外路径（../ 路径穿越）', async () => {
+    const vault = path.join(tmp, 'v-traverse')
+    fs.mkdirSync(vault)
+    await simpleGit(vault).init()
+
+    const ok = await git.resolveConflict(vault, '../escape.md', {
+      type: 'manual',
+      content: '越权内容'
+    })
+    expect(ok).toBe(false)
+    // 库外（工作区 tmp 根）不得出现被写入的文件
+    expect(fs.existsSync(path.join(tmp, 'escape.md'))).toBe(false)
+  })
+
+  it('同一仓库的并发同步串行执行', async () => {
+    const bare = makeBare('remote-mutex.git')
+    const vault = path.join(tmp, 'v-mutex')
+    fs.mkdirSync(vault)
+    await writeFile(vault, 'a.md', '1\n')
+    await git.associate(vault, bare)
+
+    // 两个同步请求同时发出：串行排队，都应成功完成，不撞 .git/index.lock
+    const [r1, r2] = await Promise.all([git.sync(vault), git.sync(vault)])
+    expect(r1.ok).toBe(true)
+    expect(r2.ok).toBe(true)
+  })
+})

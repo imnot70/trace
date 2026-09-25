@@ -22,6 +22,7 @@ import TrashView from './views/TrashView.vue'
 import SettingsView from './views/SettingsView.vue'
 import NoteGridView from './views/NoteGridView.vue'
 import { ElMessage } from 'element-plus'
+import { noteDisplayName } from '@shared/validate'
 
 const app = useAppStore()
 const tree = useTreeStore()
@@ -33,16 +34,16 @@ const search = useSearchStore()
 /** 从搜索结果打开笔记 */
 async function handleOpenNoteFromSearch(vault: string, path: string) {
   try {
-    // 先加载笔记内容
+    // 预读只为错误提示（读不到给出明确报错）；实际打开由 openNote 内部完成，
+    // 此前把整篇内容误当显示名传参、污染「常用」列表的 bug 已修（加固批次）
     const result = await window.trace.readNote(vault, path)
-    if (result.ok && result.content !== undefined) {
-      // 切换到编辑器视图
-      app.view = { name: 'editor' }
-      // 打开笔记
-      editor.openNote(vault, path, result.content)
-    } else {
+    if (!result.ok) {
       ElMessage.error(result.error || '打开笔记失败')
+      return
     }
+    // 切换到编辑器视图并打开笔记（显示名 = 去扩展名的文件名，与树节点 / 反向链接一致）
+    app.view = { name: 'editor' }
+    await editor.openNote(vault, path, noteDisplayName(path.split('/').pop() ?? path))
   } catch {
     ElMessage.error('打开笔记失败')
   }
