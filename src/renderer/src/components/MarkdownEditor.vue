@@ -38,6 +38,8 @@ import {
   closeBracketsKeymap,
   completionKeymap,
   startCompletion,
+  completionStatus,
+  selectedCompletion,
   type CompletionContext,
   type CompletionResult
 } from '@codemirror/autocomplete'
@@ -71,6 +73,8 @@ const emit = defineEmits<{
   (e: 'save'): void
   (e: 'image', fileName: string, base64: string): void
   (e: 'open-note', target: { vault: string; path: string; name: string }): void
+  /** 补全面板里请求预览一篇笔记（不改变当前编辑中的笔记） */
+  (e: 'preview-note', target: { vault: string; path: string; name: string }): void
 }>()
 
 const container = ref<HTMLDivElement | null>(null)
@@ -91,6 +95,28 @@ const tablePrompt = useTablePromptStore()
 function promptKey(key: PromptKey, digit = ''): boolean {
   if (!tablePrompt.active) return false
   return tablePrompt.step(key, digit)
+}
+
+/**
+ * 补全面板预览（心流快速查阅）：补全打开时按 Mod+Enter，将当前选中的**笔记**候选项
+ * 通过 preview-note 事件交由外层呼出悬浮预览——不插入文本、不关闭补全面板，
+ * 看完点回编辑区（悬浮预览的「一瞥」语义自动收回），继续写作。
+ * 场景：心流下写作想起某篇笔记，先看一眼再决定是否引用，全程不离开心流。
+ */
+function previewSelectedCompletion(): boolean {
+  if (!view) return false
+  if (completionStatus(view.state) !== 'active') return false
+  const picked = selectedCompletion(view.state)
+  if (!picked) return false
+  // 只对笔记候选项生效（文件夹候选项以 / 结尾；笔记 label 是「路径/显示名」不带扩展名）
+  if (picked.label.endsWith('/')) return false
+  const name = picked.label.replace(/.*\//, '')
+  emit('preview-note', {
+    vault: props.vault,
+    path: `${picked.label}.md`,
+    name
+  })
+  return true
 }
 
 /** 该事务是否为「插入换行」的用户输入（排除粘贴：粘贴多行不应发声） */
@@ -509,6 +535,12 @@ function createView(initialDoc: string): EditorView {
       }),
       // Prec.high：这些是应用级绑定，必须优先于 basicSetup 内置键位（如 searchKeymap 的 Mod-f）
       Prec.high(keymap.of([
+        {
+          // Alt+Enter：补全面板里预览当前选中项（Enter 本身被 completionKeymap
+          // 占用为「接受补全」且是 Prec.highest，Mod+Enter 同样会被其拦下）
+          key: 'Alt-Enter',
+          run: () => previewSelectedCompletion()
+        },
         {
           key: 'Mod-s',
           preventDefault: true,
