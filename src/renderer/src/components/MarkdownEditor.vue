@@ -127,20 +127,15 @@ function previewSelectedCompletion(): boolean {
 }
 
 /**
- * 笔记候选项落成引用（三条路径共用：Enter 接受补全 / 预览态 Alt+Enter / 预览「插入引用」按钮）。
- * 吸收光标后紧邻的自动闭合 ]]——closeBrackets 会在输入 [[ 时补出成对括号，不吸收会产生
- * [[x]]] 三连括号（多余 ] 被并进链接目标，渲染为断链）；无自动闭合时补上 ]]（v0.8.3 行为）。
+ * Enter 接受补全（替换范围在 [[ 之后）：插入 label；光标后已有 closeBrackets 自动闭合的
+ * ]] 时保留它（只插 label），没有则补上 ]]。**不要吸收删除既有闭合**——那会产出
+ * [[label 缺右括号（FR-2.9.10 三轮实测反馈）。
  */
 function applyNoteCompletion(target: EditorView, from: number, to: number, label: string): void {
-  let end = to
-  let closed = 0
-  while (closed < 2 && target.state.sliceDoc(end, end + 1) === ']') {
-    end++
-    closed++
-  }
+  const closed = target.state.sliceDoc(to, to + 1) === ']'
   const insert = label + (closed ? '' : ']]')
   target.dispatch({
-    changes: { from, to: end, insert },
+    changes: { from, to, insert },
     selection: { anchor: from + insert.length }
   })
   target.focus()
@@ -148,8 +143,9 @@ function applyNoteCompletion(target: EditorView, from: number, to: number, label
 
 /**
  * 把当前选中的笔记候选项落成引用（FR-2.9.10：悬浮预览「插入引用」按钮 / 预览态 Alt+Enter）。
- * 用光标前的 `[[` 起点替换到光标（即整段未完成的 `[[xxx`），写入完整引用 `[[路径]]`，
- * 并吸收光标后紧邻的自动闭合 ]]。补全非活动态返回 false，由调用方决定兜底行为。
+ * 替换范围**含 [[ 起点直到光标**，写入完整引用 `[[路径]]`，并吸收光标后紧邻的自动闭合 ]]
+ * （替换范围含 [[，若只插裸 label 会把括号一起吃掉——前后都没了 []，三轮实测反馈）。
+ * 补全非活动态返回 false，由调用方决定兜底行为。
  */
 function insertReferenceFromCompletion(): boolean {
   if (!view) return false
@@ -162,7 +158,19 @@ function insertReferenceFromCompletion(): boolean {
   const before = line.text.slice(0, cursor - line.from)
   const start = before.lastIndexOf('[[')
   if (start < 0) return false
-  applyNoteCompletion(view, line.from + start, cursor, notePath)
+  const from = line.from + start
+  let end = cursor
+  let n = 0
+  while (n < 2 && view.state.sliceDoc(end, end + 1) === ']') {
+    end++
+    n++
+  }
+  const reference = `[[${notePath}]]`
+  view.dispatch({
+    changes: { from, to: end, insert: reference },
+    selection: { anchor: from + reference.length }
+  })
+  view.focus()
   return true
 }
 

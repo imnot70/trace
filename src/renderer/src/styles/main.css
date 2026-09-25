@@ -751,18 +751,19 @@ body {
   background: var(--flow-paper);
 }
 
-/* 底色过渡（FR-2.9.8 扩展，用户提出）：写作栏两侧各 10% 栏宽的渐隐带——
-   渐变画在滚动层上（透明 → 底色 → 透明），中段实心区被上方行号槽 / 内容层的实底
-   覆盖，渐隐带与实底之间不会出现接缝；渐变实心区外扩 24px 吸收滚动条宽度差。
+/* 底色过渡（FR-2.9.8 扩展，用户提出）：写作栏两侧各 15% 栏宽的渐隐带——
+   渐变画在滚动层上（透明 → 底色 → 透明）；渐变的实心段在栏边前 8px 即达全浓度
+   （8px 吸收滚动条宽度差，中段被上方行号槽 / 内容层的实底覆盖）——若实心段推迟到
+   栏边之后才全浓度，栏边处会出现明显的浓度分界（三轮实测反馈已修）。
    100% 与栏宽 padding 同口径（scroller 宽度），中心对齐写作栏 */
 .editor-card.flow-mode.flow-paper-on.flow-paper-fade .cm-scroller {
   background: linear-gradient(
     to right,
     transparent 0,
-    transparent calc((100% - var(--flow-measure, 42em)) / 2 - var(--flow-measure, 42em) / 10 - 24px),
-    var(--flow-paper) calc((100% - var(--flow-measure, 42em)) / 2 + 24px),
-    var(--flow-paper) calc((100% + var(--flow-measure, 42em)) / 2 - 24px),
-    transparent calc((100% + var(--flow-measure, 42em)) / 2 + var(--flow-measure, 42em) / 10 + 24px)
+    transparent calc((100% - var(--flow-measure, 42em)) / 2 - var(--flow-measure, 42em) / 15 - 8px),
+    var(--flow-paper) calc((100% - var(--flow-measure, 42em)) / 2 - 8px),
+    var(--flow-paper) calc((100% + var(--flow-measure, 42em)) / 2 + 8px),
+    transparent calc((100% + var(--flow-measure, 42em)) / 2 + var(--flow-measure, 42em) / 15 + 8px)
   );
 }
 
