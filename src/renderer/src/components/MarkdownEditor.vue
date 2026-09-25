@@ -52,7 +52,9 @@ import { setHeading, type HeadingLevel } from '../lib/heading'
 import { insertTable } from '../lib/table'
 import { tableTab } from '../lib/tableNav'
 import { useTablePromptStore } from '../stores/tablePrompt'
+import { useAppStore } from '../stores/app'
 import type { PromptKey } from '../lib/tablePrompt'
+import { flatCompletionOptions, type NoteTreeNode } from '../lib/noteCompletion'
 import type { TreeNode } from '@shared/types'
 
 const props = defineProps<{
@@ -66,6 +68,8 @@ const props = defineProps<{
   typewriterMode?: TypewriterMode
   /** 回车音效：启用时回车插入换行播放合成音（心流模式内由父组件置位） */
   returnSound?: { enabled: boolean; volume: number; variant: SoundVariant; skipRepeat: boolean }
+  /** 悬浮预览正在展示的笔记（FR-2.9.10）：非空时 Alt+Enter 语义变为把该笔记落成引用 */
+  previewTarget?: { vault: string; path: string; name: string } | null
 }>()
 
 const emit = defineEmits<{
@@ -110,12 +114,63 @@ function previewSelectedCompletion(): boolean {
   if (!picked) return false
   // 只对笔记候选项生效（文件夹候选项以 / 结尾；笔记 label 是「路径/显示名」不带扩展名）
   if (picked.label.endsWith('/')) return false
-  const name = picked.label.replace(/.*\//, '')
+  // 路径取候选项自带的 notePath（FR-2.9.10：扁平补全的唯一名候选项 label 只是叶子名，
+  // 不能当路径拼 .md——否则预览会按库根路径找文件报 ENOENT）
+  const notePath = (picked as { notePath?: string }).notePath ?? picked.label
+  const name = notePath.replace(/.*\//, '')
   emit('preview-note', {
     vault: props.vault,
-    path: `${picked.label}.md`,
+    path: `${notePath}.md`,
     name
   })
+  return true
+}
+
+/**
+ * Enter 接受补全（替换范围在 [[ 之后）：插入 label；光标后已有 closeBrackets 自动闭合的
+ * ]] 时保留它（只插 label），没有则补上 ]]。**不要吸收删除既有闭合**——那会产出
+ * [[label 缺右括号（FR-2.9.10 三轮实测反馈）。
+ */
+function applyNoteCompletion(target: EditorView, from: number, to: number, label: string): void {
+  const closed = target.state.sliceDoc(to, to + 1) === ']'
+  const insert = label + (closed ? '' : ']]')
+  target.dispatch({
+    changes: { from, to, insert },
+    selection: { anchor: from + insert.length }
+  })
+  target.focus()
+}
+
+/**
+ * 把当前选中的笔记候选项落成引用（FR-2.9.10：悬浮预览「插入引用」按钮 / 预览态 Alt+Enter）。
+ * 替换范围**含 [[ 起点直到光标**，写入完整引用 `[[路径]]`，并吸收光标后紧邻的自动闭合 ]]
+ * （替换范围含 [[，若只插裸 label 会把括号一起吃掉——前后都没了 []，三轮实测反馈）。
+ * 补全非活动态返回 false，由调用方决定兜底行为。
+ */
+function insertReferenceFromCompletion(): boolean {
+  if (!view) return false
+  if (completionStatus(view.state) !== 'active') return false
+  const picked = selectedCompletion(view.state)
+  if (!picked || picked.label.endsWith('/')) return false
+  const notePath = (picked as { notePath?: string }).notePath ?? picked.label
+  const cursor = view.state.selection.main.head
+  const line = view.state.doc.lineAt(cursor)
+  const before = line.text.slice(0, cursor - line.from)
+  const start = before.lastIndexOf('[[')
+  if (start < 0) return false
+  const from = line.from + start
+  let end = cursor
+  let n = 0
+  while (n < 2 && view.state.sliceDoc(end, end + 1) === ']') {
+    end++
+    n++
+  }
+  const reference = `[[${notePath}]]`
+  view.dispatch({
+    changes: { from, to: end, insert: reference },
+    selection: { anchor: from + reference.length }
+  })
+  view.focus()
   return true
 }
 
@@ -214,7 +269,7 @@ function getDirAt(tree: TreeNode[], relDir: string): TreeNode[] {
 
 /** 综合补全：[[双链]] 笔记名 + 相对路径 + 锚点 */
 function traceCompletions(context: CompletionContext): CompletionResult | null {
-  // 1. [[双链]] 笔记名补全（逐级路径）
+  // 1. [[双链]] 笔记名补全（前缀不含 / 走全库扁平模糊匹配 FR-2.9.10；含 / 逐级路径）
   const wikilink = context.matchBefore(/\[\[[^\]]*$/)
   if (wikilink) {
     const prefix = wikilink.text.slice(2) // 去掉 [[
@@ -222,14 +277,46 @@ function traceCompletions(context: CompletionContext): CompletionResult | null {
     const nodes = tree.trees[props.vault] ?? []
     const currentRel = props.notePath.replace(/\.md$/i, '')
 
+    const completionFrom = wikilink.from + 2
+    const completionTo = completionFrom + prefix.length
+
+    // 扁平模糊匹配：记不住路径时直接按名字片段全库找（含 / 时走下方原逐级行为）。
+    // 文件夹候选项一并列出（label 以 / 结尾，选中进入逐级导航）
+    if (!prefix.includes('/')) {
+      const flat = flatCompletionOptions(nodes as NoteTreeNode[], prefix, currentRel)
+      if (flat.length === 0) return null
+      const options = flat.map((o) =>
+        o.isDir
+          ? {
+              ...o,
+              apply: (view: EditorView, _c: any, from: number, to: number) => {
+                view.dispatch({
+                  changes: { from, to, insert: o.label },
+                  selection: { anchor: from + o.label.length }
+                })
+                setTimeout(() => startCompletion(view), 50)
+              }
+            }
+          : {
+              ...o,
+              apply: (view: EditorView, _c: any, from: number, to: number) =>
+                applyNoteCompletion(view, from, to, o.label)
+            }
+      )
+      // filter: false——源已按前缀过滤，CM 内置的模糊过滤对中文匹配不可靠（实测输入
+      // 中文会把候选项全滤光、补全直接关闭），关闭它以源为准
+      return { from: completionFrom, to: completionTo, options, filter: false }
+    }
+
     // 逐级补全：按 "/" 分割，最后一段是当前输入前缀，前面的是已选路径
     const segments = prefix.split('/')
     const dirSegments = segments.length > 1 ? segments.slice(0, -1) : []
     const inputPrefix = segments.length > 1 ? segments[segments.length - 1] : prefix
 
-    // 定位到当前目录节点
+    // 定位到当前目录节点（空段 = 库根，支持 [[/ 从根开始浏览）
     let currentNodes = nodes
     for (const seg of dirSegments) {
+      if (seg === '') continue
       const child = currentNodes.find(
         (n) => n.kind === 'dir' && n.name.toLowerCase() === seg.toLowerCase()
       )
@@ -237,12 +324,12 @@ function traceCompletions(context: CompletionContext): CompletionResult | null {
       currentNodes = child.children
     }
 
-    const basePath = dirSegments.length > 0 ? dirSegments.join('/') + '/' : ''
-    const completionFrom = wikilink.from + 2
-    const completionTo = completionFrom + prefix.length
+    // basePath 归一化：过滤空段（[[/ 从根浏览时 dirSegments 含 ''），避免 label 带前导斜杠
+    const rootSegs = dirSegments.filter(Boolean)
+    const basePath = rootSegs.length > 0 ? rootSegs.join('/') + '/' : ''
 
     // 收集当前层级的文件夹和笔记
-    const options: { label: string; detail: string; apply?: string | ((view: EditorView, _c: any, from: number, to: number) => void) }[] = []
+    const options: { label: string; detail: string; notePath?: string; apply?: string | ((view: EditorView, _c: any, from: number, to: number) => void) }[] = []
     for (const node of currentNodes) {
       if (node.name.startsWith('.')) continue
       if (node.kind === 'dir') {
@@ -266,10 +353,15 @@ function traceCompletions(context: CompletionContext): CompletionResult | null {
         const notePath = basePath + node.name
         if (notePath.toLowerCase() === currentRel.toLowerCase()) continue
         if (!inputPrefix || node.name.toLowerCase().startsWith(inputPrefix.toLowerCase())) {
-          // 笔记用简单字符串替换，自动处理闭合 ]] 的逻辑
+          // 笔记候选项落成引用走 applyNoteCompletion（吸收 closeBrackets 的自动闭合 ]]）；
+          // notePath 供预览 / 插入引用取真实路径
+          const label = basePath + node.name
           options.push({
-            label: basePath + node.name,
-            detail: '笔记'
+            label,
+            detail: '笔记',
+            notePath,
+            apply: (target: EditorView, _c: any, from: number, to: number) =>
+              applyNoteCompletion(target, from, to, label)
           })
         }
       }
@@ -278,7 +370,9 @@ function traceCompletions(context: CompletionContext): CompletionResult | null {
     return {
       from: completionFrom,
       to: completionTo,
-      options
+      options,
+      // 同上：源已过滤（startsWith），关闭 CM 对中文不可靠的模糊过滤
+      filter: false
     }
   }
 
@@ -536,10 +630,47 @@ function createView(initialDoc: string): EditorView {
       // Prec.high：这些是应用级绑定，必须优先于 basicSetup 内置键位（如 searchKeymap 的 Mod-f）
       Prec.high(keymap.of([
         {
+          // 行插入快捷键（用户提出）：不论光标在行内什么位置，在上方 / 下方插入一个空行
+          // 并移动到新行行首（典型场景：[[ 补全落成引用后光标在行中，直接换行写下一行）。
+          // 补全打开时 Ctrl+Enter 让位给 completionKeymap（接受补全，Prec.highest）
+          key: 'Ctrl-Enter',
+          run: () => {
+            if (tablePrompt.active || !view) return false
+            const line = view.state.doc.lineAt(view.state.selection.main.head)
+            view.dispatch({ changes: { from: line.to, insert: '\n' }, selection: { anchor: line.to + 1 } })
+            return true
+          }
+        },
+        {
+          key: 'Ctrl-Shift-Enter',
+          run: () => {
+            if (tablePrompt.active || !view) return false
+            const line = view.state.doc.lineAt(view.state.selection.main.head)
+            view.dispatch({ changes: { from: line.from, insert: '\n' }, selection: { anchor: line.from } })
+            return true
+          }
+        },
+        {
           // Alt+Enter：补全面板里预览当前选中项（Enter 本身被 completionKeymap
           // 占用为「接受补全」且是 Prec.highest，Mod+Enter 同样会被其拦下）
           key: 'Alt-Enter',
-          run: () => previewSelectedCompletion()
+          run: () => {
+            // 预览态（悬浮预览正展示一篇笔记）：Alt+Enter = 把该笔记落成引用。
+            // 三种情况都必须消费 Enter（落给 CM 默认行为会插入换行——「编辑区闪一下」的来源）：
+            // ① 补全仍活动 → 整段替换并吸收自动闭合 ]]；② 补全已关 → 光标处插入完整引用；
+            // ③ 目标是当前笔记自身 → 不插入（自引用无意义），仅收起预览
+            if (props.previewTarget) {
+              const t = props.previewTarget
+              const rel = t.path.replace(/\.md$/i, '')
+              if (rel !== props.notePath.replace(/\.md$/i, '')) {
+                if (!insertReferenceFromCompletion()) insertText(`[[${rel}]]`)
+              }
+              useAppStore().closeFloatingPreview()
+              view?.focus()
+              return true
+            }
+            return previewSelectedCompletion()
+          }
         },
         {
           key: 'Mod-s',
@@ -841,6 +972,7 @@ function setHeadingLevel(level: HeadingLevel): void {
 
 defineExpose({
   insertText,
+  insertReferenceFromCompletion,
   firstVisibleLine,
   scrollToLine,
   insertSnippet,

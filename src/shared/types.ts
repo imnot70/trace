@@ -149,6 +149,8 @@ export interface AppSettings {
   flowPaperEnabled: boolean
   /** 心流写作底色颜色（深浅主题各有对应的一套柔和值） */
   flowPaperColor: 'cream' | 'green' | 'blue' | 'pink' | 'gray'
+  /** 底色过渡：写作栏两侧各 15% 栏宽的渐隐带，从编辑区向非编辑区透明度渐增（默认关闭） */
+  flowPaperFade: boolean
   /** 心流模式回车音效开关（默认关闭；仅心流模式内生效） */
   flowSoundEnabled: boolean
   /** 心流模式回车音效音量 0-100（默认 60） */

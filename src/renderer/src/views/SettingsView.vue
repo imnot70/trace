@@ -995,6 +995,14 @@ async function resetGitSource(): Promise<void> {
               />
             </div>
           </div>
+          <div class="setting-row" v-if="app.settings.flowPaperEnabled">
+            <span class="setting-label">底色过渡</span>
+            <el-switch
+              :model-value="app.settings.flowPaperFade"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ flowPaperFade: Boolean(v) })"
+            />
+            <span class="settings-desc" style="margin: 0">写作栏两侧各增加 15% 栏宽的过渡区，底色向两侧逐渐变透明</span>
+          </div>
           <div class="setting-row">
             <span class="setting-label">回车音效</span>
             <el-switch

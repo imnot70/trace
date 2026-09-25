@@ -178,6 +178,35 @@ watch(
   }
 )
 
+/** 悬浮预览头部的「插入引用」按钮（FR-2.9.10）：把正在预览的笔记落成引用。
+ *  目标是当前笔记自身时不插入（自引用无意义），仅收起预览；补全已不在活动态时
+ *  兜底在当前光标插入完整引用 */
+function insertFromPreview(): void {
+  const target = completionPreview.value
+  if (!target) return
+  const rel = target.path.replace(/\.md$/i, '')
+  const isSelf = editor.current?.vault === target.vault && editor.current?.path.replace(/\.md$/i, '') === rel
+  if (!isSelf) {
+    const inserted = editorRef.value?.insertReferenceFromCompletion()
+    if (!inserted) {
+      editorRef.value?.insertText(`[[${rel}]]`)
+    }
+  }
+  app.closeFloatingPreview()
+  editorRef.value?.focus()
+}
+
+/** 外部组件的预览请求（FR-2.9.10：搜索框 Alt+Enter 经 app store 握手到达）——
+ *  先清空再消费，避免 await 期间重复触发；复用补全预览的同一条覆盖管线 */
+watch(
+  () => app.pendingNotePreview,
+  (req) => {
+    if (!req) return
+    app.pendingNotePreview = null
+    void onCompletionPreview(req)
+  }
+)
+
 /** 反向链接点击：打开来源笔记并定位到引用行（line 为 1 基） */
 async function onBacklinkOpenNote(vault: string, path: string, line?: number): Promise<void> {
   const name = path.split('/').pop()?.replace(/\.md$/i, '') ?? ''
@@ -397,7 +426,8 @@ onBeforeUnmount(() => {
       'zen-concealed': concealed,
       peeking: topbarPeek,
       'flow-mode': app.flowMode,
-      'flow-paper-on': app.flowMode && app.settings.flowPaperEnabled
+      'flow-paper-on': app.flowMode && app.settings.flowPaperEnabled,
+      'flow-paper-fade': app.flowMode && app.settings.flowPaperEnabled && app.settings.flowPaperFade
     }"
     :style="{
       flexBasis: app.previewVisible ? (app.zenMode ? '50%' : `${splitPercent}%`) : '100%',
@@ -642,6 +672,7 @@ onBeforeUnmount(() => {
         :vault="editor.current.vault"
         :note-path="editor.current.path"
         :wysiwyg="app.editorWysiwyg"
+        :preview-target="completionPreview"
         @update:model-value="onEditorUpdate"
         @save="editor.flushSave()"
         @preview-note="onCompletionPreview"
@@ -687,6 +718,15 @@ onBeforeUnmount(() => {
         <div class="floating-preview-header">
           <span class="floating-preview-title">{{ completionPreview ? `预览：${completionPreview.name}` : '预览' }}</span>
           <span class="floating-preview-actions">
+            <!-- 补全预览态：把正在预览的笔记落成引用（与编辑器内 Alt+Enter 同效） -->
+            <button
+              v-if="completionPreview"
+              class="tool-btn"
+              title="插入引用（Alt+Enter）"
+              @click="insertFromPreview"
+            >
+              <el-icon><DocumentAdd /></el-icon>
+            </button>
             <button class="tool-btn" @click="pinPeek">
               <el-icon><Magnet /></el-icon>
             </button>
