@@ -52,8 +52,9 @@ import { setHeading, type HeadingLevel } from '../lib/heading'
 import { insertTable } from '../lib/table'
 import { tableTab } from '../lib/tableNav'
 import { useTablePromptStore } from '../stores/tablePrompt'
+import { useAppStore } from '../stores/app'
 import type { PromptKey } from '../lib/tablePrompt'
-import { collectNotes, flatNoteOptions, type NoteTreeNode } from '../lib/noteCompletion'
+import { flatCompletionOptions, type NoteTreeNode } from '../lib/noteCompletion'
 import type { TreeNode } from '@shared/types'
 
 const props = defineProps<{
@@ -67,6 +68,8 @@ const props = defineProps<{
   typewriterMode?: TypewriterMode
   /** 回车音效：启用时回车插入换行播放合成音（心流模式内由父组件置位） */
   returnSound?: { enabled: boolean; volume: number; variant: SoundVariant; skipRepeat: boolean }
+  /** 悬浮预览正在展示「补全预览」（FR-2.9.10）：此时 Alt+Enter 语义变为把选中笔记落成引用 */
+  previewingCompletion?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -111,12 +114,41 @@ function previewSelectedCompletion(): boolean {
   if (!picked) return false
   // 只对笔记候选项生效（文件夹候选项以 / 结尾；笔记 label 是「路径/显示名」不带扩展名）
   if (picked.label.endsWith('/')) return false
-  const name = picked.label.replace(/.*\//, '')
+  // 路径取候选项自带的 notePath（FR-2.9.10：扁平补全的唯一名候选项 label 只是叶子名，
+  // 不能当路径拼 .md——否则预览会按库根路径找文件报 ENOENT）
+  const notePath = (picked as { notePath?: string }).notePath ?? picked.label
+  const name = notePath.replace(/.*\//, '')
   emit('preview-note', {
     vault: props.vault,
-    path: `${picked.label}.md`,
+    path: `${notePath}.md`,
     name
   })
+  return true
+}
+
+/**
+ * 把当前选中的笔记候选项落成引用（FR-2.9.10 二轮：悬浮预览「插入引用」按钮 / 预览态 Alt+Enter）。
+ * 用光标前的 `[[` 起点替换到光标（即整段未完成的 `[[xxx`），写入完整引用 `[[路径]]`。
+ * 补全非活动态返回 false，由调用方决定兜底行为。
+ */
+function insertReferenceFromCompletion(): boolean {
+  if (!view) return false
+  if (completionStatus(view.state) !== 'active') return false
+  const picked = selectedCompletion(view.state)
+  if (!picked || picked.label.endsWith('/')) return false
+  const notePath = (picked as { notePath?: string }).notePath ?? picked.label
+  const cursor = view.state.selection.main.head
+  const line = view.state.doc.lineAt(cursor)
+  const before = line.text.slice(0, cursor - line.from)
+  const start = before.lastIndexOf('[[')
+  if (start < 0) return false
+  const from = line.from + start
+  const reference = `[[${notePath}]]`
+  view.dispatch({
+    changes: { from, to: cursor, insert: reference },
+    selection: { anchor: from + reference.length }
+  })
+  view.focus()
   return true
 }
 
@@ -226,10 +258,25 @@ function traceCompletions(context: CompletionContext): CompletionResult | null {
     const completionFrom = wikilink.from + 2
     const completionTo = completionFrom + prefix.length
 
-    // 扁平模糊匹配：记不住路径时直接按名字片段全库找（含 / 时走下方原逐级行为）
+    // 扁平模糊匹配：记不住路径时直接按名字片段全库找（含 / 时走下方原逐级行为）。
+    // 文件夹候选项一并列出（label 以 / 结尾，选中进入逐级导航）
     if (!prefix.includes('/')) {
-      const options = flatNoteOptions(collectNotes(nodes as NoteTreeNode[]), prefix, currentRel)
-      if (options.length === 0) return null
+      const flat = flatCompletionOptions(nodes as NoteTreeNode[], prefix, currentRel)
+      if (flat.length === 0) return null
+      const options = flat.map((o) =>
+        o.isDir
+          ? {
+              ...o,
+              apply: (view: EditorView, _c: any, from: number, to: number) => {
+                view.dispatch({
+                  changes: { from, to, insert: o.label },
+                  selection: { anchor: from + o.label.length }
+                })
+                setTimeout(() => startCompletion(view), 50)
+              }
+            }
+          : o
+      )
       // filter: false——源已按前缀过滤，CM 内置的模糊过滤对中文匹配不可靠（实测输入
       // 中文会把候选项全滤光、补全直接关闭），关闭它以源为准
       return { from: completionFrom, to: completionTo, options, filter: false }
@@ -240,9 +287,10 @@ function traceCompletions(context: CompletionContext): CompletionResult | null {
     const dirSegments = segments.length > 1 ? segments.slice(0, -1) : []
     const inputPrefix = segments.length > 1 ? segments[segments.length - 1] : prefix
 
-    // 定位到当前目录节点
+    // 定位到当前目录节点（空段 = 库根，支持 [[/ 从根开始浏览）
     let currentNodes = nodes
     for (const seg of dirSegments) {
+      if (seg === '') continue
       const child = currentNodes.find(
         (n) => n.kind === 'dir' && n.name.toLowerCase() === seg.toLowerCase()
       )
@@ -250,10 +298,12 @@ function traceCompletions(context: CompletionContext): CompletionResult | null {
       currentNodes = child.children
     }
 
-    const basePath = dirSegments.length > 0 ? dirSegments.join('/') + '/' : ''
+    // basePath 归一化：过滤空段（[[/ 从根浏览时 dirSegments 含 ''），避免 label 带前导斜杠
+    const rootSegs = dirSegments.filter(Boolean)
+    const basePath = rootSegs.length > 0 ? rootSegs.join('/') + '/' : ''
 
     // 收集当前层级的文件夹和笔记
-    const options: { label: string; detail: string; apply?: string | ((view: EditorView, _c: any, from: number, to: number) => void) }[] = []
+    const options: { label: string; detail: string; notePath?: string; apply?: string | ((view: EditorView, _c: any, from: number, to: number) => void) }[] = []
     for (const node of currentNodes) {
       if (node.name.startsWith('.')) continue
       if (node.kind === 'dir') {
@@ -277,10 +327,11 @@ function traceCompletions(context: CompletionContext): CompletionResult | null {
         const notePath = basePath + node.name
         if (notePath.toLowerCase() === currentRel.toLowerCase()) continue
         if (!inputPrefix || node.name.toLowerCase().startsWith(inputPrefix.toLowerCase())) {
-          // 笔记用简单字符串替换，自动处理闭合 ]] 的逻辑
+          // 笔记用简单字符串替换，自动处理闭合 ]] 的逻辑；notePath 供预览 / 插入引用取真实路径
           options.push({
             label: basePath + node.name,
-            detail: '笔记'
+            detail: '笔记',
+            notePath
           })
         }
       }
@@ -552,7 +603,16 @@ function createView(initialDoc: string): EditorView {
           // Alt+Enter：补全面板里预览当前选中项（Enter 本身被 completionKeymap
           // 占用为「接受补全」且是 Prec.highest，Mod+Enter 同样会被其拦下）
           key: 'Alt-Enter',
-          run: () => previewSelectedCompletion()
+          run: () => {
+            // 预览态（悬浮预览正展示补全预览）：Alt+Enter = 把选中的笔记落成引用，
+            // 成功后收起悬浮预览（一瞥结束），编辑器已由 insertReferenceFromCompletion 聚焦
+            if (props.previewingCompletion) {
+              const inserted = insertReferenceFromCompletion()
+              if (inserted) useAppStore().closeFloatingPreview()
+              return inserted
+            }
+            return previewSelectedCompletion()
+          }
         },
         {
           key: 'Mod-s',
@@ -854,6 +914,7 @@ function setHeadingLevel(level: HeadingLevel): void {
 
 defineExpose({
   insertText,
+  insertReferenceFromCompletion,
   firstVisibleLine,
   scrollToLine,
   insertSnippet,

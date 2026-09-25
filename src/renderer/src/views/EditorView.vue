@@ -178,6 +178,20 @@ watch(
   }
 )
 
+/** 悬浮预览头部的「插入引用」按钮（FR-2.9.10）：把正在预览的笔记落成引用。
+ *  首选走编辑器的补全插入（替换未完成的 [[xxx 并闭合），补全已不在活动态时
+ *  退而在当前光标插入完整引用 */
+function insertFromPreview(): void {
+  const target = completionPreview.value
+  if (!target) return
+  const inserted = editorRef.value?.insertReferenceFromCompletion()
+  if (!inserted) {
+    editorRef.value?.insertText(`[[${target.path.replace(/\.md$/i, '')}]]`)
+  }
+  app.closeFloatingPreview()
+  editorRef.value?.focus()
+}
+
 /** 外部组件的预览请求（FR-2.9.10：搜索框 Alt+Enter 经 app store 握手到达）——
  *  先清空再消费，避免 await 期间重复触发；复用补全预览的同一条覆盖管线 */
 watch(
@@ -653,6 +667,7 @@ onBeforeUnmount(() => {
         :vault="editor.current.vault"
         :note-path="editor.current.path"
         :wysiwyg="app.editorWysiwyg"
+        :previewing-completion="!!completionPreview"
         @update:model-value="onEditorUpdate"
         @save="editor.flushSave()"
         @preview-note="onCompletionPreview"
@@ -698,6 +713,15 @@ onBeforeUnmount(() => {
         <div class="floating-preview-header">
           <span class="floating-preview-title">{{ completionPreview ? `预览：${completionPreview.name}` : '预览' }}</span>
           <span class="floating-preview-actions">
+            <!-- 补全预览态：把正在预览的笔记落成引用（与编辑器内 Alt+Enter 同效） -->
+            <button
+              v-if="completionPreview"
+              class="tool-btn"
+              title="插入引用（Alt+Enter）"
+              @click="insertFromPreview"
+            >
+              <el-icon><DocumentAdd /></el-icon>
+            </button>
             <button class="tool-btn" @click="pinPeek">
               <el-icon><Magnet /></el-icon>
             </button>

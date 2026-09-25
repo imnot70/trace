@@ -42,8 +42,12 @@ export const FLAT_NOTE_LIMIT = 30
 export interface FlatNoteOption {
   /** 插入文本：无重名 = 叶子名（双链按名解析）；库内重名 = 完整相对路径（保证解析唯一） */
   label: string
-  /** 所在目录（消歧提示） */
+  /** 所在目录（消歧提示）；文件夹候选项固定为「文件夹」 */
   detail: string
+  /** 完整相对路径（无 .md）——预览 / 插入引用用（label 可能只是叶子名，不能当路径） */
+  notePath?: string
+  /** 文件夹候选项（label 以 / 结尾，选中进入逐级导航） */
+  isDir?: boolean
 }
 
 /**
@@ -86,7 +90,44 @@ export function flatNoteOptions(
     const ambiguous = (nameCount.get(note.name.toLowerCase()) ?? 0) > 1
     return {
       label: ambiguous ? note.rel : note.name,
-      detail: note.dir || '库根目录'
+      detail: note.dir || '库根目录',
+      notePath: note.rel
     }
   })
+}
+
+/** 递归收集树中的全部文件夹（与 collectNotes 对称） */
+export function collectDirs(nodes: NoteTreeNode[], dir = ''): FlatNote[] {
+  const out: FlatNote[] = []
+  for (const node of nodes) {
+    if (node.name.startsWith('.')) continue
+    if (node.kind === 'dir') {
+      const childDir = dir ? `${dir}/${node.name}` : node.name
+      out.push({ name: node.name, dir, rel: childDir })
+      if (node.children) out.push(...collectDirs(node.children, childDir))
+    }
+  }
+  return out
+}
+
+/**
+ * 扁平补全的完整选项（FR-2.9.10 二轮补充）：笔记 + 文件夹。
+ * 文件夹候选项（label 以 / 结尾）选中后进入逐级导航——恢复 v0.8.3「输入文件夹前缀
+ * 浏览目录」的能力（扁平模式初期只列笔记，用户输入 dir 想浏览 dir_01 时找不到入口）。
+ * 文件夹排前（导航入口优先），各取少量，总量仍受 FLAT_NOTE_LIMIT 约束。
+ */
+export function flatCompletionOptions(
+  nodes: NoteTreeNode[],
+  prefix: string,
+  currentRel: string
+): FlatNoteOption[] {
+  const notes = flatNoteOptions(collectNotes(nodes), prefix, currentRel)
+  const q = prefix.toLowerCase()
+  const dirs = collectDirs(nodes)
+    // 有查询：名字或路径包含即命中；空前缀：只列根级文件夹（浏览入口，深层目录经导航到达）
+    .filter((d) => (q ? d.name.toLowerCase().includes(q) || d.rel.toLowerCase().includes(q) : d.dir === ''))
+    .sort((a, b) => a.rel.localeCompare(b.rel))
+    .slice(0, 8)
+    .map((d) => ({ label: `${d.rel}/`, detail: '文件夹', isDir: true as const }))
+  return [...dirs, ...notes]
 }

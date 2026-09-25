@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { collectNotes, flatNoteOptions, type NoteTreeNode } from '../src/renderer/src/lib/noteCompletion'
+import { collectNotes, flatNoteOptions, flatCompletionOptions, type NoteTreeNode } from '../src/renderer/src/lib/noteCompletion'
 
 const tree: NoteTreeNode[] = [
   {
@@ -24,6 +24,22 @@ describe('collectNotes', () => {
     expect(notes.find((n) => n.rel === 'dir_01/子目录/深层笔记')?.dir).toBe('dir_01/子目录')
     expect(notes.find((n) => n.rel === '首页')?.dir).toBe('')
     expect(notes.some((n) => n.name === '.隐藏')).toBe(false)
+  })
+})
+
+describe('flatCompletionOptions', () => {
+  it('包含命中的文件夹（label 以 / 结尾、isDir）', () => {
+    const opts = flatCompletionOptions(tree, 'dir_01', '首页')
+    // 名字或路径含 dir_01 的文件夹：dir_01 本身 + 其子目录（路径包含）
+    const dirs = opts.filter((o) => o.isDir).map((o) => o.label)
+    expect(dirs).toEqual(['dir_01/', 'dir_01/子目录/'])
+    expect(opts.find((o) => o.isDir)?.detail).toBe('文件夹')
+  })
+
+  it('空前缀列出根目录文件夹（浏览入口）', () => {
+    const opts = flatCompletionOptions(tree, '', '首页')
+    const dirs = opts.filter((o) => o.isDir).map((o) => o.label)
+    expect(dirs).toEqual(['dir_01/', 'dir_02/'])
   })
 })
 
