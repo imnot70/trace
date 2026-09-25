@@ -262,10 +262,11 @@ defineProps<{ vaults?: VaultInfo[] }>()
             <el-icon class="chevron"><ArrowDown /></el-icon>
           </span>
           <span>标签</span>
-          <span v-if="tree.tags.length" class="side-section-count">{{ tree.tags.length }}</span>
+          <!-- 「+」固定紧贴菜单名（用户偏好）：计数角标统一吸到行尾最右，与常用 / 回收站行一致，0 计数时 + 也不再跳位 -->
           <button class="row-btn" title="新建标签" @click.stop="createTag()">
             <el-icon><Plus /></el-icon>
           </button>
+          <span v-if="tree.tags.length" class="side-section-count">{{ tree.tags.length }}</span>
         </div>
         <div v-if="tree.tags.length && app.tagSectionOpen" class="tag-list">
           <div
@@ -337,10 +338,11 @@ defineProps<{ vaults?: VaultInfo[] }>()
             <el-icon class="chevron"><ArrowDown /></el-icon>
           </span>
           <span>笔记库</span>
-          <span v-if="tree.vaults.length" class="side-section-count">{{ tree.vaults.length }}</span>
+          <!-- 同标签区：「+」紧贴菜单名，计数角标吸到行尾最右 -->
           <button class="row-btn" @click.stop="actions.createVault()">
             <el-icon><Plus /></el-icon>
           </button>
+          <span v-if="tree.vaults.length" class="side-section-count">{{ tree.vaults.length }}</span>
         </div>
         <template v-if="tree.vaultSectionOpen">
           <div v-if="tree.vaults.length === 0" class="empty-hint">
