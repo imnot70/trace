@@ -14,6 +14,20 @@
   --danger: #d34850;
   --success-bg: rgba(144, 238, 144, 0.6);
   --success-text: #2f7d33;
+  /* 心流写作底色色板（柔和浅色，随用户在设置中选择） */
+  --flow-paper-cream: #f8f3e6;
+  --flow-paper-green: #edf3e6;
+  --flow-paper-blue: #e9f0f8;
+  --flow-paper-pink: #f9eef1;
+  --flow-paper-gray: #f1f2f4;
+  /* 冲突合并视图行着色（行背景半透明层 + 图例实色版） */
+  --merge-ours: rgba(64, 120, 211, 0.1);
+  --merge-theirs: rgba(103, 194, 58, 0.12);
+  --merge-marker: rgba(211, 72, 80, 0.12);
+  --merge-ours-solid: #dbe7f7;
+  --merge-theirs-solid: #dcf0d4;
+  --merge-marker-solid: #f6d7da;
+  --success-line: #85b56a;
   --code-bg: #f0f2f5;
   --hljs-base: #383a42;
   --hljs-comment: #a0a1a7;
@@ -39,6 +53,19 @@ html.dark {
   /* 提示浮层的浅绿底色本身是亮色，与底色同系的中深绿文字在两种主题下都可读，两套取同值 */
   --success-bg: rgba(144, 238, 144, 0.6);
   --success-text: #2f7d33;
+  /* 心流写作底色色板（深色主题下的柔和暗色，与背景有轻微区分、不刺眼） */
+  --flow-paper-cream: #2a271f;
+  --flow-paper-green: #232b25;
+  --flow-paper-blue: #222a33;
+  --flow-paper-pink: #2f262a;
+  --flow-paper-gray: #26282d;
+  --merge-ours: rgba(84, 140, 224, 0.16);
+  --merge-theirs: rgba(103, 194, 58, 0.14);
+  --merge-marker: rgba(224, 108, 117, 0.16);
+  --merge-ours-solid: #2c3a4d;
+  --merge-theirs-solid: #2e3b2b;
+  --merge-marker-solid: #472f33;
+  --success-line: #85b56a;
   --code-bg: #26292f;
   --hljs-base: #c8ccd4;
   --hljs-comment: #7f848e;
@@ -713,6 +740,15 @@ body {
    窗口更窄时两侧自动收敛为 0（内容占满）。 */
 .editor-card.flow-mode .cm-scroller {
   padding-inline: max(0px, calc((100% - var(--flow-measure, 42em)) / 2));
+}
+
+/* 写作底色（FR-2.9.8 扩展）：给写作栏的两个直接子元素（行号槽 + 内容层）涂色。
+   两者高度随内容伸缩且相邻无隙，连成一根通到底的「纸带」；打字机顶部留白在
+   .cm-content 盒内、同样被覆盖。不要用滚动容器 + background-clip: content-box——
+   实测其绘制区域在滚动 / 打字机留白下与几何脱节（只涂出内容顶部一块）。 */
+.editor-card.flow-mode.flow-paper-on .cm-gutters,
+.editor-card.flow-mode.flow-paper-on .cm-content {
+  background: var(--flow-paper);
 }
 
 /* ---------- 顶栏隐藏时的右下角状态区（专注隐藏顶栏 / 心流模式） ---------- */

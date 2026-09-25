@@ -2,6 +2,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { simpleGit, type SimpleGit } from 'simple-git'
+import { errMessage } from '../lib/errMessage'
+import { resolveWithin } from '../lib/paths'
 import { logger } from '../lib/logger'
 import type { GitStatus } from '@shared/types'
 
@@ -49,11 +51,20 @@ export type ConflictResolution =
  * Token 通过每次调用的 http.extraheader 注入，绝不写入 .git/config。
  */
 export class GitService {
+  /** 按库串行化同步：手动同步与 autoSync 定时器可能并发触发同一仓库，并发会撞 .git/index.lock */
+  private syncQueues = new Map<string, Promise<SyncOutcome>>()
+
   constructor(private deps: GitDeps) {}
 
   /** 是否已初始化为 git 仓库。直接检查 .git，避免依赖 checkIsRepo 的英文错误匹配（中文 locale 下会误抛异常） */
   isRepo(vaultPath: string): boolean {
     return fs.existsSync(path.join(vaultPath, '.git'))
+  }
+
+  /** 变基是否仍在进行中（上轮同步的冲突尚未走完「解决 → 继续同步」） */
+  private isRebaseInProgress(vaultPath: string): boolean {
+    const gitDir = path.join(vaultPath, '.git')
+    return fs.existsSync(path.join(gitDir, 'rebase-merge')) || fs.existsSync(path.join(gitDir, 'rebase-apply'))
   }
 
   /**
@@ -66,9 +77,14 @@ export class GitService {
    */
   private gitOptions(vaultPath: string, config: string[], timeoutMs: number) {
     const base = { baseDir: vaultPath, config, timeout: { block: timeoutMs } }
+    // continueRebase 需要临时 -c core.editor=true 跳过变基的编辑器提示，
+    // simple-git 默认拒绝该配置项，这里显式放行（配置值由应用自身提供，非外部输入）
+    const unsafe: { allowUnsafeEditor: boolean; allowUnsafeCustomBinary?: boolean } = {
+      allowUnsafeEditor: true
+    }
     const binary = this.deps.getGitBinary?.() ?? null
-    if (!binary) return base
-    return { ...base, binary, unsafe: { allowUnsafeCustomBinary: true } }
+    if (binary) unsafe.allowUnsafeCustomBinary = true
+    return { ...base, unsafe }
   }
 
   private git(vaultPath: string): SimpleGit {
@@ -163,13 +179,40 @@ export class GitService {
   }
 
   /**
+   * 同步（按库排队）：同一仓库的并发同步请求串行执行，后到者等前一轮完成后再跑，
+   * 避免「提交 → rebase → push」中间态被另一轮同步踩进去（实测会撞 .git/index.lock）。
+   */
+  async sync(vaultPath: string): Promise<SyncOutcome> {
+    const prev = this.syncQueues.get(vaultPath) ?? Promise.resolve()
+    const task = prev.catch(() => {}).then(() => this.doSync(vaultPath))
+    this.syncQueues.set(vaultPath, task)
+    try {
+      return await task
+    } finally {
+      if (this.syncQueues.get(vaultPath) === task) this.syncQueues.delete(vaultPath)
+    }
+  }
+
+  /**
    * 同步：fetch → 提交本地变更 → rebase 拉取远端 → push。
    * 先提交再拉取，冲突时 rebase 以非零退出并可用 --abort 干净回退；
    * 不使用 --autostash（stash 恢复冲突时退出码为 0，会静默产生冲突文件）。
    */
-  async sync(vaultPath: string): Promise<SyncOutcome> {
+  private async doSync(vaultPath: string): Promise<SyncOutcome> {
     const git = this.git(vaultPath)
     if (!this.isRepo(vaultPath)) return { ok: false, error: '该笔记库尚未初始化 git 仓库' }
+
+    // 上轮同步的冲突尚未走完「解决 → 继续同步」时，变基仍在进行中，再 pull 会报
+    // 「似乎已有一个 rebase-merge 目录」。此处带出冲突列表让界面重新打开解决对话框；
+    // 冲突已全部标记解决但变基没走完（解决后直接关了对话框）就就地续完本轮同步
+    if (this.isRebaseInProgress(vaultPath)) {
+      const pending = await this.conflictedFiles(git)
+      if (pending.length > 0) {
+        return { ok: false, error: '存在未解决完的同步冲突，请在解决后点击「继续同步」', conflicts: pending }
+      }
+      return this.continueRebase(vaultPath)
+    }
+
     const remotes = await git.getRemotes(true)
     if (!remotes.some((r) => r.name === 'origin')) return { ok: false, error: '尚未关联远程仓库' }
 
@@ -299,40 +342,45 @@ export class GitService {
   }
 
   /**
-   * 获取冲突文件的三方内容（ours/theirs/base）
+   * 获取冲突文件的三方内容（本地 ours / 远端 theirs / 共同祖先 base / 当前工作区）。
+   *
+   * 两个关键语义（2026-09-25 用户实测暴露）：
+   * 1. ours/theirs 随操作类型**反转**——merge 冲突里 ours=HEAD=本地；而 `pull --rebase`
+   *    的冲突中 HEAD 是被变基到的**远端上游**，本地提交在被重放侧（REBASE_HEAD）。
+   *    不对调的话「接受本地版本」写进去的是远端内容。
+   * 2. 当前内容直接读工作区文件——冲突路径在 index 中没有 stage 0，`git show :file`
+   *    会报 unmerged，旧实现因此永远返回 null（三向视图「加载冲突内容中」卡死）。
    */
   async getConflictContent(vaultPath: string, filePath: string): Promise<ConflictContent | null> {
     const git = this.git(vaultPath)
     if (!this.isRepo(vaultPath)) return null
+    const rebasing = this.isRebaseInProgress(vaultPath)
+    const localRef = rebasing ? 'REBASE_HEAD' : 'HEAD'
+    const remoteRef = rebasing ? 'HEAD' : 'MERGE_HEAD'
 
     try {
-      // 获取当前工作区内容（包含冲突标记）
-      const current = await git.raw(['show', `:${filePath}`])
+      // 路径守卫与写入侧（resolveConflict）一致
+      resolveWithin(vaultPath, filePath)
+      // 当前内容 = 工作区文件（含冲突标记），解决前用户在编辑器里看到的就是它
+      const current = await fs.promises.readFile(path.join(vaultPath, filePath), 'utf-8')
 
-      // 获取ours版本（本地）
-      let ours = ''
-      try {
-        ours = await git.raw(['show', `HEAD:${filePath}`])
-      } catch {
-        // 文件在HEAD中不存在（新文件）
-        ours = ''
+      const show = async (ref: string): Promise<string> => {
+        try {
+          return await git.raw(['show', `${ref}:${filePath}`])
+        } catch {
+          // 侧不存在（如本地新增文件不在远端历史里）按空内容处理
+          return ''
+        }
       }
+      const ours = await show(localRef)
+      const theirs = await show(remoteRef)
 
-      // 获取theirs版本（远端）
-      let theirs = ''
-      try {
-        theirs = await git.raw(['show', `MERGE_HEAD:${filePath}`])
-      } catch {
-        // 文件在MERGE_HEAD中不存在
-        theirs = ''
-      }
-
-      // 获取base版本（共同祖先）
+      // 共同祖先：两侧可解析引用求 merge-base 再取文件；任一侧缺失则留空（界面显示为空面板）
       let base = ''
       try {
-        base = await git.raw(['show', `MERGE_BASE:${filePath}`])
+        const baseSha = (await git.raw(['merge-base', localRef, remoteRef])).trim()
+        if (baseSha) base = await show(baseSha)
       } catch {
-        // 无法获取共同祖先
         base = ''
       }
 
@@ -355,6 +403,8 @@ export class GitService {
     if (!this.isRepo(vaultPath)) return false
 
     try {
+      // 路径守卫：filePath 来自渲染端 IPC，必须落在库内（防 ../ 越权写盘），放行后供下方 git 操作复用
+      resolveWithin(vaultPath, filePath)
       let content: string
       switch (resolution.type) {
         case 'ours':
@@ -412,7 +462,7 @@ export class GitService {
       return { ok: true }
     } catch (e) {
       logger.warn('继续rebase失败', e)
-      return { ok: false, error: `继续rebase失败: ${e}` }
+      return { ok: false, error: errMessage(e) }
     }
   }
 

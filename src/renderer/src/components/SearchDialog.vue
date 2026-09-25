@@ -489,7 +489,7 @@ function handleClose() {
 }
 
 .result-snippet :deep(mark) {
-  background-color: var(--accent-light);
+  background-color: var(--accent-soft);
   color: var(--accent);
   padding: 0 1px;
   border-radius: 1px;

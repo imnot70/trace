@@ -393,10 +393,16 @@ onBeforeUnmount(() => {
   <div
     ref="editorCardRef"
     class="editor-card"
-    :class="{ 'zen-concealed': concealed, peeking: topbarPeek, 'flow-mode': app.flowMode }"
+    :class="{
+      'zen-concealed': concealed,
+      peeking: topbarPeek,
+      'flow-mode': app.flowMode,
+      'flow-paper-on': app.flowMode && app.settings.flowPaperEnabled
+    }"
     :style="{
       flexBasis: app.previewVisible ? (app.zenMode ? '50%' : `${splitPercent}%`) : '100%',
-      '--flow-measure': `${app.flowMeasure}em`
+      '--flow-measure': `${app.flowMeasure}em`,
+      '--flow-paper': `var(--flow-paper-${app.settings.flowPaperColor})`
     }"
   >
     <!-- 专注隐藏顶栏时的悬停热区：卡片顶部横条，进入即唤出头部 -->

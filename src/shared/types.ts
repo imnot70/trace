@@ -145,6 +145,10 @@ export interface AppSettings {
   typewriterMode: 'off' | 'center' | 'bottom'
   /** 心流模式的写作栏宽：窄 32em / 中 42em / 宽 52em（仅心流模式内生效） */
   flowLineWidth: 'narrow' | 'medium' | 'wide'
+  /** 心流写作底色开关：为写作栏涂一层柔和底色帮助视线聚焦（默认关闭；仅心流模式内生效） */
+  flowPaperEnabled: boolean
+  /** 心流写作底色颜色（深浅主题各有对应的一套柔和值） */
+  flowPaperColor: 'cream' | 'green' | 'blue' | 'pink' | 'gray'
   /** 心流模式回车音效开关（默认关闭；仅心流模式内生效） */
   flowSoundEnabled: boolean
   /** 心流模式回车音效音量 0-100（默认 60） */

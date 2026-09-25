@@ -42,6 +42,8 @@ let mainWindow: BrowserWindow | null = null
 let exportPdf: ExportService | null = null
 let settingsService: SettingsService | null = null
 let wikilink: WikilinkService | null = null
+/** 搜索服务在 watcher 之后创建，判空防启动窗口期（与 wikilink 同模式） */
+let search: SearchService | null = null
 
 // 自定义协议：预览中的相对路径图片（trace-vault://<库名>/<库内路径>）
 protocol.registerSchemesAsPrivileged([
@@ -184,10 +186,24 @@ app.whenReady().then(() => {
     editPosition: 'start',
     typewriterMode: 'off',
     flowLineWidth: 'medium',
+    flowPaperEnabled: false,
+    flowPaperColor: 'cream',
     flowSoundEnabled: false,
     flowSoundVolume: 60,
     flowSoundVariant: 'retro',
     flowSoundSkipRepeat: true
+  }, {
+    version: 1,
+    // v0 → v1：旧版设置键升级（此前迁移散落各处，现统一走 JsonStore migrate 链）
+    migrate: (data) => {
+      const legacy = data as Record<string, unknown>
+      // v0.4.2 的 autoSyncEnabled=true 迁移为 autoSyncMode='interval'（读侧 getConfig 仍有兜底）
+      if (legacy.autoSyncEnabled !== undefined && legacy.autoSyncMode === undefined) {
+        legacy.autoSyncMode = legacy.autoSyncEnabled ? 'interval' : 'off'
+      }
+      delete legacy.autoSyncEnabled
+      return legacy
+    }
   })
 
   // 音色枚举收敛（2026-09-24：木质 / 金属 / 打字机棘齿三种旧音色下线，改为「推回车棘轮 / 回车铃 / 复古打字机 / 轮换」）：
@@ -345,16 +361,29 @@ app.whenReady().then(() => {
     () => workspace.getRoot(),
     (payload) => {
       for (const w of BrowserWindow.getAllWindows()) w.webContents.send('fs:changed', payload)
-      // 双链索引增量更新：应用内保存 / 外部编辑 / 删除都会经 chokidar 到达（unlink 由
-      // updateFileIndex 内部按文件不存在处理）。 wikilink 在下方才创建，判空防启动窗口期
+      // 双链 / 搜索索引增量更新：应用内保存 / 外部编辑 / 删除都会经 chokidar 到达（unlink 由
+      // updateFileIndex 内部按文件不存在处理）。两者在下方才创建，判空防启动窗口期
       for (const p of payload.paths) {
-        if (p.endsWith('.md')) void wikilink?.updateFileIndex(payload.vault, p)
+        if (p.endsWith('.md')) {
+          void wikilink?.updateFileIndex(payload.vault, p)
+          void search?.updateFileIndex(payload.vault, p)
+        }
       }
       plugins.emitEvent('vault:changed', { vault: payload.vault, paths: payload.paths })
       autoSync.onChanged()
     },
-    // git 同步 / 自动同步挂起期间丢弃的事件不会重放，resume 后全量重建双链索引
-    () => void wikilink?.buildIndex(true)
+    // git 同步 / 自动同步挂起期间丢弃的事件不会重放，resume 后：
+    // ① 全量重建双链与搜索索引；② 对所有库重发一次 fs:changed（空 paths）——
+    //    挂起期拉取的文件对渲染端不可见，借此触发目录树全量重扫（编辑器按 paths 过滤，空数组无副作用）
+    () => {
+      void wikilink?.buildIndex(true)
+      void search?.buildIndex(true)
+      for (const v of vaults.list()) {
+        for (const w of BrowserWindow.getAllWindows()) {
+          w.webContents.send('fs:changed', { vault: v.name, paths: [] })
+        }
+      }
+    }
   )
   watcher.start()
 
@@ -384,7 +413,7 @@ app.whenReady().then(() => {
     logger.warn('回收站启动清理失败', e)
   }
 
-  const search = new SearchService(
+  search = new SearchService(
     (vault) => vaults.vaultPath(vault),
     () => vaults.list().map((v) => v.name)
   )

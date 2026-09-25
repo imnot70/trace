@@ -278,6 +278,8 @@ beforeEach(() => {
     editPosition: 'start',
     typewriterMode: 'off',
     flowLineWidth: 'medium',
+    flowPaperEnabled: false,
+    flowPaperColor: 'cream',
     flowSoundEnabled: false,
     flowSoundVolume: 60,
     flowSoundVariant: 'retro',
