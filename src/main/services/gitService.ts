@@ -2,6 +2,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { simpleGit, type SimpleGit } from 'simple-git'
+import { errMessage } from '../lib/errMessage'
+import { resolveWithin } from '../lib/paths'
 import { logger } from '../lib/logger'
 import type { GitStatus } from '@shared/types'
 
@@ -49,6 +51,9 @@ export type ConflictResolution =
  * Token 通过每次调用的 http.extraheader 注入，绝不写入 .git/config。
  */
 export class GitService {
+  /** 按库串行化同步：手动同步与 autoSync 定时器可能并发触发同一仓库，并发会撞 .git/index.lock */
+  private syncQueues = new Map<string, Promise<SyncOutcome>>()
+
   constructor(private deps: GitDeps) {}
 
   /** 是否已初始化为 git 仓库。直接检查 .git，避免依赖 checkIsRepo 的英文错误匹配（中文 locale 下会误抛异常） */
@@ -163,11 +168,26 @@ export class GitService {
   }
 
   /**
+   * 同步（按库排队）：同一仓库的并发同步请求串行执行，后到者等前一轮完成后再跑，
+   * 避免「提交 → rebase → push」中间态被另一轮同步踩进去（实测会撞 .git/index.lock）。
+   */
+  async sync(vaultPath: string): Promise<SyncOutcome> {
+    const prev = this.syncQueues.get(vaultPath) ?? Promise.resolve()
+    const task = prev.catch(() => {}).then(() => this.doSync(vaultPath))
+    this.syncQueues.set(vaultPath, task)
+    try {
+      return await task
+    } finally {
+      if (this.syncQueues.get(vaultPath) === task) this.syncQueues.delete(vaultPath)
+    }
+  }
+
+  /**
    * 同步：fetch → 提交本地变更 → rebase 拉取远端 → push。
    * 先提交再拉取，冲突时 rebase 以非零退出并可用 --abort 干净回退；
    * 不使用 --autostash（stash 恢复冲突时退出码为 0，会静默产生冲突文件）。
    */
-  async sync(vaultPath: string): Promise<SyncOutcome> {
+  private async doSync(vaultPath: string): Promise<SyncOutcome> {
     const git = this.git(vaultPath)
     if (!this.isRepo(vaultPath)) return { ok: false, error: '该笔记库尚未初始化 git 仓库' }
     const remotes = await git.getRemotes(true)
@@ -355,6 +375,8 @@ export class GitService {
     if (!this.isRepo(vaultPath)) return false
 
     try {
+      // 路径守卫：filePath 来自渲染端 IPC，必须落在库内（防 ../ 越权写盘），放行后供下方 git 操作复用
+      resolveWithin(vaultPath, filePath)
       let content: string
       switch (resolution.type) {
         case 'ours':
@@ -412,7 +434,7 @@ export class GitService {
       return { ok: true }
     } catch (e) {
       logger.warn('继续rebase失败', e)
-      return { ok: false, error: `继续rebase失败: ${e}` }
+      return { ok: false, error: errMessage(e) }
     }
   }
 
