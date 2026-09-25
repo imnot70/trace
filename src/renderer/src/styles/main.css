@@ -990,12 +990,23 @@ body {
   align-items: center;
   gap: 12px;
   padding: 8px 0;
+  /* 说明文字换行到选项下方（用户偏好：浅灰说明不再挤在控件右侧） */
+  flex-wrap: wrap;
 }
 
 .setting-row .setting-label {
   width: 90px;
   color: var(--text-secondary);
   flex-shrink: 0;
+}
+
+/* 行内说明文字：独占一行、与控件左对齐（label 90px + 间距 12px = 102px）。
+   内联的 margin: 0 变体不再干扰布局——间距统一由本规则的 padding 提供 */
+.setting-row .settings-desc {
+  flex: 1 1 100%;
+  margin: 0;
+  padding: 3px 0 0 102px;
+  box-sizing: border-box;
 }
 
 /* 双链同名消歧候选列表（渲染在 ElMessageBox 内，需全局样式） */
