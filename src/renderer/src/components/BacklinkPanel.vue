@@ -3,7 +3,7 @@
   <div
     ref="rootRef"
     class="backlink-root"
-    :class="{ lifted }"
+    :class="{ lifted, 'hover-reveal': lifted && !open }"
     v-if="visible && backlinks.length > 0"
   >
     <Transition name="backlink-pop">
@@ -153,6 +153,23 @@ function openNote(item: BacklinkRef) {
 /* 顶栏隐藏时右下角有长条形状态区（约 26px 高 + 12px 底距），胶囊上移到其上一行 */
 .backlink-root.lifted {
   bottom: 50px;
+}
+
+/* 心流模式：胶囊默认隐形（写作零干扰），鼠标移到右下角感应区才显现。
+   感应区比胶囊大一圈（负 margin 外扩），容易命中；弹层展开时不隐藏 */
+.backlink-root.hover-reveal {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.backlink-root.hover-reveal:hover {
+  opacity: 1;
+}
+
+.backlink-root.hover-reveal::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
 }
 
 /* 胶囊入口：与整体卡片风格一致（圆角 + 边框 + 轻阴影） */
