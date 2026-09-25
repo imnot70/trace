@@ -233,6 +233,8 @@
 
 > 二期 Backlog 已全部完成或作废（PRD 第 7 节所列项目均已落地）；三期唯一的规划项「心流模式」也已完成实施，**当前无规划中的新功能**（2026-09-24 时点）。其余条目为历史归档。
 
+> 以下三个待发版分支为**链式演进**：`fix/preview-initial-position` 已合并进 main；`feat/zen-status-area` 基于其合并后的 main（也已合并进 main）；`feat/flow-quick-reference` 基于含状态区的 main（当前分支，待合并）。合并任一分支时注意先后。
+
 ### 待发版（分支 `feat/flow-quick-reference`，基于含状态区的 main）
 
 **新功能：心流快速查阅——补全面板里预览笔记**（FR-2.9.8 扩展，用户提出）
