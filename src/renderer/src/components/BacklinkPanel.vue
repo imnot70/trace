@@ -185,6 +185,10 @@ function openNote(item: BacklinkRef) {
   color: var(--text-secondary);
   font-size: 12px;
   cursor: pointer;
+  /* 必须提升到 hover-reveal 感应区（::after，inset -12px）之上：定位元素会盖住流内元素，
+     否则点击全落在感应区上（target 为根 div），胶囊 hover 能显现却永远点不开 */
+  position: relative;
+  z-index: 1;
   transition:
     color 0.15s,
     border-color 0.15s,

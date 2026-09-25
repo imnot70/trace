@@ -326,7 +326,8 @@ watch(
 // ---------- 专注隐藏顶栏：热区触发 + 延迟隐藏 ----------
 // 顶栏隐藏时被 overflow:hidden 裁剪，卡片 :hover 无法稳定覆盖「隐藏的顶栏 + 移动路径」，
 // 改为显式热区（卡片顶部横条）与顶栏自身的 mouseenter/mleave 控制，离开后留 300ms 缓冲
-const concealed = computed(() => app.flowMode || (app.zenMode && app.settings.zenHideTopbar))
+// 顶栏隐藏形态判定收口在 app store 的 topbarConcealed（状态区显示 / 模式切换提示共用）
+const concealed = computed(() => app.topbarConcealed)
 
 // ---------- 心流模式：保存指示（FR-F5）----------
 // 数据源全部复用 editor store，不新增状态机：

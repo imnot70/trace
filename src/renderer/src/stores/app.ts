@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { ElMessage } from 'element-plus'
 import type { AppSettings, ThemePackage } from '@shared/types'
 import { useTreeStore } from './tree'
 import { THEME_PRESETS, buildThemeCss } from '../styles/presets'
@@ -106,6 +107,10 @@ export const useAppStore = defineStore('app', {
     flowMeasure(state): number {
       return flowMeasureEm(state.settings.flowLineWidth)
     },
+    /** 顶栏是否处于隐藏形态（心流，或专注且开启「隐藏顶栏」）——状态区显示与模式切换弹窗提示共用此判定 */
+    topbarConcealed(state): boolean {
+      return state.flowMode || (state.zenMode && state.settings.zenHideTopbar)
+    },
     isDark(state): boolean {
       return state.settings.theme === 'dark' || (state.settings.theme === 'system' && prefersDark())
     },
@@ -192,6 +197,15 @@ export const useAppStore = defineStore('app', {
     },
     toggleEditorMode(): void {
       this.setEditorWysiwyg(!this.editorWysiwyg)
+      // 顶栏隐藏（心流 / 专注隐藏顶栏）时没有可见的模式按钮，切换结果只能靠右下角
+      // 状态区图标的被动高亮确认，不直观（用户实测反馈）——弹窗提示一次
+      if (this.topbarConcealed) {
+        ElMessage({
+          message: this.editorWysiwyg ? '所见即所得模式：开' : '所见即所得模式：关',
+          type: 'info',
+          duration: 2000
+        })
+      }
     },
     /**
      * 进入心流模式：快照外围界面状态 → 拨动各轴（沉浸）。
