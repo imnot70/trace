@@ -53,6 +53,7 @@ import { insertTable } from '../lib/table'
 import { tableTab } from '../lib/tableNav'
 import { useTablePromptStore } from '../stores/tablePrompt'
 import type { PromptKey } from '../lib/tablePrompt'
+import { collectNotes, flatNoteOptions, type NoteTreeNode } from '../lib/noteCompletion'
 import type { TreeNode } from '@shared/types'
 
 const props = defineProps<{
@@ -214,13 +215,25 @@ function getDirAt(tree: TreeNode[], relDir: string): TreeNode[] {
 
 /** 综合补全：[[双链]] 笔记名 + 相对路径 + 锚点 */
 function traceCompletions(context: CompletionContext): CompletionResult | null {
-  // 1. [[双链]] 笔记名补全（逐级路径）
+  // 1. [[双链]] 笔记名补全（前缀不含 / 走全库扁平模糊匹配 FR-2.9.10；含 / 逐级路径）
   const wikilink = context.matchBefore(/\[\[[^\]]*$/)
   if (wikilink) {
     const prefix = wikilink.text.slice(2) // 去掉 [[
     const tree = useTreeStore()
     const nodes = tree.trees[props.vault] ?? []
     const currentRel = props.notePath.replace(/\.md$/i, '')
+
+    const completionFrom = wikilink.from + 2
+    const completionTo = completionFrom + prefix.length
+
+    // 扁平模糊匹配：记不住路径时直接按名字片段全库找（含 / 时走下方原逐级行为）
+    if (!prefix.includes('/')) {
+      const options = flatNoteOptions(collectNotes(nodes as NoteTreeNode[]), prefix, currentRel)
+      if (options.length === 0) return null
+      // filter: false——源已按前缀过滤，CM 内置的模糊过滤对中文匹配不可靠（实测输入
+      // 中文会把候选项全滤光、补全直接关闭），关闭它以源为准
+      return { from: completionFrom, to: completionTo, options, filter: false }
+    }
 
     // 逐级补全：按 "/" 分割，最后一段是当前输入前缀，前面的是已选路径
     const segments = prefix.split('/')
@@ -238,8 +251,6 @@ function traceCompletions(context: CompletionContext): CompletionResult | null {
     }
 
     const basePath = dirSegments.length > 0 ? dirSegments.join('/') + '/' : ''
-    const completionFrom = wikilink.from + 2
-    const completionTo = completionFrom + prefix.length
 
     // 收集当前层级的文件夹和笔记
     const options: { label: string; detail: string; apply?: string | ((view: EditorView, _c: any, from: number, to: number) => void) }[] = []
@@ -278,7 +289,9 @@ function traceCompletions(context: CompletionContext): CompletionResult | null {
     return {
       from: completionFrom,
       to: completionTo,
-      options
+      options,
+      // 同上：源已过滤（startsWith），关闭 CM 对中文不可靠的模糊过滤
+      filter: false
     }
   }
 

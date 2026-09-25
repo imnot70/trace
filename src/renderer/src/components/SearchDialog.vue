@@ -18,7 +18,10 @@
             placeholder="搜索笔记..."
             clearable
             @input="handleSearchInput"
-            @keyup.enter="performSearch"
+            @keydown.down.prevent="moveActive(1)"
+            @keydown.up.prevent="moveActive(-1)"
+            @keydown.enter="onEnterKey"
+            @keydown.alt.enter.prevent="onPreviewKey"
           >
             <template #prefix>
               <el-icon><Search /></el-icon>
@@ -73,9 +76,11 @@
         </div>
         <div class="results-list">
           <div
-            v-for="result in searchResults"
+            v-for="(result, idx) in searchResults"
             :key="`${result.vault}-${result.path}-${result.lineNumber}`"
             class="result-item"
+            :class="{ active: idx === activeIndex }"
+            @mousemove="activeIndex = idx"
             @click="openResult(result)"
           >
             <div class="result-title-row">
@@ -126,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Loading, Folder, ArrowDown } from '@element-plus/icons-vue'
 import type { SearchResultItem } from '@shared/types'
@@ -138,6 +143,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'open-note', vault: string, path: string): void
+  /** Alt+Enter：关闭搜索框并请求以悬浮预览查看该结果（FR-2.9.10） */
+  (e: 'preview-note', vault: string, path: string, title: string): void
 }>()
 
 const searchQuery = ref('')
@@ -151,6 +158,40 @@ const selectedVaults = ref<string[]>([])
 /** 是否处于"所有库"模式（默认 true；取消所有库后为 false） */
 const allVaultsMode = ref(true)
 const indexStatus = ref({ totalFiles: 0, isIndexing: false })
+
+// ---------- 键盘导航（FR-2.9.10）：↑ / ↓ 移动高亮，Enter 打开，Alt+Enter 悬浮预览 ----------
+const activeIndex = ref(-1)
+
+watch(searchResults, (list) => {
+  activeIndex.value = list.length > 0 ? 0 : -1
+})
+
+function moveActive(delta: number): void {
+  const len = searchResults.value.length
+  if (len === 0) return
+  activeIndex.value = (activeIndex.value + delta + len) % len
+  void nextTick(() => {
+    document.querySelector('.result-item.active')?.scrollIntoView({ block: 'nearest' })
+  })
+}
+
+function onEnterKey(): void {
+  // 无结果时 Enter 仍是「执行搜索」；有结果时打开高亮项（默认第一项）
+  if (searchResults.value.length > 0) {
+    const target = searchResults.value[activeIndex.value] ?? searchResults.value[0]
+    if (target) openResult(target)
+  } else {
+    void performSearch()
+  }
+}
+
+function onPreviewKey(): void {
+  const target = searchResults.value[activeIndex.value] ?? searchResults.value[0]
+  if (!target) return
+  // 决策 D3：搜索框是模态对话框（遮罩压悬浮预览的 z 序），预览前先关闭；Ctrl+F 可立即重开
+  emit('close')
+  emit('preview-note', target.vault, target.path, target.title)
+}
 
 const availableVaults = ref<string[]>([])
 
@@ -449,8 +490,13 @@ function handleClose() {
   border-bottom: none;
 }
 
-.result-item:hover {
+.result-item:hover,
+.result-item.active {
   background-color: var(--bg-hover);
+}
+
+.result-item.active {
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .result-title-row {

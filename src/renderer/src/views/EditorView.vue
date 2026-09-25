@@ -178,6 +178,17 @@ watch(
   }
 )
 
+/** 外部组件的预览请求（FR-2.9.10：搜索框 Alt+Enter 经 app store 握手到达）——
+ *  先清空再消费，避免 await 期间重复触发；复用补全预览的同一条覆盖管线 */
+watch(
+  () => app.pendingNotePreview,
+  (req) => {
+    if (!req) return
+    app.pendingNotePreview = null
+    void onCompletionPreview(req)
+  }
+)
+
 /** 反向链接点击：打开来源笔记并定位到引用行（line 为 1 基） */
 async function onBacklinkOpenNote(vault: string, path: string, line?: number): Promise<void> {
   const name = path.split('/').pop()?.replace(/\.md$/i, '') ?? ''

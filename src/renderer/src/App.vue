@@ -71,25 +71,32 @@ function isGridOpen(section: 'recents' | 'favorites' | 'vaults'): boolean {
  * 相互看到被对方改过的状态，导致一次按键退两级（实测：关浮层同时退了心流）。
  * 视图级优先于模式级：心流中打开设置后按 Esc 先回编辑（仍在心流），再按才退出心流。
  */
-function onEscape(): void {
+function onEscape(): boolean {
   // 有模态（搜索 / 命名 / 移动 / 消息框）时 Esc 归它：Element Plus 对话框内建 Esc 关闭，
-  // 此处若继续往下处理会出现「关对话框的同时把心流也退了」
-  if (hasModalOpen()) return
+  // 此处若继续往下处理会出现「关对话框的同时把心流也退了」。不消费，事件照常传播
+  if (hasModalOpen()) return false
   if (app.zenSidebarOverlay) {
     app.closeZenSidebar()
-    return
+    return true
   }
+  // 悬浮预览分支必须在补全让位分支**之前**：预览 + 补全同时开时（心流快速查阅），
+  // 用户期望 Esc 先关预览、补全保留（FR-2.9.10）；预览关掉后下一次 Esc 才轮到补全
   if (app.floatingPreview) {
     app.closeFloatingPreview()
-    return
+    return true
   }
+  // `[[` 补全面板打开时 Esc 归 CodeMirror（收起补全），应用级回退不参与——
+  // 否则补全还开着时按 Esc 会连心流一起退掉
+  if (document.querySelector('.cm-tooltip-autocomplete')) return false
   if (app.view.name === 'settings') {
     backFromSettings()
-    return
+    return true
   }
   if (app.flowMode) {
     app.exitFlow()
+    return true
   }
+  return false
 }
 
 // ---------- 全局快捷键（速查表见 src/renderer/src/config/shortcuts.ts 与设置 → 通用） ----------
@@ -102,9 +109,13 @@ function hasModalOpen(): boolean {
   return nameDialog.visible || moveDialog.visible || !!document.querySelector('.el-message-box__wrapper, .el-overlay:not([style*="display: none"])')
 }
 
-/** Esc 捕获阶段入口：网格内的「返回上级 / 关闭网格」仍由 NoteGridView 自行处理（模式未命中时不消费） */
+/** Esc 捕获阶段入口：网格内的「返回上级 / 关闭网格」仍由 NoteGridView 自行处理（模式未命中时不消费）。
+ *  应用级回退消费了按键就阻断下沉——否则事件到达 CM 键位会把补全面板一起关掉（FR-2.9.10 P1） */
 function onEscapeCapture(e: KeyboardEvent): void {
-  if (e.key === 'Escape') onEscape()
+  if (e.key === 'Escape' && onEscape()) {
+    e.preventDefault()
+    e.stopPropagation()
+  }
 }
 
 function onGlobalKeydown(e: KeyboardEvent): void {
@@ -347,6 +358,7 @@ onMounted(async () => {
     :visible="search.visible"
     @close="search.closeSearch()"
     @open-note="handleOpenNoteFromSearch"
+    @preview-note="(vault: string, path: string, title: string) => app.requestNotePreview(vault, path, title)"
   />
 
   <!-- 批量导出进度（悬浮条，完成即消失） -->

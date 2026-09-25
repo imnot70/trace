@@ -101,7 +101,9 @@ export const useAppStore = defineStore('app', {
     /** 模式切换的居中提示文案（顶栏隐藏时切换所见即所得用）；null = 不显示 */
     modeToastText: null as string | null,
     /** 提示自动消失定时器（重复切换时重置） */
-    modeToastTimer: null as ReturnType<typeof setTimeout> | null
+    modeToastTimer: null as ReturnType<typeof setTimeout> | null,
+    /** 跨组件的悬浮预览请求（FR-2.9.10：搜索框 Alt+Enter → EditorView 消费）；null = 无待处理 */
+    pendingNotePreview: null as { vault: string; path: string; name: string } | null
   }),
   getters: {
     /** 心流模式内实际生效的打字机形态（关闭 → 默认低位；用户选过则沿用） */
@@ -216,6 +218,10 @@ export const useAppStore = defineStore('app', {
         this.modeToastText = null
         this.modeToastTimer = null
       }, 2000)
+    },
+    /** 请求以悬浮预览查看一篇笔记（搜索框等外部组件发起，EditorView 消费后清空） */
+    requestNotePreview(vault: string, path: string, name: string): void {
+      this.pendingNotePreview = { vault, path, name }
     },
     /**
      * 进入心流模式：快照外围界面状态 → 拨动各轴（沉浸）。
