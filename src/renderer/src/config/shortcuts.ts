@@ -25,6 +25,8 @@ export const SHORTCUTS: ShortcutItem[] = [
   { keys: 'Enter（搜索结果内）', desc: '打开高亮的搜索结果', group: '全局' },
   { keys: 'Alt + Enter（搜索结果内）', desc: '关闭搜索框并以悬浮预览查看高亮结果', group: '全局' },
   { keys: 'Alt + Enter（[[ 补全时）', desc: '悬浮预览选中的笔记（不插入、不切走）；悬浮预览打开时再按 = 插入该笔记的引用', group: '编辑器' },
+  { keys: 'Ctrl + Enter', desc: '在当前行下方插入一个空行，光标移到新行行首（补全打开时 = 接受补全）', group: '编辑器' },
+  { keys: 'Ctrl + Shift + Enter', desc: '在当前行上方插入一个空行，光标移到新行行首', group: '编辑器' },
   { keys: 'Ctrl + E', desc: '切换源码 / 所见即所得编辑模式（编辑视图内）', group: '编辑器' },
   { keys: 'Ctrl + B', desc: '加粗选中文字（无选中时插入占位符）', group: '编辑器' },
   { keys: 'Ctrl + I', desc: '斜体', group: '编辑器' },

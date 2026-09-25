@@ -630,6 +630,27 @@ function createView(initialDoc: string): EditorView {
       // Prec.high：这些是应用级绑定，必须优先于 basicSetup 内置键位（如 searchKeymap 的 Mod-f）
       Prec.high(keymap.of([
         {
+          // 行插入快捷键（用户提出）：不论光标在行内什么位置，在上方 / 下方插入一个空行
+          // 并移动到新行行首（典型场景：[[ 补全落成引用后光标在行中，直接换行写下一行）。
+          // 补全打开时 Ctrl+Enter 让位给 completionKeymap（接受补全，Prec.highest）
+          key: 'Ctrl-Enter',
+          run: () => {
+            if (tablePrompt.active || !view) return false
+            const line = view.state.doc.lineAt(view.state.selection.main.head)
+            view.dispatch({ changes: { from: line.to, insert: '\n' }, selection: { anchor: line.to + 1 } })
+            return true
+          }
+        },
+        {
+          key: 'Ctrl-Shift-Enter',
+          run: () => {
+            if (tablePrompt.active || !view) return false
+            const line = view.state.doc.lineAt(view.state.selection.main.head)
+            view.dispatch({ changes: { from: line.from, insert: '\n' }, selection: { anchor: line.from } })
+            return true
+          }
+        },
+        {
           // Alt+Enter：补全面板里预览当前选中项（Enter 本身被 completionKeymap
           // 占用为「接受补全」且是 Prec.highest，Mod+Enter 同样会被其拦下）
           key: 'Alt-Enter',
