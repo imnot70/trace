@@ -158,7 +158,12 @@ function syncToLine(line: number, lineOffsetRatio: number): void {
 function nextBlockHeight(blocks: { line: number; top: number }[], target: { line: number; top: number }): number {
   const idx = blocks.indexOf(target)
   const next = blocks[idx + 1]
-  return next ? Math.max(1, next.top - target.top) : 200
+  if (next) return Math.max(1, next.top - target.top)
+  // 目标是最后一个块：下一块的 offsetTop 不存在，改用**块自身渲染高度**折算块内比例。
+  // 固定回退 200px 会在「文档尾部是一个超高块」（长段落 / 长代码块）时把块内比例
+  // 压缩到几乎为 0——同步到的位置远早于编辑器实际位置（实测预览停在 4.6% 而非 ~87%）。
+  const el = rootRef.value?.querySelector(`[data-source-line="${target.line}"]`) as HTMLElement | null
+  return el ? Math.max(1, el.offsetHeight) : 200
 }
 
 /** 预览→编辑器：当前滚动位置对应的源码行号（0 基），供编辑器滚动到该行 */
