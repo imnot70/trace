@@ -198,11 +198,11 @@ function openNote(item: BacklinkRef) {
 .backlink-pill:hover,
 .backlink-pill.active {
   color: var(--accent);
-  border-color: var(--accent-light);
+  border-color: var(--accent-soft);
 }
 
 .backlink-pill.active {
-  background: var(--accent-light);
+  background: var(--accent-soft);
 }
 
 .backlink-pill-count {

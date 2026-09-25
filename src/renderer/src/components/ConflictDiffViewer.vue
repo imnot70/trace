@@ -30,7 +30,7 @@
       <div v-else class="version-view">
         <div class="version-header">
           <span>{{ versionLabel }}</span>
-          <el-button size="small" @click="useThisVersion">使用此版本</el-button>
+          <el-button size="small" title="以此版本解决该文件的冲突" @click="useThisVersion">使用此版本</el-button>
         </div>
         <pre class="diff-content-pre">{{ versionContent }}</pre>
       </div>
@@ -64,6 +64,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:content', content: string): void
+  /** 「使用此版本」= 以该版本（本地 / 远端）真正解决此文件冲突（与顶部按钮同效） */
+  (e: 'use-version', side: 'ours' | 'theirs'): void
 }>()
 
 const activeTab = ref<'merge' | 'ours' | 'theirs' | 'base'>('merge')
@@ -117,11 +119,12 @@ function resetToOriginal() {
   emit('update:content', editedContent.value)
 }
 
-// 使用当前版本
+// 使用当前版本：直接以此版本解决冲突（此前只改编辑缓冲、不触发解决，
+// 用户以为点了就算解决、实际「已解决」计数与「继续同步」毫无反应——2026-09-25 实测反馈）
 function useThisVersion() {
-  editedContent.value = versionContent.value
-  activeTab.value = 'merge'
-  emit('update:content', editedContent.value)
+  if (activeTab.value === 'ours' || activeTab.value === 'theirs') {
+    emit('use-version', activeTab.value)
+  }
 }
 </script>
 

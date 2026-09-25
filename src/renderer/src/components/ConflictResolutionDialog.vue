@@ -13,7 +13,7 @@
       <div class="conflict-sidebar">
         <div class="sidebar-header">
           <h3>冲突文件 ({{ conflictFiles.length }})</h3>
-          <el-button size="small" @click="refreshConflictFiles" :loading="loading">
+          <el-button size="small" title="重新获取冲突文件列表" @click="refreshConflictFiles" :loading="loading">
             <el-icon><Refresh /></el-icon>
           </el-button>
         </div>
@@ -22,12 +22,13 @@
             v-for="file in conflictFiles"
             :key="file"
             class="file-item"
-            :class="{ active: selectedFile === file }"
+            :class="{ active: selectedFile === file, resolved: resolvedFiles.has(file) }"
             @click="selectFile(file)"
           >
             <el-icon><Document /></el-icon>
             <span class="file-name" :title="file">{{ file }}</span>
-            <el-tag size="small" type="warning">冲突</el-tag>
+            <el-tag v-if="resolvedFiles.has(file)" size="small" type="success">已解决</el-tag>
+            <el-tag v-else size="small" type="warning">冲突</el-tag>
           </div>
         </div>
         <div class="sidebar-footer">
@@ -53,10 +54,11 @@
               </el-button-group>
               <el-button
                 plain
+                title="以编辑框里的当前内容解决此文件的冲突"
                 @click="resolveWithManual"
                 :disabled="resolving || !editedContent"
               >
-                使用编辑内容
+                以此内容解决
               </el-button>
             </div>
           </div>
@@ -64,6 +66,7 @@
             v-if="conflictContent"
             :content="conflictContent"
             @update:content="editedContent = $event"
+            @use-version="handleUseVersion"
           />
           <div v-else-if="loadError" class="loading-content">
             <el-icon size="40"><WarningFilled /></el-icon>
@@ -201,7 +204,13 @@ async function resolveWithTheirs() {
   await resolveFile(selectedFile.value, { type: 'theirs' })
 }
 
-// 解决冲突（使用编辑内容）
+// 「使用此版本」（本地 / 远端版本视图）= 真正以此版本解决冲突，与顶部按钮同效
+function handleUseVersion(side: 'ours' | 'theirs') {
+  if (!selectedFile.value) return
+  void resolveFile(selectedFile.value, { type: side })
+}
+
+// 解决冲突（使用编辑内容 = 以编辑框里的内容解决此文件）
 async function resolveWithManual() {
   if (!selectedFile.value || !editedContent.value) return
   await resolveFile(selectedFile.value, { type: 'manual', content: editedContent.value })
@@ -241,6 +250,12 @@ async function continueRebase() {
       ElMessage.success('冲突已解决，同步继续')
       emit('resolved')
       visible.value = false
+    } else if (result.conflicts?.length) {
+      // 变基逐提交重放：后续提交可能带来新的冲突——刷新列表重置本轮解决状态，继续处理
+      conflictFiles.value = result.conflicts
+      resolvedFiles.value = new Set()
+      selectedFile.value = result.conflicts[0]
+      ElMessage.warning('后续提交又出现了新的冲突，请继续处理')
     } else {
       ElMessage.error(result.error || '继续同步失败')
     }
@@ -290,17 +305,13 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.conflict-resolution-dialog {
-  :deep(.el-dialog__body) {
-    padding: 0;
-    height: 70vh;
-    min-height: 500px;
-  }
-}
-
+/* 注意：对话框 body 的高度规则放在下方非 scoped 块——class 挂在 el-dialog 根元素上，
+   该元素没有本组件的 scoped 属性，scoped + :deep 的写法实际不会命中（实测 body 高度
+   塌成内容高、编辑区只剩 3 行） */
 .conflict-container {
   display: flex;
   height: 100%;
+  min-height: 0;
 }
 
 .conflict-sidebar {
@@ -344,7 +355,12 @@ onMounted(() => {
 }
 
 .file-item.active {
-  background-color: var(--accent-light);
+  background-color: var(--accent-soft);
+}
+
+.file-item.resolved .file-name {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
 }
 
 .file-name {
@@ -421,5 +437,15 @@ onMounted(() => {
 .footer-actions {
   display: flex;
   gap: 8px;
+}
+</style>
+
+<!-- 非 scoped：el-dialog 的 class 挂在弹层根元素上，scoped 属性不在其上，须全局命中 -->
+<style>
+.conflict-resolution-dialog .el-dialog__body {
+  padding: 0;
+  height: 70vh;
+  min-height: 500px;
+  overflow: hidden;
 }
 </style>
