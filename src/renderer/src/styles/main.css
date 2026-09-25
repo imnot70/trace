@@ -12,6 +12,8 @@
   --accent: #4078d3;
   --accent-soft: rgba(64, 120, 211, 0.12);
   --danger: #d34850;
+  --success-bg: rgba(144, 238, 144, 0.7);
+  --success-text: #1a4a22;
   --code-bg: #f0f2f5;
   --hljs-base: #383a42;
   --hljs-comment: #a0a1a7;
@@ -34,6 +36,9 @@ html.dark {
   --accent: #548ce0;
   --accent-soft: rgba(84, 140, 224, 0.18);
   --danger: #e06c75;
+  /* 提示浮层的浅绿底色本身是亮色，深色文字在其上两种主题下都可读，两套取同值 */
+  --success-bg: rgba(144, 238, 144, 0.7);
+  --success-text: #1a4a22;
   --code-bg: #26292f;
   --hljs-base: #c8ccd4;
   --hljs-comment: #7f848e;

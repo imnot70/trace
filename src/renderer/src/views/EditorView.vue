@@ -611,6 +611,14 @@ onBeforeUnmount(() => {
     <!-- 表格尺寸输入浮层（FR-2.4.20）：跟随光标，实时回显将插入的行列数 -->
     <TablePromptHud />
 
+    <!-- 模式切换提示：屏幕居中大字号（顶栏隐藏时切换所见即所得，右下角图标被动高亮不够直观）。
+         Teleport 到 body：fixed 居中不受编辑卡 overflow / 祖先 transform 影响；不拦截鼠标 -->
+    <Teleport to="body">
+      <Transition name="mode-toast">
+        <div v-if="app.modeToastText" class="mode-toast">{{ app.modeToastText }}</div>
+      </Transition>
+    </Teleport>
+
     <!-- 编辑器主体（填满卡片剩余空间）；点回编辑区 = 一瞥结束 -->
     <div ref="editorWrapRef" class="editor-cm" @mousedown="onEditorBodyMousedown">
       <MarkdownEditor
@@ -822,5 +830,40 @@ onBeforeUnmount(() => {
 .float-preview-leave-to {
   transform: translateX(48px);
   opacity: 0;
+}
+
+/* 模式切换提示：屏幕居中，字号 / 内边距约为原 ElMessage 的 3 倍；
+   浅绿底色 70% 半透明（--success-bg），深绿文字在两种主题下都可读；不拦截鼠标 */
+.mode-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3000;
+  padding: 30px 56px;
+  border-radius: 14px;
+  background: var(--success-bg);
+  color: var(--success-text);
+  font-size: 42px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.22);
+  pointer-events: none;
+}
+
+.mode-toast-enter-active,
+.mode-toast-leave-active {
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+/* 过渡前后保留居中位移，只做淡入淡出 + 轻微缩放 */
+.mode-toast-enter-from,
+.mode-toast-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.94);
 }
 </style>

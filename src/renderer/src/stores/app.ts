@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia'
-import { ElMessage } from 'element-plus'
 import type { AppSettings, ThemePackage } from '@shared/types'
 import { useTreeStore } from './tree'
 import { THEME_PRESETS, buildThemeCss } from '../styles/presets'
@@ -96,7 +95,11 @@ export const useAppStore = defineStore('app', {
     /** 网格/列表视图模式（localStorage 持久化） */
     viewMode: 'grid' as ViewMode,
     /** 已导入的自定义主题（userData/themes），与内置预设在 UI 中并列 */
-    customThemes: [] as ThemePackage[]
+    customThemes: [] as ThemePackage[],
+    /** 模式切换的居中提示文案（顶栏隐藏时切换所见即所得用）；null = 不显示 */
+    modeToastText: null as string | null,
+    /** 提示自动消失定时器（重复切换时重置） */
+    modeToastTimer: null as ReturnType<typeof setTimeout> | null
   }),
   getters: {
     /** 心流模式内实际生效的打字机形态（关闭 → 默认低位；用户选过则沿用） */
@@ -198,14 +201,19 @@ export const useAppStore = defineStore('app', {
     toggleEditorMode(): void {
       this.setEditorWysiwyg(!this.editorWysiwyg)
       // 顶栏隐藏（心流 / 专注隐藏顶栏）时没有可见的模式按钮，切换结果只能靠右下角
-      // 状态区图标的被动高亮确认，不直观（用户实测反馈）——弹窗提示一次
+      // 状态区图标的被动高亮确认，不直观（用户实测反馈）——屏幕居中弹大字提示
       if (this.topbarConcealed) {
-        ElMessage({
-          message: this.editorWysiwyg ? '所见即所得模式：开' : '所见即所得模式：关',
-          type: 'info',
-          duration: 2000
-        })
+        this.showModeToast(this.editorWysiwyg ? '所见即所得模式：开' : '所见即所得模式：关')
       }
+    },
+    /** 模式切换提示：屏幕居中、2 秒自动消失（重复切换时重置计时并换文案） */
+    showModeToast(text: string): void {
+      this.modeToastText = text
+      if (this.modeToastTimer) clearTimeout(this.modeToastTimer)
+      this.modeToastTimer = setTimeout(() => {
+        this.modeToastText = null
+        this.modeToastTimer = null
+      }, 2000)
     },
     /**
      * 进入心流模式：快照外围界面状态 → 拨动各轴（沉浸）。
