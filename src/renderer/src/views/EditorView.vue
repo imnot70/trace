@@ -142,9 +142,41 @@ function onPreviewBtnLeave(): void {
 
 /** 预览中点击库内笔记链接：悬浮预览先收回，再打开目标笔记 */
 function onPreviewOpenNote(target: { vault: string; path: string; name: string }): void {
+  // 悬浮预览正在展示「补全预览」时，点击其中的双链改为**预览内导航**（不切走当前笔记、
+  // 不收回）——心流下「顺藤摸瓜看一圈，点编辑区回来继续写」
+  if (app.floatingPreview && completionPreview.value) {
+    void onCompletionPreview(target)
+    return
+  }
   if (app.floatingPreview) app.closeFloatingPreview()
   void actions.openNote(target.vault, target.path, target.name)
 }
+
+// ---------- 心流快速查阅：补全面板 Mod+Enter 预览笔记 ----------
+// 悬浮预览组件的 content prop 绑定 editor.content；预览「别的笔记」需要覆盖内容。
+// 覆盖期间编辑器照常工作，悬浮预览关闭（一瞥结束）即恢复显示当前笔记。
+const completionPreview = ref<{ vault: string; path: string; name: string; content: string } | null>(null)
+const floatingContent = computed(() =>
+  completionPreview.value ? completionPreview.value.content : editor.content
+)
+
+async function onCompletionPreview(target: { vault: string; path: string; name: string }): Promise<void> {
+  const result = await window.trace.readNote(target.vault, target.path)
+  if (!result.ok) {
+    ElMessage.error(result.error ?? '无法读取笔记')
+    return
+  }
+  completionPreview.value = { ...target, content: result.content ?? '' }
+  app.openFloatingPreview()
+}
+
+/** 悬浮预览关闭（一瞥结束）时清除补全预览覆盖 */
+watch(
+  () => app.floatingPreview,
+  (open) => {
+    if (!open && completionPreview.value) completionPreview.value = null
+  }
+)
 
 /** 反向链接点击：打开来源笔记并定位到引用行（line 为 1 基） */
 async function onBacklinkOpenNote(vault: string, path: string, line?: number): Promise<void> {
@@ -597,6 +629,7 @@ onBeforeUnmount(() => {
         :wysiwyg="app.editorWysiwyg"
         @update:model-value="onEditorUpdate"
         @save="editor.flushSave()"
+        @preview-note="onCompletionPreview"
         @image="(name: string, b64: string) => onImage(name, b64)"
         @open-note="onPreviewOpenNote"
       />
@@ -637,7 +670,7 @@ onBeforeUnmount(() => {
   <Transition name="float-preview">
     <div v-if="app.floatingPreview" class="floating-preview">
         <div class="floating-preview-header">
-          <span class="floating-preview-title">预览</span>
+          <span class="floating-preview-title">{{ completionPreview ? `预览：${completionPreview.name}` : '预览' }}</span>
           <span class="floating-preview-actions">
             <button class="tool-btn" @click="pinPeek">
               <el-icon><Magnet /></el-icon>
@@ -651,7 +684,7 @@ onBeforeUnmount(() => {
         <MarkdownPreview
           ref="floatPreviewRef"
           v-if="editor.current"
-          :content="editor.content"
+          :content="floatingContent"
           :vault="vaultName"
           :note-path="editor.current.path"
           :font-size="app.settings.editorFontSize"
