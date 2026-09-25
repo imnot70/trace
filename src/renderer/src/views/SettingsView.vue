@@ -21,6 +21,15 @@ const editor = useEditorStore()
 // 玻璃材质经 backgroundMaterial 支持（Win11 22H2+）
 const isWindows = window.trace.platform === 'win32'
 
+// 心流写作底色色板（key 对应 main.css 的 --flow-paper-* 变量，深浅主题各有柔和值）
+const FLOW_PAPER_COLORS = [
+  { key: 'cream', label: '米黄' },
+  { key: 'green', label: '淡绿' },
+  { key: 'blue', label: '淡蓝' },
+  { key: 'pink', label: '淡粉' },
+  { key: 'gray', label: '淡灰' }
+] as const
+
 const tab = computed<'account' | 'plugins' | 'general'>({
   get: () => (app.view.name === 'settings' ? app.view.tab : 'general'),
   set: (value: string) => {
@@ -965,6 +974,28 @@ async function resetGitSource(): Promise<void> {
             <span class="settings-desc" style="margin: 0">正文列宽限制并居中，宽屏下长行阅读更省力；仅心流模式内生效</span>
           </div>
           <div class="setting-row">
+            <span class="setting-label">写作底色</span>
+            <el-switch
+              :model-value="app.settings.flowPaperEnabled"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ flowPaperEnabled: Boolean(v) })"
+            />
+            <span class="settings-desc" style="margin: 0">为心流模式的写作栏涂一层柔和底色，帮助视线聚焦（跟随写作栏宽，仅心流模式内生效）</span>
+          </div>
+          <div class="setting-row" v-if="app.settings.flowPaperEnabled">
+            <span class="setting-label">底色颜色</span>
+            <div class="flow-paper-swatches">
+              <button
+                v-for="c in FLOW_PAPER_COLORS"
+                :key="c.key"
+                class="flow-paper-swatch"
+                :class="{ active: app.settings.flowPaperColor === c.key }"
+                :style="{ background: `var(--flow-paper-${c.key})` }"
+                :title="c.label"
+                @click="app.updateSettings({ flowPaperColor: c.key })"
+              />
+            </div>
+          </div>
+          <div class="setting-row">
             <span class="setting-label">回车音效</span>
             <el-switch
               :model-value="app.settings.flowSoundEnabled"
@@ -1451,5 +1482,29 @@ async function resetGitSource(): Promise<void> {
 .plugin-badge-warn {
   background: color-mix(in srgb, var(--danger) 12%, transparent);
   color: var(--danger);
+}
+
+/* 心流写作底色色板：色块本身用主题变量着色（深浅主题下各是柔和值） */
+.flow-paper-swatches {
+  display: flex;
+  gap: 8px;
+}
+
+.flow-paper-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  padding: 0;
+  transition: box-shadow 0.15s;
+}
+
+.flow-paper-swatch:hover {
+  box-shadow: 0 0 0 2px var(--bg-hover);
+}
+
+.flow-paper-swatch.active {
+  border: 2px solid var(--accent);
 }
 </style>
