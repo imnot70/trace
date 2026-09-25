@@ -710,45 +710,88 @@ body {
   padding-inline: max(0px, calc((100% - var(--flow-measure, 42em)) / 2));
 }
 
-/* 保存指示：编辑卡右下角的极小圆点，不占布局、只在心流模式出现 */
-.flow-save-dot {
+/* ---------- 顶栏隐藏时的右下角状态区（专注隐藏顶栏 / 心流模式） ---------- */
+/* 长条形区域：有底色与圆角以区别于正文；85% 不透明度不喧宾夺主；
+   悬停唤出顶栏时淡出——完整状态在顶栏里，避免同屏双份 */
+.zen-status-area {
   position: absolute;
-  right: 10px;
-  bottom: 10px;
+  right: 12px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0.85;
+  pointer-events: none;
+  z-index: 6;
+  transition: opacity 0.2s ease;
+  max-width: 60%;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.zen-status-area.peeking {
+  opacity: 0;
+}
+
+.zen-status-area .zen-status-branch {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Sarasa Mono SC', Consolas, monospace;
+  color: var(--text-secondary);
+}
+
+.zen-status-area .zen-status-flag {
+  color: var(--text-tertiary);
+}
+
+/* 未提交修改：主题色轻提醒（顶栏 tag 的 warning 语义在此弱化为 accent） */
+.zen-status-area .zen-status-flag[title='有未提交修改'] {
+  color: var(--accent);
+}
+
+/* 编辑模式图标：所见即所得用 accent 高亮（写作时最关心「现在能不能马上看到效果」） */
+/* Git 分支图标（Share 的分叉形状，视觉上说明后面是分支名） */
+.zen-status-area .zen-status-git-icon {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* 保存状态小圆点（回归 v0.8.0 的极微弱语义：写作专注优先，保存事件只轻点一下） */
+.zen-status-area .zen-status-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--text-tertiary);
   opacity: 0;
   transition: opacity 0.4s ease;
-  pointer-events: none;
-  z-index: 5;
+  flex-shrink: 0;
 }
 
-/* 有未保存变更：微弱可见（写作中几乎无感） */
-.flow-save-dot.dirty {
+.zen-status-area .zen-status-dot.dirty {
   opacity: 0.35;
 }
 
-/* 保存中：呼吸脉冲 */
-.flow-save-dot.saving {
+.zen-status-area .zen-status-dot.saving {
   opacity: 0.6;
-  animation: flow-save-pulse 0.9s ease-in-out infinite;
+  animation: zen-save-pulse 0.9s ease-in-out infinite;
 }
 
-/* 保存成功：一次脉冲后淡出 */
-.flow-save-dot.saved {
+.zen-status-area .zen-status-dot.saved {
   opacity: 0.75;
-  animation: flow-save-flash 0.6s ease-out 1;
+  animation: zen-save-flash 0.6s ease-out 1;
 }
 
-/* 保存失败 / 外部修改冲突：红色常亮（重要状态，不淡出） */
-.flow-save-dot.error {
+.zen-status-area .zen-status-dot.error {
   opacity: 1;
   background: var(--danger);
 }
 
-@keyframes flow-save-pulse {
+@keyframes zen-save-pulse {
   0%,
   100% {
     transform: scale(1);
@@ -760,7 +803,7 @@ body {
   }
 }
 
-@keyframes flow-save-flash {
+@keyframes zen-save-flash {
   0% {
     transform: scale(1.6);
     opacity: 1;
@@ -769,6 +812,16 @@ body {
     transform: scale(1);
     opacity: 0.75;
   }
+}
+
+/* 编辑模式三图标（所见即所得 / 心流 / 专注）：激活 accent 高亮 */
+.zen-status-area .zen-status-mode {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.zen-status-area .zen-status-mode.mode-on {
+  color: var(--accent);
 }
 
 .tool-btn.tool-dimmed {
