@@ -1,6 +1,11 @@
 <template>
   <!-- 悬浮入口：不占布局空间，编辑区保持满高；无引用时不渲染 -->
-  <div ref="rootRef" class="backlink-root" v-if="visible && backlinks.length > 0">
+  <div
+    ref="rootRef"
+    class="backlink-root"
+    :class="{ lifted }"
+    v-if="visible && backlinks.length > 0"
+  >
     <Transition name="backlink-pop">
       <div class="backlink-pop" v-if="open">
         <div class="backlink-header">
@@ -46,6 +51,8 @@ const props = defineProps<{
   visible: boolean
   vault: string
   notePath: string
+  /** 顶栏隐藏时（专注 / 心流）右下角有状态区，胶囊上移到其上方一行 */
+  lifted?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -141,6 +148,11 @@ function openNote(item: BacklinkRef) {
   bottom: 14px;
   right: 16px;
   z-index: 40;
+}
+
+/* 顶栏隐藏时右下角有长条形状态区（约 26px 高 + 12px 底距），胶囊上移到其上一行 */
+.backlink-root.lifted {
+  bottom: 50px;
 }
 
 /* 胶囊入口：与整体卡片风格一致（圆角 + 边框 + 轻阴影） */

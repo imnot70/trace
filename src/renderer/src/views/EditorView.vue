@@ -533,8 +533,22 @@ onBeforeUnmount(() => {
       </el-button>
     </div>
 
-    <!-- 心流模式：极微弱的保存指示（不占布局、不打断输入） -->
-    <div v-if="app.flowMode" class="flow-save-dot" :class="saveDotState" title="" />
+    <!-- 顶栏隐藏时（专注隐藏顶栏 / 心流）：右下角长条形状态区。
+         有底色与圆角以区别于正文；聚合 Git 状态与保存状态；悬停唤出顶栏时淡出（避免同屏双份） -->
+    <div v-if="concealed" class="zen-status-area" :class="{ peeking: topbarPeek }">
+      <template v-if="vaultGit">
+        <el-icon v-if="git.syncing[vaultName]" class="is-loading zen-status-spin" title="同步中">
+          <Loading />
+        </el-icon>
+        <span class="zen-status-branch">{{ vaultGit.branch }}</span>
+        <span v-if="vaultGit.ahead" class="zen-status-flag" title="未推送">↑{{ vaultGit.ahead }}</span>
+        <span v-if="vaultGit.behind" class="zen-status-flag" title="未拉取">↓{{ vaultGit.behind }}</span>
+        <span v-if="vaultGit.dirty" class="zen-status-flag" title="有未提交修改">未提交</span>
+      </template>
+      <span class="zen-status-save" :class="saveDotState">
+        {{ saveDotState === 'error' ? '保存失败' : saveDotState === 'saving' ? '保存中…' : saveDotState === 'saved' ? '已保存' : saveDotState === 'dirty' ? '未保存' : '' }}
+      </span>
+    </div>
 
     <!-- 表格尺寸输入浮层（FR-2.4.20）：跟随光标，实时回显将插入的行列数 -->
     <TablePromptHud />
@@ -568,6 +582,7 @@ onBeforeUnmount(() => {
       :visible="!!editor.current && app.settings.sidebarMenus.unresolved && app.settings.showBacklinks"
       :vault="editor.current?.vault ?? ''"
       :note-path="editor.current?.path ?? ''"
+      :lifted="concealed"
       @open-note="onBacklinkOpenNote"
     />
   </div>

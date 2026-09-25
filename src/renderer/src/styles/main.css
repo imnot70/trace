@@ -710,65 +710,81 @@ body {
   padding-inline: max(0px, calc((100% - var(--flow-measure, 42em)) / 2));
 }
 
-/* 保存指示：编辑卡右下角的极小圆点，不占布局、只在心流模式出现 */
-.flow-save-dot {
+/* ---------- 顶栏隐藏时的右下角状态区（专注隐藏顶栏 / 心流模式） ---------- */
+/* 长条形区域：有底色与圆角以区别于正文；85% 不透明度不喧宾夺主；
+   悬停唤出顶栏时淡出——完整状态在顶栏里，避免同屏双份 */
+.zen-status-area {
   position: absolute;
-  right: 10px;
-  bottom: 10px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--text-tertiary);
-  opacity: 0;
-  transition: opacity 0.4s ease;
+  right: 12px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0.85;
   pointer-events: none;
-  z-index: 5;
+  z-index: 6;
+  transition: opacity 0.2s ease;
+  max-width: 60%;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
-/* 有未保存变更：微弱可见（写作中几乎无感） */
-.flow-save-dot.dirty {
-  opacity: 0.35;
+.zen-status-area.peeking {
+  opacity: 0;
 }
 
-/* 保存中：呼吸脉冲 */
-.flow-save-dot.saving {
-  opacity: 0.6;
-  animation: flow-save-pulse 0.9s ease-in-out infinite;
+.zen-status-area .zen-status-branch {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Sarasa Mono SC', Consolas, monospace;
+  color: var(--text-secondary);
 }
 
-/* 保存成功：一次脉冲后淡出 */
-.flow-save-dot.saved {
-  opacity: 0.75;
-  animation: flow-save-flash 0.6s ease-out 1;
+.zen-status-area .zen-status-flag {
+  color: var(--text-tertiary);
 }
 
-/* 保存失败 / 外部修改冲突：红色常亮（重要状态，不淡出） */
-.flow-save-dot.error {
+/* 未提交修改：主题色轻提醒（顶栏 tag 的 warning 语义在此弱化为 accent） */
+.zen-status-area .zen-status-flag[title='有未提交修改'] {
+  color: var(--accent);
+}
+
+.zen-status-area .zen-status-spin {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* 保存状态文字：默认不可见（无事件时不占认知），有事件时显现 */
+.zen-status-area .zen-status-save {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.zen-status-area .zen-status-save.dirty,
+.zen-status-area .zen-status-save.saved,
+.zen-status-area .zen-status-save.saving {
   opacity: 1;
-  background: var(--danger);
+  color: var(--text-tertiary);
 }
 
-@keyframes flow-save-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.35;
-  }
-  50% {
-    transform: scale(1.35);
-    opacity: 0.7;
-  }
+.zen-status-area .zen-status-save.error {
+  opacity: 1;
+  color: var(--danger);
 }
 
-@keyframes flow-save-flash {
-  0% {
-    transform: scale(1.6);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 0.75;
-  }
+/* 有保存状态文字时与 Git 段之间加一道分隔点 */
+.zen-status-area .zen-status-save.dirty::before,
+.zen-status-area .zen-status-save.saved::before,
+.zen-status-area .zen-status-save.saving::before,
+.zen-status-area .zen-status-save.error::before {
+  content: '·';
+  margin-right: 8px;
+  color: var(--text-tertiary);
 }
 
 .tool-btn.tool-dimmed {
