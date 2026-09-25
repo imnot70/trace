@@ -522,7 +522,8 @@ onBeforeUnmount(() => {
           :title="app.settings.typewriterMode === 'center' ? '打字机：高位' : app.settings.typewriterMode === 'bottom' ? '打字机：低位' : '打字机：关'"
           @click="app.toggleTypewriter(); editorRef?.focus()"
         >
-          <el-icon><Aim /></el-icon>
+          <!-- 字母 T 代替图标：Aim 与「定位笔记」的十字准星图标重复（用户实测反馈） -->
+          <span class="tw-letter">T</span>
         </button>
       </el-tooltip>
       <el-tooltip content="所见即所得编辑（Ctrl+E 切换）" placement="bottom" :hide-after="0">
@@ -638,16 +639,16 @@ onBeforeUnmount(() => {
         <span v-if="vaultGit.dirty" class="zen-status-flag" title="有未提交修改">未提交</span>
       </template>
       <span class="zen-status-dot" :class="saveDotState" title=""></span>
-      <!-- 编辑模式四图标：打字机（Aim，展示实际生效形态——心流内设置关闭也按低位生效）/
-           所见即所得（魔法棒）/ 心流（咖啡杯）/ 专注（全屏）；
+      <!-- 编辑模式四图标：打字机（字母 T——Aim 与定位图标重复）/ 所见即所得（魔法棒）/
+           心流（咖啡杯）/ 专注（全屏）；
            各自激活时 accent 高亮——从顶栏隐藏后仍能确认当前处于哪些模式 -->
-      <el-icon
-        class="zen-status-mode"
+      <span
+        class="zen-status-mode tw-letter"
         :class="{ 'mode-on': app.effectiveTypewriterMode !== 'off' }"
         :title="`打字机模式：${app.effectiveTypewriterMode === 'center' ? '高位' : app.effectiveTypewriterMode === 'bottom' ? '低位' : '关'}`"
       >
-        <Aim />
-      </el-icon>
+        T
+      </span>
       <el-icon
         class="zen-status-mode"
         :class="{ 'mode-on': app.editorWysiwyg }"
@@ -778,6 +779,13 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* 打字机的字母 T 标识：与图标尺寸一致、加粗与图标视觉重量对齐（顶栏按钮 + 状态区共用） */
+.tw-letter {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .editor-card {
   height: 100%;
   display: flex;
