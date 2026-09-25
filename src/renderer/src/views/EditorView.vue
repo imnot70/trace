@@ -207,6 +207,15 @@ watch(
   }
 )
 
+/** 进入心流后编辑器可能因 wysiwyg 重配置 / 顶栏卸载失焦（用户实测：需点一下才能开始编辑）
+ *  ——自动回焦。child 的 compartment 重配置发生在同一刷新周期内，nextTick 后再聚焦 */
+watch(
+  () => app.flowMode,
+  (on) => {
+    if (on) void nextTick(() => editorRef.value?.focus())
+  }
+)
+
 /** 反向链接点击：打开来源笔记并定位到引用行（line 为 1 基） */
 async function onBacklinkOpenNote(vault: string, path: string, line?: number): Promise<void> {
   const name = path.split('/').pop()?.replace(/\.md$/i, '') ?? ''
@@ -506,6 +515,17 @@ onBeforeUnmount(() => {
           <el-icon><Expand v-if="!app.previewVisible && !app.floatingPreview" /><Fold v-else /></el-icon>
         </button>
       </el-tooltip>
+      <el-tooltip content="打字机模式：光标锚定固定行（Alt+T 切换）" placement="bottom" :hide-after="0">
+        <button
+          class="tool-btn"
+          :class="{ 'flow-on': app.settings.typewriterMode !== 'off' }"
+          :title="app.settings.typewriterMode === 'center' ? '打字机：高位' : app.settings.typewriterMode === 'bottom' ? '打字机：低位' : '打字机：关'"
+          @click="app.toggleTypewriter(); editorRef?.focus()"
+        >
+          <!-- 字母 T 代替图标：Aim 与「定位笔记」的十字准星图标重复（用户实测反馈） -->
+          <span class="tw-letter">T</span>
+        </button>
+      </el-tooltip>
       <el-tooltip content="所见即所得编辑（Ctrl+E 切换）" placement="bottom" :hide-after="0">
         <button
           class="tool-btn"
@@ -603,7 +623,7 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- 顶栏隐藏时（专注隐藏顶栏 / 心流）：右下角长条形状态区。
-         有底色与圆角以区别于正文；Git 状态在左（带分支图标），编辑模式三图标（所见即所得 / 心流 / 专注）在右，各自激活时 accent 高亮；保存为小圆点；悬停唤出顶栏时淡出 -->
+         有底色与圆角以区别于正文；Git 状态在左（带分支图标），编辑模式四图标（打字机 / 所见即所得 / 心流 / 专注）在右，各自激活时 accent 高亮；保存为小圆点；悬停唤出顶栏时淡出 -->
     <div v-if="concealed" class="zen-status-area" :class="{ peeking: topbarPeek }">
       <!-- Git 状态（有分支图标；非所有库都用 git，vaultGit 为空则整段不渲染） -->
       <template v-if="vaultGit">
@@ -619,8 +639,16 @@ onBeforeUnmount(() => {
         <span v-if="vaultGit.dirty" class="zen-status-flag" title="有未提交修改">未提交</span>
       </template>
       <span class="zen-status-dot" :class="saveDotState" title=""></span>
-      <!-- 编辑模式三图标：所见即所得（魔法棒）/ 心流（咖啡杯）/ 专注（全屏）；
+      <!-- 编辑模式四图标：打字机（字母 T——Aim 与定位图标重复）/ 所见即所得（魔法棒）/
+           心流（咖啡杯）/ 专注（全屏）；
            各自激活时 accent 高亮——从顶栏隐藏后仍能确认当前处于哪些模式 -->
+      <span
+        class="zen-status-mode tw-letter"
+        :class="{ 'mode-on': app.effectiveTypewriterMode !== 'off' }"
+        :title="`打字机模式：${app.effectiveTypewriterMode === 'center' ? '高位' : app.effectiveTypewriterMode === 'bottom' ? '低位' : '关'}`"
+      >
+        T
+      </span>
       <el-icon
         class="zen-status-mode"
         :class="{ 'mode-on': app.editorWysiwyg }"
@@ -751,6 +779,13 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* 打字机的字母 T 标识：与图标尺寸一致、加粗与图标视觉重量对齐（顶栏按钮 + 状态区共用） */
+.tw-letter {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .editor-card {
   height: 100%;
   display: flex;

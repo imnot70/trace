@@ -104,7 +104,15 @@ export const useAppStore = defineStore('app', {
     /** 提示自动消失定时器（重复切换时重置） */
     modeToastTimer: null as ReturnType<typeof setTimeout> | null,
     /** 跨组件的悬浮预览请求（FR-2.9.10：搜索框 Alt+Enter → EditorView 消费）；null = 无待处理 */
-    pendingNotePreview: null as { vault: string; path: string; name: string } | null
+    pendingNotePreview: null as { vault: string; path: string; name: string } | null,
+    /** 打字机开关（Alt+T）的记忆：关闭时记下之前的形态，再次开启时恢复（本地持久化） */
+    typewriterResume: ((): 'center' | 'bottom' => {
+      try {
+        return localStorage.getItem('trace.typewriterResume') === 'bottom' ? 'bottom' : 'center'
+      } catch {
+        return 'center'
+      }
+    })()
   }),
   getters: {
     /** 心流模式内实际生效的打字机形态（关闭 → 默认低位；用户选过则沿用） */
@@ -223,6 +231,20 @@ export const useAppStore = defineStore('app', {
     /** 请求以悬浮预览查看一篇笔记（搜索框等外部组件发起，EditorView 消费后清空） */
     requestNotePreview(vault: string, path: string, name: string): void {
       this.pendingNotePreview = { vault, path, name }
+    },
+    /** 切换打字机模式（Alt+T）：关 ↔ 上次使用的形态（高位 / 低位，本地持久化记忆） */
+    toggleTypewriter(): void {
+      if (this.settings.typewriterMode === 'off') {
+        this.updateSettings({ typewriterMode: this.typewriterResume })
+      } else {
+        this.typewriterResume = this.settings.typewriterMode
+        try {
+          localStorage.setItem('trace.typewriterResume', this.typewriterResume)
+        } catch {
+          /* ignore */
+        }
+        this.updateSettings({ typewriterMode: 'off' })
+      }
     },
     /**
      * 进入心流模式：快照外围界面状态 → 拨动各轴（沉浸）。

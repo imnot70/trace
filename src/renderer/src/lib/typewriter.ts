@@ -79,6 +79,13 @@ export function typewriter(mode: TypewriterMode): Extension {
       private resizeObserver: ResizeObserver | null = null
       /** 光标不在已渲染范围内时已补过一次「滚进视野」，避免反复请求（见 anchor） */
       private nudged = false
+      /** 用户滚动冷却期：滚轮 / 触控板滚动进入未测量区域会触发 CM 测量 → 内容层尺寸变化
+       *  → RO / geometryChanged 被动触发重锚 → 拉回光标行（2026-09-26 用户实测：心流 +
+       *  打字机向下滚一段距离后被弹回，违背「用户滚动绝不干预」规则）。冷却窗口内抑制
+       *  一切被动触发；输入 / 点击定位触发的重锚不受限（见 schedule 的 force） */
+      private userScrollUntil = 0
+      /** 锚定自身的程序化滚动标记：anchor() 写 scrollTop 也会触发 scroll 事件，不得误判为用户滚动 */
+      private programmaticUntil = 0
 
       constructor(private view: EditorView) {
         this.applyPadding()
@@ -98,11 +105,18 @@ export function typewriter(mode: TypewriterMode): Extension {
         // mouseup 可能落在编辑器之外（拖出窗口），挂到 window 才能稳定收到
         window.addEventListener('mouseup', this.onMouseUp, true)
         view.dom.addEventListener('compositionend', this.onCompositionEnd)
+        view.scrollDOM.addEventListener('scroll', this.onScroll)
         // 新挂载时补一次锚定：本扩展会在「进入心流（设置里是关闭 → 心流内低位）」时被新建，
         // 以及「打开笔记 / 切换打字机形态」时随视图创建；构造函数跑在 DOM 更新之前
         // （Vue 的 pre-flush watcher 里 dispatch reconfigure），故只排一帧 rAF，等几何落定再量。
         // 没有这一步时，切进心流只会写入留白（内容整体下移）而不校正滚动，光标会停在锚点之外。
-        this.schedule()
+        this.schedule(true)
+      }
+
+      /** 用户滚动判定：锚定自身的程序化滚动（programmaticUntil 窗口内）不算 */
+      private onScroll = (): void => {
+        if (Date.now() < this.programmaticUntil) return
+        this.userScrollUntil = Date.now() + 800
       }
 
       private onMouseDown = (): void => {
@@ -112,12 +126,12 @@ export function typewriter(mode: TypewriterMode): Extension {
       private onMouseUp = (): void => {
         if (!this.dragging) return
         this.dragging = false
-        this.schedule()
+        this.schedule(true)
       }
 
       /** 输入法组词结束：组词期间冻结，结束时补一次锚定 */
       private onCompositionEnd = (): void => {
-        this.schedule()
+        this.schedule(true)
       }
 
       /**
@@ -137,7 +151,17 @@ export function typewriter(mode: TypewriterMode): Extension {
       update(update: ViewUpdate): void {
         // 组词中（中文输入法 IME）：光标位置是临时态，跟随滚动会导致候选框抖动
         if (this.view.composing || this.dragging) return
-        // 几何变化 → 光标行在屏幕上的位置随之位移，锚点失效，必须重锚。CM 的语义是
+        // 输入 / 删除 / 撤销重做 / 光标移动与点击定位 → **强制重锚**（不受用户滚动冷却限制——
+        // 设计规则是「下次输入才回到锚点」，输入本身即用户意图）。放在 geometryChanged 之前：
+        // 输入也会置位几何标志，若先走软调度会被滚动冷却吞掉
+        const relevant = update.transactions.some((tr) =>
+          isAnchorEvent(tr.annotation(Transaction.userEvent) ?? '')
+        )
+        if (relevant) {
+          this.schedule(true)
+          return
+        }
+        // 几何变化 → 光标行在屏幕上的位置随之位移，锚点失效，需要重锚。CM 的语义是
         // 「文档被修改，或编辑器 / 其内部元素的尺寸变了」，**不含滚动**（滚动不会置位
         // Geometry / Height 标志），因此不会违反「用户滚动绝不干预」。
         // 这条覆盖了三类旧实现漏掉的情形，它们的共同点是「滚动容器尺寸没变 → ResizeObserver
@@ -146,19 +170,19 @@ export function typewriter(mode: TypewriterMode): Extension {
         //   ② 模式切换后的延迟重排：切进心流会同时打开所见即所得，块级 widget / 公式的重新
         //      测量与渲染可能落在锚定之后的一两帧；
         //   ③ 图片 / 字体异步加载完成导致的回流。
+        // 注意软调度：滚动诱发的测量也会置位几何标志（见 userScrollUntil 注释），冷却期内跳过
         if (update.geometryChanged) {
           this.schedule()
           return
         }
         if (!update.docChanged && !update.selectionSet) return
-        const relevant = update.transactions.some((tr) =>
-          isAnchorEvent(tr.annotation(Transaction.userEvent) ?? '')
-        )
-        if (relevant) this.schedule()
       }
 
-      /** rAF 合并：一帧内多次变更只滚动一次 */
-      private schedule(): void {
+      /** rAF 合并：一帧内多次变更只滚动一次。force = 用户输入 / 点击定位等显式触发，
+       *  不受滚动冷却限制；被动触发（RO / geometryChanged / 挂载初锚之外的软调度）
+       *  在用户滚动冷却窗口内跳过（FR-2.4.14 三轮实测：滚轮滚动后被弹回光标行） */
+      private schedule(force = false): void {
+        if (!force && Date.now() < this.userScrollUntil) return
         if (this.raf) return
         this.raf = requestAnimationFrame(() => {
           this.raf = 0
@@ -182,6 +206,7 @@ export function typewriter(mode: TypewriterMode): Extension {
           // 只补一次：既避免「滚了仍不可见 ↔ 反复滚动」互相触发，也避免与用户滚动抢方向。
           if (!this.nudged) {
             this.nudged = true
+            this.programmaticUntil = Date.now() + 150
             this.view.dispatch({
               effects: EditorView.scrollIntoView(head, { y: 'center' })
             })
@@ -201,6 +226,8 @@ export function typewriter(mode: TypewriterMode): Extension {
         )
         // 亚像素差异不滚动，避免抖动
         if (Math.abs(target - scroller.scrollTop) < 0.5) return
+        // 标记程序化滚动：随后到来的 scroll 事件不得计入用户滚动冷却
+        this.programmaticUntil = Date.now() + 150
         scroller.scrollTop = target
       }
 

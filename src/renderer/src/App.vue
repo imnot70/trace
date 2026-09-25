@@ -149,6 +149,10 @@ function onGlobalKeydown(e: KeyboardEvent): void {
     } else if (e.key.toLowerCase() === 'v') {
       e.preventDefault()
       app.togglePreview()
+    } else if (e.key.toLowerCase() === 't') {
+      // 打字机模式开关（编辑视图内；FR-2.4.14）
+      e.preventDefault()
+      if (app.view.name === 'editor' && editor.current) app.toggleTypewriter()
     }
     return
   }
