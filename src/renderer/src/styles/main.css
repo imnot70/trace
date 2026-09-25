@@ -20,6 +20,14 @@
   --flow-paper-blue: #e9f0f8;
   --flow-paper-pink: #f9eef1;
   --flow-paper-gray: #f1f2f4;
+  /* 冲突合并视图行着色（行背景半透明层 + 图例实色版） */
+  --merge-ours: rgba(64, 120, 211, 0.1);
+  --merge-theirs: rgba(103, 194, 58, 0.12);
+  --merge-marker: rgba(211, 72, 80, 0.12);
+  --merge-ours-solid: #dbe7f7;
+  --merge-theirs-solid: #dcf0d4;
+  --merge-marker-solid: #f6d7da;
+  --success-line: #85b56a;
   --code-bg: #f0f2f5;
   --hljs-base: #383a42;
   --hljs-comment: #a0a1a7;
@@ -51,6 +59,13 @@ html.dark {
   --flow-paper-blue: #222a33;
   --flow-paper-pink: #2f262a;
   --flow-paper-gray: #26282d;
+  --merge-ours: rgba(84, 140, 224, 0.16);
+  --merge-theirs: rgba(103, 194, 58, 0.14);
+  --merge-marker: rgba(224, 108, 117, 0.16);
+  --merge-ours-solid: #2c3a4d;
+  --merge-theirs-solid: #2e3b2b;
+  --merge-marker-solid: #472f33;
+  --success-line: #85b56a;
   --code-bg: #26292f;
   --hljs-base: #c8ccd4;
   --hljs-comment: #7f848e;

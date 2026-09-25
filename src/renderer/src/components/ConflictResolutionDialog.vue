@@ -442,10 +442,16 @@ onMounted(() => {
 
 <!-- 非 scoped：el-dialog 的 class 挂在弹层根元素上，scoped 属性不在其上，须全局命中 -->
 <style>
+/* el-dialog 默认 15vh 顶边距 + 50px 底边距，加上 70vh 的 body 后总高恰好溢出视口，
+   遮罩层会出现滚动条（应用窗口本身内容并未超高）——收敛边距并按视口钳制 body 高度 */
+.el-dialog.conflict-resolution-dialog {
+  margin: 5vh auto 0;
+}
+
 .conflict-resolution-dialog .el-dialog__body {
   padding: 0;
-  height: 70vh;
-  min-height: 500px;
+  height: min(70vh, calc(100vh - 200px));
+  min-height: 420px;
   overflow: hidden;
 }
 </style>
