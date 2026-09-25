@@ -832,24 +832,24 @@ onBeforeUnmount(() => {
   opacity: 0;
 }
 
-/* 模式切换提示：屏幕居中，字号 / 内边距约为原 ElMessage 的 3 倍；
-   浅绿底色 70% 半透明（--success-bg），深绿文字在两种主题下都可读；不拦截鼠标 */
+/* 模式切换提示：屏幕居中，字号 / 内边距约为原 ElMessage 的 2 倍；
+   浅绿底色 60% 不透明（--success-bg），文字用与底色同系的中深绿；不拦截鼠标 */
 .mode-toast {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 3000;
-  padding: 30px 56px;
-  border-radius: 14px;
+  padding: 18px 38px;
+  border-radius: 12px;
   background: var(--success-bg);
   color: var(--success-text);
-  font-size: 42px;
+  font-size: 28px;
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: 0.05em;
   white-space: nowrap;
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
   pointer-events: none;
 }
 
