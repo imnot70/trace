@@ -133,6 +133,26 @@ describe('GitService（本地 bare 远端）', () => {
     expect(content).toContain('B 的新修改')
     expect(content).toContain('=======')
     expect(content).toContain('>>>>>>>')
+
+    // 三方内容：变基冲突下「本地 / 远端」语义必须对调（ours=被重放的本地提交，theirs=远端上游），
+    // 且当前内容可读（冲突路径无 stage 0，旧实现 `git show :file` 报 unmerged 导致永远加载中）
+    const conflict = await git.getConflictContent(v2, 'f.md')
+    expect(conflict).not.toBeNull()
+    expect(conflict?.ours).toContain('B 的新修改')
+    expect(conflict?.theirs).toContain('A 的修改')
+    // 共同祖先 = 两分支的 merge-base 提交（本场景即 B 上一次推送的「B 的修改」）
+    expect(conflict?.base).toContain('B 的修改')
+    expect(conflict?.current).toContain('<<<<<<< HEAD')
+
+    // 接受本地版本：写回的必须是本地内容（此前 ours/theirs 反转会写成远端内容）
+    expect(await git.resolveConflict(v2, 'f.md', { type: 'ours' })).toBe(true)
+    expect(fs.readFileSync(path.join(v2, 'f.md'), 'utf-8')).toBe('B 的新修改\n')
+
+    // 继续同步：-c core.editor=true 需 allowUnsafeEditor 放行，完成后本轮同步走完
+    expect((await git.continueRebase(v2)).ok).toBe(true)
+
+    // 变基已结束：再点同步不再报「rebase-merge 目录已存在」
+    expect((await git.sync(v2)).ok).toBe(true)
   })
 
   it('解除关联保留本地仓库', async () => {

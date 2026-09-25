@@ -31,7 +31,7 @@
           </div>
         </div>
         <div class="sidebar-footer">
-          <el-button type="danger" @click="abortRebase" :loading="aborting">
+          <el-button type="danger" plain @click="abortRebase" :loading="aborting">
             放弃所有更改
           </el-button>
         </div>
@@ -44,23 +44,15 @@
             <h3>{{ selectedFile }}</h3>
             <div class="diff-actions">
               <el-button-group>
-                <el-button
-                  type="primary"
-                  @click="resolveWithOurs"
-                  :disabled="resolving"
-                >
+                <el-button plain @click="resolveWithOurs" :disabled="resolving">
                   接受本地版本
                 </el-button>
-                <el-button
-                  type="success"
-                  @click="resolveWithTheirs"
-                  :disabled="resolving"
-                >
+                <el-button plain @click="resolveWithTheirs" :disabled="resolving">
                   接受远端版本
                 </el-button>
               </el-button-group>
               <el-button
-                type="warning"
+                plain
                 @click="resolveWithManual"
                 :disabled="resolving || !editedContent"
               >
@@ -73,6 +65,11 @@
             :content="conflictContent"
             @update:content="editedContent = $event"
           />
+          <div v-else-if="loadError" class="loading-content">
+            <el-icon size="40"><WarningFilled /></el-icon>
+            <span>冲突内容加载失败</span>
+            <el-button size="small" @click="selectedFile && loadConflictContent(selectedFile)">重试</el-button>
+          </div>
           <div v-else class="loading-content">
             <el-icon class="is-loading"><Loading /></el-icon>
             <span>加载冲突内容中...</span>
@@ -125,6 +122,7 @@ const emit = defineEmits<{
 
 const visible = ref(true)
 const loading = ref(false)
+const loadError = ref(false)
 const resolving = ref(false)
 const aborting = ref(false)
 const continuing = ref(false)
@@ -136,26 +134,36 @@ const resolvedFiles = ref<Set<string>>(new Set())
 
 const resolvedCount = computed(() => resolvedFiles.value.size)
 
-// 选择文件时加载内容
-watch(selectedFile, async (file) => {
+// 选择文件时加载内容（失败给出重试入口，不再永远转圈）
+watch(selectedFile, (file) => {
   if (!file) {
     conflictContent.value = null
     editedContent.value = null
+    loadError.value = false
     return
   }
+  void loadConflictContent(file)
+})
+
+async function loadConflictContent(file: string) {
   loading.value = true
+  loadError.value = false
   try {
     const result = await window.trace.getConflictContent(props.vault, file)
     if (result.ok && result.content) {
       conflictContent.value = result.content
       editedContent.value = result.content.current
     } else {
+      loadError.value = true
       ElMessage.error(result.error || '加载冲突内容失败')
     }
+  } catch {
+    loadError.value = true
+    ElMessage.error('加载冲突内容失败')
   } finally {
     loading.value = false
   }
-})
+}
 
 // 刷新冲突文件列表
 async function refreshConflictFiles() {
