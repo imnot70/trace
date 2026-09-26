@@ -36,7 +36,7 @@ function toolbarInsert(before: string, after = '', placeholder = ''): void {
   editorRef.value?.insertSnippet(before, after, placeholder)
 }
 
-/** 编辑器内 Ctrl+S：草稿 → 打开转正对话框；正式笔记 → 常规落盘保存 */
+/** 编辑器内 Ctrl+S：草稿 → 打开保存对话框；正式笔记 → 常规落盘保存 */
 function onEditorSave(): void {
   if (editor.current?.vault === SCRATCH_VAULT) {
     draft.requestPromote()

@@ -52,7 +52,7 @@ export class ScratchService {
     }
   }
 
-  /** 新建草稿：速记 MMDD-HHmm.md，重名追加序号 */
+  /** 新建草稿：速记 MMDD-HHmmss.md，重名追加序号（含秒防同分钟冲突） */
   create(): { ok: boolean; name?: string; error?: string } {
     try {
       fs.mkdirSync(this.dir, { recursive: true })
@@ -61,7 +61,8 @@ export class ScratchService {
       const dd = String(now.getDate()).padStart(2, '0')
       const hh = String(now.getHours()).padStart(2, '0')
       const mi = String(now.getMinutes()).padStart(2, '0')
-      const base = `速记 ${mm}${dd}-${hh}${mi}`
+      const ss = String(now.getSeconds()).padStart(2, '0')
+      const base = `速记 ${mm}${dd}-${hh}${mi}${ss}`
       let name = `${base}.md`
       for (let i = 2; fs.existsSync(path.join(this.dir, name)); i++) {
         name = `${base}-${i}.md`

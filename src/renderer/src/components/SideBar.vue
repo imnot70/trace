@@ -76,7 +76,7 @@ function draftDisplayName(name: string): string {
   return name.replace(/\.md$/i, '')
 }
 
-/** 草稿 ⋮ 菜单：转正（打开转正对话框）/ 删除（永久，红色确认） */
+/** 草稿 ⋮ 菜单：保存为笔记（打开保存对话框）/ 删除（永久，红色确认） */
 async function handleDraftMenu(cmd: string, name: string): Promise<void> {
   if (cmd === 'promote') {
     draft.requestPromote(name)
@@ -265,7 +265,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
         </div>
       </div>
 
-      <!-- 草稿（FR-2.3.9）：临时笔记（存应用数据目录，不进笔记库 / 搜索 / 同步），转正后成为正式笔记 -->
+      <!-- 草稿（FR-2.3.9）：临时笔记（存应用数据目录，不进笔记库 / 搜索 / 同步），保存后成为正式笔记 -->
       <div class="side-section" v-if="draft.drafts.length">
         <div class="side-section-header">
           <el-icon><EditPen /></el-icon>
