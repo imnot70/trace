@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trace 笔迹 — 本地优先的轻量级 Markdown 笔记</title>
+  <meta name="description" content="Trace 笔迹：本地优先的轻量级 Markdown 笔记。纯文件存储、所见即所得、双链引用、心流模式、Git 云同步、插件系统。Windows / Linux 免费开源。" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- 顶栏 -->
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="#top">
+        <span class="brand-mark">迹</span>
+        <span class="brand-name">Trace 笔迹</span>
+      </a>
+      <nav class="topbar-nav">
+        <a href="#features">特性</a>
+        <a href="#screenshots">截图</a>
+        <a href="#download">下载</a>
+        <a href="https://github.com/imnot70/trace" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero" id="top">
+    <div class="container">
+      <p class="hero-kicker">本地优先 · 开源免费 · MIT</p>
+      <h1 class="hero-title">把心思写下来，<br />其余的交给 <em>Trace</em>。</h1>
+      <p class="hero-sub">
+        本地优先的轻量级 Markdown 笔记。笔记是普通的 <code>.md</code> 文件，
+        每个笔记库就是一个 Git 仓库——你的文字永远属于你自己。
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="https://github.com/imnot70/trace/releases/latest" target="_blank" rel="noopener">下载最新版</a>
+        <a class="btn btn-ghost" href="https://github.com/imnot70/trace" target="_blank" rel="noopener">查看源码</a>
+      </div>
+      <p class="hero-note">Windows · Linux ｜ <span class="nowrap">v0.8.7</span> ｜ 无账号、无遥测、无锁定</p>
+    </div>
+  </section>
+
+  <!-- 特性 -->
+  <section class="section" id="features">
+    <div class="container">
+      <h2 class="section-title">为专注写作而做的一切</h2>
+      <p class="section-sub">不追大而全，只把「写笔记」这一件事做到顺手。</p>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h3>纯文件 · 本地优先</h3>
+          <p>笔记是普通的 .md 文件、图片是普通文件，无私有格式。应用卸载了，笔记还在——任何编辑器都能打开。</p>
+        </div>
+        <div class="feature-card">
+          <h3>所见即所得</h3>
+          <p>Live Preview 编辑模式：非光标区域实时渲染，光标处回落源码。文件始终是纯 Markdown。</p>
+        </div>
+        <div class="feature-card">
+          <h3>双链引用</h3>
+          <p><code>[[笔记名]]</code> 互相引用、反向链接、断链检测、同名消歧，笔记之间长成一张网。</p>
+        </div>
+        <div class="feature-card">
+          <h3>心流模式</h3>
+          <p>一键沉浸：隐藏界面、打字机锚定、写作栏宽与纸感底色。回车还有机械键盘音效。</p>
+        </div>
+        <div class="feature-card">
+          <h3>Git 云同步</h3>
+          <p>GitHub PAT 一键关联，提交 → 拉取 → 推送全自动。冲突有图形化解决界面，不丢一个字。</p>
+        </div>
+        <div class="feature-card">
+          <h3>插件与主题</h3>
+          <p>进程隔离的插件系统与应用内市场；浅色 / 深色 / 预设主题，界面颜色全部可调。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 截图 -->
+  <section class="section section-alt" id="screenshots">
+    <div class="container">
+      <h2 class="section-title">看一看</h2>
+      <p class="section-sub">浅色、深色，与让你只看得见文字的心流模式。</p>
+      <figure class="shot">
+        <img src="assets/editor-light.png" alt="Trace 主界面：编辑与实时预览分栏（浅色主题）" loading="lazy" />
+        <figcaption>编辑 + 实时预览分栏（浅色主题）</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/flow.png" alt="心流模式：打字机锚定、写作栏宽与纸感底色" loading="lazy" />
+        <figcaption>心流模式：打字机锚定 · 写作栏宽 · 纸感底色</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/editor-dark.png" alt="深色主题下的 Trace 主界面" loading="lazy" />
+        <figcaption>深色主题</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 下载 -->
+  <section class="section" id="download">
+    <div class="container">
+      <h2 class="section-title">下载</h2>
+      <p class="section-sub">免费开源（MIT）。也可以直接到 <a href="https://github.com/imnot70/trace/releases" target="_blank" rel="noopener">Releases 页</a>选择全部产物。</p>
+      <div class="download-grid">
+        <div class="download-card">
+          <h3>Windows</h3>
+          <p class="dl-req">Windows 10 及以上（64 位）</p>
+          <a class="btn btn-primary" href="https://github.com/imnot70/trace/releases/latest" target="_blank" rel="noopener">下载安装包（.exe）</a>
+        </div>
+        <div class="download-card">
+          <h3>Linux</h3>
+          <p class="dl-req">Ubuntu / Debian（.deb）或任意发行版（.AppImage）</p>
+          <a class="btn btn-primary" href="https://github.com/imnot70/trace/releases/latest" target="_blank" rel="noopener">下载 .deb / .AppImage</a>
+        </div>
+        <div class="download-card">
+          <h3>macOS</h3>
+          <p class="dl-req">暂无安装包，可源码构建运行</p>
+          <a class="btn btn-ghost" href="https://github.com/imnot70/trace#readme" target="_blank" rel="noopener">查看构建说明</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 指引 -->
+  <section class="section section-alt" id="guides">
+    <div class="container">
+      <h2 class="section-title">用得更顺手</h2>
+      <p class="section-sub">完整指引都在仓库 <code>guides/</code> 目录，随应用一起演进。</p>
+      <div class="guide-links">
+        <a href="https://github.com/imnot70/trace/blob/main/guides/user-guide.md" target="_blank" rel="noopener">使用指南（全功能）</a>
+        <a href="https://github.com/imnot70/trace/blob/main/guides/plugin-development.md" target="_blank" rel="noopener">插件开发指南</a>
+        <a href="https://github.com/imnot70/trace/blob/main/guides/theme-import.md" target="_blank" rel="noopener">主题包导入</a>
+        <a href="https://github.com/imnot70/trace/blob/main/CHANGELOG.md" target="_blank" rel="noopener">更新日志</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <p>Trace 笔迹 · 本地优先的轻量级 Markdown 笔记</p>
+      <p>
+        <a href="https://github.com/imnot70/trace" target="_blank" rel="noopener">GitHub</a>
+        · MIT License
+        · 用 <span class="nowrap">Electron + Vue 3 + CodeMirror 6</span> 构建
+      </p>
+    </div>
+  </footer>
+</body>
+</html>
