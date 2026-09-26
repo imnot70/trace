@@ -1,6 +1,6 @@
 # 草稿笔记（速记本）
 
-> 2026-09-26 立项（用户提案，经讨论定稿 v2 方案：真实文件伪库方案，替代初版的内存缓冲区设计——见 [suggest/feature-proposals.md](../suggest/feature-proposals.md) 提案 3 与本文档 D1）。
+> 2026-09-26 立项（用户提案，经讨论定稿 v2 方案：真实文件伪库方案，替代初版的内存缓冲区设计——见 [suggest/feature-proposals.md](../../suggest/feature-proposals.md) 提案 3 与本文档 D1）。
 > 设计文档：[draft-notes_design.md](draft-notes_design.md)。
 
 ## 需求背景

@@ -1,7 +1,7 @@
 # Trace 需求与实施状态索引
 
-> 更新：2026-09-26 ｜ 发布基线：**v0.8.8**（v0.8.3–v0.8.8 于 09-25 / 09-26 连发——预览初始位置修复、状态区、心流快速查阅、加固批次、心流写作底色、冲突解决全流程修复、心流引用与速览增强 FR-2.9.10、打字机滚动冷却等——预览初始位置修复、状态区、心流快速查阅、加固批次、心流写作底色、冲突解决全流程修复、心流引用与速览增强、打字机滚动冷却、草稿笔记、官网上线、底色纹理——详见 [CHANGELOG](../CHANGELOG.md)）。⚠️ 打字机留白的两个收尾缺陷的修复尝试（`fix/typewriter-cleanup`）已放弃并删除（引入了新问题，见第二节），缺陷本身**回到待修状态**。其余待办：搜索支持标签维度（第四节「待增补」）、音色复刻 / IME 实机验证 / 行尾字母折行（第二节「待打磨」）。2026-09-25 的**技术债评审**（[tech-debt-2026-09-25.md](tech-debt-2026-09-25.md)）所列缺陷已全部修复（v0.8.5–v0.8.7）。
-> 本文件是 `requirements/` 目录的导览与实施状态总览。各项明细以对应文档与 [CHANGELOG.md](../CHANGELOG.md) 为准。
+> 更新：2026-09-26 ｜ 发布基线：**v0.8.8**（v0.8.3–v0.8.8 于 09-25 / 09-26 连发——预览初始位置修复、状态区、心流快速查阅、加固批次、心流写作底色、冲突解决全流程修复、心流引用与速览增强 FR-2.9.10、打字机滚动冷却、草稿笔记、底色纹理、官网上线等——详见 [CHANGELOG](../../CHANGELOG.md)）。⚠️ 打字机留白的两个收尾缺陷的修复尝试（`fix/typewriter-cleanup`）已放弃并删除（引入了新问题，见第二节），缺陷本身**回到待修状态**。其余待办：搜索支持标签维度（第四节「待增补」）、音色复刻 / IME 实机验证 / 行尾字母折行（第二节「待打磨」）。2026-09-25 的**技术债评审**（[tech-debt-2026-09-25.md](../tech/tech_architecture.md)）所列缺陷已全部修复（v0.8.5–v0.8.7）。
+> 本文件是 `requirements/` 目录的导览与实施状态总览。各项明细以对应文档与 [CHANGELOG.md](../../CHANGELOG.md) 为准。
 
 ## 文档导读
 
@@ -34,10 +34,9 @@
 | [edit-position.md](2026-09-24_edit-position/edit-position.md) + [edit-position_design.md](2026-09-24_edit-position/edit-position_design.md) | 编辑位置与文首 / 文尾跳转：打开笔记后光标落位设置（FR-2.4.18）、主键盘区文首 / 文尾快捷键（FR-2.4.19） | ✅ **已实施**（已随 v0.8.0 发布；实施与实测矩阵见设计文档第 7 节） |
 | [table-insert-enhance.md](2026-09-24_table-insert-enhance/table-insert-enhance.md) + [table-insert-enhance_design.md](2026-09-24_table-insert-enhance/table-insert-enhance_design.md) | 表格插入增强：尺寸输入提示浮层（FR-2.4.20，实时回显行列数 / 逐状态脚注 / 超限提示，无倒计时）、表格内 `Tab` / `Shift+Tab` 跳转（FR-2.4.21，末格追加行） | ✅ **已实施**（已随 v0.8.0 发布；v0.8.1 修复其提示态键位导致的**编辑器空格与数字失效**，见设计文档第 9 节） |
 | [2026-09-25_flow-reference-enhance/](2026-09-25_flow-reference-enhance/flow-reference-enhance.md) | 心流引用与速览增强（FR-2.9.10）：Esc 分级消费、`[[` 扁平模糊匹配（含文件夹候选 / `[[/` 根浏览）、搜索结果键盘导航与 Alt+Enter 预览、补全落成引用的括号一致性；含分批决策（P1/P2/P3）与消歧 / 模态遮罩决策记录 | ✅ **已实施并发布**（v0.8.6） |
-| [suggest/](suggest/README.md) | **建议存档目录**：用户咨询的方案与思路存档（GitHub Pages 静态网站架设指南、「手不离键盘」心流动线设计思路、功能提案池 ×7 等） | 📁 持续追加 |
+| [suggest/](../suggest/README.md) | **建议存档目录**：用户咨询的方案与思路存档（GitHub Pages 静态网站架设指南、「手不离键盘」心流动线设计思路、功能提案池 ×7 等） | 📁 持续追加 |
 | [2026-09-26_draft-notes/](2026-09-26_draft-notes/draft-notes.md) | 草稿笔记（FR-2.3.9）：Ctrl+N 写入 userData/scratch 伪库（不进双链 / 标签 / 同步），侧栏草稿菜单，Ctrl+S 转正（选库 / 目录，图片附件随迁改写引用）；可进入全局搜索（徽标「草稿」+ 范围勾选） | ✅ **已实现**（分支 `feat/draft-notes`：含跨库插入校验；隔离实例 CDP 验证通过，待真机验证后随 v0.8.8 发布，实施记录见设计文档 §7） |
-| [tech-debt-2026-09-25.md](tech-debt-2026-09-25.md) | 技术债评审（架构 + 技术选型快照）：选型逐项结论、已核实缺陷清单（路径穿越 / 搜索索引陈旧 / 搜索打开笔记污染常用列表等）、架构改进项与测试策略建议 | 📋 **评审报告**；缺陷待修项已同步第二节，加固批次纳入〇节待办 |
-| [lessons.md](lessons.md) | **经验教训汇总**：全仓技术教训与踩坑的一页速查——CM6 集成层 / 渲染 CSS / Electron 平台 / 主进程与数据 / 验证方法学 / 架构流程 / 产品交互七类，每条注明出处 | 📚 **持续维护**（新教训先入功能文档实施记录，再登记摘要） |
+| [tech/](../tech/) | **技术文档与踩坑记录**（tech_architecture 架构评估与选型 / tech_cm6-editor 编辑器 / tech_ui-css 渲染 / tech_electron-platform 平台 / tech_backend-data-git 主进程与数据 / tech_verification 验证方法学 / tech_product-interaction 产品交互，由技术债评审与 lessons 汇总拆分） | 📚 **持续维护**（新教训先入功能文档实施记录，再登记摘要） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
@@ -70,7 +69,7 @@
 
 > ~~跨库插入引用校验~~（原 #9，2026-09-26 销账）：已随草稿功能实现（`canInsertReference`：目标库与当前库不一致则阻止插入并提示；`[[` 补全源本就只来自当前库不受影响；草稿内引用按 D7 放行），隔离实例验证通过。
 
-### 3. 关键技术教训（近期，防再踩；全量汇总见 [lessons.md](lessons.md)）
+### 3. 关键技术教训（近期，防再踩；全量汇总见 [tech/](../tech/)）
 
 - **程序化写入被监听的滚动容器前，必须先置位防回环 guard**（预览初始位置修复中发现：否则触发反向同步把编辑器拖到错误位置）；
 - **CM 补全的 Enter 被 completionKeymap（Prec.highest）占用**，扩展键位用 Alt+Enter；
@@ -121,7 +120,7 @@
 
 ### v0.4.6（2026-09-20）
 
-- **修复 Windows 平台窗口无法移动 / 关闭、无圆角的严重问题**（v0.4.4 引入的透明窗口回归）：Electron 在 Windows 上 `transparent: true` 会剥离原生标题栏与可调边框，Windows 一律改为创建带原生边框的不透明窗口；「窗口效果」在 Windows 降级为仅窗口透明度生效。详见第二节已知问题与 [CHANGELOG](../CHANGELOG.md)。
+- **修复 Windows 平台窗口无法移动 / 关闭、无圆角的严重问题**（v0.4.4 引入的透明窗口回归）：Electron 在 Windows 上 `transparent: true` 会剥离原生标题栏与可调边框，Windows 一律改为创建带原生边框的不透明窗口；「窗口效果」在 Windows 降级为仅窗口透明度生效。详见第二节已知问题与 [CHANGELOG](../../CHANGELOG.md)。
 
 ### v0.4.5（2026-09-20）
 
@@ -236,7 +235,7 @@
 
 ## 二、已知问题
 
-**技术评审发现的缺陷（2026-09-25 发现，当日已全部修复，见 [CHANGELOG](../CHANGELOG.md) 未发布段；完整证据与机制见 [tech-debt-2026-09-25.md](tech-debt-2026-09-25.md)）**：
+**技术评审发现的缺陷（2026-09-25 发现，当日已全部修复，见 [CHANGELOG](../../CHANGELOG.md) 未发布段；完整证据与机制见 [tech-debt-2026-09-25.md](../tech/tech_architecture.md)）**：
 
 - ~~冲突解决接口存在路径穿越（安全，优先）~~：已加 `resolveWithin` 库内守卫（越界直接失败）+ 单测。
 - ~~从搜索结果打开笔记会污染「常用」列表~~：已改为传去扩展名的文件名，预读仅用于失败提示。
@@ -316,7 +315,7 @@
 
 ### 已随 v0.8.5 发布（分支 `fix/hardening-batch`，基于 v0.8.4，经 `feat/flow-paper-tint` 并入）
 
-**加固批次：技术债评审的缺陷与地基加固（7 项全部修复，2026-09-25）**——明细见 [tech-debt-2026-09-25.md](tech-debt-2026-09-25.md) 第二节与 CHANGELOG 未发布段：
+**加固批次：技术债评审的缺陷与地基加固（7 项全部修复，2026-09-25）**——明细见 [tech-debt-2026-09-25.md](../tech/tech_architecture.md) 第二节与 CHANGELOG 未发布段：
 
 1. 冲突解决路径穿越守卫（安全）；2. 搜索结果打开笔记传显示名（常用列表污染）；3. 搜索索引接入 watcher 增量链；4. `settings:set` 键白名单；5. git 按库同步互斥（串行排队）；6. watcher 补偿补全（重建双链 + 搜索索引、重发 `fs:changed`）+ 防抖 max-wait；7. JsonStore 版本化（schemaVersion + migrate、深合并、损坏 `.bak`、fsync）。
 新增单测 7 项（JsonStore 6 + gitService 穿越/并发 2，合计 355 项全绿）。

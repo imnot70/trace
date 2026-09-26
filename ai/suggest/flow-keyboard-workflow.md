@@ -1,6 +1,6 @@
 # 「手不离键盘」心流动线设计思路（建议存档）
 
-> 2026-09-25 起与用户多轮讨论形成的设计思路存档。其中 P1 / P2 已随 v0.8.6 实施（FR-2.9.10，见 [../2026-09-25_flow-reference-enhance/](../2026-09-25_flow-reference-enhance/flow-reference-enhance.md)），P3 拖曳暂缓待评估。本文档保留设计理念全貌，作为后续心流交互演进的思考基线。
+> 2026-09-25 起与用户多轮讨论形成的设计思路存档。其中 P1 / P2 已随 v0.8.6 实施（FR-2.9.10，见 [../2026-09-25_flow-reference-enhance/](../requirements/2026-09-25_flow-reference-enhance/flow-reference-enhance.md)），P3 拖曳暂缓待评估。本文档保留设计理念全貌，作为后续心流交互演进的思考基线。
 
 ## 一、核心理念
 

@@ -1,5 +1,5 @@
 /**
- * 表格插入（纯逻辑，可单测）：见 requirements/2026-09-24_editor-tools/ 与 2026-09-24_table-insert-enhance/。
+ * 表格插入（纯逻辑，可单测）：见 ai/requirements/2026-09-24_editor-tools/ 与 2026-09-24_table-insert-enhance/。
  * 生成 GFM 表格模板，并规划插入位置（行中插入时先换行，保证表格独占行块）。
  */
 import type { EditorView } from '@codemirror/view'

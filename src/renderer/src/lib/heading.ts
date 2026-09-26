@@ -1,5 +1,5 @@
 /**
- * 标题层级操作（纯逻辑，可单测）：见 requirements/2026-09-24_editor-tools/。
+ * 标题层级操作（纯逻辑，可单测）：见 ai/requirements/2026-09-24_editor-tools/。
  * 行文本 → 目标级别的行文本；level = 0 表示清除标题标记。
  * 开关语义：已是目标级别时按一次即去掉标记。
  */
@@ -56,7 +56,7 @@ function selectedLines(state: EditorState): { from: number; to: number; text: st
 }
 
 /**
- * 设置 / 清除标题层级（见 requirements/2026-09-24_editor-tools/editor-tools.md FR-2.4.15）。
+ * 设置 / 清除标题层级（见 ai/requirements/2026-09-24_editor-tools/editor-tools.md FR-2.4.15）。
  * 单次 dispatch（可一步撤销）；只改行首标记，不动正文与其它结构。
  */
 export function setHeading(view: EditorView, level: HeadingLevel): void {

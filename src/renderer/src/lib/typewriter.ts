@@ -4,7 +4,7 @@ import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view'
 /**
  * 打字机模式：光标始终锚定在编辑区固定高度处，输入时表现为「文字移动、光标不动」。
  *
- * 实现要点（见 requirements/2026-09-23_flow-mode/flow-mode_design.md）：
+ * 实现要点（见 ai/requirements/2026-09-23_flow-mode/flow-mode_design.md）：
  * - 留白：加在**内容层**（`.cm-content` 内联 padding）——paddingTop = ratio × 视口高（首行也能
  *   到达锚点线）、paddingBottom = (1 − ratio) × 视口高（末行同理）。
  *   注意不可加在滚动层（`.cm-scroller`）：该元素高度由内容撑开，给它加 padding 会把它自身撑高

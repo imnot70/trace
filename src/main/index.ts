@@ -89,7 +89,7 @@ if (process.env['TRACE_CDP']) {
 function createWindow(): void {
   const settings = settingsService?.get()
 
-  // 窗口形态（见 requirements/2026-09-22_custom-titlebar/custom-titlebar_design.md）：
+  // 窗口形态（见 ai/requirements/2026-09-22_custom-titlebar/custom-titlebar_design.md）：
   // - macOS / Linux：原生标题栏 + 透明玻璃路径，与 0.6.x 完全一致（平台矩阵约束，零改动）
   // - Windows（v0.6.x 起恢复毛玻璃）：WCO 方案——titleBarStyle: 'hidden' + titleBarOverlay
   //   保留系统绘制三键与 Win11 贴靠布局；⚠️ 仍不碰 transparent: true（AGENTS.md 已知局限：

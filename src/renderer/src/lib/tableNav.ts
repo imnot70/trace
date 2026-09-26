@@ -1,5 +1,5 @@
 /**
- * 表格内 Tab / Shift+Tab 跳转（FR-2.4.21）：见 requirements/2026-09-24_table-insert-enhance/。
+ * 表格内 Tab / Shift+Tab 跳转（FR-2.4.21）：见 ai/requirements/2026-09-24_table-insert-enhance/。
  * 语法树驱动：光标位于 `Table` 节点内时才接管 Tab；单元格按文档序（即行优先）收集。
  */
 import { EditorSelection, type EditorState } from '@codemirror/state'

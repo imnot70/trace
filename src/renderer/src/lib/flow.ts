@@ -1,7 +1,7 @@
 /**
  * 心流模式（Flow Mode）的纯逻辑：写作栏宽映射与打字机形态推导。
  * 会话状态（进入 / 退出的快照还原）在 app store；视图层只消费这里的纯函数。
- * 见 requirements/2026-09-23_flow-mode/。
+ * 见 ai/requirements/2026-09-23_flow-mode/。
  */
 import type { TypewriterMode } from './typewriter'
 

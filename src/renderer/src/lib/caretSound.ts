@@ -1,6 +1,6 @@
 /**
  * 心流模式回车音效：Web Audio 程序合成的键盘音色。
- * 无音频文件、零安装包体积、无版权问题；音色与触发契约见 requirements/2026-09-23_flow-mode/flow-mode_design.md。
+ * 无音频文件、零安装包体积、无版权问题；音色与触发契约见 ai/requirements/2026-09-23_flow-mode/flow-mode_design.md。
  *
  * 四种音色（设置项 flowSoundVariant；后三者均按用户提供的实录音效实测特征合成）：
  * - carriage 推回车「棘轮」：约 0.26s 的一串齿（间隔 9ms 渐密到 6ms、振幅渐强）；

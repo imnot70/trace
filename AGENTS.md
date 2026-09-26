@@ -98,7 +98,7 @@ src/
 - UI 用语：一律用「文件夹」（不用「子目录」）、「笔记库」；删除类菜单项红色警示。
 - `el-tooltip` **只允许包裹非交互元素**（图标、纯文本）。禁止：tooltip 嵌套 tooltip；tooltip 包裹按钮（点击被拦截）；tooltip 包裹 `el-dropdown` 触发器（下拉事件绑定失效，菜单弹不出）。需要给按钮/触发器加提示时用原生 `title`。任何「点击后移除下拉菜单锚点元素」的操作（删除行、收起容器等）需延迟 ≥300ms 或保持锚点可见（参考 `menu-hold` 模式），否则 popper 会在左上角闪现残影。
 - 全界面颜色必须走 CSS 变量（`--bg-*` / `--text-*` / `--accent` / `--danger` 等），新增颜色先看 `styles/themes.css` 是否已有对应变量；Element Plus 变量映射到同一套变量。
-- **块级 widget 的几何（所见即所得，2026-09-24 教训，勿再踩）**：CodeMirror 6 的行高记账只取 widget 元素的 border-box，**不含外边距**——块级 widget（公式块 / 表格 / HTML 块 / 水平线）的垂直间距必须落在元素盒内（用 `padding`，或 `display: flow-root` 让内层首尾外边距不再折叠出去），禁止用裸 `margin` 做间距，否则其后所有行号与行号高亮会整体上移并逐块累加（实测 +15 / +27px）。同理：widget 内的渲染产物要令 `white-space: normal`（内容区是 `break-spaces`，标签间换行会变成真实换行），带 `markdown-body` 类的 widget 必须显式归零该类附带的卡片 `padding` 与 `max-width`（预览卡片的留白 / 限宽）。详见 `requirements/2026-09-24_live-preview-render-fix/`。
+- **块级 widget 的几何（所见即所得，2026-09-24 教训，勿再踩）**：CodeMirror 6 的行高记账只取 widget 元素的 border-box，**不含外边距**——块级 widget（公式块 / 表格 / HTML 块 / 水平线）的垂直间距必须落在元素盒内（用 `padding`，或 `display: flow-root` 让内层首尾外边距不再折叠出去），禁止用裸 `margin` 做间距，否则其后所有行号与行号高亮会整体上移并逐块累加（实测 +15 / +27px）。同理：widget 内的渲染产物要令 `white-space: normal`（内容区是 `break-spaces`，标签间换行会变成真实换行），带 `markdown-body` 类的 widget 必须显式归零该类附带的卡片 `padding` 与 `max-width`（预览卡片的留白 / 限宽）。详见 `ai/requirements/2026-09-24_live-preview-render-fix/`。
 - **键位绑定的 `preventDefault: true` 只在命令「未处理」时生效（2026-09-24 教训，同日二次踩中）**：CM 的实际语义是——声明了 `preventDefault` 的绑定，若命令**返回 `false`（未处理）**，既会调用 `event.preventDefault()`，又会把该按键标记为已处理（`if (prevented) handled = true`），默认行为就此被吞；命令返回 `true` 时 CM 在事件分发里自会 `preventDefault`（`runHandlers` 里 `if (handler(view,event)) event.preventDefault()`），**根本不需要显式声明**。两次实例：① `Tab` / `Shift-Tab` 声明后表格外按 Tab 无法移动焦点；② 表格尺寸提示态的 `Space` / 数字 `0`-`9` 声明后，**提示态未打开时空格与数字完全打不进编辑器**（v0.8.0 已发布缺陷，见 CHANGELOG v0.8.1 修复段）。规则：**「按状态决定是否接管」的绑定一律不要声明它**，只有 `Mod-*` 这类无条件返回 `true` 的绑定才安全。另两条：`basicSetup` 不开放配置，需要定制折叠按钮等请用自有装配 `traceSetup()`（清单逐项对齐）；`foldGutter` 的 gutter 事件是 **click**（不是 mousedown）。取语法树节点时注意**块边界**：所见即所得下点击渲染态表格会把光标落在块边界，`resolveInner(pos, -1)` 会解析到相邻节点，需要按边界认领。
 - **CSS 变量驱动的布局变化，CM 与 ResizeObserver（只看滚动容器）都收不到（2026-09-24 教训）**：改字号（走 CSS 变量）、所见即所得重排、块级 widget / 图片尺寸变化都是浏览器**静默重排**——CodeMirror 没有事务（`update.geometryChanged` 不触发），`.cm-scroller` 的盒子也没变（只看 scrollDOM 的 `ResizeObserver` 不触发）。凡「必须随几何变化重算」的编辑器逻辑（第一个是打字机锚定）都要**同时观察 `contentDOM`**，否则静默失效（实测：字号 15→26 后打字机光标从锚点漂到视口外且再不回来）。两条相关语义：`geometryChanged` = 「文档被修改，或编辑器 / 内部元素尺寸变了」，**不含滚动**，可安全用于「不干扰用户滚动」的场景；`coordsAtPos` 对未渲染的位置（视口外、被替换范围、line break）返回 **null**，只写 `if (!coords) return` 会让该逻辑永久失效。
 - **装饰剪枝必须用「包含」而非「相交」**：遍历语法树时按区间跳过节点（如 frontmatter），条件要写成「节点完全落在区间内」——写成区间相交会连 `Document` 根节点一起匹配，整棵树被剪掉，一切依赖语法树的装饰全部消失（`src/renderer/src/lib/livePreview/decorations.ts` 有详细注释）。
@@ -118,40 +118,47 @@ README.md               # 用户视角的功能总览
 CHANGELOG.md            # 版本变更明细（Keep a Changelog；顶部 [未发布] 段 = 下个版本的内容）
 config/shortcuts.ts     # 快捷键速查表单一数据源（设置页渲染；改键位必须同步本文件）
 guides/                 # 操作指引（how-to）：一个功能一个 md，只讲怎么用
-requirements/
-├─ index.md             # ★ 状态索引与会话入口：〇当前工作快照（分支 / 发版 / 按序待办）、
-│                       #   文档导读表（各文档状态）、已知问题、规划与归档——接手会话先读这里
-├─ requirements.md      # PRD：FR 编号的权威描述（改行为要同步对应 FR）
-├─ development-plan.md  # 初版开发计划（历史参考）
-├─ tech-debt-*.md       # 技术债评审报告（缺陷证据 / 架构建议，行号随演进漂移、以描述定位）
-├─ <日期>_<功能名>/     # 功能模块目录：需求 .md + 设计 _design.md + 计划 _plan.md（可选）
-├─ changelog/           # 历史交接文档（早期会话交接）
-├─ suggest/             # 建议存档：用户咨询的方案与思路（未立项 / 待定），立项时迁入正式文档
-└─ images/  issues/     # PRD 配图与需求截图
+ai/                           # AI 协作文档根目录
+├─ requirements/              # 需求与实施状态
+│  ├─ index.md                # ★ 状态索引与会话入口：〇当前工作快照（分支 / 发版 / 按序待办）、
+│  │                          #   文档导读表（各文档状态）、已知问题、规划与归档——接手会话先读这里
+│  ├─ requirements.md         # PRD：FR 编号的权威描述（改行为要同步对应 FR）
+│  ├─ development-plan.md     # 初版开发计划（历史参考）
+│  ├─ <日期>_<功能名>/        # 功能模块目录：需求 .md + 设计 _design.md + 计划 _plan.md（可选）+ images/（该需求配图）
+│  ├─ changelog/              # 历史交接文档（HANDOFF 交接完成后移入此处）
+│  └─ images/  issues/        # PRD 配图与需求截图
+├─ suggest/                   # AI 建议目录：用户咨询的方案与思路（未立项 / 待定），立项时迁入正式文档
+└─ tech/                      # 技术文档与踩坑记录（tech_*.md 按主题拆分）：
+                              #   tech_architecture（架构评估与选型）/ tech_cm6-editor（编辑器集成）/
+                              #   tech_ui-css（渲染样式）/ tech_electron-platform（平台打包 CI）/
+                              #   tech_backend-data-git（主进程数据 Git）/ tech_verification（验证方法学）/
+                              #   tech_product-interaction（产品交互）。
+                              #   新教训先写入功能文档实施记录，再登记 tech/ 对应文件
 ```
 
-**接手 / 查找顺序**：会话开始读 `requirements/index.md`（〇节快照了解现在在哪、下一步做什么；导读表定位功能文档）→ 需求语义查 PRD 的 FR 编号 → 实现细节查功能目录的 `_design.md` → 用法查 `guides/` → 已知坑查本文件「已知局限」与 index 第二节。历史问题是否已知，先查 index 第二节「已知问题」再动手排查。
+**接手 / 查找顺序**：会话开始读 `ai/requirements/index.md`（〇节快照了解现在在哪、下一步做什么；导读表定位功能文档）→ 需求语义查 PRD 的 FR 编号 → 实现细节查功能目录的 `_design.md` → 用法查 `guides/` → 已知坑查本文件「已知局限」、`ai/tech/` 对应主题文件与 index 第二节。历史问题是否已知，先查 index 第二节「已知问题」再动手排查。
 
 #### 约定细则
 
 - **权威文档**（修改行为时务必同步更新）：
-  - `requirements/requirements.md` — 产品需求文档（PRD），当前形态的权威描述；
+  - `ai/requirements/requirements.md` — 产品需求文档（PRD），当前形态的权威描述；
   - `CHANGELOG.md` — 版本变更明细（Keep a Changelog 格式，语义化版本）；
   - `README.md` — 用户视角的功能说明与使用指南。
-- **需求 / 设计文档目录规范**：`requirements/` 下按功能模块组织，每个模块一个子目录，命名格式 `{创建日期}_{功能名称}/`，目录内包含：
+- **需求 / 设计文档目录规范**：`ai/requirements/` 下按功能模块组织，每个模块一个子目录，命名格式 `{创建日期}_{功能名称}/`，目录内包含：
   - `{功能名称}.md` — 需求描述（功能需求、验收标准等）；
   - `{功能名称}_design.md` — 技术设计（方案、架构、接口等）；
   - `{功能名称}_plan.md` — 实施计划（可选，复杂功能需要时添加）。
-  - 示例：`requirements/2026-09-10_bundled-git/bundled-git_design.md`
-- 项目级文档（PRD、开发计划、技术债评审等）保留在 `requirements/` 根目录；**建议存档**（用户咨询的方案与思路，未立项 / 待定）放 `requirements/suggest/`，立项时把相关内容迁入正式需求文档，原条目保留作为思路存档（目录内有 README 说明分工）。
-- **使用指引目录**：`guides/` 存放**面向使用者 / 开发者的操作指引（how-to）**，一个功能一个 md 文件，命名 `{功能名称}.md`（示例：`guides/theme-import.md`）。与 `requirements/`（需求与设计，记录「做什么、为什么」）和 `README.md`（产品总览）区分：指引只讲**怎么用**——操作步骤、文件格式、可用取值、常见错误，不写实现细节。新增功能或修改用法时，同步在本目录补充/更新对应指引。
+  - 示例：`ai/requirements/2026-09-10_bundled-git/bundled-git_design.md`
+- 项目级文档（PRD、开发计划等）保留在 `ai/requirements/` 根目录；**AI 建议存档**（用户咨询的方案与思路，未立项 / 待定）放 `ai/suggest/`，立项时把相关内容迁入正式需求文档，原条目保留作为思路存档（目录内有 README 说明分工）；**技术文档与踩坑记录**放 `ai/tech/`（命名 `tech_<主题>.md`，按主题归档，不再新建散落的 lessons / tech-debt 类汇总文档）。
+- **使用指引目录**：`guides/` 存放**面向使用者 / 开发者的操作指引（how-to）**，一个功能一个 md 文件，命名 `{功能名称}.md`（示例：`guides/theme-import.md`）。与 `ai/requirements/`（需求与设计，记录「做什么、为什么」）和 `README.md`（产品总览）区分：指引只讲**怎么用**——操作步骤、文件格式、可用取值、常见错误，不写实现细节。新增功能或修改用法时，同步在本目录补充/更新对应指引。
 - **【强制】改动完成后必须同步相关文档，代码先行、文档欠账视为改动未完成**：
   - 行为 / 功能变更记录 → `CHANGELOG.md`（写进顶部 `[未发布]` 段，无此段则新建；发版时整段改为版本号 + 日期）；
   - 需求追加或需求完成状态变化 → 对应需求文档（PRD 中的 FR 编号）与设计文档（如适用）；
-  - **完成功能后必须在 `requirements/index.md` 同步实施进度**：文档导读表的状态列、〇节工作快照的分支 / 待办清单、相关规划条目（已完成的功能从规划区移入已实现区）；
-  - 新功能 / 架构级方案 → 按上述目录规范在 `requirements/` 下创建对应子目录，并在 `requirements/index.md` 的文档导读表登记一行状态；
+  - **完成功能后必须在 `ai/requirements/index.md` 同步实施进度**：文档导读表的状态列、〇节工作快照的分支 / 待办清单、相关规划条目（已完成的功能从规划区移入已实现区）；
+  - 新功能 / 架构级方案 → 按上述目录规范在 `ai/requirements/` 下创建对应子目录，并在 `ai/requirements/index.md` 的文档导读表登记一行状态；
   - 提交信息无法替代文档——commit message 只记录「这次改了什么」，文档记录「产品现在是什么」。
-  - 发版后该功能的变更从 CHANGELOG `[未发布]` 段随版本归档；面向使用者的操作指引放 `guides/<功能名>.md`；历史交接文档移入 `requirements/changelog/`。
+  - **【强制】push 到远端 / 发版前必须做文档遗漏检查**：对照本次推送（或待发版区间）的全部代码变更，逐项确认——行为 / 功能变更已写入 CHANGELOG `[未发布]` 段、需求变更已同步 PRD 对应 FR、实现方案已回填设计文档实施记录、index 状态（导读表 / 〇节快照）已更新、面向使用者的用法已同步 guides；**发现有遗漏，先补写相关文档再 push / 发版**。
+  - 发版后该功能的变更从 CHANGELOG `[未发布]` 段随版本归档；面向使用者的操作指引放 `guides/<功能名>.md`；历史交接文档移入 `ai/requirements/changelog/`。
 
 ## 已知局限（勿误判为新 bug）
 
@@ -161,10 +168,10 @@ requirements/
 - ~~透明窗口底部圆角在浅色壁纸上仍可能显示直角轮廓~~（v0.5.1 已规避：Linux 平台一律禁用内容区底部圆角，Windows / macOS 保留；根因为 Linux 系统合成器疑似在窗口边界外的方形绘制，应用侧无法彻底消除，将来排查出系统侧对策后可恢复）。
 - 中文输入法在行尾组词时会出现「先折行、上屏后撤销」的轻微跳动（拼音比汉字宽：`khy` ≈ 4 个汉字宽，「中文」2 个字；折行按 DOM 实际文本计算）。曾有两次修复尝试均撤除（详见 CHANGELOG）：介入组词行的渲染会破坏 Chromium 的组词锚点（按空格选候选时拼音无法替换成汉字），风险远大于收益，故按已知局限保留。
 - 心流模式栏宽下，行尾连续拉丁字母按「整词」折行（前几个字母先停在行尾，字符串继续变长后整串换行；CJK 可自由断行，中文写作不受影响）——与多数编辑器一致，2026-09-24 登记为待打磨项（可评估 `overflow-wrap: anywhere`），勿当作新 bug 排查。
-- **Windows 上不可使用 `transparent: true` 创建窗口**：Electron 在 Windows 上透明窗口会剥离原生标题栏与可调边框（透明仅在无边框窗口生效），窗口无法移动 / 关闭（v0.4.4 曾因此发布过严重回归，v0.4.6 修复）。Windows 现走 WCO 方案（`titleBarStyle: 'hidden'` + `titleBarOverlay`，v0.7.0）——玻璃材质经 `backgroundMaterial` 实现，**仍不使用 transparent**（`src/main/index.ts` createWindow 有详细注释；详见 requirements/2026-09-22_custom-titlebar/）。
+- **Windows 上不可使用 `transparent: true` 创建窗口**：Electron 在 Windows 上透明窗口会剥离原生标题栏与可调边框（透明仅在无边框窗口生效），窗口无法移动 / 关闭（v0.4.4 曾因此发布过严重回归，v0.4.6 修复）。Windows 现走 WCO 方案（`titleBarStyle: 'hidden'` + `titleBarOverlay`，v0.7.0）——玻璃材质经 `backgroundMaterial` 实现，**仍不使用 transparent**（`src/main/index.ts` createWindow 有详细注释；详见 ai/requirements/2026-09-22_custom-titlebar/）。
 
 ## 二期规划（已全部完成 / 作废，无未实现项）
 
-~~全局搜索~~（已实现）、~~所见即所得模式~~（已实现：Live Preview，FR-2.4.13，见 `requirements/2026-09-21_wysiwyg/`）、~~图形化冲突解决~~（已实现）、~~定时/变更自动同步~~（已实现）、~~插件完整 API 与市场~~（M1–M4 已全部实施，见 `requirements/2026-09-08_plugin-system/plugin-design.md`）、~~标签~~（已实现）、~~多窗口~~（已作废）、~~导出 PDF/HTML~~（已实现）、~~窗口毛玻璃效果~~（已实现）、~~笔记双链引用~~（P1–P3 已实现）。
+~~全局搜索~~（已实现）、~~所见即所得模式~~（已实现：Live Preview，FR-2.4.13，见 `ai/requirements/2026-09-21_wysiwyg/`）、~~图形化冲突解决~~（已实现）、~~定时/变更自动同步~~（已实现）、~~插件完整 API 与市场~~（M1–M4 已全部实施，见 `ai/requirements/2026-09-08_plugin-system/plugin-design.md`）、~~标签~~（已实现）、~~多窗口~~（已作废）、~~导出 PDF/HTML~~（已实现）、~~窗口毛玻璃效果~~（已实现）、~~笔记双链引用~~（P1–P3 已实现）。
 
-> 二期 Backlog 至此清空。三期（2026-09-23 立项）**心流模式**（打字机高/低位 FR-2.4.14 + 一键沉浸预设 FR-2.9.8 + 回车音效 FR-2.9.9）P1–P3 已全部实施；2026-09-24 又完成两项用户实测反馈的改造——**所见即所得渲染修正**（行号几何 / 列表与引用标记 / 任务复选框 / frontmatter 剪枝缺陷）与**编辑器工具**（折叠按钮样式 FR-2.4.17 + 标题快捷键 FR-2.4.15 + 表格插入 FR-2.4.16）、**编辑位置**（打开笔记落位 FR-2.4.18 + 文首 / 文尾快捷键 FR-2.4.19）、**表格插入增强**（尺寸输入提示 FR-2.4.20 + 表内 Tab 跳转 FR-2.4.21）。以上均已随 **v0.8.0** 发布；同日另发补丁版 **v0.8.1**——标签区折叠（FR-2.6.11）+ 侧栏区块「+」按钮对齐 + 搜索按钮移至标题行右端，并修复 v0.8.0 的 P0 回归（表格尺寸提示态键位声明 `preventDefault` 导致**编辑器打不出空格与数字 0-9**，见下方键位教训条目）；**v0.8.2** 修复「进心流后光标不停在锚点线」（打字机重锚的触发路径补全，见下方 CSS 变量重排教训条目与 [flow-mode_design.md](requirements/2026-09-23_flow-mode/flow-mode_design.md) 第 10.9 节）；需求与设计见 `requirements/2026-09-23_flow-mode/`、`requirements/2026-09-24_live-preview-render-fix/`、`requirements/2026-09-24_editor-tools/`、`requirements/2026-09-24_edit-position/`、`requirements/2026-09-24_table-insert-enhance/`。当前仅余验证类事项（Linux 内置 Git 手动验证、打字机 + 中文输入法组词实机验证）与待打磨项 / 已知局限（见 `requirements/index.md` 第二节，含 v0.8.2 后登记的「打字机留白两个收尾缺陷」），无规划中的新功能。
+> 二期 Backlog 至此清空。三期（2026-09-23 立项）**心流模式**（打字机高/低位 FR-2.4.14 + 一键沉浸预设 FR-2.9.8 + 回车音效 FR-2.9.9）P1–P3 已全部实施；2026-09-24 又完成两项用户实测反馈的改造——**所见即所得渲染修正**（行号几何 / 列表与引用标记 / 任务复选框 / frontmatter 剪枝缺陷）与**编辑器工具**（折叠按钮样式 FR-2.4.17 + 标题快捷键 FR-2.4.15 + 表格插入 FR-2.4.16）、**编辑位置**（打开笔记落位 FR-2.4.18 + 文首 / 文尾快捷键 FR-2.4.19）、**表格插入增强**（尺寸输入提示 FR-2.4.20 + 表内 Tab 跳转 FR-2.4.21）。以上均已随 **v0.8.0** 发布；同日另发补丁版 **v0.8.1**——标签区折叠（FR-2.6.11）+ 侧栏区块「+」按钮对齐 + 搜索按钮移至标题行右端，并修复 v0.8.0 的 P0 回归（表格尺寸提示态键位声明 `preventDefault` 导致**编辑器打不出空格与数字 0-9**，见下方键位教训条目）；**v0.8.2** 修复「进心流后光标不停在锚点线」（打字机重锚的触发路径补全，见下方 CSS 变量重排教训条目与 [flow-mode_design.md](ai/requirements/2026-09-23_flow-mode/flow-mode_design.md) 第 10.9 节）；需求与设计见 `ai/requirements/2026-09-23_flow-mode/`、`ai/requirements/2026-09-24_live-preview-render-fix/`、`ai/requirements/2026-09-24_editor-tools/`、`ai/requirements/2026-09-24_edit-position/`、`ai/requirements/2026-09-24_table-insert-enhance/`。当前仅余验证类事项（Linux 内置 Git 手动验证、打字机 + 中文输入法组词实机验证）与待打磨项 / 已知局限（见 `ai/requirements/index.md` 第二节，含 v0.8.2 后登记的「打字机留白两个收尾缺陷」），无规划中的新功能。
