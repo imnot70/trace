@@ -11,5 +11,5 @@
 
 | 文件 | 主题 | 状态 |
 | --- | --- | --- |
-| [github-pages-site.md](github-pages-site.md) | GitHub Pages 静态网站架设指南与风格建议 | 未实施，待立项 |
+| [github-pages-site.md](github-pages-site.md) | GitHub Pages 静态网站架设指南与风格建议 | ✅ 已实施上线（https://imnot70.github.io/trace/） |
 | [flow-keyboard-workflow.md](flow-keyboard-workflow.md) | 「手不离键盘」心流动线设计思路（P1/P2 已实施，P3 备忘） | P1/P2 已随 v0.8.6 实施；P3 暂缓 |

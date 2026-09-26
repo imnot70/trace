@@ -1,6 +1,8 @@
 # GitHub Pages 静态网站架设指南（建议存档）
 
-> 2026-09-25 用户询问「想用 GitHub Pages 给这个项目做一个静态网站该怎么做」的建议存档。状态：**未实施**，待立项。
+> 2026-09-25 用户询问「想用 GitHub Pages 给这个项目做一个静态网站该怎么做」的建议存档。状态：**已实施上线**（2026-09-26），站点地址：<https://imnot70.github.io/trace/>。
+
+> **实施记录**：`site/` 纸感笔记风单页（浅色主题、单页滚动、截图由隔离实例自动生成）+ `.github/workflows/pages.yml` Actions 部署。**踩坑**：首跑失败于 `configure-pages`（HttpError: Not Found）——仓库 Pages 从未启用且 GITHUB_TOKEN 无管理员权限、`enablement: true` 也自愈不了；一次性解决 = Settings → Pages 把 Source 切换为「GitHub Actions」后 Re-run。
 > 需要注意：Trace 是 Electron 桌面应用，没有可部署的 Web 版本——网站的定位是**项目门面**（介绍 + 截图 + 下载入口 + 指引链接），不是 Web 版应用。
 
 ## 一、操作步骤
