@@ -53,6 +53,9 @@ import { insertTable } from '../lib/table'
 import { tableTab } from '../lib/tableNav'
 import { useTablePromptStore } from '../stores/tablePrompt'
 import { useAppStore } from '../stores/app'
+import { ElMessage } from 'element-plus'
+import { SCRATCH_VAULT } from '@shared/types'
+import { scratchVaultLabel } from '../stores/draft'
 import type { PromptKey } from '../lib/tablePrompt'
 import { flatCompletionOptions, type NoteTreeNode } from '../lib/noteCompletion'
 import type { TreeNode } from '@shared/types'
@@ -660,6 +663,11 @@ function createView(initialDoc: string): EditorView {
             // ① 补全仍活动 → 整段替换并吸收自动闭合 ]]；② 补全已关 → 光标处插入完整引用；
             // ③ 目标是当前笔记自身 → 不插入（自引用无意义），仅收起预览
             if (props.previewTarget) {
+              // 跨库插入校验：双链只在库内解析，跨库引用会产出断链（草稿伪库例外——转正时确定归宿）
+              if (props.previewTarget.vault !== props.vault && props.vault !== SCRATCH_VAULT) {
+                ElMessage.warning(`「${props.previewTarget.name}」位于「${scratchVaultLabel(props.previewTarget.vault)}」库，与当前笔记不同库，暂不支持跨库引用`)
+                return true
+              }
               const t = props.previewTarget
               const rel = t.path.replace(/\.md$/i, '')
               if (rel !== props.notePath.replace(/\.md$/i, '')) {

@@ -9,12 +9,13 @@ import { useNameDialog } from './stores/nameDialog'
 import { useMoveDialog } from './stores/moveDialog'
 import { useGitStore } from './stores/git'
 import { useSearchStore } from './stores/search'
-import { useNoteActions } from './composables/actions'
+import { useDraftStore } from './stores/draft'
 import SideBar from './components/SideBar.vue'
 import NameDialog from './components/NameDialog.vue'
 import MoveDialog from './components/MoveDialog.vue'
 import GitAssociateDialog from './components/GitAssociateDialog.vue'
 import ConflictResolutionDialog from './components/ConflictResolutionDialog.vue'
+import DraftPromoteDialog from './components/DraftPromoteDialog.vue'
 import SearchDialog from './components/SearchDialog.vue'
 import WelcomeView from './views/WelcomeView.vue'
 import EditorView from './views/EditorView.vue'
@@ -30,6 +31,7 @@ const editor = useEditorStore()
 const trash = useTrashStore()
 const git = useGitStore()
 const search = useSearchStore()
+const draft = useDraftStore()
 
 /** 从搜索结果打开笔记 */
 async function handleOpenNoteFromSearch(vault: string, path: string) {
@@ -102,7 +104,6 @@ function onEscape(): boolean {
 // ---------- 全局快捷键（速查表见 src/renderer/src/config/shortcuts.ts 与设置 → 通用） ----------
 const nameDialog = useNameDialog()
 const moveDialog = useMoveDialog()
-const noteActions = useNoteActions()
 
 /** 对话框 / 弹窗打开时跳过全局键，避免劫持输入与确认操作 */
 function hasModalOpen(): boolean {
@@ -170,7 +171,8 @@ function onGlobalKeydown(e: KeyboardEvent): void {
     }
     if (e.key.toLowerCase() === 'n' && !e.shiftKey) {
       e.preventDefault()
-      void newNoteFromContext()
+      // FR-2.3.9：Ctrl+N 创建草稿（写入应用草稿箱，Ctrl+S 转正选择库与目录）
+      void draft.createDraft()
     }
     if (e.key.toLowerCase() === 'f') {
       e.preventDefault()
@@ -195,21 +197,6 @@ function backFromSettings(): void {
 }
 
 /** Ctrl+N：目标是「当前位置上下文」——最近打开的笔记 / 网格钻入 / 侧栏点击所在处；无上下文时兜底第一个库 */
-async function newNoteFromContext(): Promise<void> {
-  const loc = tree.lastLocation
-  if (loc && tree.vaults.some((v) => v.name === loc.vault)) {
-    noteActions.createNote(loc.vault, loc.dir)
-    return
-  }
-  const vault = tree.vaults[0]?.name
-  if (!vault) {
-    ElMessage.warning('请先创建笔记库')
-    app.view = { name: 'grid', section: 'vaults' }
-    return
-  }
-  noteActions.createNote(vault, '')
-}
-
 // 编辑视图的卡片（编辑卡 + 预览卡）由 EditorView 以多根节点输出，
 // 其余视图统一包进一张 page-card。
 const mainView = computed(() => {
@@ -364,6 +351,7 @@ onMounted(async () => {
     @open-note="handleOpenNoteFromSearch"
     @preview-note="(vault: string, path: string, title: string) => app.requestNotePreview(vault, path, title)"
   />
+  <DraftPromoteDialog />
 
   <!-- 批量导出进度（悬浮条，完成即消失） -->
   <Transition name="float-preview">

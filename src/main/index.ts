@@ -4,6 +4,8 @@ import os from 'node:os'
 import fs from 'node:fs'
 import { initLogger, logger } from './lib/logger'
 import { resolveWithin } from './lib/paths'
+import { ScratchService } from './services/scratch'
+import { SCRATCH_VAULT } from '@shared/types'
 import { JsonStore } from './lib/jsonStore'
 import {
   AccountService,
@@ -44,6 +46,7 @@ let settingsService: SettingsService | null = null
 let wikilink: WikilinkService | null = null
 /** 搜索服务在 watcher 之后创建，判空防启动窗口期（与 wikilink 同模式） */
 let search: SearchService | null = null
+/** 草稿笔记（FR-2.3.9）服务实例在 userData 确定后立即创建（见下方 const scratch） */
 
 // 自定义协议：预览中的相对路径图片（trace-vault://<库名>/<库内路径>）
 protocol.registerSchemesAsPrivileged([
@@ -161,6 +164,8 @@ app.whenReady().then(() => {
   logger.info(`Trace 启动，版本 ${app.getVersion()}`)
 
   const userData = app.getPath('userData')
+  // 草稿笔记（FR-2.3.9）：伪库 __scratch__ 的落盘目录（协议 / 搜索 / IPC 特例都依赖它）
+  const scratch = new ScratchService(path.join(userData, 'scratch'))
   const settingsStore = new JsonStore<AppSettings>(path.join(userData, 'settings.json'), {
     workspaceRoot: '',
     theme: 'system',
@@ -227,9 +232,17 @@ app.whenReady().then(() => {
       const url = new URL(request.url)
       const vault = decodeURIComponent(url.hostname)
       const rel = decodeURIComponent(url.pathname).replace(/^\//, '')
-      const root = workspace.getRoot()
-      if (!root) return new Response('no workspace', { status: 404 })
-      const abs = resolveWithin(path.join(root, vault), rel)
+      // 草稿伪库：__scratch__ 的资产在 userData/scratch（FR-2.3.9）
+      if (vault === '__scratch__') {
+        if (!scratch) return new Response('not found', { status: 404 })
+        const data = await fs.promises.readFile(scratch.resolve(rel))
+        return new Response(new Uint8Array(data), {
+          headers: { 'content-type': MIME_TYPES[path.extname(rel).toLowerCase()] ?? 'application/octet-stream' }
+        })
+      }
+      const wsRoot = workspace.getRoot()
+      if (!wsRoot) return new Response('no workspace', { status: 404 })
+      const abs = resolveWithin(path.join(wsRoot, vault), rel)
       const data = await fs.promises.readFile(abs)
       return new Response(new Uint8Array(data), {
         headers: { 'content-type': MIME_TYPES[path.extname(abs).toLowerCase()] ?? 'application/octet-stream' }
@@ -416,8 +429,12 @@ app.whenReady().then(() => {
   }
 
   search = new SearchService(
-    (vault) => vaults.vaultPath(vault),
-    () => vaults.list().map((v) => v.name)
+    (vault) => (vault === SCRATCH_VAULT ? scratch.location : vaults.vaultPath(vault)),
+    () => {
+      const names = vaults.list().map((v) => v.name)
+      if (scratch.hasNotes()) names.push(SCRATCH_VAULT)
+      return names
+    }
   )
   // 应用启动后构建搜索索引
   void search.buildIndex()
@@ -437,6 +454,7 @@ app.whenReady().then(() => {
     vaults,
     vaultMeta,
     fsTree,
+    scratch,
     trash,
     favorites,
     recents,

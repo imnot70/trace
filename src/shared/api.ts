@@ -171,6 +171,11 @@ export interface TraceApi {
   marketInstall(id: string, version?: string): Promise<OpResult & { id?: string; needsConfirmation?: boolean; permissions?: string[] }>
 
   // ---- 标签 ----
+  scratchList(): Promise<{ ok: true; notes: { name: string; mtime: number }[] }>
+  scratchStatus(): Promise<{ ok: true; count: number }>
+  scratchCreate(): Promise<{ ok: boolean; name?: string; error?: string }>
+  scratchDelete(name: string): Promise<{ ok: boolean; error?: string }>
+  scratchPromote(name: string, vault: string, dir: string, newName: string): Promise<{ ok: boolean; path?: string; error?: string }>
   listTags(): Promise<OpResult & { tags?: TagItem[] }>
   createTag(name: string, color: string): Promise<OpResult & { tag?: TagItem }>
   renameTag(id: string, name: string): Promise<OpResult>

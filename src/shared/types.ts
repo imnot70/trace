@@ -10,6 +10,11 @@ export interface TreeNode {
 
 export type ItemKind = 'vault' | 'dir' | 'note'
 
+/** 草稿笔记（FR-2.3.9）伪库的内部 vault 名（用户库命名校验不允许该形态，不会冲突） */
+export const SCRATCH_VAULT = '__scratch__'
+/** 草稿伪库的显示名 */
+export const SCRATCH_VAULT_LABEL = '草稿'
+
 /** 笔记库的 git 状态（未关联时为 null） */
 export interface GitStatus {
   associated: boolean

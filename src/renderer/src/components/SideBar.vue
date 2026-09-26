@@ -4,6 +4,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, WarningFilled } from '@element-plus/icons-vue'
 import { useAppStore } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
+import { useEditorStore } from '../stores/editor'
+import { useDraftStore } from '../stores/draft'
 import { useTrashStore } from '../stores/trash'
 import { useNoteActions } from '../composables/actions'
 import { useGitStore } from '../stores/git'
@@ -13,6 +15,8 @@ import VaultNode from './VaultNode.vue'
 
 const app = useAppStore()
 const tree = useTreeStore()
+const editor = useEditorStore()
+const draft = useDraftStore()
 const trash = useTrashStore()
 const git = useGitStore()
 const search = useSearchStore()
@@ -59,12 +63,38 @@ const fsChangedHandler = (): void => {
 let unresolvedRefreshTimer: ReturnType<typeof setTimeout> | null = null
 onMounted(() => {
   void loadUnresolvedCount()
+  void draft.refresh()
   window.trace.onFsChanged(fsChangedHandler)
 })
 onBeforeUnmount(() => {
   if (unresolvedRefreshTimer) clearTimeout(unresolvedRefreshTimer)
   // 注意：onFsChanged 返回取消函数，但这里不做取消（与全局订阅生命周期一致）
 })
+
+/** 草稿显示名（去 .md 扩展名） */
+function draftDisplayName(name: string): string {
+  return name.replace(/\.md$/i, '')
+}
+
+/** 草稿 ⋮ 菜单：转正（打开转正对话框）/ 删除（永久，红色确认） */
+async function handleDraftMenu(cmd: string, name: string): Promise<void> {
+  if (cmd === 'promote') {
+    draft.requestPromote(name)
+    return
+  }
+  if (cmd === 'delete') {
+    try {
+      await ElMessageBox.confirm(`确定删除草稿「${draftDisplayName(name)}」吗？草稿不会进入回收站，删除后不可恢复。`, '删除草稿', {
+        type: 'warning',
+        confirmButtonText: '删除',
+        cancelButtonText: '取消'
+      })
+    } catch {
+      return
+    }
+    await draft.remove(name)
+  }
+}
 
 function toggleSection(): void {
   tree.vaultSectionOpen = !tree.vaultSectionOpen
@@ -232,6 +262,42 @@ defineProps<{ vaults?: VaultInfo[] }>()
           <span v-if="tree.recents.length" class="side-section-count">{{
             tree.recents.length
           }}</span>
+        </div>
+      </div>
+
+      <!-- 草稿（FR-2.3.9）：临时笔记（存应用数据目录，不进笔记库 / 搜索 / 同步），转正后成为正式笔记 -->
+      <div class="side-section" v-if="draft.drafts.length">
+        <div class="side-section-header">
+          <el-icon><EditPen /></el-icon>
+          <span>草稿</span>
+          <span class="side-section-count">{{ draft.drafts.length }}</span>
+        </div>
+        <div class="draft-list">
+          <div
+            v-for="d in draft.drafts"
+            :key="d.name"
+            class="draft-row"
+            :class="{ active: editor.current?.vault === '__scratch__' && editor.current?.path === d.name }"
+            :title="d.name"
+            @click="draft.openDraft(d.name)"
+          >
+            <span class="draft-name">{{ draftDisplayName(d.name) }}</span>
+            <el-dropdown
+              trigger="click"
+              popper-class="dd-instant-hide"
+              @command="(cmd: string) => handleDraftMenu(cmd, d.name)"
+            >
+              <button class="row-btn tag-menu-btn" title="更多操作" @click.stop>
+                <el-icon><MoreFilled /></el-icon>
+              </button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="promote">转正为笔记…</el-dropdown-item>
+                  <el-dropdown-item command="delete" divided>删除草稿</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
         </div>
       </div>
 
@@ -527,5 +593,33 @@ defineProps<{ vaults?: VaultInfo[] }>()
 .sidebar-search-btn:hover {
   background-color: var(--bg-hover);
   color: var(--text-primary);
+}
+/* 草稿列表：紧凑单行（名 + ⋮），与标签行观感一致 */
+.draft-list {
+  padding: 0 0 4px;
+}
+.draft-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 12px;
+  margin: 0 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.draft-row:hover {
+  background: var(--bg-hover);
+}
+.draft-row.active {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+.draft-row .draft-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>
