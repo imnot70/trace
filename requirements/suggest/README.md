@@ -13,3 +13,4 @@
 | --- | --- | --- |
 | [github-pages-site.md](github-pages-site.md) | GitHub Pages 静态网站架设指南与风格建议 | ✅ 已实施上线（https://imnot70.github.io/trace/） |
 | [flow-keyboard-workflow.md](flow-keyboard-workflow.md) | 「手不离键盘」心流动线设计思路（P1/P2 已实施，P3 备忘） | P1/P2 已随 v0.8.6 实施；P3 暂缓 |
+| [feature-proposals.md](feature-proposals.md) | 功能提案池 ×7：标签优化 / 内联新建 / 临时笔记缓冲区 / 斜杠命令 / Vim 模式 / 分享链接 / 快速引入图片（含难度与工时评估） | 设计阶段，待逐项立项 |
