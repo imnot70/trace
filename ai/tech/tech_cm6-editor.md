@@ -11,6 +11,7 @@
 5. **候选项落成引用的括号语义按路径区分，两路不可混用同一函数**：Enter 直接接受（替换范围在 `[[` 之后）保留 closeBrackets 的既有闭合、仅缺失时补；预览态插入（替换范围含 `[[`）插完整 `[[路径]]` 并吸收残留 `]]`。「统一吸收」两个方向各错一半，四轮实测才收敛；断言要以**磁盘文件内容**为准（渲染态 DOM 会隐藏括号）。（[flow-reference-enhance 设计 §5 四轮记录](../requirements/2026-09-25_flow-reference-enhance/flow-reference-enhance_design.md)）
 6. **「打开笔记 + 切视图」的自动聚焦不能放在 onMounted 消费**：openNote（异步 IPC）晚于视图挂载完成，editorRef 尚未绑定、`?.focus()` 静默落空（Ctrl+N 草稿实测踩中）——改为观察 editorRef 绑定的 watcher 统一消费一次性聚焦标志。（[draft-notes 设计 §7](../requirements/2026-09-26_draft-notes/draft-notes_design.md)）
 7. **窗口级 keydown 兜底层必须复用组件层的语义分流**：编辑器内 CM keymap 发 save 事件走草稿分流，但事件照样冒泡到 window 层的无条件 `flushSave`——两层各干各的，草稿态 Ctrl+S 弹不出转正框反而常规保存。语义分流收敛到一处函数，两层都调它。（[draft-notes 设计 §7](../requirements/2026-09-26_draft-notes/draft-notes_design.md)）
+8. **@codemirror/search 6.7+ 的查找面板类名是 `.cm-panel.cm-search`**（不是旧文档的 `.cm-searchPanel`）：按旧类名写的 Esc 让位判断与主题样式会静默失效——面板其实已打开，只是选择器没匹配上。面板文案经 `EditorState.phrases.of({...})` 中文化，无需自绘面板。（[search-redesign §6](../requirements/2026-09-26_search-redesign/search-redesign.md)）
 
 ## 几何与测量
 

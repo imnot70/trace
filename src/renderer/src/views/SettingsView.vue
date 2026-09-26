@@ -927,6 +927,16 @@ async function resetGitSource(): Promise<void> {
             <span class="settings-desc" style="margin: 0">编辑卡右下角的「反向链接」入口，显示引用当前笔记的笔记</span>
           </div>
           <div class="setting-row">
+            <span class="setting-label">跨库引用免确认</span>
+            <el-switch
+              :model-value="app.settings.skipCrossVaultCopyConfirm"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ skipCrossVaultCopyConfirm: Boolean(v) })"
+            />
+            <span class="settings-desc" style="margin: 0"
+              >引入跨库笔记时直接复制到当前库（图片随迁），不再弹确认框；副本与原笔记不会同步更新</span
+            >
+          </div>
+          <div class="setting-row">
             <span class="setting-label">打字机模式</span>
             <el-select
               :model-value="app.settings.typewriterMode"

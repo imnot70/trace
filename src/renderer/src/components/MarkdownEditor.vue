@@ -53,9 +53,7 @@ import { insertTable } from '../lib/table'
 import { tableTab } from '../lib/tableNav'
 import { useTablePromptStore } from '../stores/tablePrompt'
 import { useAppStore } from '../stores/app'
-import { ElMessage } from 'element-plus'
 import { SCRATCH_VAULT } from '@shared/types'
-import { scratchVaultLabel } from '../stores/draft'
 import type { PromptKey } from '../lib/tablePrompt'
 import { flatCompletionOptions, type NoteTreeNode } from '../lib/noteCompletion'
 import type { TreeNode } from '@shared/types'
@@ -82,7 +80,33 @@ const emit = defineEmits<{
   (e: 'open-note', target: { vault: string; path: string; name: string }): void
   /** 补全面板里请求预览一篇笔记（不改变当前编辑中的笔记） */
   (e: 'preview-note', target: { vault: string; path: string; name: string }): void
+  /** Alt+Enter 落跨库引用（FR-2.9.11）：交外层弹确认框 → 复制进当前库 → 插入引用 */
+  (e: 'insert-cross-vault', target: { vault: string; path: string; name: string }): void
 }>()
+
+/**
+ * CM 内置查找/替换面板的中文文案（FR-2.9.11 当前笔记内搜索）。
+ * @codemirror/search 的面板字符串都经 EditorState.phrases 取词，按 key 映射即可；
+ * 未列出的 key 回退英文原文。附带快捷键提示由面板 title 属性承载，跟随映射。
+ */
+const SEARCH_PANEL_ZH: Record<string, string> = {
+  Find: '查找',
+  Replace: '替换',
+  next: '下一个（Enter）',
+  previous: '上一个（Shift+Enter）',
+  all: '全部',
+  'match case': '区分大小写（Alt+C）',
+  'by word': '整词匹配（Alt+W）',
+  regexp: '正则表达式（Alt+R）',
+  replace: '替换',
+  'replace all': '全部替换',
+  close: '关闭（Esc）',
+  'current match': '当前匹配',
+  'replaced $ matches': '已替换 $ 处',
+  'replaced match on line $': '已在第 $ 行替换',
+  'on line': '行',
+  'go to line': '跳转到行'
+}
 
 const container = ref<HTMLDivElement | null>(null)
 let view: EditorView | null = null
@@ -553,6 +577,43 @@ const traceTheme = EditorView.theme({
     color: 'var(--text-tertiary)',
     marginLeft: 'auto',
     fontStyle: 'normal'
+  },
+  // 内置查找/替换面板（FR-2.9.11 当前笔记内搜索）：配色走主题变量，与补全框同风格
+  '.cm-panel.cm-search': {
+    backgroundColor: 'var(--bg-primary)',
+    borderTop: '1px solid var(--border-color)',
+    color: 'var(--text-primary)',
+    padding: '6px 8px',
+    fontFamily: 'inherit'
+  },
+  '.cm-panel.cm-search input[type=checkbox]': {
+    accentColor: 'var(--accent)',
+    verticalAlign: 'middle',
+    marginRight: '3px'
+  },
+  '.cm-panel.cm-search input.cm-textfield': {
+    backgroundColor: 'var(--bg-secondary)',
+    color: 'var(--text-primary)',
+    border: '1px solid var(--border-color)',
+    borderRadius: '4px',
+    padding: '2px 6px'
+  },
+  '.cm-panel.cm-search button': {
+    backgroundColor: 'var(--bg-secondary)',
+    color: 'var(--text-secondary)',
+    border: '1px solid var(--border-color)',
+    borderRadius: '4px',
+    padding: '2px 8px',
+    cursor: 'pointer'
+  },
+  '.cm-panel.cm-search button:hover': {
+    color: 'var(--text-primary)',
+    backgroundColor: 'var(--bg-hover)'
+  },
+  '.cm-panel.cm-search button[name=close]': {
+    border: 'none',
+    background: 'transparent',
+    fontSize: '14px'
   }
 })
 
@@ -577,6 +638,8 @@ function createView(initialDoc: string): EditorView {
     doc: initialDoc,
     extensions: [
       traceSetup(),
+      // 内置查找/替换面板中文文案（FR-2.9.11 当前笔记内搜索）
+      EditorState.phrases.of(SEARCH_PANEL_ZH),
       markdown({ base: markdownLanguage, codeLanguages: languages }),
       EditorView.lineWrapping,
       traceTheme,
@@ -663,9 +726,20 @@ function createView(initialDoc: string): EditorView {
             // ① 补全仍活动 → 整段替换并吸收自动闭合 ]]；② 补全已关 → 光标处插入完整引用；
             // ③ 目标是当前笔记自身 → 不插入（自引用无意义），仅收起预览
             if (props.previewTarget) {
-              // 跨库插入校验：双链只在库内解析，跨库引用会产出断链（草稿伪库例外——转正时确定归宿）
-              if (props.previewTarget.vault !== props.vault && props.vault !== SCRATCH_VAULT) {
-                ElMessage.warning(`「${props.previewTarget.name}」位于「${scratchVaultLabel(props.previewTarget.vault)}」库，与当前笔记不同库，暂不支持跨库引用`)
+              // 跨库目标（FR-2.9.11）：不再直接产出断链引用，交外层走「确认框 → 复制进当前库 → 落引用」
+              if (props.previewTarget.vault !== props.vault) {
+                // 草稿例外（FR-2.3.9 D7）：当前是草稿伪库时维持直接落引用文本——转正时再定归宿
+                if (props.vault === SCRATCH_VAULT) {
+                  const t = props.previewTarget
+                  const rel = t.path.replace(/\.md$/i, '')
+                  if (rel !== props.notePath.replace(/\.md$/i, '')) {
+                    if (!insertReferenceFromCompletion()) insertText(`[[${rel}]]`)
+                  }
+                  useAppStore().closeFloatingPreview()
+                  view?.focus()
+                } else {
+                  emit('insert-cross-vault', props.previewTarget)
+                }
                 return true
               }
               const t = props.previewTarget
@@ -688,15 +762,9 @@ function createView(initialDoc: string): EditorView {
             return true
           }
         },
-        // 禁用 CM 原生查找面板，由全局搜索接管。
-        // 必须 return true 才算「消费」该按键：返回 false 表示未处理，会继续落到
-        // basicSetup 的 searchKeymap 上把查找面板弹出来（实测焦点会被面板抢走）。
-        // CM 只 preventDefault、不阻断冒泡，App.vue 的窗口级 Ctrl+F 仍会打开全局搜索
-        {
-          key: 'Mod-f',
-          preventDefault: true,
-          run: () => true
-        },
+        // Ctrl+F：笔记内查找/替换。不再在此拦截——searchKeymap（traceSetup 内）的
+        // openSearchPanel 自然接管；窗口层 App.vue 按焦点分流（编辑器聚焦时不抢），
+        // 编辑器外的 Ctrl+F 仍是全局搜索（FR-2.9.11）
         // Markdown 格式化快捷键（复用工具栏的智能插入：有选中包裹 / 无选中插占位）
         { key: 'Mod-b', preventDefault: true, run: () => (insertSnippet('**', '**'), true) },
         { key: 'Mod-i', preventDefault: true, run: () => (insertSnippet('*', '*'), true) },

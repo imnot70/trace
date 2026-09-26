@@ -50,7 +50,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   flowSoundEnabled: false,
   flowSoundVolume: 60,
   flowSoundVariant: 'retro',
-  flowSoundSkipRepeat: true
+  flowSoundSkipRepeat: true,
+  skipCrossVaultCopyConfirm: false
 }
 
 function prefersDark(): boolean {

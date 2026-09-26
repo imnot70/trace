@@ -198,7 +198,8 @@ app.whenReady().then(() => {
     flowSoundEnabled: false,
     flowSoundVolume: 60,
     flowSoundVariant: 'retro',
-    flowSoundSkipRepeat: true
+    flowSoundSkipRepeat: true,
+    skipCrossVaultCopyConfirm: false
   }, {
     version: 1,
     // v0 → v1：旧版设置键升级（此前迁移散落各处，现统一走 JsonStore migrate 链）

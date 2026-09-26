@@ -286,6 +286,7 @@ beforeEach(() => {
     flowSoundVolume: 60,
     flowSoundVariant: 'retro',
     flowSoundSkipRepeat: true,
+    skipCrossVaultCopyConfirm: false,
   })
   notifications = []
   logs.length = 0

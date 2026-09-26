@@ -1,14 +1,19 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { logger } from '../lib/logger'
-import type { SearchResult, SearchResultItem } from '@shared/types'
+import { getFrontmatterTags, maskFrontmatter } from '@shared/noteTags'
+import type { SearchTagInfo, SearchResult, SearchResultItem } from '@shared/types'
 
 /** 搜索索引项 */
 interface SearchIndexItem {
   vault: string
   path: string
   title: string
+  /** 正文（frontmatter 已掩码为等宽空白：行号与源文件对齐不变，但关键词不会再命中 frontmatter 行——
+   *  结构化标签检索见 tags 字段，FR-2.9.11） */
   content: string
+  /** frontmatter 的 tags 键（结构化标签，供标签维度过滤与 listTags 聚合） */
+  tags: string[]
   lastModified: number
 }
 
@@ -78,7 +83,8 @@ export class SearchService {
           vault,
           path: relativePath,
           title,
-          content: content,
+          content: maskFrontmatter(content),
+          tags: getFrontmatterTags(content),
           lastModified: stat.mtimeMs
         })
 
@@ -114,23 +120,53 @@ export class SearchService {
 
   /**
    * 执行搜索查询
+   * @param options.tags 标签维度过滤（OR 语义：命中任一选中标签即入围；FR-2.9.11）。
+   *   关键词与标签同时给出时取交集；**仅给标签不给关键词** = 浏览模式，该标签下全部笔记各出一条
    */
   search(
     query: string,
     maxResults = 100,
-    options?: { searchInTitle?: boolean; searchInContent?: boolean; vaults?: string[] }
+    options?: { searchInTitle?: boolean; searchInContent?: boolean; vaults?: string[]; tags?: string[] }
   ): SearchResult {
     const startTime = Date.now()
 
-    if (!query || query.trim().length === 0) {
+    const normalizedQuery = query.toLowerCase().trim()
+    const tagFilter = options?.tags && options.tags.length > 0 ? options.tags : undefined
+
+    // 关键词与标签都没有（或勾选项全关）时无事可做
+    if (!normalizedQuery && !tagFilter) {
       return { ok: true, results: [], durationMs: 0, totalMatches: 0 }
     }
 
-    const normalizedQuery = query.toLowerCase().trim()
     const results: SearchResultItem[] = []
     const searchTitle = options?.searchInTitle !== false
     const searchContent = options?.searchInContent !== false
     const vaultFilter = options?.vaults
+
+    if (!normalizedQuery) {
+      // 浏览模式：仅按标签（+范围）筛笔记，每篇一条，按最近修改排序
+      for (const item of this.index.values()) {
+        if (vaultFilter && vaultFilter.length > 0 && !vaultFilter.includes(item.vault)) continue
+        if (!this.matchesTags(item, tagFilter)) continue
+        results.push({
+          vault: item.vault,
+          path: item.path,
+          title: item.title,
+          snippet: '',
+          score: item.lastModified,
+          lineNumber: 0,
+          keyword: ''
+        })
+      }
+      results.sort((a, b) => b.score - a.score)
+      const duration = Date.now() - startTime
+      return {
+        ok: true,
+        results: results.slice(0, maxResults),
+        durationMs: duration,
+        totalMatches: results.length
+      }
+    }
 
     if (!searchTitle && !searchContent) {
       return { ok: true, results: [], durationMs: 0, totalMatches: 0 }
@@ -140,6 +176,10 @@ export class SearchService {
     for (const item of this.index.values()) {
       // 按库筛选
       if (vaultFilter && vaultFilter.length > 0 && !vaultFilter.includes(item.vault)) {
+        continue
+      }
+      // 按标签筛选（OR 语义）
+      if (!this.matchesTags(item, tagFilter)) {
         continue
       }
 
@@ -161,6 +201,12 @@ export class SearchService {
       durationMs: duration,
       totalMatches: results.length
     }
+  }
+
+  /** 标签过滤（OR 语义）：未给标签时恒真；给了则索引项需命中任一选中标签 */
+  private matchesTags(item: SearchIndexItem, tagFilter?: string[]): boolean {
+    if (!tagFilter || tagFilter.length === 0) return true
+    return item.tags.some((t) => tagFilter.includes(t))
   }
 
   /**
@@ -301,7 +347,8 @@ export class SearchService {
         vault,
         path: filePath,
         title,
-        content,
+        content: maskFrontmatter(content),
+        tags: getFrontmatterTags(content),
         lastModified: stat.mtimeMs
       })
     } catch (e) {
@@ -328,9 +375,17 @@ export class SearchService {
   }
 
   /**
-   * 清空索引
+   * 聚合索引中出现的全部标签（跨库去重，按篇数降序、同数按名称）——供搜索框标签筛选下拉（FR-2.9.11）
    */
-  clearIndex(): void {
-    this.index.clear()
+  listTags(): SearchTagInfo[] {
+    const counts = new Map<string, number>()
+    for (const item of this.index.values()) {
+      for (const tag of item.tags) {
+        counts.set(tag, (counts.get(tag) ?? 0) + 1)
+      }
+    }
+    return [...counts.entries()]
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag, 'zh-Hans-CN'))
   }
 }

@@ -52,6 +52,7 @@ function buildStack() {
     flowSoundVolume: 60,
     flowSoundVariant: 'retro',
     flowSoundSkipRepeat: true,
+    skipCrossVaultCopyConfirm: false,
   })
   const workspace = new WorkspaceService(settings, path.join(tmp, 'ws'))
   workspace.initDefault()

@@ -17,6 +17,7 @@ import type {
   RecentItem,
   RemoteRepo,
   SaveImageResult,
+  SearchTagInfo,
   SearchResult,
   SyncResult,
   TagItem,
@@ -200,16 +201,16 @@ export interface TraceApi {
   // ---- 搜索 ----
   /** 构建搜索索引（应用启动时调用） */
   searchBuildIndex(force?: boolean): Promise<OpResult & { totalFiles?: number; isIndexing?: boolean }>
-  /** 执行搜索查询 */
-  searchQuery(query: string, maxResults?: number, options?: { searchInTitle?: boolean; searchInContent?: boolean; vaults?: string[] }): Promise<SearchResult>
+  /** 执行搜索查询（options.tags：标签维度过滤，OR 语义；FR-2.9.11） */
+  searchQuery(query: string, maxResults?: number, options?: { searchInTitle?: boolean; searchInContent?: boolean; vaults?: string[]; tags?: string[] }): Promise<SearchResult>
   /** 获取搜索索引状态 */
   getSearchIndexStatus(): Promise<OpResult & { totalFiles?: number; isIndexing?: boolean }>
-  /** 更新单个文件的索引 */
-  updateSearchIndex(vault: string, filePath: string): Promise<OpResult>
-  /** 删除单个文件的索引 */
-  removeSearchIndex(vault: string, filePath: string): Promise<OpResult>
-  /** 清空搜索索引 */
-  clearSearchIndex(): Promise<OpResult>
+  /** 聚合索引中的标签（供标签筛选下拉；跨库去重，按篇数降序） */
+  searchListTags(): Promise<OpResult & { tags?: SearchTagInfo[] }>
+
+  // ---- 跨库复制（FR-2.9.11 跨库引用改进）----
+  /** 把笔记从源库复制到目标库目录（图片附件随迁 + 引用改写，重名自动加后缀），返回新笔记路径 */
+  crossVaultCopy(sourceVault: string, sourcePath: string, targetVault: string, targetDir: string): Promise<{ ok: boolean; path?: string; name?: string; error?: string }>
 
   // ---- 双链 P3：反向链接 / 断链引用 ----
   /** 获取引用指定笔记的反向链接列表 */

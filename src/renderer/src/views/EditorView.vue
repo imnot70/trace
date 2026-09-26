@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAppStore } from '../stores/app'
 import { useEditorStore } from '../stores/editor'
 import { useTreeStore } from '../stores/tree'
@@ -45,15 +45,50 @@ function onEditorSave(): void {
   void editor.flushSave().then(() => ElMessage.success('已保存'))
 }
 
-/** 跨库插入校验（FR-2.9.10 补充）：双链只在库内解析，跨库引用会产出断链。
- *  草稿例外（D7）：草稿是暂存，转正时才确定归宿，允许先写引用 */
-function canInsertReference(targetVault: string): boolean {
-  if (editor.current?.vault === SCRATCH_VAULT) return true
-  if (editor.current?.vault !== targetVault) {
-    ElMessage.warning(`「${scratchVaultLabel(targetVault)}」库的笔记与当前笔记不同库，暂不支持跨库引用`)
-    return false
+/** 把正在预览的笔记落成引用（FR-2.9.11）：库内目标直接插入；跨库目标先确认 →
+ *  复制到当前库（图片随迁 + 引用改写，重名自动加后缀）→ 插入指向副本的引用。
+ *  编辑器内 Alt+Enter（经 insert-cross-vault 事件）与悬浮预览「插入引用」按钮共用此函数 */
+async function insertPreviewTarget(target: { vault: string; path: string; name: string }): Promise<void> {
+  const current = editor.current
+  if (!current) return
+  // 草稿目标须先转正：草稿的归宿由 Ctrl+S 转正流程确定，不能被引用 / 复制走
+  if (target.vault === SCRATCH_VAULT) {
+    ElMessage.warning('「草稿」中的笔记尚未转正，请先在草稿上按 Ctrl+S 保存为正式笔记后再引用')
+    return
   }
-  return true
+
+  let insertRel = target.path.replace(/\.md$/i, '')
+
+  if (target.vault !== current.vault && current.vault !== SCRATCH_VAULT) {
+    // 跨库「强制引用」= 把笔记复制进当前库（双链只在库内解析，直接插引用必然断链）。
+    // 确认框文案即需求原文；设置开关「跨库引用免确认」可跳过（默认弹框）
+    if (!app.settings.skipCrossVaultCopyConfirm) {
+      try {
+        await ElMessageBox.confirm(
+          '跨库文件会将笔记从原库复制到当前库中，改变原笔记时复制笔记内容不会同时改变，确定要强制引用吗？',
+          '跨库引用',
+          { type: 'warning', confirmButtonText: '复制并引用', cancelButtonText: '取消' }
+        )
+      } catch {
+        return // 用户取消：保留悬浮预览，继续阅读
+      }
+    }
+    // 复制目标：当前笔记所在目录（引用就近）；返回的最终名已含重名后缀
+    const targetDir = current.path.includes('/') ? current.path.slice(0, current.path.lastIndexOf('/')) : ''
+    const copied = await window.trace.crossVaultCopy(target.vault, target.path, current.vault, targetDir)
+    if (!copied.ok || !copied.path) {
+      ElMessage.error(copied.error ?? '跨库复制失败')
+      return
+    }
+    insertRel = copied.path.replace(/\.md$/i, '')
+    ElMessage.success(`已复制「${copied.name ?? target.name}」到当前库`)
+  }
+
+  // 当前是草稿（FR-2.3.9 D7 例外）：不复制，直接落引用文本，转正时再定归宿
+  const inserted = editorRef.value?.insertReferenceFromCompletion()
+  if (!inserted) editorRef.value?.insertText(`[[${insertRel}]]`)
+  app.closeFloatingPreview()
+  editorRef.value?.focus()
 }
 
 async function onImage(fileName: string, base64: string): Promise<void> {
@@ -204,23 +239,25 @@ watch(
 )
 
 /** 悬浮预览头部的「插入引用」按钮（FR-2.9.10）：把正在预览的笔记落成引用。
- *  目标是当前笔记自身时不插入（自引用无意义），仅收起预览；补全已不在活动态时
- *  兜底在当前光标插入完整引用 */
+ *  目标是当前笔记自身时不插入（自引用无意义），仅收起预览；落引用逻辑统一走
+ *  insertPreviewTarget（库内直插 / 跨库确认后复制，FR-2.9.11） */
 function insertFromPreview(): void {
   const target = completionPreview.value
   if (!target) return
   const rel = target.path.replace(/\.md$/i, '')
   const isSelf = editor.current?.vault === target.vault && editor.current?.path.replace(/\.md$/i, '') === rel
-  if (!canInsertReference(target.vault)) return
-  if (!isSelf) {
-    const inserted = editorRef.value?.insertReferenceFromCompletion()
-    if (!inserted) {
-      editorRef.value?.insertText(`[[${rel}]]`)
-    }
+  if (isSelf) {
+    app.closeFloatingPreview()
+    editorRef.value?.focus()
+    return
   }
-  app.closeFloatingPreview()
-  editorRef.value?.focus()
+  void insertPreviewTarget(target)
 }
+
+/** 悬浮预览是否正在展示跨库笔记（FR-2.9.11）：红色萤光边框 + 「跨库文件」标签 */
+const previewCrossVault = computed(
+  () => !!completionPreview.value && !!editor.current && completionPreview.value.vault !== editor.current.vault
+)
 
 /** 外部组件的预览请求（FR-2.9.10：搜索框 Alt+Enter 经 app store 握手到达）——
  *  先清空再消费，避免 await 期间重复触发；复用补全预览的同一条覆盖管线 */
@@ -737,6 +774,7 @@ onBeforeUnmount(() => {
         @update:model-value="onEditorUpdate"
         @save="onEditorSave"
         @preview-note="onCompletionPreview"
+        @insert-cross-vault="(t: { vault: string; path: string; name: string }) => void insertPreviewTarget(t)"
         @image="(name: string, b64: string) => onImage(name, b64)"
         @open-note="onPreviewOpenNote"
       />
@@ -773,11 +811,14 @@ onBeforeUnmount(() => {
     />
   </div>
 
-  <!-- 悬浮预览（长按预览按钮呼出，Esc 或关闭按钮收起） -->
+  <!-- 悬浮预览（长按预览按钮呼出，Esc 或关闭按钮收起）；跨库预览态加红色萤光边框（FR-2.9.11） -->
   <Transition name="float-preview">
-    <div v-if="app.floatingPreview" class="floating-preview">
+    <div v-if="app.floatingPreview" class="floating-preview" :class="{ 'cross-vault': previewCrossVault }">
         <div class="floating-preview-header">
-          <span class="floating-preview-title">{{ completionPreview ? `预览：${completionPreview.name}` : '预览' }}</span>
+          <span class="floating-preview-title">
+            {{ completionPreview ? `预览：${completionPreview.name}` : '预览' }}
+            <span v-if="previewCrossVault" class="cross-vault-badge">跨库文件</span>
+          </span>
           <span class="floating-preview-actions">
             <!-- 补全预览态：把正在预览的笔记落成引用（与编辑器内 Alt+Enter 同效） -->
             <button
@@ -909,6 +950,28 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   padding: 4px 8px 4px 14px;
   border-bottom: 1px solid var(--border-color);
+}
+
+/* 跨库预览态（FR-2.9.11）：红色萤光细边框警示——落引用会触发「复制到当前库」确认 */
+.floating-preview.cross-vault {
+  box-shadow:
+    0 0 0 1.5px var(--danger),
+    0 0 16px color-mix(in srgb, var(--danger) 40%, transparent),
+    0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+.cross-vault-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  vertical-align: 1px;
 }
 
 .floating-preview-actions {
