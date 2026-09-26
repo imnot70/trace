@@ -6,7 +6,7 @@
 
 ### 网站
 
-- **新增官方静态站点与 GitHub Pages 自动部署**：`site/` 单页官网（项目介绍、特性、截图、下载入口、指引链接，纸感笔记风、浅色主题、与应用一致的设计语言）+ `.github/workflows/pages.yml` 自动部署（`site/**` 推送或手动触发；首次使用需在仓库 Settings → Pages 将 Source 切换为 GitHub Actions）。站点访问地址：`https://imnot70.github.io/trace/`。
+- **新增官方静态站点与 GitHub Pages 自动部署**：`site/` 单页官网（项目介绍、特性、截图、下载入口、指引链接，纸感笔记风、浅色主题、与应用一致的设计语言）+ `.github/workflows/pages.yml` 自动部署（`site/**` 推送或手动触发；首次使用需在仓库 Settings → Pages 将 Source 切换为 GitHub Actions；workflow 已带 `enablement: true` 自动启用参数。站点访问地址：`https://imnot70.github.io/trace/`。
 
 ## [0.8.7] - 2026-09-26
 
