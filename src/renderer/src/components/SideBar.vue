@@ -77,6 +77,19 @@ function draftDisplayName(name: string): string {
 }
 
 /** 草稿 ⋮ 菜单：保存为笔记（打开保存对话框）/ 删除（永久，红色确认） */
+async function removeDraft(name: string): Promise<void> {
+  try {
+    await ElMessageBox.confirm(`确定删除草稿「${draftDisplayName(name)}」吗？删除后不可恢复。`, '删除草稿', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消'
+    })
+  } catch {
+    return
+  }
+  await draft.remove(name)
+}
+
 async function handleDraftMenu(cmd: string, name: string): Promise<void> {
   if (cmd === 'promote') {
     draft.requestPromote(name)
@@ -282,6 +295,9 @@ defineProps<{ vaults?: VaultInfo[] }>()
             @click="draft.openDraft(d.name)"
           >
             <span class="draft-name">{{ draftDisplayName(d.name) }}</span>
+            <button class="draft-delete-btn" title="删除草稿" @click.stop="removeDraft(d.name)">
+              <el-icon><Close /></el-icon>
+            </button>
             <el-dropdown
               trigger="click"
               popper-class="dd-instant-hide"
@@ -621,5 +637,24 @@ defineProps<{ vaults?: VaultInfo[] }>()
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.draft-delete-btn {
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.draft-row:hover .draft-delete-btn {
+  opacity: 1;
+}
+.draft-delete-btn:hover {
+  color: var(--danger);
 }
 </style>

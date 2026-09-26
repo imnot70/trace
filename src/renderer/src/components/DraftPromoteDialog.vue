@@ -95,7 +95,7 @@ function collectDirPaths(nodes: TreeNode[], prefix = ''): string[] {
 const allDirs = computed(() => collectDirPaths(nodes.value))
 
 function defaultName(draftName: string): string {
-  return draftName.replace(/\.md$/i, '').replace(/^速记\s*\d{4}(-\d{4})?\s*/, '').trim() || draftName.replace(/\.md$/i, '')
+  return '未命名笔记'
 }
 
 async function confirm(): Promise<void> {
