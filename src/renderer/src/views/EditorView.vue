@@ -4,6 +4,7 @@ import { useAppStore } from '../stores/app'
 import { useEditorStore } from '../stores/editor'
 import { useTreeStore } from '../stores/tree'
 import { useGitStore } from '../stores/git'
+import { useDraftStore, scratchVaultLabel } from '../stores/draft'
 import { useNoteActions } from '../composables/actions'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
@@ -11,12 +12,14 @@ import TipButton from '../components/TipButton.vue'
 import BacklinkPanel from '../components/BacklinkPanel.vue'
 import TablePromptHud from '../components/TablePromptHud.vue'
 import type { HeadingLevel } from '../lib/heading'
+import { SCRATCH_VAULT } from '@shared/types'
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 
 const app = useAppStore()
 const editor = useEditorStore()
 const tree = useTreeStore()
 const git = useGitStore()
+const draft = useDraftStore()
 const actions = useNoteActions()
 
 const editorRef = ref<InstanceType<typeof MarkdownEditor> | null>(null)
@@ -26,9 +29,31 @@ const splitPercent = ref(50)
 const dragging = ref(false)
 
 const pathParts = computed(() => (editor.current ? editor.current.path.split('/') : []))
+/** 当前打开的是否为草稿（scratch 伪库） */
+const isScratchNote = computed(() => editor.current?.vault === SCRATCH_VAULT)
 
 function toolbarInsert(before: string, after = '', placeholder = ''): void {
   editorRef.value?.insertSnippet(before, after, placeholder)
+}
+
+/** 编辑器内 Ctrl+S：草稿 → 打开保存对话框；正式笔记 → 常规落盘保存 */
+function onEditorSave(): void {
+  if (editor.current?.vault === SCRATCH_VAULT) {
+    draft.requestPromote()
+    return
+  }
+  void editor.flushSave().then(() => ElMessage.success('已保存'))
+}
+
+/** 跨库插入校验（FR-2.9.10 补充）：双链只在库内解析，跨库引用会产出断链。
+ *  草稿例外（D7）：草稿是暂存，转正时才确定归宿，允许先写引用 */
+function canInsertReference(targetVault: string): boolean {
+  if (editor.current?.vault === SCRATCH_VAULT) return true
+  if (editor.current?.vault !== targetVault) {
+    ElMessage.warning(`「${scratchVaultLabel(targetVault)}」库的笔记与当前笔记不同库，暂不支持跨库引用`)
+    return false
+  }
+  return true
 }
 
 async function onImage(fileName: string, base64: string): Promise<void> {
@@ -186,6 +211,7 @@ function insertFromPreview(): void {
   if (!target) return
   const rel = target.path.replace(/\.md$/i, '')
   const isSelf = editor.current?.vault === target.vault && editor.current?.path.replace(/\.md$/i, '') === rel
+  if (!canInsertReference(target.vault)) return
   if (!isSelf) {
     const inserted = editorRef.value?.insertReferenceFromCompletion()
     if (!inserted) {
@@ -230,7 +256,8 @@ async function onBacklinkOpenNote(vault: string, path: string, line?: number): P
 function onKeydown(e: KeyboardEvent): void {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault()
-    void editor.flushSave().then(() => ElMessage.success('已保存'))
+    // 必须走 onEditorSave 的草稿分流（G4）：草稿态 Ctrl+S 是「转正」，不能落常规保存
+    onEditorSave()
   }
   if (e.altKey && !e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'p') {
     e.preventDefault()
@@ -284,14 +311,18 @@ watch(
 // 所见即所得 ↔ 分栏预览联动已移入 app store 的 setEditorWysiwyg（见该处注释）：
 // 组件级 watcher 在重挂载时会丢失「进入前分栏状态」的记忆，且与心流的进入/退出互相覆盖。
 
+// 「一次性聚焦」消费点：编辑器组件就位后执行。原在 onMounted 里消费，但「打开笔记 +
+// 进入编辑视图」时 openNote（异步 IPC）晚于挂载完成，editorRef 此刻尚未绑定、聚焦静默
+// 落空（Ctrl+N 草稿自动聚焦实测踩中）——改为观察 editorRef 绑定，两种时序统一收口。
+watch(editorRef, (el) => {
+  if (!el || !app.focusEditorOnce) return
+  app.focusEditorOnce = false
+  void nextTick(() => el.focus())
+})
+
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
   rebindScrollSync()
-  // 从设置等视图返回：自动聚焦编辑器，落地即可继续输入
-  if (app.focusEditorOnce) {
-    app.focusEditorOnce = false
-    void nextTick(() => editorRef.value?.focus())
-  }
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
@@ -463,7 +494,7 @@ onBeforeUnmount(() => {
     <div class="editor-topbar">
       <div class="breadcrumb">
         <template v-if="editor.current">
-          <span>{{ editor.current.vault }}</span>
+          <span>{{ scratchVaultLabel(editor.current.vault) }}</span>
           <template v-for="(part, i) in pathParts.slice(0, -1)" :key="i">
             <span style="color: var(--text-tertiary)">/</span>
             <span>{{ part }}</span>
@@ -497,7 +528,7 @@ onBeforeUnmount(() => {
         同步
       </el-button>
 
-      <TipButton tip="在侧栏中定位当前笔记" @click="locateCurrent">
+      <TipButton v-if="!isScratchNote" tip="在侧栏中定位当前笔记" @click="locateCurrent">
         <el-icon><Aim /></el-icon>
       </TipButton>
 
@@ -704,7 +735,7 @@ onBeforeUnmount(() => {
         :wysiwyg="app.editorWysiwyg"
         :preview-target="completionPreview"
         @update:model-value="onEditorUpdate"
-        @save="editor.flushSave()"
+        @save="onEditorSave"
         @preview-note="onCompletionPreview"
         @image="(name: string, b64: string) => onImage(name, b64)"
         @open-note="onPreviewOpenNote"

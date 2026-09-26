@@ -6,6 +6,9 @@ import { logger } from '../lib/logger'
 import { resolveWithin } from '../lib/paths'
 import { nativeTheme } from 'electron'
 import { readGitVersion, resolveBundledGitPath, applyWindowGlassEffect, applyOverlayTheme } from '../services'
+import { promoteDraft } from '../services/scratchPromote'
+import { SCRATCH_VAULT } from '@shared/types'
+import type { ScratchService } from '../services/scratch'
 import type { AppSettings, ThemePackage } from '@shared/types'
 import type {
   AccountService,
@@ -31,6 +34,7 @@ export interface IpcDeps {
   vaults: VaultService
   vaultMeta: VaultMetaService
   fsTree: FsTreeService
+  scratch: ScratchService
   trash: TrashService
   favorites: FavoritesService
   recents: RecentsService
@@ -170,7 +174,9 @@ export function registerIpc(deps: IpcDeps): void {
     }
     return result
   })
-  handle('note:read', (vault: string, relPath: string) => deps.fsTree.readNote(vault, relPath))
+  handle('note:read', (vault: string, relPath: string) =>
+    vault === SCRATCH_VAULT ? deps.scratch.read(relPath) : deps.fsTree.readNote(vault, relPath)
+  )
   handle('note:getInfo', (vault: string, relPath: string) => deps.fsTree.noteGetInfo(vault, relPath))
   handle('note:resolveByName', (vault: string, name: string) => deps.fsTree.resolveByName(vault, name))
   handle('note:resolveByNameCandidates', (vault: string, name: string) =>
@@ -179,14 +185,57 @@ export function registerIpc(deps: IpcDeps): void {
   handle(
     'note:write',
     (vault: string, relPath: string, content: string, expectedHash: string | null) => {
+      if (vault === SCRATCH_VAULT) {
+        // 草稿：写入 scratch 目录并同步搜索索引（草稿不进双链索引 / 插件事件——独立空间语义）
+        const result = deps.scratch.write(relPath, content)
+        if (result.ok) deps.search.updateFileIndex(SCRATCH_VAULT, relPath)
+        return result
+      }
       const result = deps.fsTree.writeNote(vault, relPath, content, expectedHash)
       if (result.ok) deps.plugins.emitEvent('note:saved', { vault, path: relPath })
       return result
     }
   )
   handle('note:saveImage', (vault: string, notePath: string, fileName: string, base64: string) =>
-    deps.fsTree.saveImage(vault, notePath, fileName, base64, deps.settings.get().attachmentsDir)
+    vault === SCRATCH_VAULT
+      ? deps.scratch.saveImage(fileName, base64)
+      : deps.fsTree.saveImage(vault, notePath, fileName, base64, deps.settings.get().attachmentsDir)
   )
+
+  // ---------- 草稿（FR-2.3.9） ----------
+  handle('scratch:list', () => ({ ok: true, notes: deps.scratch.list() }))
+  handle('scratch:status', () => ({ ok: true, count: deps.scratch.list().length }))
+  handle('scratch:create', () => deps.scratch.create())
+  handle('scratch:delete', (name: string) => {
+    const result = deps.scratch.remove(name)
+    if (result.ok) deps.search.removeFileIndex(SCRATCH_VAULT, name)
+    return result
+  })
+  // 转正：草稿移入正式笔记库（图片资产随迁 + 引用改写），并移除草稿搜索索引
+  handle('scratch:promote', (name: string, vault: string, dir: string, newName: string) => {
+    const result = promoteDraft(deps.scratch, {
+      name,
+      vault,
+      dir,
+      newName,
+      attachmentsDir: deps.settings.get().attachmentsDir,
+      vaultPath: deps.vaults.vaultPath(vault),
+      createNote: (v, d, n) => deps.fsTree.createNote(v, d, n),
+      writeNote: (v, rel, content) => {
+        const r = deps.fsTree.writeNote(v, rel, content, null)
+        if (r.ok) deps.search.updateFileIndex(v, rel)
+        return r
+      },
+      existingAttachments: (attachAbs) => {
+        try {
+          return fs.readdirSync(attachAbs)
+        } catch {
+          return []
+        }
+      }
+    })
+    return result
+  })
 
   // ---------- 收藏 / 常用 ----------
   handle('favorite:list', () => ({ ok: true, items: deps.favorites.list() }))

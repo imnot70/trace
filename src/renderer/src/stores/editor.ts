@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { useTreeStore } from './tree'
+import { SCRATCH_VAULT } from '@shared/types'
 import { useAppStore } from './app'
 
 interface OpenNote {
@@ -47,6 +48,7 @@ export const useEditorStore = defineStore('editor', {
       await this.flushSave()
       const result = await window.trace.readNote(vault, path)
       if (!result.ok) return
+      const isScratch = vault === SCRATCH_VAULT
       this.current = { vault, path, name }
       this.content = result.content ?? ''
       this._diskContent = this.content
@@ -55,13 +57,14 @@ export const useEditorStore = defineStore('editor', {
       this.saveFailed = false
       // 编辑位置（FR-2.4.18）：记下待落位意图，由 MarkdownEditor 在文档就位后消费
       this.pendingPlacement = useAppStore().settings.editPosition === 'end' ? 'end' : 'start'
-      // 更新位置上下文（Ctrl+N 新建笔记的目标）
-      const dirParts = path.split('/')
-      dirParts.pop()
-      useTreeStore().setLocation(vault, dirParts.join('/'))
-      void window.trace.addRecent(vault, path, name).then(() => useTreeStore().loadRecents())
-      // 插件事件：note:opened（fire-and-forget，声明 events 权限的运行中插件可感知）
-      window.trace.reportNoteOpened(vault, path)
+      // 草稿（FR-2.3.9）不进常用 / 位置上下文 / 插件事件——转正后才进入正式体系
+      if (!isScratch) {
+        const dirParts = path.split('/')
+        dirParts.pop()
+        useTreeStore().setLocation(vault, dirParts.join('/'))
+        void window.trace.addRecent(vault, path, name).then(() => useTreeStore().loadRecents())
+        window.trace.reportNoteOpened(vault, path)
+      }
     },
     setContent(content: string): void {
       this.content = content

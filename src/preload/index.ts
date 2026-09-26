@@ -37,6 +37,12 @@ const api: TraceApi = {
     ipcRenderer.invoke('note:write', vault, path, content, expectedHash),
   saveImage: (vault, notePath, fileName, base64) =>
     ipcRenderer.invoke('note:saveImage', vault, notePath, fileName, base64),
+  scratchList: () => ipcRenderer.invoke('scratch:list'),
+  scratchStatus: () => ipcRenderer.invoke('scratch:status'),
+  scratchCreate: () => ipcRenderer.invoke('scratch:create'),
+  scratchDelete: (name: string) => ipcRenderer.invoke('scratch:delete', name),
+  scratchPromote: (name: string, vault: string, dir: string, newName: string) =>
+    ipcRenderer.invoke('scratch:promote', name, vault, dir, newName),
 
   listFavorites: () => ipcRenderer.invoke('favorite:list'),
   addFavorite: (vault, path, name) => ipcRenderer.invoke('favorite:add', vault, path, name),
