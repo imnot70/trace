@@ -35,6 +35,7 @@
 | [table-insert-enhance.md](2026-09-24_table-insert-enhance/table-insert-enhance.md) + [table-insert-enhance_design.md](2026-09-24_table-insert-enhance/table-insert-enhance_design.md) | 表格插入增强：尺寸输入提示浮层（FR-2.4.20，实时回显行列数 / 逐状态脚注 / 超限提示，无倒计时）、表格内 `Tab` / `Shift+Tab` 跳转（FR-2.4.21，末格追加行） | ✅ **已实施**（已随 v0.8.0 发布；v0.8.1 修复其提示态键位导致的**编辑器空格与数字失效**，见设计文档第 9 节） |
 | [2026-09-25_flow-reference-enhance/](2026-09-25_flow-reference-enhance/flow-reference-enhance.md) | 心流引用与速览增强（FR-2.9.10）：Esc 分级消费、`[[` 扁平模糊匹配（含文件夹候选 / `[[/` 根浏览）、搜索结果键盘导航与 Alt+Enter 预览、补全落成引用的括号一致性；含分批决策（P1/P2/P3）与消歧 / 模态遮罩决策记录 | ✅ **已实施并发布**（v0.8.6） |
 | [suggest/](suggest/README.md) | **建议存档目录**：用户咨询的方案与思路存档（GitHub Pages 静态网站架设指南、「手不离键盘」心流动线设计思路等） | 📁 持续追加 | 
+| [2026-09-26_draft-notes/](2026-09-26_draft-notes/draft-notes.md) | 草稿笔记（FR-2.3.9）：Ctrl+N 写入 userData/scratch 伪库（不进笔记库 / 搜索 / 双链 / 同步），侧栏草稿菜单，Ctrl+S 转正（选库 / 目录，图片附件随迁改写） | 🚧 **已立项待实施**（预估 ★★☆ 2~2.5 天） |
 | [tech-debt-2026-09-25.md](tech-debt-2026-09-25.md) | 技术债评审（架构 + 技术选型快照）：选型逐项结论、已核实缺陷清单（路径穿越 / 搜索索引陈旧 / 搜索打开笔记污染常用列表等）、架构改进项与测试策略建议 | 📋 **评审报告**；缺陷待修项已同步第二节，加固批次纳入〇节待办 |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
