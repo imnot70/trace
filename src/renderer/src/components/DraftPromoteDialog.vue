@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     :model-value="visible"
-    title="草稿转正为笔记"
+    title="保存为笔记"
     width="420px"
     :close-on-click-modal="false"
     append-to-body
@@ -19,32 +19,25 @@
         <span class="form-label">目录</span>
         <div class="dir-tree">
           <div
+            v-for="d in allDirs"
+            :key="d"
             class="dir-node"
-            :class="{ selected: dir === '' }"
-            @click="dir = ''"
+            :class="{ selected: dir === d }"
+            @click="dir = d"
           >
-            📁 <span>{{ vault }}</span>
+            📁 <span>{{ d === '' ? '（根目录）' : d }}</span>
           </div>
-          <MoveTreeLevel
-            :nodes="nodes"
-            :vault="vault"
-            src-path=""
-            src-kind="note"
-            :selected-path="dir"
-            :depth="1"
-            @select="(p: string) => (dir = p)"
-          />
         </div>
       </div>
       <div class="form-row">
         <span class="form-label">笔记名</span>
         <el-input v-model="newName" placeholder="笔记名" @keydown.enter="confirm" />
       </div>
-      <p class="promote-hint">转正后草稿将移入笔记库，参与搜索、双链与 Git 同步；草稿内引用的图片会一并迁移。</p>
+      <p class="promote-hint">保存后草稿将移入笔记库，参与搜索、双链与 Git 同步；草稿内引用的图片会一并迁移。</p>
     </div>
     <template #footer>
       <el-button @click="draft.cancelPromote()">取消</el-button>
-      <el-button type="primary" :disabled="!newName.trim()" @click="confirm">转正</el-button>
+      <el-button type="primary" :disabled="!newName.trim()" @click="confirm">保存为笔记</el-button>
     </template>
   </el-dialog>
 </template>
@@ -54,7 +47,6 @@ import { computed, ref, watch } from 'vue'
 import type { TreeNode } from '@shared/types'
 import { useDraftStore } from '../stores/draft'
 import { useTreeStore } from '../stores/tree'
-import MoveTreeLevel from './MoveTreeLevel.vue'
 
 const draft = useDraftStore()
 const tree = useTreeStore()
@@ -65,7 +57,7 @@ const dir = ref('')
 const nodes = ref<TreeNode[]>([])
 const newName = ref('')
 
-// 打开时初始化：库名 / 目录 / 默认笔记名（草稿名去掉时间戳形态）
+// 打开时初始化：库名 / 目录 / 默认笔记名
 watch(
   () => draft.promoteName,
   async (name) => {
@@ -88,7 +80,20 @@ async function loadTree(): Promise<void> {
   nodes.value = result.ok && result.nodes ? result.nodes : []
 }
 
-/** 草稿名形如「速记 0926-1430.md」——默认笔记名去掉时间戳后缀，保留可读部分 */
+/** 递归拍平所有目录路径（含根 ''），供目录选择列表 */
+function collectDirPaths(nodes: TreeNode[], prefix = ''): string[] {
+  const out: string[] = ['']
+  for (const node of nodes) {
+    if (node.kind !== 'dir') continue
+    const rel = prefix ? `${prefix}/${node.name}` : node.name
+    out.push(rel)
+    if (node.children) out.push(...collectDirPaths(node.children, rel))
+  }
+  return out
+}
+
+const allDirs = computed(() => collectDirPaths(nodes.value))
+
 function defaultName(draftName: string): string {
   return draftName.replace(/\.md$/i, '').replace(/^速记\s*\d{4}(-\d{4})?\s*/, '').trim() || draftName.replace(/\.md$/i, '')
 }
@@ -134,12 +139,14 @@ async function confirm(): Promise<void> {
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
+  color: var(--text-secondary);
 }
 .dir-node:hover {
   background: var(--bg-hover);
 }
 .dir-node.selected {
   background: var(--accent-soft);
+  color: var(--text-primary);
 }
 .promote-hint {
   font-size: 12px;

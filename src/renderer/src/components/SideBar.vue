@@ -292,7 +292,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
               </button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item command="promote">转正为笔记…</el-dropdown-item>
+                  <el-dropdown-item command="promote">保存为笔记…</el-dropdown-item>
                   <el-dropdown-item command="delete" divided>删除草稿</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
