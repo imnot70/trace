@@ -82,7 +82,7 @@ async function loadTree(): Promise<void> {
 
 /** 递归拍平所有目录路径（含根 ''），供目录选择列表 */
 function collectDirPaths(nodes: TreeNode[], prefix = ''): string[] {
-  const out: string[] = ['']
+  const out: string[] = prefix === '' ? [''] : []
   for (const node of nodes) {
     if (node.kind !== 'dir') continue
     const rel = prefix ? `${prefix}/${node.name}` : node.name
