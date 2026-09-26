@@ -751,6 +751,26 @@ body {
   background: var(--flow-paper);
 }
 
+/* 底色纹理（FR-2.9.8 扩展，用户提出）：羊皮纸 / 书页纤维——纯 CSS 程序化纹理，无图片素材。
+   纹理全部为均匀重复图案（feTurbulence 颗粒经 stitchTiles 无缝化、细纹不随 x 变化），
+   跨行号槽 / 内容层两个元素不会出现接缝；羊皮纸的暖棕颗粒 + 疏色斑叠加在所选底色上。 */
+.editor-card.flow-mode.flow-paper-on.flow-paper-tex-parchment .cm-gutters,
+.editor-card.flow-mode.flow-paper-on.flow-paper-tex-parchment .cm-content {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.33 0 0 0 0 0.18 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23p)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340'%3E%3Cfilter id='q'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.12' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.42 0 0 0 0 0.2 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='340' height='340' filter='url(%23q)'/%3E%3C/svg%3E"),
+    var(--flow-paper);
+}
+
+/* 书页纤维：极细横竖纹模拟纸张纤维方向 + 一层极淡颗粒 */
+.editor-card.flow-mode.flow-paper-on.flow-paper-tex-fiber .cm-gutters,
+.editor-card.flow-mode.flow-paper-on.flow-paper-tex-fiber .cm-content {
+  background:
+    repeating-linear-gradient(0deg, rgba(96, 88, 70, 0.045) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(96, 88, 70, 0.028) 0 1px, transparent 1px 4px),
+    var(--flow-paper);
+}
+
 /* 底色过渡（FR-2.9.8 扩展，用户提出）：写作栏两侧各 15% 栏宽的渐隐带——
    渐变画在滚动层上（透明 → 底色 → 透明）；渐变的实心段在栏边前 8px 即达全浓度
    （8px 吸收滚动条宽度差，中段被上方行号槽 / 内容层的实底覆盖）——若实心段推迟到

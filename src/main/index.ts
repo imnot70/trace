@@ -189,6 +189,7 @@ app.whenReady().then(() => {
     flowPaperEnabled: false,
     flowPaperColor: 'cream',
     flowPaperFade: false,
+    flowPaperTexture: 'none',
     flowSoundEnabled: false,
     flowSoundVolume: 60,
     flowSoundVariant: 'retro',

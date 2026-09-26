@@ -996,6 +996,19 @@ async function resetGitSource(): Promise<void> {
             </div>
           </div>
           <div class="setting-row" v-if="app.settings.flowPaperEnabled">
+            <span class="setting-label">底色纹理</span>
+            <el-select
+              :model-value="app.settings.flowPaperTexture"
+              style="width: 200px"
+              @update:model-value="(v: string) => app.updateSettings({ flowPaperTexture: v as AppSettings['flowPaperTexture'] })"
+            >
+              <el-option label="无（纯色）" value="none" />
+              <el-option label="羊皮纸" value="parchment" />
+              <el-option label="书页纤维" value="fiber" />
+            </el-select>
+            <span class="settings-desc" style="margin: 0">在所选底色上叠加程序化的纸面质感（无图片素材，不增加体积）</span>
+          </div>
+          <div class="setting-row" v-if="app.settings.flowPaperEnabled">
             <span class="setting-label">底色过渡</span>
             <el-switch
               :model-value="app.settings.flowPaperFade"

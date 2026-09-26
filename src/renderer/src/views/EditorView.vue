@@ -436,7 +436,9 @@ onBeforeUnmount(() => {
       peeking: topbarPeek,
       'flow-mode': app.flowMode,
       'flow-paper-on': app.flowMode && app.settings.flowPaperEnabled,
-      'flow-paper-fade': app.flowMode && app.settings.flowPaperEnabled && app.settings.flowPaperFade
+      'flow-paper-fade': app.flowMode && app.settings.flowPaperEnabled && app.settings.flowPaperFade,
+      'flow-paper-tex-parchment': app.flowMode && app.settings.flowPaperEnabled && app.settings.flowPaperTexture === 'parchment',
+      'flow-paper-tex-fiber': app.flowMode && app.settings.flowPaperEnabled && app.settings.flowPaperTexture === 'fiber'
     }"
     :style="{
       flexBasis: app.previewVisible ? (app.zenMode ? '50%' : `${splitPercent}%`) : '100%',

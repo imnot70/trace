@@ -46,6 +46,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   flowPaperEnabled: false,
   flowPaperColor: 'cream',
   flowPaperFade: false,
+  flowPaperTexture: 'none',
   flowSoundEnabled: false,
   flowSoundVolume: 60,
   flowSoundVariant: 'retro',
