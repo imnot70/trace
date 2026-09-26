@@ -13,3 +13,4 @@ trace-plugins/
 .zcode/
 .zcodeignore
 .superpowers/
+*.tsbuildinfo
