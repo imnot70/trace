@@ -29,6 +29,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+        with:
+          # 仓库尚未启用 Pages 时自动启用（一次性；需保留上方 pages: write 权限）
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
