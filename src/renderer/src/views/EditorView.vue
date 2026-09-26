@@ -42,7 +42,7 @@ function onEditorSave(): void {
     draft.requestPromote()
     return
   }
-  editor.flushSave()
+  void editor.flushSave().then(() => ElMessage.success('已保存'))
 }
 
 /** 跨库插入校验（FR-2.9.10 补充）：双链只在库内解析，跨库引用会产出断链。
@@ -256,7 +256,8 @@ async function onBacklinkOpenNote(vault: string, path: string, line?: number): P
 function onKeydown(e: KeyboardEvent): void {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault()
-    void editor.flushSave().then(() => ElMessage.success('已保存'))
+    // 必须走 onEditorSave 的草稿分流（G4）：草稿态 Ctrl+S 是「转正」，不能落常规保存
+    onEditorSave()
   }
   if (e.altKey && !e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'p') {
     e.preventDefault()
@@ -310,14 +311,18 @@ watch(
 // 所见即所得 ↔ 分栏预览联动已移入 app store 的 setEditorWysiwyg（见该处注释）：
 // 组件级 watcher 在重挂载时会丢失「进入前分栏状态」的记忆，且与心流的进入/退出互相覆盖。
 
+// 「一次性聚焦」消费点：编辑器组件就位后执行。原在 onMounted 里消费，但「打开笔记 +
+// 进入编辑视图」时 openNote（异步 IPC）晚于挂载完成，editorRef 此刻尚未绑定、聚焦静默
+// 落空（Ctrl+N 草稿自动聚焦实测踩中）——改为观察 editorRef 绑定，两种时序统一收口。
+watch(editorRef, (el) => {
+  if (!el || !app.focusEditorOnce) return
+  app.focusEditorOnce = false
+  void nextTick(() => el.focus())
+})
+
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
   rebindScrollSync()
-  // 从设置等视图返回：自动聚焦编辑器，落地即可继续输入
-  if (app.focusEditorOnce) {
-    app.focusEditorOnce = false
-    void nextTick(() => editorRef.value?.focus())
-  }
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)

@@ -12,6 +12,19 @@ export interface DraftItem {
 
 /** 草稿笔记（FR-2.3.9）：真实文件存于 userData/scratch（伪库 __scratch__），
  *  不进搜索 / 双链 / 同步体系；Ctrl+S 触发「转正」进入正式笔记库。 */
+/** 草稿打开后自动聚焦（FR-2.3.9 验收 1）：编辑视图已挂载时直接聚焦内容层
+ *  （onMounted 的消费点不会再跑）；未挂载（欢迎页 / 设置页进入）时置一次性
+ *  聚焦标志，由 EditorView 挂载时消费（与「设置返回自动聚焦」同机制）。 */
+function focusDraftEditor(app: ReturnType<typeof useAppStore>): void {
+  const el = document.querySelector<HTMLElement>('.cm-content')
+  if (el) {
+    el.focus()
+    app.focusEditorOnce = false
+  } else {
+    app.focusEditorOnce = true
+  }
+}
+
 export const useDraftStore = defineStore('draft', {
   state: () => ({
     drafts: [] as DraftItem[],
@@ -29,6 +42,7 @@ export const useDraftStore = defineStore('draft', {
       const editor = useEditorStore()
       if (editor.current?.vault === SCRATCH_VAULT && !editor.content.trim()) {
         app.view = { name: 'editor' }
+        focusDraftEditor(app)
         return
       }
       const result = await window.trace.scratchCreate()
@@ -36,12 +50,14 @@ export const useDraftStore = defineStore('draft', {
         ElMessage.error(result.error ?? '创建草稿失败')
         return
       }
+      void this.refresh() // 侧栏草稿菜单不监听 scratch 目录（watcher 看不到），创建后主动刷新
       await this.openDraft(result.name)
     },
     async openDraft(name: string): Promise<void> {
       const app = useAppStore()
       const editor = useEditorStore()
       app.view = { name: 'editor' }
+      focusDraftEditor(app)
       await editor.openNote(SCRATCH_VAULT, name, noteDisplayName(name))
     },
     async remove(name: string): Promise<void> {

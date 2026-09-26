@@ -49,7 +49,7 @@
                     @click.stop
                     @update:model-value="() => toggleVault(v)"
                   />
-                  <span class="vault-item-label">{{ v }}</span>
+                  <span class="vault-item-label">{{ scratchVaultLabel(v) }}</span>
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -93,7 +93,7 @@
               v-html="highlightSnippet(result.snippet, result.keyword)"
             />
             <div class="result-location">
-              <span class="result-vault">{{ result.vault }}</span>
+              <span class="result-vault">{{ scratchVaultLabel(result.vault) }}</span>
               <span class="result-path">{{ result.path }}</span>
             </div>
           </div>
@@ -134,7 +134,9 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Loading, Folder, ArrowDown } from '@element-plus/icons-vue'
+import { SCRATCH_VAULT } from '@shared/types'
 import type { SearchResultItem } from '@shared/types'
+import { scratchVaultLabel } from '../stores/draft'
 
 const props = defineProps<{
   visible: boolean
@@ -203,7 +205,7 @@ const noVaultSelected = computed(() => !allVaultsMode.value && selectedVaults.va
 const vaultLabel = computed(() => {
   if (allVaultsMode.value) return '所有库'
   if (selectedVaults.value.length === 0) return '未选择库'
-  if (selectedVaults.value.length === 1) return selectedVaults.value[0]
+  if (selectedVaults.value.length === 1) return scratchVaultLabel(selectedVaults.value[0])
   return `${selectedVaults.value.length} 个库`
 })
 
@@ -227,6 +229,10 @@ async function loadVaults() {
     const result = await window.trace.listVaults()
     if (result.ok && result.vaults) {
       availableVaults.value = result.vaults.map((v) => v.name)
+      // 草稿（FR-2.3.9）：作为独立可勾选项进入搜索范围（「所有库」语义已包含草稿，
+      // 此处让用户可在自定义范围里单独勾选 / 取消；显示名经 scratchVaultLabel 映射为「草稿」）
+      const scratch = await window.trace.scratchStatus()
+      if (scratch.ok && scratch.count > 0) availableVaults.value.push(SCRATCH_VAULT)
     }
   } catch { /* ignore */ }
 }
