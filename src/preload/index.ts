@@ -37,6 +37,7 @@ const api: TraceApi = {
     ipcRenderer.invoke('note:write', vault, path, content, expectedHash),
   saveImage: (vault, notePath, fileName, base64) =>
     ipcRenderer.invoke('note:saveImage', vault, notePath, fileName, base64),
+  importImages: (vault, notePath) => ipcRenderer.invoke('image:import', vault, notePath),
   scratchList: () => ipcRenderer.invoke('scratch:list'),
   scratchStatus: () => ipcRenderer.invoke('scratch:status'),
   scratchCreate: () => ipcRenderer.invoke('scratch:create'),
@@ -117,6 +118,12 @@ const api: TraceApi = {
   addTagToNote: (vault, path, tagId) => ipcRenderer.invoke('tag:addToNote', vault, path, tagId),
   removeTagFromNote: (vault, path, tagId) => ipcRenderer.invoke('tag:removeFromNote', vault, path, tagId),
   notesByTag: (tagId) => ipcRenderer.invoke('tag:byTag', tagId),
+  notesByTags: (tagIds, match) => ipcRenderer.invoke('tag:byTags', tagIds, match),
+
+  gistList: () => ipcRenderer.invoke('gist:list'),
+  gistGet: (vault, path) => ipcRenderer.invoke('gist:get', vault, path),
+  gistShare: (vault, path) => ipcRenderer.invoke('gist:share', vault, path),
+  gistRemove: (vault, path, deleteRemote) => ipcRenderer.invoke('gist:remove', vault, path, deleteRemote),
 
   onFsChanged: (cb) => subscribe<FsChangedPayload>('fs:changed', cb),
   onGitEvent: (cb) => subscribe<GitEventPayload>('git:event', cb),

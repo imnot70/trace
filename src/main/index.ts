@@ -13,6 +13,7 @@ import {
   FsTreeService,
   GitService,
   GithubService,
+  GistShareService,
   pickGitBinary,
   PluginHost,
   spawnUtilityRuntime,
@@ -185,7 +186,7 @@ app.whenReady().then(() => {
     gitSource: null,
     windowGlassEffect: 'auto',
     windowOpacity: 100,
-    sidebarMenus: { recents: true, favorites: true, tags: true, unresolved: true, trash: true },
+    sidebarMenus: { recents: true, favorites: true, shared: true, tags: true, unresolved: true, trash: true },
     showBacklinks: true,
     defaultEditMode: 'source',
     editPosition: 'start',
@@ -268,6 +269,10 @@ app.whenReady().then(() => {
     new JsonStore(path.join(userData, 'tags.json'), { tags: [], noteTags: [] }),
     fsTree,
     () => vaults.list().map((v) => v.name)
+  )
+  // Gist 分享记录（FR-2.3.10）：gist id ↔ 笔记映射，存应用元数据不进笔记库
+  const gistShares = new GistShareService(
+    new JsonStore(path.join(userData, 'gist-shares.json'), { shares: [] })
   )
   // 旧版（元数据方案）标签关联迁移到各笔记 frontmatter（无旧数据时为空操作）
   void tags.migrateFromNoteTags().then((count) => {
@@ -461,6 +466,7 @@ app.whenReady().then(() => {
     favorites,
     recents,
     tags,
+    gistShares,
     themes,
     account,
     github,

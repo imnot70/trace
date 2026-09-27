@@ -2,6 +2,7 @@ import crypto from 'node:crypto'
 import { JsonStore } from '../lib/jsonStore'
 import type { TagItem, NoteTagEntry, TreeNode } from '@shared/types'
 import { getFrontmatterTags, setFrontmatterTags } from '@shared/noteTags'
+import { pickTagColor } from '@shared/tagPalette'
 import type { FsTreeService } from './fsTree'
 
 /**
@@ -12,7 +13,8 @@ import type { FsTreeService } from './fsTree'
  * - 重命名 / 删除标签定义时会扫描全库改写受影响笔记的 frontmatter。
  */
 
-const PALETTE = ['#e74c3c', '#e67e22', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6', '#1abc9c', '#95a5a6']
+/** 标签组合筛选口径：all = 同时含全部标签（AND），any = 含任一标签（OR） */
+export type TagMatchMode = 'all' | 'any'
 
 interface TagsData {
   tags: TagItem[]
@@ -125,6 +127,22 @@ export class TagsService {
     return result
   }
 
+  /** 多标签组合筛选（FR-2.6.13）：match=all 取交集（同时含全部标签），any 取并集（含任一） */
+  async notesByTags(tagIds: string[], match: TagMatchMode): Promise<NoteRef[]> {
+    const lowers = tagIds
+      .map((id) => this.store.get().tags.find((t) => t.id === id)?.name.toLowerCase())
+      .filter((n): n is string => !!n)
+    if (lowers.length === 0) return []
+    const result: NoteRef[] = []
+    for await (const { vault, path, content } of this.walkNotes()) {
+      const names = getFrontmatterTags(content).map((n) => n.toLowerCase())
+      const hits = lowers.filter((l) => names.includes(l)).length
+      const ok = match === 'all' ? hits === lowers.length : hits > 0
+      if (ok) result.push({ vault, path })
+    }
+    return result
+  }
+
   // ---------- 旧版元数据迁移 ----------
 
   /** 把旧版 noteTags（库+路径+tagId）关联写入各笔记 frontmatter，完成后清空旧记录 */
@@ -162,13 +180,11 @@ export class TagsService {
     return this.store.get().tags.find((t) => t.name.toLowerCase() === lower)
   }
 
-  /** 未登记的 frontmatter 标签自动注册定义（配色按名称取自调色板），使其在侧栏可见 */
+  /** 未登记的 frontmatter 标签自动注册定义（配色按名称取自共享色板，与手动新建同一逻辑） */
   private ensureDefinition(name: string): TagItem {
     const existing = this.findByName(name)
     if (existing) return existing
-    let hash = 0
-    for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0
-    const tag: TagItem = { id: crypto.randomUUID(), name, color: PALETTE[hash % PALETTE.length], createdAt: new Date().toISOString() }
+    const tag: TagItem = { id: crypto.randomUUID(), name, color: pickTagColor(name), createdAt: new Date().toISOString() }
     this.store.update((d) => { d.tags.push(tag) })
     return tag
   }

@@ -6,7 +6,7 @@ import { effectiveTypewriterMode, flowMeasureEm } from '../lib/flow'
 import type { TypewriterMode } from '../lib/typewriter'
 
 /** 卡片网格视图的区块类型 */
-export type GridSection = 'recents' | 'favorites' | 'drafts' | 'vaults' | 'tags' | 'unresolved'
+export type GridSection = 'recents' | 'favorites' | 'drafts' | 'vaults' | 'tags' | 'unresolved' | 'shared'
 export type ViewMode = 'grid' | 'list'
 
 export type ActiveView =
@@ -15,8 +15,8 @@ export type ActiveView =
   | { name: 'trash' }
   /** 常用 / 收藏 / 笔记库 / 标签 的卡片网格视图（在主区域展示，预览卡片自然收起）；
    *  笔记库区可携带钻入路径（POSIX 相对路径，首段为库名；缺省 = 库列表级）；
-   *  标签区携带 tagId */
-  | { name: 'grid'; section: GridSection; vaultPath?: string; tagId?: string }
+   *  标签区携带选中的标签 id 集合（多选组合筛选，FR-2.6.13） */
+  | { name: 'grid'; section: GridSection; vaultPath?: string; tagIds?: string[] }
   | { name: 'settings'; tab: 'account' | 'plugins' | 'general' }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -37,7 +37,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   gitSource: null,
   windowGlassEffect: 'auto',
   windowOpacity: 100,
-  sidebarMenus: { recents: true, favorites: true, tags: true, unresolved: true, trash: true },
+  sidebarMenus: { recents: true, favorites: true, shared: true, tags: true, unresolved: true, trash: true },
   showBacklinks: true,
   defaultEditMode: 'source',
   editPosition: 'start',

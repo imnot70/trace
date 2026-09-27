@@ -113,6 +113,23 @@ async function onImage(fileName: string, base64: string): Promise<void> {
   }
 }
 
+/** 快速引入图片（FR-2.5.4）：工具栏按钮 / Ctrl+Shift+I 共用入口。
+ *  主进程弹系统选择器（多选）并复制进附件目录，此处按粘贴同款格式批量插入引用 */
+async function pickAndInsertImages(): Promise<void> {
+  if (!editor.current) return
+  const { vault, path } = editor.current
+  const result = await window.trace.importImages(vault, path)
+  if (!result.ok) {
+    ElMessage.error(result.error ?? '引入图片失败')
+    return
+  }
+  const images = result.images ?? []
+  if (images.length === 0) return
+  // 与粘贴管线同格式：![原始文件名](引用路径)，多张逐行、结尾换行（单事务一次插入）
+  editorRef.value?.insertText(images.map((img) => `![${img.fileName}](${img.reference})`).join('\n') + '\n')
+  ElMessage.success(`已引入 ${images.length} 张图片`)
+}
+
 /**
  * 行级双向滚动同步（编辑器 ⇄ 预览，经 data-source-line 映射）。
  * 防回环：程序化滚动引发的对侧 scroll 事件在 100ms 守卫窗口内按来源跳过；
@@ -765,6 +782,9 @@ onBeforeUnmount(() => {
       <TipButton tip="链接" @click="toolbarInsert('[', '](https://)', '链接文字')">
         <el-icon><Link /></el-icon>
       </TipButton>
+      <TipButton tip="引入图片 (Ctrl+Shift+I)" @click="pickAndInsertImages">
+        <el-icon><Picture /></el-icon>
+      </TipButton>
       <TipButton tip="表格 (Ctrl+T)" @click="editorRef?.beginTablePrompt()">
         <el-icon><Grid /></el-icon>
       </TipButton>
@@ -876,6 +896,7 @@ onBeforeUnmount(() => {
         @preview-note="onCompletionPreview"
         @insert-cross-vault="(t: { vault: string; path: string; name: string }) => void insertPreviewTarget(t)"
         @image="(name: string, b64: string) => onImage(name, b64)"
+        @pick-image="pickAndInsertImages"
         @open-note="onPreviewOpenNote"
       />
     </div>

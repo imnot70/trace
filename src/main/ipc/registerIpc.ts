@@ -5,7 +5,7 @@ import { errMessage } from '../lib/errMessage'
 import { logger } from '../lib/logger'
 import { resolveWithin } from '../lib/paths'
 import { nativeTheme } from 'electron'
-import { readGitVersion, resolveBundledGitPath, applyWindowGlassEffect, applyOverlayTheme } from '../services'
+import { readGitVersion, resolveBundledGitPath, applyWindowGlassEffect, applyOverlayTheme, prepareGistContent } from '../services'
 import { promoteDraft } from '../services/scratchPromote'
 import { copyNoteAcrossVaults } from '../services/noteCopy'
 import { SCRATCH_VAULT } from '@shared/types'
@@ -40,6 +40,7 @@ export interface IpcDeps {
   favorites: FavoritesService
   recents: RecentsService
   tags: TagsService
+  gistShares: import('../services/gistShares').GistShareService
   themes: ThemeService
   account: AccountService
   github: GithubService
@@ -122,6 +123,7 @@ export function registerIpc(deps: IpcDeps): void {
     if (result.ok) {
       deps.favorites.onVaultRename(oldName, newName)
       deps.recents.onVaultRename(oldName, newName)
+      deps.gistShares.onVaultRename(oldName, newName)
       deps.vaultMeta.rename(oldName, newName)
     }
     return result
@@ -131,6 +133,7 @@ export function registerIpc(deps: IpcDeps): void {
     if (result.ok) {
       deps.favorites.onDelete(name, '', 'vault')
       deps.recents.onDelete(name, '', 'vault')
+      deps.gistShares.onDelete(name, '', 'vault')
       deps.vaultMeta.remove(name)
     }
     return result
@@ -151,6 +154,7 @@ export function registerIpc(deps: IpcDeps): void {
       if (result.ok && result.newPath) {
         deps.favorites.onRename(vault, relPath, result.newPath, kind, newName)
         deps.recents.onRename(vault, relPath, result.newPath, kind, newName)
+        deps.gistShares.onRename(vault, relPath, result.newPath, kind)
       }
       return result
     }
@@ -163,6 +167,7 @@ export function registerIpc(deps: IpcDeps): void {
         const name = kind === 'note' ? result.newPath.replace(/.*\//, '').replace(/\.md$/i, '') : result.newPath.replace(/.*\//, '')
         deps.favorites.onRename(vault, srcPath, result.newPath, kind, name)
         deps.recents.onRename(vault, srcPath, result.newPath, kind, name)
+        deps.gistShares.onRename(vault, srcPath, result.newPath, kind)
       }
       return result
     }
@@ -172,6 +177,7 @@ export function registerIpc(deps: IpcDeps): void {
     if (result.ok) {
       deps.favorites.onDelete(vault, relPath, kind)
       deps.recents.onDelete(vault, relPath, kind)
+      deps.gistShares.onDelete(vault, relPath, kind)
     }
     return result
   })
@@ -202,6 +208,30 @@ export function registerIpc(deps: IpcDeps): void {
       ? deps.scratch.saveImage(fileName, base64)
       : deps.fsTree.saveImage(vault, notePath, fileName, base64, deps.settings.get().attachmentsDir)
   )
+  // 快速引入图片（FR-2.5.4）：主进程弹系统文件选择器（多选）→ 复制进附件目录 → 返回引用列表；
+  // 取消选择返回空列表不落盘。草稿伪库走 scratch 自有附件目录（与粘贴一致）
+  handle('image:import', async (vault: string, notePath: string) => {
+    const win = deps.getWindow()
+    const options = {
+      title: '引入图片',
+      properties: ['openFile', 'multiSelections'] as Array<'openFile' | 'multiSelections'>,
+      filters: [{ name: '图片', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'] }]
+    }
+    const pick = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+    if (pick.canceled || pick.filePaths.length === 0) return { ok: true, images: [] }
+    if (vault === SCRATCH_VAULT) {
+      const images: { reference: string; fileName: string }[] = []
+      for (const filePath of pick.filePaths) {
+        const data = fs.readFileSync(filePath)
+        const fileName = path.basename(filePath)
+        const saved = deps.scratch.saveImage(fileName, data.toString('base64'))
+        if (!saved.ok || !saved.reference) return { ok: false, error: saved.error ?? `「${fileName}」引入失败` }
+        images.push({ reference: saved.reference, fileName })
+      }
+      return { ok: true, images }
+    }
+    return deps.fsTree.importImages(vault, notePath, pick.filePaths, deps.settings.get().attachmentsDir)
+  })
 
   // ---------- 草稿（FR-2.3.9） ----------
   handle('scratch:list', () => ({ ok: true, notes: deps.scratch.list() }))
@@ -266,6 +296,10 @@ export function registerIpc(deps: IpcDeps): void {
     deps.tags.removeFromNote(vault, relPath, tagId)
   )
   handle('tag:byTag', async (tagId: string) => ({ ok: true, entries: await deps.tags.notesByTag(tagId) }))
+  handle('tag:byTags', async (tagIds: string[], match: 'all' | 'any') => ({
+    ok: true,
+    entries: await deps.tags.notesByTags(tagIds, match)
+  }))
 
   // ---------- 回收站 ----------
   handle('trash:list', () => ({ ok: true, entries: deps.trash.list() }))
@@ -312,6 +346,80 @@ export function registerIpc(deps: IpcDeps): void {
     const token = deps.account.getToken()
     if (!token) return { ok: false, error: '尚未登录 GitHub 账号' }
     return { ok: true, fullName: await deps.github.createRepo(token, name, isPrivate) }
+  })
+
+  // ---------- 分享为 Gist（FR-2.3.10） ----------
+  handle('gist:list', () => {
+    // 自愈清理：应用内删除走 node:delete 钩子清记录，但外部删除 / git 同步移除文件
+    // 无钩子可走，死记录会让分享网格残留「读取失败」的卡片——列表读取时顺手清掉
+    //（远端 gist 不受影响，只是解除本机关联）
+    const dead = deps.gistShares.list().filter((s) => !deps.fsTree.readNote(s.vault, s.path).ok)
+    for (const s of dead) deps.gistShares.removeRecord(s.vault, s.path)
+    return { ok: true, shares: deps.gistShares.list() }
+  })
+  handle('gist:get', (vault: string, relPath: string) => ({ ok: true, share: deps.gistShares.get(vault, relPath) }))
+  handle('gist:share', async (vault: string, relPath: string) => {
+    const token = deps.account.getToken()
+    if (!token) return { ok: false, error: '尚未登录 GitHub 账号，请先到 设置 → 账号 登录' }
+    const read = deps.fsTree.readNote(vault, relPath)
+    if (!read.ok) return { ok: false, error: read.error ?? '笔记读取失败' }
+    // 发布适配（FR-2.3.10）：剥离 frontmatter、[[双链]] 转纯文本、相对路径图片替换为占位说明
+    const content = prepareGistContent(read.content ?? '')
+    // gist 文件扁平，仅取笔记名；描述带应用标识便于在 GitHub 侧辨认来源
+    const fileName = relPath.replace(/.*\//, '').replace(/\.md$/i, '') + '.md'
+    const description = `Trace 笔记分享：${fileName.replace(/\.md$/, '')}`
+    const existing = deps.gistShares.get(vault, relPath)
+
+    const create = async (): Promise<{ id: string; url: string }> =>
+      deps.github.createGist(token, fileName, content, description)
+    try {
+      let gist: { id: string; url: string }
+      if (existing) {
+        try {
+          gist = await deps.github.updateGist(token, existing.gistId, fileName, content, description)
+        } catch (e) {
+          // 记录里的 gist 已在 GitHub 侧被删（404）→ 落库新分享；权限缺失也是 404，
+          // 但随后 create 同样 404 会被下方的 scope 分支拦住
+          if ((e as { status?: number }).status !== 404) throw e
+          gist = await create()
+        }
+      } else {
+        gist = await create()
+      }
+      const share = deps.gistShares.upsert({
+        gistId: gist.id,
+        url: gist.url,
+        vault,
+        path: relPath,
+        fileName,
+        description
+      })
+      return { ok: true, share }
+    } catch (e) {
+      // GitHub 对缺少 gist scope 的令牌返回 404：转成引导标记，渲染端展示补 scope 分步引导
+      if ((e as { status?: number }).status === 404) {
+        return {
+          ok: false,
+          needScope: true,
+          error: 'GitHub 令牌缺少 gist 权限（GitHub 对无权限的请求返回 404）'
+        }
+      }
+      throw e
+    }
+  })
+  handle('gist:remove', async (vault: string, relPath: string, deleteRemote: boolean) => {
+    const record = deps.gistShares.get(vault, relPath)
+    if (deleteRemote && record) {
+      const token = deps.account.getToken()
+      if (!token) return { ok: false, error: '尚未登录 GitHub 账号，无法删除远端分享' }
+      try {
+        await deps.github.deleteGist(token, record.gistId)
+      } catch (e) {
+        if ((e as { status?: number }).status !== 404) throw e // 已被外部删除视为成功
+      }
+    }
+    deps.gistShares.removeRecord(vault, relPath)
+    return { ok: true }
   })
 
   // ---------- Git 同步 ----------

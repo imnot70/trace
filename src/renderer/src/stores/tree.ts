@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { nextTick } from 'vue'
 import { useAppStore } from './app'
-import type { GitStatus, TagItem, TreeNode, VaultInfo } from '@shared/types'
+import type { GitStatus, GistShare, TagItem, TreeNode, VaultInfo } from '@shared/types'
 
 /** 侧栏数据：笔记库列表、库内目录树、git 状态、收藏与常用 */
 export const useTreeStore = defineStore('tree', {
@@ -17,6 +17,8 @@ export const useTreeStore = defineStore('tree', {
     favorites: [] as { id: string; vault: string; path: string; name: string; addedAt: string }[],
     recents: [] as { vault: string; path: string; name: string; openedAt: string }[],
     tags: [] as TagItem[],
+    /** 已分享的笔记（gist 分享记录，按更新时间倒序——侧栏「分享」入口与分享网格共用） */
+    shared: [] as GistShare[],
     /** 定位目标行（`${vault}::${path}` 或库级 `${vault}`），短暂高亮后自动清除 */
     locateKey: '',
     locateTimer: null as ReturnType<typeof setTimeout> | null,
@@ -42,7 +44,7 @@ export const useTreeStore = defineStore('tree', {
     async refreshAll(): Promise<void> {
       await this.loadVaults()
       await Promise.all(Object.keys(this.trees).map((v) => this.loadTree(v)))
-      await Promise.all([this.loadFavorites(), this.loadRecents(), this.loadTags()])
+      await Promise.all([this.loadFavorites(), this.loadRecents(), this.loadTags(), this.loadShared()])
     },
     toggleExpand(vault: string, path: string): void {
       const key = `${vault}::${path}`
@@ -72,6 +74,10 @@ export const useTreeStore = defineStore('tree', {
     async loadTags(): Promise<void> {
       const result = await window.trace.listTags()
       if (result.ok && result.tags) this.tags = result.tags
+    },
+    async loadShared(): Promise<void> {
+      const result = await window.trace.gistList()
+      if (result.ok && result.shares) this.shared = result.shares
     },
     /**
      * 在侧栏树中定位节点：展开祖先链 → 滚动到行 → 高亮闪烁。
@@ -117,7 +123,7 @@ export const useTreeStore = defineStore('tree', {
     clearLocationIfVault(vault: string): void {
       if (this.lastLocation?.vault === vault) this.lastLocation = null
     },
-    /** 文件变更事件：刷新对应库的树与 git 状态 */
+    /** 文件变更事件：刷新对应库的树、git 状态与分享记录（分享数随文件删除 / 外部改动保持新鲜） */
     async handleFsChanged(vault: string): Promise<void> {
       if (this.vaults.some((v) => v.name === vault)) {
         await this.loadTree(vault)
@@ -125,6 +131,7 @@ export const useTreeStore = defineStore('tree', {
       } else {
         await this.loadVaults()
       }
+      void this.loadShared()
     }
   }
 })

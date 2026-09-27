@@ -855,6 +855,14 @@ async function resetGitSource(): Promise<void> {
             />
           </div>
           <div class="setting-row">
+            <span class="setting-label">分享</span>
+            <el-switch
+              :model-value="app.settings.sidebarMenus.shared"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, shared: Boolean(v) } })"
+            />
+            <span class="settings-desc" style="margin: 0">已分享（Gist）笔记的管理入口</span>
+          </div>
+          <div class="setting-row">
             <span class="setting-label">标签</span>
             <el-switch
               :model-value="app.settings.sidebarMenus.tags"

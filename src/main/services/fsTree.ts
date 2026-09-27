@@ -262,6 +262,20 @@ export class FsTreeService {
     base64: string,
     attachDir = DEFAULT_ATTACH_DIR
   ): { ok: boolean; error?: string; reference?: string } {
+    return this.saveImageBuffer(vault, notePath, fileName, Buffer.from(base64, 'base64'), attachDir)
+  }
+
+  /**
+   * 图片落盘公共管线（FR-2.5.4）：粘贴（base64）与文件选择器（Buffer）两条入口共用——
+   * 附件目录定位 / 时间戳前缀命名 / 非法字符清洗全在此处，保证两条路产出的引用格式一致。
+   */
+  saveImageBuffer(
+    vault: string,
+    notePath: string,
+    fileName: string,
+    data: Buffer,
+    attachDir = DEFAULT_ATTACH_DIR
+  ): { ok: boolean; error?: string; reference?: string } {
     try {
       const dir = normalizeAttachDir(attachDir)
       if (!dir.ok) return { ok: false, error: dir.error }
@@ -271,11 +285,37 @@ export class FsTreeService {
       const ext = path.extname(fileName) || '.png'
       const base = path.basename(fileName, ext).replace(/[\\/:*?"<>|\u0000-\u001F]/g, '_').slice(0, 60) || 'image'
       const unique = `${Date.now()}-${base}${ext.toLowerCase()}`
-      fs.writeFileSync(path.join(attachAbs, unique), Buffer.from(base64, 'base64'))
+      fs.writeFileSync(path.join(attachAbs, unique), data)
       return { ok: true, reference: relReference(notePath, `${dir.dir}/${unique}`) }
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) }
     }
+  }
+
+  /**
+   * 从本地文件批量引入图片（FR-2.5.4）：系统文件选择器选中后由主进程读取并
+   * 复制进附件目录（命名 / 重名处理走 saveImageBuffer 同一管线），返回引用列表。
+   * 任一文件失败即中止并报错（已复制的不回滚——与粘贴逐张落盘的行为一致）。
+   */
+  importImages(
+    vault: string,
+    notePath: string,
+    filePaths: string[],
+    attachDir = DEFAULT_ATTACH_DIR
+  ): { ok: boolean; error?: string; images?: { reference: string; fileName: string }[] } {
+    const images: { reference: string; fileName: string }[] = []
+    for (const filePath of filePaths) {
+      try {
+        const data = fs.readFileSync(filePath)
+        const fileName = path.basename(filePath)
+        const saved = this.saveImageBuffer(vault, notePath, fileName, data, attachDir)
+        if (!saved.ok || !saved.reference) return { ok: false, error: saved.error ?? `「${fileName}」引入失败` }
+        images.push({ reference: saved.reference, fileName })
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : String(e) }
+      }
+    }
+    return { ok: true, images }
   }
 
   private subdirAbs(vault: string, parentPath: string): string {

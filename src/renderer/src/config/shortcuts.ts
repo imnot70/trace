@@ -43,6 +43,8 @@ export const SHORTCUTS: ShortcutItem[] = [
   { keys: 'Ctrl + 1 … Ctrl + 6', desc: '设为一级 ~ 六级标题（已是同级再按一次清除）', group: '编辑器' },
   { keys: 'Ctrl + 0', desc: '清除标题层级', group: '编辑器' },
   { keys: 'Ctrl + T', desc: '在光标处插入表格', group: '编辑器' },
+  { keys: 'Ctrl + Shift + I', desc: '引入图片（系统文件选择器多选，复制进附件目录并批量插入引用）', group: '编辑器' },
+  { keys: '/（编辑器内）', desc: '斜杠命令：行首输入 / 呼出命令面板（/表格 同 Ctrl+T、/标题1…6 同 Ctrl+1…6、/引用 /代码块 /任务列表 /分割线 /日期 等，行为与对应快捷键一致）', group: '编辑器' },
   { keys: 'Ctrl + Shift + H', desc: '光标跳到文件开头（Ctrl+Home 同义）', group: '编辑器' },
   { keys: 'Ctrl + Shift + E', desc: '光标跳到文件末尾（Ctrl+End 同义）', group: '编辑器' },
   { keys: 'Ctrl + Z / Ctrl + Shift + Z', desc: '撤销 / 重做', group: '编辑器' }
