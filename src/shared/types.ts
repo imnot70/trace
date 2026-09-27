@@ -166,6 +166,11 @@ export interface AppSettings {
   flowSoundSkipRepeat: boolean
   /** 回车音色：carriage 推回车棘轮 / bell 回车铃 / retro 复古打字机（三者合成） / rotate 轮换 */
   flowSoundVariant: 'carriage' | 'bell' | 'retro' | 'rotate'
+  /** 跨库引用免确认：开启后引入跨库笔记时直接复制到当前库，不再弹确认框（FR-2.9.11，默认关） */
+  skipCrossVaultCopyConfirm: boolean
+  /** 跨库引用目录：强制引用时把源库笔记复制到目标库的此目录（相对库根，按来源库分子目录；
+   *  重复引入相同内容自动复用已有副本，FR-2.9.11） */
+  crossVaultCopyDir: string
 }
 
 /** 自定义主题包：一组 CSS 变量覆盖（light/dark 两套），存 userData/themes/<id>.json */
@@ -404,6 +409,14 @@ export interface SearchResult {
   durationMs?: number
   /** 总匹配数 */
   totalMatches?: number
+}
+
+/** 搜索索引聚合出的标签（标签筛选下拉选项，FR-2.9.11） */
+export interface SearchTagInfo {
+  /** 标签名 */
+  tag: string
+  /** 打了该标签的笔记篇数 */
+  count: number
 }
 
 /** 反向链接引用条目 */

@@ -76,11 +76,13 @@ export const useDraftStore = defineStore('draft', {
       }
       await this.refresh()
     },
-    /** 打开保存对话框（不传 name = 保存当前打开的草稿） */
+    /** 打开保存对话框（不传 name = 保存当前打开的草稿）。
+     *  显式传 name 的调用（草稿网格的 ⋮ 菜单）不要求该草稿正在打开 */
     requestPromote(name?: string): void {
       const editor = useEditorStore()
       const target = name ?? editor.current?.path
-      if (!target || editor.current?.vault !== SCRATCH_VAULT) return
+      if (!target) return
+      if (name === undefined && editor.current?.vault !== SCRATCH_VAULT) return
       this.promoteName = target
     },
     /** 保存为笔记：写入目标库 → 移入正式体系 → 编辑器切到正式路径 */

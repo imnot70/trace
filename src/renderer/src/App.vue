@@ -24,6 +24,7 @@ import SettingsView from './views/SettingsView.vue'
 import NoteGridView from './views/NoteGridView.vue'
 import { ElMessage } from 'element-plus'
 import { noteDisplayName } from '@shared/validate'
+import { createDoubleShiftDetector } from './lib/doubleShift'
 
 const app = useAppStore()
 const tree = useTreeStore()
@@ -57,7 +58,7 @@ const railVisible = computed(() => !app.flowMode && (app.zenMode || !app.sidebar
 const sidebarShown = computed(() => (!app.zenMode && app.sidebarVisible) || app.zenSidebarOverlay)
 
 /** 导航条图标对应的视图切换（与侧栏标题点击一致） */
-function toggleGrid(section: 'recents' | 'favorites' | 'vaults'): void {
+function toggleGrid(section: 'recents' | 'favorites' | 'drafts' | 'vaults'): void {
   if (app.view.name === 'grid' && app.view.section === section) app.view = { name: 'welcome' }
   else app.view = { name: 'grid', section }
 }
@@ -90,6 +91,9 @@ function onEscape(): boolean {
   // `[[` 补全面板打开时 Esc 归 CodeMirror（收起补全），应用级回退不参与——
   // 否则补全还开着时按 Esc 会连心流一起退掉
   if (document.querySelector('.cm-tooltip-autocomplete')) return false
+  // 内置查找/替换面板打开时同理（FR-2.9.11）：Esc 先收面板，下一次 Esc 才逐级回退
+  // （@codemirror/search 6.7+ 的面板类名是 cm-search，非旧文档的 cm-searchPanel）
+  if (document.querySelector('.cm-panel.cm-search')) return false
   if (app.view.name === 'settings') {
     backFromSettings()
     return true
@@ -122,8 +126,11 @@ function onEscapeCapture(e: KeyboardEvent): void {
 function onGlobalKeydown(e: KeyboardEvent): void {
   if (hasModalOpen()) return
 
-  // Alt 系：界面视图切换（与 Ctrl 系通用动作分层）
+  // Alt 系：界面视图切换（与 Ctrl 系通用动作分层）。
+  // 焦点在 CM 查找/替换面板内时整体让位（FR-2.9.11）：面板自带 Alt+C / Alt+R / Alt+W
+  // 切换键，不拦会和应用级 Alt+W（心流）等双双触发
   if (e.altKey && !e.ctrlKey && !e.metaKey) {
+    if ((e.target as HTMLElement | null)?.closest?.('.cm-panel')) return
     const digit: Record<string, 'recents' | 'favorites' | 'vaults'> = {
       Digit1: 'recents',
       Digit2: 'favorites',
@@ -175,8 +182,14 @@ function onGlobalKeydown(e: KeyboardEvent): void {
       void draft.createDraft()
     }
     if (e.key.toLowerCase() === 'f') {
+      // Ctrl+F 专用语义（FR-2.9.11 二轮调整）：只做「笔记内查找 / 替换」，与 Double-Shift
+      //（全局搜索 / 当前库搜索）完全隔离，避免两个键都开搜索弹窗的混乱。
+      // 非编辑视图 / 无当前笔记时不响应；焦点在编辑器内由 CM 键位自行接管（此处不拦截），
+      // 焦点在外（预览 / 工具栏等）置一次性意图，由 EditorView 聚焦编辑器并打开面板
+      if (app.view.name !== 'editor' || !editor.current) return
+      if ((e.target as HTMLElement | null)?.closest?.('.cm-editor')) return
       e.preventDefault()
-      search.openSearch()
+      app.pendingNoteSearch = true
     }
     // Ctrl+E：源码 ↔ 所见即所得编辑模式切换（仅编辑视图，FR-W1）
     if (e.key.toLowerCase() === 'e' && app.view.name === 'editor' && editor.current) {
@@ -195,6 +208,16 @@ function backFromSettings(): void {
     app.view = { name: 'welcome' }
   }
 }
+
+// Double-Shift：当前库搜索（FR-2.9.11，JetBrains 惯例）。正在编辑某库的笔记时
+// 预置该库范围打开搜索框（下拉里可改），无当前笔记时回落全局搜索；
+// 有模态（含搜索框本身）打开时不触发，防误触由检测器与 hasModalOpen 双重把关
+const doubleShift = createDoubleShiftDetector(() => {
+  if (hasModalOpen()) return
+  const vault = editor.current?.vault
+  if (vault) search.openSearch(vault)
+  else search.openSearch()
+})
 
 /** Ctrl+N：目标是「当前位置上下文」——最近打开的笔记 / 网格钻入 / 侧栏点击所在处；无上下文时兜底第一个库 */
 // 编辑视图的卡片（编辑卡 + 预览卡）由 EditorView 以多根节点输出，
@@ -246,6 +269,8 @@ onMounted(async () => {
   await tree.refreshAll()
   void trash.load() // 侧栏回收站计数
   window.addEventListener('keydown', onGlobalKeydown)
+  // Double-Shift 检测与普通键处理各自独立（检测器只认 Shift，不影响其他键的计数清零逻辑）
+  window.addEventListener('keydown', doubleShift.onKeyDown)
   // Esc 用捕获阶段：必须早于 Element Plus 对话框自身的 Esc 处理，否则等冒泡到窗口时
   // 对话框已经关闭、「有模态则让位」的判断失效（实测：关对话框的同一次按键把心流也退了）
   window.addEventListener('keydown', onEscapeCapture, true)
@@ -347,6 +372,7 @@ onMounted(async () => {
   />
   <SearchDialog
     :visible="search.visible"
+    :preset-vault="search.presetVault"
     @close="search.closeSearch()"
     @open-note="handleOpenNoteFromSearch"
     @preview-note="(vault: string, path: string, title: string) => app.requestNotePreview(vault, path, title)"

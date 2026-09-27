@@ -64,7 +64,7 @@ watch(
     if (name === null) return
     vault.value = tree.vaults[0]?.name ?? ''
     dir.value = ''
-    newName.value = defaultName(name)
+    newName.value = defaultName()
     await loadTree()
   }
 )
@@ -94,7 +94,7 @@ function collectDirPaths(nodes: TreeNode[], prefix = ''): string[] {
 
 const allDirs = computed(() => collectDirPaths(nodes.value))
 
-function defaultName(draftName: string): string {
+function defaultName(): string {
   return '未命名笔记'
 }
 

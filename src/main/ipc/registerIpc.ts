@@ -7,6 +7,7 @@ import { resolveWithin } from '../lib/paths'
 import { nativeTheme } from 'electron'
 import { readGitVersion, resolveBundledGitPath, applyWindowGlassEffect, applyOverlayTheme } from '../services'
 import { promoteDraft } from '../services/scratchPromote'
+import { copyNoteAcrossVaults } from '../services/noteCopy'
 import { SCRATCH_VAULT } from '@shared/types'
 import type { ScratchService } from '../services/scratch'
 import type { AppSettings, ThemePackage } from '@shared/types'
@@ -657,13 +658,15 @@ export function registerIpc(deps: IpcDeps): void {
     }
   })
 
-  handle('search:search', (query: string, maxResults?: number, options?: { searchInTitle?: boolean; searchInContent?: boolean; vaults?: string[] }) => {
+  handle('search:search', (query: string, maxResults?: number, options?: { searchInTitle?: boolean; searchInContent?: boolean; vaults?: string[]; tags?: string[]; excludeDir?: string }) => {
     try {
-      // 防御：确保 vaults 是普通数组（Vue reactive Proxy 经 IPC 传输可能异常）
+      // 防御：确保数组是普通副本（Vue reactive Proxy 经 IPC 传输可能异常）
       const opts = options ? {
         searchInTitle: options.searchInTitle,
         searchInContent: options.searchInContent,
-        vaults: Array.isArray(options.vaults) ? [...options.vaults] : options.vaults
+        vaults: Array.isArray(options.vaults) ? [...options.vaults] : options.vaults,
+        tags: Array.isArray(options.tags) ? [...options.tags] : options.tags,
+        excludeDir: options.excludeDir
       } : undefined
       const result = deps.search.search(query, maxResults, opts)
       return result
@@ -681,28 +684,38 @@ export function registerIpc(deps: IpcDeps): void {
     }
   })
 
-  handle('search:updateFile', async (vault: string, filePath: string) => {
+  // 标签筛选下拉选项（FR-2.9.11）：从搜索索引跨库聚合
+  handle('search:listTags', () => {
     try {
-      await deps.search.updateFileIndex(vault, filePath)
-      return { ok: true }
+      return { ok: true, tags: deps.search.listTags() }
     } catch (e) {
       return { ok: false, error: errMessage(e) }
     }
   })
 
-  handle('search:removeFile', (vault: string, filePath: string) => {
+  // 跨库复制笔记（FR-2.9.11 跨库引用改进）：图片附件随迁 + 引用改写，重名自动加后缀
+  handle('note:crossVaultCopy', (sourceVault: string, sourcePath: string, targetVault: string, targetDir: string) => {
     try {
-      deps.search.removeFileIndex(vault, filePath)
-      return { ok: true }
-    } catch (e) {
-      return { ok: false, error: errMessage(e) }
-    }
-  })
-
-  handle('search:clearIndex', () => {
-    try {
-      deps.search.clearIndex()
-      return { ok: true }
+      return copyNoteAcrossVaults({
+        sourceVault,
+        sourcePath,
+        targetVault,
+        targetDir,
+        sourceVaultPath: deps.vaults.vaultPath(sourceVault),
+        targetVaultPath: deps.vaults.vaultPath(targetVault),
+        attachmentsDir: deps.settings.get().attachmentsDir,
+        readNote: (v, rel) => {
+          const r = deps.fsTree.readNote(v, rel)
+          return r.ok ? { ok: true, content: r.content } : { ok: false, error: r.error }
+        },
+        createNote: (v, d, n) => deps.fsTree.createNote(v, d, n),
+        createDir: (v, parent, name) => deps.fsTree.createDir(v, parent, name),
+        writeNote: (v, rel, content) => {
+          const r = deps.fsTree.writeNote(v, rel, content, null)
+          if (r.ok) void deps.search.updateFileIndex(v, rel)
+          return r
+        }
+      })
     } catch (e) {
       return { ok: false, error: errMessage(e) }
     }

@@ -4,7 +4,6 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, WarningFilled } from '@element-plus/icons-vue'
 import { useAppStore } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
-import { useEditorStore } from '../stores/editor'
 import { useDraftStore } from '../stores/draft'
 import { useTrashStore } from '../stores/trash'
 import { useNoteActions } from '../composables/actions'
@@ -15,7 +14,6 @@ import VaultNode from './VaultNode.vue'
 
 const app = useAppStore()
 const tree = useTreeStore()
-const editor = useEditorStore()
 const draft = useDraftStore()
 const trash = useTrashStore()
 const git = useGitStore()
@@ -71,44 +69,6 @@ onBeforeUnmount(() => {
   // 注意：onFsChanged 返回取消函数，但这里不做取消（与全局订阅生命周期一致）
 })
 
-/** 草稿显示名（去 .md 扩展名） */
-function draftDisplayName(name: string): string {
-  return name.replace(/\.md$/i, '')
-}
-
-/** 草稿 ⋮ 菜单：保存为笔记（打开保存对话框）/ 删除（永久，红色确认） */
-async function removeDraft(name: string): Promise<void> {
-  try {
-    await ElMessageBox.confirm(`确定删除草稿「${draftDisplayName(name)}」吗？删除后不可恢复。`, '删除草稿', {
-      type: 'warning',
-      confirmButtonText: '删除',
-      cancelButtonText: '取消'
-    })
-  } catch {
-    return
-  }
-  await draft.remove(name)
-}
-
-async function handleDraftMenu(cmd: string, name: string): Promise<void> {
-  if (cmd === 'promote') {
-    draft.requestPromote(name)
-    return
-  }
-  if (cmd === 'delete') {
-    try {
-      await ElMessageBox.confirm(`确定删除草稿「${draftDisplayName(name)}」吗？草稿不会进入回收站，删除后不可恢复。`, '删除草稿', {
-        type: 'warning',
-        confirmButtonText: '删除',
-        cancelButtonText: '取消'
-      })
-    } catch {
-      return
-    }
-    await draft.remove(name)
-  }
-}
-
 function toggleSection(): void {
   tree.vaultSectionOpen = !tree.vaultSectionOpen
 }
@@ -143,7 +103,7 @@ function onVaultMenuVisible(visible: boolean, vaultName: string): void {
   }
 }
 
-function toggleGrid(section: 'recents' | 'favorites' | 'vaults' | 'tags', tagId?: string): void {
+function toggleGrid(section: 'recents' | 'favorites' | 'drafts' | 'vaults' | 'tags', tagId?: string): void {
   if (section === 'tags' && tagId) {
     if (app.view.name === 'grid' && app.view.section === 'tags' && app.view.tagId === tagId) {
       app.view = { name: 'welcome' }
@@ -155,7 +115,7 @@ function toggleGrid(section: 'recents' | 'favorites' | 'vaults' | 'tags', tagId?
   app.toggleGridSection(section)
 }
 
-function isGridOpen(section: 'recents' | 'favorites' | 'vaults' | 'tags', tagId?: string): boolean {
+function isGridOpen(section: 'recents' | 'favorites' | 'drafts' | 'vaults' | 'tags', tagId?: string): boolean {
   if (app.view.name !== 'grid' || app.view.section !== section) return false
   if (section === 'tags') return app.view.tagId === tagId
   return true
@@ -257,7 +217,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
     <div class="sidebar-header">
       <div class="sidebar-logo">迹</div>
       <div class="sidebar-title">Trace 笔迹</div>
-      <button class="sidebar-search-btn" title="全局搜索 (Ctrl+F)" @click="search.openSearch()">
+      <button class="sidebar-search-btn" title="全局搜索（Shift Shift 连按两次，或点此）" @click="search.openSearch()">
         <el-icon><Search /></el-icon>
       </button>
     </div>
@@ -278,42 +238,17 @@ defineProps<{ vaults?: VaultInfo[] }>()
         </div>
       </div>
 
-      <!-- 草稿（FR-2.3.9）：临时笔记（存应用数据目录，不进笔记库 / 搜索 / 同步），保存后成为正式笔记 -->
+      <!-- 草稿（FR-2.3.9）：临时笔记（存应用数据目录，不进笔记库 / 搜索 / 同步）。
+           单行入口与常用 / 收藏同款：点击在主区域打开卡片网格（转正 / 删除在卡片 ⋮ 菜单） -->
       <div class="side-section" v-if="draft.drafts.length">
-        <div class="side-section-header">
+        <div
+          class="side-section-header"
+          :class="{ active: isGridOpen('drafts') }"
+          @click="toggleGrid('drafts')"
+        >
           <el-icon><EditPen /></el-icon>
           <span>草稿</span>
           <span class="side-section-count">{{ draft.drafts.length }}</span>
-        </div>
-        <div class="draft-list">
-          <div
-            v-for="d in draft.drafts"
-            :key="d.name"
-            class="draft-row"
-            :class="{ active: editor.current?.vault === '__scratch__' && editor.current?.path === d.name }"
-            :title="d.name"
-            @click="draft.openDraft(d.name)"
-          >
-            <span class="draft-name">{{ draftDisplayName(d.name) }}</span>
-            <button class="draft-delete-btn" title="删除草稿" @click.stop="removeDraft(d.name)">
-              <el-icon><Close /></el-icon>
-            </button>
-            <el-dropdown
-              trigger="click"
-              popper-class="dd-instant-hide"
-              @command="(cmd: string) => handleDraftMenu(cmd, d.name)"
-            >
-              <button class="row-btn tag-menu-btn" title="更多操作" @click.stop>
-                <el-icon><MoreFilled /></el-icon>
-              </button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item command="promote">保存为笔记…</el-dropdown-item>
-                  <el-dropdown-item command="delete" divided>删除草稿</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-          </div>
         </div>
       </div>
 
@@ -611,50 +546,4 @@ defineProps<{ vaults?: VaultInfo[] }>()
   color: var(--text-primary);
 }
 /* 草稿列表：紧凑单行（名 + ⋮），与标签行观感一致 */
-.draft-list {
-  padding: 0 0 4px;
-}
-.draft-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px 4px 12px;
-  margin: 0 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-.draft-row:hover {
-  background: var(--bg-hover);
-}
-.draft-row.active {
-  background: var(--bg-active);
-  color: var(--text-primary);
-}
-.draft-row .draft-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.draft-delete-btn {
-  border: none;
-  background: none;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  padding: 2px;
-  border-radius: 4px;
-  display: inline-flex;
-  align-items: center;
-  font-size: 12px;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-.draft-row:hover .draft-delete-btn {
-  opacity: 1;
-}
-.draft-delete-btn:hover {
-  color: var(--danger);
-}
 </style>

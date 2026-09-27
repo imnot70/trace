@@ -2,7 +2,7 @@
   <el-dialog
     :model-value="visible"
     title="全局搜索"
-    width="80%"
+    width="52%"
     :close-on-click-modal="false"
     :close-on-press-escape="true"
     class="search-dialog"
@@ -54,10 +54,35 @@
               </el-dropdown-menu>
             </template>
           </el-dropdown>
+          <!-- 标签维度筛选（FR-2.9.11）：多选 OR 命中，可与关键词叠加；只选标签不输关键词 = 浏览模式 -->
+          <el-dropdown trigger="click" :hide-on-click="false" popper-class="search-vault-dropdown search-tag-dropdown">
+            <el-button class="vault-trigger" :class="{ 'vault-trigger--active': selectedTags.length > 0 }">
+              <el-icon><PriceTag /></el-icon>
+              <span class="vault-trigger-text">{{ tagLabel }}</span>
+              <el-icon class="vault-trigger-arrow"><ArrowDown /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item v-if="availableTags.length === 0">
+                  <span class="vault-item-label">暂无标签</span>
+                </el-dropdown-item>
+                <el-dropdown-item v-for="t in availableTags" :key="t.tag" @click="toggleTag(t.tag)">
+                  <el-checkbox
+                    :model-value="selectedTags.includes(t.tag)"
+                    @click.stop
+                    @update:model-value="() => toggleTag(t.tag)"
+                  />
+                  <span class="vault-item-label">{{ t.tag }}（{{ t.count }}）</span>
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
         <div class="search-scope-row">
           <el-checkbox v-model="searchInTitle" @change="handleOptionChange">标题</el-checkbox>
           <el-checkbox v-model="searchInContent" @change="handleOptionChange">内容</el-checkbox>
+          <!-- 勾选 = 把「跨库引用目录」的副本纳入搜索（默认不勾 = 排除副本，FR-2.9.11）；localStorage 记忆 -->
+          <el-checkbox v-model="includeCopies" @change="handleOptionChange">跨库引用</el-checkbox>
           <span v-if="noVaultSelected" class="vault-hint">请选择至少一个笔记库</span>
         </div>
       </div>
@@ -101,7 +126,7 @@
       </div>
 
       <!-- 无结果 -->
-      <div v-else-if="searchQuery && !isSearching" class="search-empty">
+      <div v-else-if="(searchQuery || selectedTags.length > 0) && !isSearching" class="search-empty">
         <el-icon size="36"><Search /></el-icon>
         <p>未找到匹配的结果</p>
       </div>
@@ -123,7 +148,6 @@
           <el-button size="small" @click="buildIndex" :loading="isBuildingIndex">
             重建索引
           </el-button>
-          <el-button @click="handleClose">关闭</el-button>
         </div>
       </div>
     </template>
@@ -133,13 +157,18 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Loading, Folder, ArrowDown } from '@element-plus/icons-vue'
+import { Search, Loading, Folder, ArrowDown, PriceTag } from '@element-plus/icons-vue'
 import { SCRATCH_VAULT } from '@shared/types'
-import type { SearchResultItem } from '@shared/types'
+import type { SearchTagInfo, SearchResultItem } from '@shared/types'
 import { scratchVaultLabel } from '../stores/draft'
+import { useAppStore } from '../stores/app'
+
+const app = useAppStore()
 
 const props = defineProps<{
   visible: boolean
+  /** Double-Shift 预置的搜索范围（当前库名；FR-2.9.11）。打开时应用，用户仍可在下拉里改 */
+  presetVault?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -159,7 +188,17 @@ const searchInContent = ref(true)
 const selectedVaults = ref<string[]>([])
 /** 是否处于"所有库"模式（默认 true；取消所有库后为 false） */
 const allVaultsMode = ref(true)
+/** 标签维度筛选（FR-2.9.11）：多选，OR 语义 */
+const selectedTags = ref<string[]>([])
+const availableTags = ref<SearchTagInfo[]>([])
 const indexStatus = ref({ totalFiles: 0, isIndexing: false })
+/** 「跨库引用」开关：勾选 = 把副本目录纳入搜索；默认不勾（副本不参与搜索）。localStorage 记忆 */
+const INCLUDE_COPIES_KEY = 'trace.searchIncludeCopies'
+const includeCopies = ref(localStorage.getItem(INCLUDE_COPIES_KEY) === '1')
+watch(includeCopies, (v) => localStorage.setItem(INCLUDE_COPIES_KEY, v ? '1' : '0'))
+
+/** 副本目录名（设置「跨库引用目录」，留空回默认） */
+const copiesDir = computed(() => app.settings.crossVaultCopyDir?.trim() || '跨库引用')
 
 // ---------- 键盘导航（FR-2.9.10）：↑ / ↓ 移动高亮，Enter 打开，Alt+Enter 悬浮预览 ----------
 const activeIndex = ref(-1)
@@ -198,6 +237,9 @@ function onPreviewKey(): void {
 const availableVaults = ref<string[]>([])
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
+/** 请求序号：只接受最新一次搜索的响应——勾选项快速连点时，慢速的旧请求若晚到
+ *  会把新状态下的清空 / 新结果覆盖回旧值（实测：关内容后闪回「仅标题」的旧结果） */
+let searchSeq = 0
 
 /** 是否没有选择任何库（自定义模式下 selectedVaults 为空） */
 const noVaultSelected = computed(() => !allVaultsMode.value && selectedVaults.value.length === 0)
@@ -209,12 +251,32 @@ const vaultLabel = computed(() => {
   return `${selectedVaults.value.length} 个库`
 })
 
+/** 标签筛选触发钮文案：未选 = 功能名；选中后回显范围（FR-2.9.11） */
+const tagLabel = computed(() => {
+  if (selectedTags.value.length === 0) return '标签'
+  if (selectedTags.value.length === 1) return selectedTags.value[0]
+  return `${selectedTags.value.length} 个标签`
+})
+
 watch(
   () => props.visible,
   (visible) => {
     if (visible) {
+      // 上一次的关键词与结果不保留（对话框常驻挂载、ref 跨开合存活，残留结果会与本次
+      // 预置的范围不符——用户实测：第二次打开显示的是上次所有库的结果）；范围 / 标签等
+      // 筛选偏好保留
+      searchQuery.value = ''
+      searchResults.value = []
+      searchDurationMs.value = 0
+      activeIndex.value = -1
       loadVaults()
+      loadTags()
       loadIndexStatus()
+      // Double-Shift 预置范围（FR-2.9.11）：限定为当前库，用户仍可在下拉里改
+      if (props.presetVault) {
+        allVaultsMode.value = false
+        selectedVaults.value = [props.presetVault]
+      }
       setTimeout(() => {
         const el = document.querySelector('.search-dialog .el-input__inner') as HTMLInputElement
         el?.focus()
@@ -223,6 +285,21 @@ watch(
     }
   }
 )
+
+async function loadTags() {
+  try {
+    const result = await window.trace.searchListTags()
+    if (result.ok && result.tags) availableTags.value = result.tags
+  } catch { /* ignore */ }
+}
+
+/** 切换标签筛选（多选 OR）：变化即重搜——只选标签不输关键词 = 浏览该标签下全部笔记 */
+function toggleTag(tag: string) {
+  selectedTags.value = selectedTags.value.includes(tag)
+    ? selectedTags.value.filter((t) => t !== tag)
+    : [...selectedTags.value, tag]
+  performSearch()
+}
 
 async function loadVaults() {
   try {
@@ -288,10 +365,8 @@ function toggleAllVaults() {
 }
 
 function handleOptionChange() {
-  if (!searchInTitle.value && !searchInContent.value) {
-    searchInContent.value = true
-  }
-  if (searchQuery.value.trim()) performSearch()
+  // 标题 / 内容允许同时不勾（此时关键词搜索为空、仅标签筛选有效），不自动勾回
+  if (searchQuery.value.trim() || selectedTags.value.length > 0) performSearch()
 }
 
 function handleSearchInput() {
@@ -300,31 +375,38 @@ function handleSearchInput() {
 }
 
 async function performSearch() {
-  if (!searchQuery.value.trim()) {
+  const query = searchQuery.value.trim()
+  // 关键词与标签都没有：清空（只选标签不给关键词 = 浏览模式，FR-2.9.11）
+  if (!query && selectedTags.value.length === 0) {
     searchResults.value = []
     return
   }
 
-  if (!searchInTitle.value && !searchInContent.value) {
+  // 标题 / 内容都未勾时关键词搜索无匹配字段（空结果）；仅标签筛选的浏览模式不受限
+  if (query && !searchInTitle.value && !searchInContent.value) {
     searchResults.value = []
     return
   }
 
   isSearching.value = true
+  const seq = ++searchSeq
   try {
     // allVaultsMode 或无选择时不传 vaults（后端搜全部），自定义模式传具体列表
     const vaults = allVaultsMode.value || selectedVaults.value.length === 0
       ? undefined
       : [...selectedVaults.value]
     const result = await window.trace.searchQuery(
-      searchQuery.value.trim(),
+      query,
       100,
       {
         searchInTitle: searchInTitle.value,
         searchInContent: searchInContent.value,
-        vaults
+        vaults,
+        tags: selectedTags.value.length > 0 ? [...selectedTags.value] : undefined,
+        excludeDir: includeCopies.value ? undefined : copiesDir.value
       }
     )
+    if (seq !== searchSeq) return // 过期响应：已有更新的搜索发出
     if (result.ok && result.results) {
       searchResults.value = result.results
       searchDurationMs.value = result.durationMs || 0
@@ -333,10 +415,11 @@ async function performSearch() {
       searchResults.value = []
     }
   } catch (e: any) {
+    if (seq !== searchSeq) return
     ElMessage.error(e?.message || '搜索失败')
     searchResults.value = []
   } finally {
-    isSearching.value = false
+    if (seq === searchSeq) isSearching.value = false
   }
 }
 
@@ -422,6 +505,12 @@ function handleClose() {
 
 .vault-trigger--error {
   border-color: var(--el-color-danger, #f56c6c) !important;
+}
+
+/* 标签筛选激活态：与「范围」触发钮区分，提示当前处于标签过滤（FR-2.9.11） */
+.vault-trigger--active {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .vault-hint {
@@ -598,6 +687,11 @@ function handleClose() {
 .search-vault-dropdown .el-dropdown-menu {
   min-width: 160px;
   max-width: 280px;
+}
+/* 标签下拉可能很长：限高滚动（FR-2.9.11） */
+.search-tag-dropdown .el-dropdown-menu {
+  max-height: 300px;
+  overflow-y: auto;
 }
 .search-vault-dropdown .el-dropdown-menu__item {
   display: flex;

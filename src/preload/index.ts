@@ -126,9 +126,11 @@ const api: TraceApi = {
   searchBuildIndex: (force?) => ipcRenderer.invoke('search:buildIndex', force),
   searchQuery: (query, maxResults?, options?) => ipcRenderer.invoke('search:search', query, maxResults, options),
   getSearchIndexStatus: () => ipcRenderer.invoke('search:getIndexStatus'),
-  updateSearchIndex: (vault, filePath) => ipcRenderer.invoke('search:updateFile', vault, filePath),
-  removeSearchIndex: (vault, filePath) => ipcRenderer.invoke('search:removeFile', vault, filePath),
-  clearSearchIndex: () => ipcRenderer.invoke('search:clearIndex'),
+  searchListTags: () => ipcRenderer.invoke('search:listTags'),
+
+  // 跨库复制（FR-2.9.11）
+  crossVaultCopy: (sourceVault, sourcePath, targetVault, targetDir) =>
+    ipcRenderer.invoke('note:crossVaultCopy', sourceVault, sourcePath, targetVault, targetDir),
 
   // 双链 P3
   wikilinkBacklinks: (vault, notePath) => ipcRenderer.invoke('wikilink:backlinks', vault, notePath),

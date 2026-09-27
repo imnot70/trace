@@ -64,10 +64,12 @@ async function login(): Promise<void> {
 // ---------- 通用 ----------
 const workspaceInput = ref('')
 const attachmentsDirInput = ref('')
+const crossVaultCopyDirInput = ref('')
 
 onMounted(() => {
   workspaceInput.value = app.workspaceRoot
   attachmentsDirInput.value = app.settings.attachmentsDir
+  crossVaultCopyDirInput.value = app.settings.crossVaultCopyDir
   void git.refreshAccount()
   void git.loadAvailability()
   if (git.account.loggedIn) void tree.refreshAll()
@@ -160,6 +162,22 @@ async function applyAttachmentsDir(): Promise<void> {
   if (normalized.dir === app.settings.attachmentsDir) return
   await app.updateSettings({ attachmentsDir: normalized.dir })
   ElMessage.success(`附件目录已设为 ${normalized.dir}，对之后粘贴的图片生效`)
+}
+
+/** 跨库引用目录：与附件目录同一套多段校验（逐段名称合法性、≤4 层）；留空恢复默认 */
+async function applyCrossVaultCopyDir(): Promise<void> {
+  const DEFAULT_DIR = '跨库引用'
+  const raw = crossVaultCopyDirInput.value.trim() || DEFAULT_DIR
+  const normalized = normalizeAttachDir(raw)
+  if (!normalized.ok) {
+    ElMessage.error(normalized.error)
+    crossVaultCopyDirInput.value = app.settings.crossVaultCopyDir
+    return
+  }
+  crossVaultCopyDirInput.value = normalized.dir
+  if (normalized.dir === app.settings.crossVaultCopyDir) return
+  await app.updateSettings({ crossVaultCopyDir: normalized.dir })
+  ElMessage.success(`跨库引用目录已设为 ${normalized.dir}，对之后引入的跨库笔记生效`)
 }
 
 // ---------- 主题包 ----------
@@ -926,6 +944,29 @@ async function resetGitSource(): Promise<void> {
             />
             <span class="settings-desc" style="margin: 0">编辑卡右下角的「反向链接」入口，显示引用当前笔记的笔记</span>
           </div>
+          <div class="setting-row">
+            <span class="setting-label">跨库引用免确认</span>
+            <el-switch
+              :model-value="app.settings.skipCrossVaultCopyConfirm"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ skipCrossVaultCopyConfirm: Boolean(v) })"
+            />
+            <span class="settings-desc" style="margin: 0"
+              >引入跨库笔记时直接复制到当前库（图片随迁），不再弹确认框；副本与原笔记不会同步更新</span
+            >
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">跨库引用目录</span>
+            <el-input
+              v-model="crossVaultCopyDirInput"
+              style="flex: 1"
+              placeholder="跨库笔记的保存目录，如 跨库引用（可多级，如 引用/跨库）"
+              @blur="applyCrossVaultCopyDir"
+              @keydown.enter="($event.target as HTMLInputElement).blur()"
+            />
+          </div>
+          <p class="settings-desc" style="margin: 0 0 0 102px">
+            位于目标笔记库根目录，并按来源库分子目录；重复引入相同内容的笔记会自动复用已有副本。留空恢复默认「跨库引用」。
+          </p>
           <div class="setting-row">
             <span class="setting-label">打字机模式</span>
             <el-select
