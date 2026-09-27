@@ -43,6 +43,7 @@
 | [2026-09-26_share-gist/](2026-09-26_share-gist/share-gist.md) | 分享功能（FR-2.3.10）：笔记发布为 secret gist（一期），链接复制 / 更新 / 删除管理 + gist scope 引导；二期发布页按需 | ✅ 一期已实施并发布（v0.11.0；含发布适配与侧栏管理入口） |
 | [2026-09-26_image-picker/](2026-09-26_image-picker/image-picker.md) | 快速引入图片（FR-2.5.4）：系统文件选择器多选 → 附件目录 → 光标处批量引用，与粘贴管线共用命名逻辑 | ✅ 已实施并发布（v0.11.0） |
 | [tech/](../tech/) | **技术文档与踩坑记录**（tech_architecture 架构评估与选型 / tech_cm6-editor 编辑器 / tech_ui-css 渲染 / tech_electron-platform 平台 / tech_backend-data-git 主进程与数据 / tech_verification 验证方法学 / tech_product-interaction 产品交互，由技术债评审与 lessons 汇总拆分） | 📚 **持续维护**（新教训先入功能文档实施记录，再登记摘要） |
+| [handoff-2026-09-27.md](changelog/handoff-2026-09-27.md) | **09-27 会话交接（最新，Linux 机）**：提案池批量实施 → v0.11.0 发版全记录——Gist API 图片边界调研结论、user-guide 冲突标记遗留教训、验收状态、gh 未认证与分支清理备注、下一步建议顺序 | 📜 交接入口 |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
 | `images/`、`issues/` | PRD 配图与需求截图 | 📜 参考 |
