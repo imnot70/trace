@@ -22,7 +22,7 @@
 
 ### 新增测试
 
-- `notesByTags` 组合筛选（any 并集 / all 交集 / 空集合）、`importImages` 批量引入命名与失败中止、`GistShareService` 记录增改 / 重命名 / 删除 / 库更名 / 持久化、斜杠命令过滤（中文包含 + 别名前缀 + FR 清单在册）共 14 项（全仓 413 项全绿）。
+- `notesByTags` 组合筛选（any 并集 / all 交集 / 空集合）、`importImages` 批量引入命名与失败中止、`GistShareService` 记录增改 / 重命名 / 删除 / 库更名 / 持久化、斜杠命令过滤（中文包含 + 别名前缀 + FR 清单在册）、Gist 发布适配 `prepareGistContent`（frontmatter 剥离 / 双链转纯文本 / 图片占位 / 外链保留）共 20 项（全仓 419 项全绿）。
 
 ## [0.10.0] - 2026-09-27
 

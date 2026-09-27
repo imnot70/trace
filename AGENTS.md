@@ -59,6 +59,7 @@ src/
 │  │                      # / pluginHost(进程隔离+能力网关) / pluginPackage
 │  │                      # / pluginStorage / pluginRuntime / pluginGateway
 │  │                      # / marketService(索引拉取/更新对比/sha256) / marketHttp(代理跟随)
+│  │                      # / gistShares(Gist 分享记录) / gistShare(分享正文发布适配)
 │  ├─ plugin-runtime/     # 插件进程桥接 bridge.ts（独立构建为 out/main/bridge.js）
 │  │                      # / 协议 protocol.ts / require 白名单 requireGuard.ts
 │  └─ lib/                # errMessage / jsonStore / logger(脱敏) / paths / themePackage
