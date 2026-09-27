@@ -9,8 +9,11 @@ import type {
   GitAvailability,
   GitEventPayload,
   GitStatus,
+  GistShare,
+  ImportImagesResult,
   NoteContent,
   NoteInfo,
+  NoteRefEntry,
   NoteTagEntry,
   OpResult,
   PluginInfo,
@@ -67,6 +70,8 @@ export interface TraceApi {
   resolveByNameCandidates(vault: string, name: string): Promise<OpResult & { paths?: string[] }>
   writeNote(vault: string, path: string, content: string, expectedHash: string | null): Promise<OpResult & { hash?: string }>
   saveImage(vault: string, notePath: string, fileName: string, base64: string): Promise<SaveImageResult>
+  /** 系统文件选择器批量引入图片（FR-2.5.4）：主进程弹原生对话框并复制进附件目录 */
+  importImages(vault: string, notePath: string): Promise<ImportImagesResult>
 
   // ---- 收藏 / 常用 ----
   listFavorites(): Promise<OpResult & { items?: FavoriteItem[] }>
@@ -186,6 +191,16 @@ export interface TraceApi {
   addTagToNote(vault: string, path: string, tagId: string): Promise<OpResult>
   removeTagFromNote(vault: string, path: string, tagId: string): Promise<OpResult>
   notesByTag(tagId: string): Promise<OpResult & { entries?: NoteTagEntry[] }>
+  /** 多标签组合筛选（FR-2.6.13）：all = 满足全部（AND），any = 满足任一（OR） */
+  notesByTags(tagIds: string[], match: 'all' | 'any'): Promise<OpResult & { entries?: NoteRefEntry[] }>
+
+  // ---- 分享为 Gist（FR-2.3.10） ----
+  /** 查询某笔记的分享记录（无记录时 share 为 null） */
+  gistGet(vault: string, path: string): Promise<OpResult & { share?: GistShare | null }>
+  /** 发布（无记录）或更新（有记录）为 secret gist */
+  gistShare(vault: string, path: string): Promise<OpResult & { share?: GistShare; needScope?: boolean }>
+  /** 删除分享：deleteRemote = 同时删除远端 gist；否则仅解除关联 */
+  gistRemove(vault: string, path: string, deleteRemote: boolean): Promise<OpResult>
 
   // ---- 主题包 ----
   listThemes(): Promise<OpResult & { themes?: ThemePackage[] }>

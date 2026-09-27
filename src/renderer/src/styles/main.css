@@ -591,6 +591,20 @@ body {
 .grid-title {
   font-size: 15px;
   font-weight: 700;
+  /* 多标签组合标题可能很长（标签名逐个列出），超出省略且不挤压后续元素 */
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 标签组合口径切换（FR-2.6.13）：网格头部内的小号按钮组 */
+.tag-match-switch {
+  flex-shrink: 0;
+}
+.tag-match-switch .el-radio-button__inner {
+  font-size: 12px;
+  padding: 4px 10px;
 }
 
 .grid-count {

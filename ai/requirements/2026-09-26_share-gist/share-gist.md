@@ -1,6 +1,6 @@
 # 分享功能（FR-2.3.10）
 
-> 2026-09-26 立项（用户提案池 [#6](../../suggest/feature-proposals.md) 迁入，按提案建议做一期 Gist）。设计文档：待设计。工时评估（建议阶段）★★，一期 1 天。
+> 2026-09-26 立项（用户提案池 [#6](../../suggest/feature-proposals.md) 迁入，按提案建议做一期 Gist）。**一期已随分支 `feat/proposal-batch` 实施（2026-09-27，待发版）**：`GithubService` 新增 createGist / updateGist / deleteGist（octokit gists API，显式 token 模式）；分享记录存 `userData/gist-shares.json`（`GistShareService`，重命名 / 移动 / 删除 / 库更名挂钩与 favorites 同约定——删除笔记只解除关联，远端 gist 存活）；弹窗 `ShareGistDialog.vue`：发布 / 更新 / 删除（红色确认）/ 复制链接；**scope 引导**：GitHub 对缺 gist 权限返回 404，主进程识别后回传 `needScope` 标记，弹窗展示分步引导（打开令牌页 → 补勾 gist → 保存令牌值不变 → 重新发布）；更新时远端 404（gist 被外部删除）自动转为重新发布。原「待设计问题」的取舍：描述格式 = `Trace 笔记分享：{笔记名}`；gist 文件名取笔记名（gist 扁平，不含目录）；重命名 / 移动后关联由记录挂钩自动跟随；多库同名笔记按 `vault+path` 键天然消歧。
 
 ## 需求背景
 

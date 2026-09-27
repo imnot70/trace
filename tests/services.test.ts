@@ -430,6 +430,33 @@ describe('目录与笔记', () => {
     expect(fsTree.saveImage('库', 'n.md', 'a.png', Buffer.from('x').toString('base64'), '../evil').ok).toBe(false)
     expect(fsTree.saveImage('库', 'n.md', 'a.png', Buffer.from('x').toString('base64'), 'a/b/c/d/e').ok).toBe(false)
   })
+
+  it('importImages（FR-2.5.4）：批量复制进附件目录，命名与粘贴管线一致', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('库')
+    fsTree.createNote('库', '', 'n')
+    // 准备两份源图片（一张中文文件名，验证非法字符清洗不落到文件名）
+    const srcDir = path.join(tmp, 'src-imgs')
+    fs.mkdirSync(srcDir)
+    const p1 = path.join(srcDir, 'pic one.png')
+    const p2 = path.join(srcDir, '截图.jpg')
+    fs.writeFileSync(p1, Buffer.from('png-data-1'))
+    fs.writeFileSync(p2, Buffer.from('jpg-data-2'))
+
+    const r = fsTree.importImages('库', 'n.md', [p1, p2])
+    expect(r.ok).toBe(true)
+    expect(r.images).toHaveLength(2)
+    // 引用格式与 saveImage 一致（同一 saveImageBuffer 产出），alt 保留原始文件名
+    expect(r.images![0]).toEqual({ reference: expect.stringMatching(/^\.\/attachments\/\d+-pic one\.png$/), fileName: 'pic one.png' })
+    expect(r.images![1]).toEqual({ reference: expect.stringMatching(/^\.\/attachments\/\d+-截图\.jpg$/), fileName: '截图.jpg' })
+    // 文件真实落盘（时间戳前缀命名，与粘贴一致）
+    const attachDir = path.join(vaults.vaultPath('库'), 'attachments')
+    expect(fs.readdirSync(attachDir)).toHaveLength(2)
+    expect(fs.readFileSync(path.join(attachDir, fs.readdirSync(attachDir)[0]))).toEqual(Buffer.from('png-data-1'))
+
+    // 不存在的文件报错
+    expect(fsTree.importImages('库', 'n.md', [path.join(srcDir, 'missing.png')]).ok).toBe(false)
+  })
 })
 
 describe('回收站', () => {
@@ -647,6 +674,27 @@ describe('标签系统（frontmatter）', () => {
     await tags.addTagToNote('a2', 'n2.md', tag.id)
     const entries = await tags.notesByTag(tag.id)
     expect(entries.map((e) => `${e.vault}/${e.path}`)).toEqual(['a1/n1.md', 'a2/n2.md'])
+  })
+
+  it('多标签组合筛选（FR-2.6.13）：any 取并集、all 取交集', async () => {
+    const { vaults, fsTree, tags } = buildTags()
+    vaults.create('库')
+    fsTree.createNote('库', '', 'n1') // a + b
+    fsTree.createNote('库', '', 'n2') // 仅 a
+    fsTree.createNote('库', '', 'n3') // 无标签
+    const a = tags.createTag('a', '#e74c3c').tag!
+    const b = tags.createTag('b', '#2ecc71').tag!
+    await tags.addTagToNote('库', 'n1.md', a.id)
+    await tags.addTagToNote('库', 'n1.md', b.id)
+    await tags.addTagToNote('库', 'n2.md', a.id)
+
+    const anyRes = await tags.notesByTags([a.id, b.id], 'any')
+    expect(anyRes.map((e) => e.path).sort()).toEqual(['n1.md', 'n2.md'])
+    const allRes = await tags.notesByTags([a.id, b.id], 'all')
+    expect(allRes.map((e) => e.path)).toEqual(['n1.md'])
+    // 未知标签 id / 空集合 → 空
+    expect(await tags.notesByTags(['ghost'], 'any')).toEqual([])
+    expect(await tags.notesByTags([], 'all')).toEqual([])
   })
 
   it('旧版元数据关联迁移到 frontmatter 后清空', async () => {

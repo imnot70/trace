@@ -10,6 +10,7 @@ import { useNoteActions } from '../composables/actions'
 import { useGitStore } from '../stores/git'
 import { useSearchStore } from '../stores/search'
 import type { VaultInfo, BacklinkRef } from '@shared/types'
+import { pickTagColor, TAG_PALETTE } from '@shared/tagPalette'
 import VaultNode from './VaultNode.vue'
 
 const app = useAppStore()
@@ -105,10 +106,14 @@ function onVaultMenuVisible(visible: boolean, vaultName: string): void {
 
 function toggleGrid(section: 'recents' | 'favorites' | 'drafts' | 'vaults' | 'tags', tagId?: string): void {
   if (section === 'tags' && tagId) {
-    if (app.view.name === 'grid' && app.view.section === 'tags' && app.view.tagId === tagId) {
-      app.view = { name: 'welcome' }
+    // 多标签组合筛选（FR-2.6.13）：点击行 = 把标签加入 / 移出筛选集合；集合清空即关闭网格
+    if (app.view.name === 'grid' && app.view.section === 'tags') {
+      const next = app.view.tagIds?.includes(tagId)
+        ? (app.view.tagIds ?? []).filter((id) => id !== tagId)
+        : [...(app.view.tagIds ?? []), tagId]
+      app.view = next.length ? { name: 'grid', section: 'tags', tagIds: next } : { name: 'welcome' }
     } else {
-      app.view = { name: 'grid', section: 'tags', tagId }
+      app.view = { name: 'grid', section: 'tags', tagIds: [tagId] }
     }
     return
   }
@@ -117,11 +122,9 @@ function toggleGrid(section: 'recents' | 'favorites' | 'drafts' | 'vaults' | 'ta
 
 function isGridOpen(section: 'recents' | 'favorites' | 'drafts' | 'vaults' | 'tags', tagId?: string): boolean {
   if (app.view.name !== 'grid' || app.view.section !== section) return false
-  if (section === 'tags') return app.view.tagId === tagId
+  if (section === 'tags') return !!tagId && (app.view.tagIds ?? []).includes(tagId)
   return true
 }
-
-const TAG_COLORS = ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#3498db','#9b59b6','#1abc9c','#95a5a6']
 
 async function createTag(): Promise<void> {
   const { value } = await ElMessageBox.prompt('标签名称', '新建标签', {
@@ -130,8 +133,8 @@ async function createTag(): Promise<void> {
     inputPattern: /\S+/,
     inputErrorMessage: '标签名不能为空'
   })
-  const color = TAG_COLORS[tree.tags.length % TAG_COLORS.length]
-  const result = await window.trace.createTag(value.trim(), color)
+  // 自动配色（FR-2.6.14）：按名称取自共享色板，同名标签颜色稳定；可后在标签 ⋮ 菜单改色
+  const result = await window.trace.createTag(value.trim(), pickTagColor(value.trim()))
   if (result.ok) {
     // 收起状态下区块标题的 + 按钮仍可点：新建后展开，否则新标签建完就「不见了」
     app.setTagSectionOpen(true)
@@ -188,7 +191,7 @@ async function applyTagColor(): Promise<void> {
 const colorDialogVisible = computed(() => !!colorDialog.value?.visible)
 
 const colorDialogColor = computed<string>({
-  get: () => colorDialog.value?.color ?? TAG_COLORS[0],
+  get: () => colorDialog.value?.color ?? TAG_PALETTE[0],
   set: (v) => {
     if (colorDialog.value && v) colorDialog.value.color = v
   }
@@ -470,7 +473,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
     >
       <div class="color-swatch-grid">
         <button
-          v-for="c in TAG_COLORS"
+          v-for="c in TAG_PALETTE"
           :key="c"
           class="color-swatch"
           :class="{ active: colorDialogColor === c }"

@@ -94,6 +94,26 @@ export interface NoteTagEntry {
   tagId: string
 }
 
+/** 库内笔记的定位（库 + 相对路径） */
+export interface NoteRefEntry {
+  vault: string
+  path: string
+}
+
+/** 分享记录（FR-2.3.10）：gist ↔ 笔记映射，存应用元数据（gist-shares.json），不写入笔记库 */
+export interface GistShare {
+  gistId: string
+  /** gist 页面链接（有链接即可见的 secret gist） */
+  url: string
+  vault: string
+  path: string
+  /** gist 内的文件名（gist 文件扁平，不含目录） */
+  fileName: string
+  description: string
+  createdAt: string
+  updatedAt: string
+}
+
 export type ThemeOption = 'light' | 'dark' | 'system'
 
 export interface AppSettings {
@@ -355,6 +375,12 @@ export interface NoteContent {
 export interface SaveImageResult extends OpResult {
   /** 相对当前笔记所在目录的引用路径（POSIX 风格） */
   reference?: string
+}
+
+/** 文件选择器批量引入图片（FR-2.5.4） */
+export interface ImportImagesResult extends OpResult {
+  /** 每张图的引用与原始文件名（alt 文案与粘贴管线完全一致） */
+  images?: { reference: string; fileName: string }[]
 }
 
 /** 主进程 -> 渲染进程：文件变更（聚合） */

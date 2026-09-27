@@ -6,6 +6,7 @@ import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
 import { useNoteActions } from '../composables/actions'
 import TagPickerDialog from './TagPickerDialog.vue'
+import ShareGistDialog from './ShareGistDialog.vue'
 
 const props = defineProps<{
   vault: string
@@ -91,6 +92,8 @@ function handleMenuCommand(cmd: string): void {
     })
   } else if (cmd === 'tag') {
     tagDialogVisible.value = true
+  } else if (cmd === 'share') {
+    shareDialogVisible.value = true
   }
 }
 
@@ -99,8 +102,10 @@ function handlePlusCommand(cmd: string): void {
   else if (cmd === 'note') actions.createNote(props.vault, props.node.path)
 }
 
-// ---------- 标签选择弹窗（仅笔记；按需渲染） ----------
+// ---------- 标签选择 / 分享弹窗（仅笔记；按需渲染） ----------
 const tagDialogVisible = ref(false)
+const shareDialogVisible = ref(false)
+
 </script>
 
 <template>
@@ -157,6 +162,7 @@ const tagDialogVisible = ref(false)
                 <el-dropdown-item command="exportPdf">导出 PDF…</el-dropdown-item>
                 <el-dropdown-item command="exportPdfMerge">导出合并 PDF…</el-dropdown-item>
                 <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
+                <el-dropdown-item command="share">分享…</el-dropdown-item>
                 <el-dropdown-item command="move">移动到…</el-dropdown-item>
                 <el-dropdown-item command="rename">重命名</el-dropdown-item>
                 <el-dropdown-item v-if="favorited" command="unfavorite" divided
@@ -179,6 +185,13 @@ const tagDialogVisible = ref(false)
       :visible="tagDialogVisible"
       :note="{ vault, path: node.path, name: node.name }"
       @update:visible="tagDialogVisible = $event"
+      @changed="void tree.loadTags()"
+    />
+    <ShareGistDialog
+      v-if="shareDialogVisible"
+      :visible="shareDialogVisible"
+      :note="{ vault, path: node.path, name: node.name }"
+      @update:visible="shareDialogVisible = $event"
     />
     <template v-if="isDir && expanded">
       <VaultNode

@@ -56,6 +56,7 @@ import { useAppStore } from '../stores/app'
 import { SCRATCH_VAULT } from '@shared/types'
 import type { PromptKey } from '../lib/tablePrompt'
 import { flatCompletionOptions, type NoteTreeNode } from '../lib/noteCompletion'
+import { filterSlashCommands, type SlashAction } from '../lib/slashCommands'
 import type { TreeNode } from '@shared/types'
 
 const props = defineProps<{
@@ -82,6 +83,8 @@ const emit = defineEmits<{
   (e: 'preview-note', target: { vault: string; path: string; name: string }): void
   /** Alt+Enter 落跨库引用（FR-2.9.11）：交外层弹确认框 → 复制进当前库 → 插入引用 */
   (e: 'insert-cross-vault', target: { vault: string; path: string; name: string }): void
+  /** 快速引入图片（FR-2.5.4）：Ctrl+Shift+I 交外层调系统文件选择器（需要 vault/path，外层有） */
+  (e: 'pick-image'): void
 }>()
 
 /**
@@ -294,7 +297,51 @@ function getDirAt(tree: TreeNode[], relDir: string): TreeNode[] {
   return current
 }
 
-/** 综合补全：[[双链]] 笔记名 + 相对路径 + 锚点 */
+/** 综合补全：[[双链]] 笔记名 + 相对路径 + 锚点 + 斜杠命令（FR-2.4.22） */
+function slashCompletions(context: CompletionContext): CompletionResult | null {
+  // 激活策略：仅「行首的 /」触发（/ 后可跟任意非空白过滤文本）——
+  // URL（a/b）、日期（2026/09/26）中的 / 前面有别的字符，match 起点不在行首即放弃
+  const m = context.matchBefore(/\/[^/\s]*$/)
+  if (!m) return null
+  if (context.state.doc.lineAt(m.from).from !== m.from) return null
+  const query = context.state.sliceDoc(m.from + 1, m.to)
+  const defs = filterSlashCommands(query)
+  if (defs.length === 0) return null
+  const options = defs.map((d) => ({
+    label: d.label,
+    detail: d.detail,
+    type: 'keyword',
+    apply: (view: EditorView, _c: unknown, from: number, to: number) => {
+      // 先删掉已输入的「/命令文本」（completion apply 不会自动替换函数型 apply 的区间），
+      // 再执行动作——动作与快捷键 / 工具栏走同一函数（一致性原则）
+      view.dispatch({ changes: { from, to } })
+      runSlashAction(d.action)
+    }
+  }))
+  // 源已过滤（filterSlashCommands），关闭 CM 对中文不可靠的内置模糊过滤
+  return { from: m.from, options, filter: false }
+}
+
+/** 执行斜杠命令：全部落到与快捷键 / 工具栏相同的既有函数，不另造第二套行为 */
+function runSlashAction(action: SlashAction): void {
+  if (!view) return
+  switch (action.kind) {
+    case 'table':
+      beginTablePrompt()
+      break
+    case 'heading':
+      setHeading(view, action.level)
+      view.focus()
+      break
+    case 'snippet':
+      insertSnippet(action.before, action.after, action.placeholder)
+      break
+    case 'text':
+      insertText(action.text())
+      break
+  }
+}
+
 function traceCompletions(context: CompletionContext): CompletionResult | null {
   // 1. [[双链]] 笔记名补全（前缀不含 / 走全库扁平模糊匹配 FR-2.9.10；含 / 逐级路径）
   const wikilink = context.matchBefore(/\[\[[^\]]*$/)
@@ -854,6 +901,9 @@ function createView(initialDoc: string): EditorView {
             return true
           }
         },
+        // 快速引入图片（FR-2.5.4）：Ctrl+Shift+I 打开系统文件选择器，选中后批量插引用。
+        // IPC 需要 vault/path，事件交外层 EditorView 处理（与粘贴 @image 同一挂载点）
+        { key: 'Mod-Shift-i', preventDefault: true, run: () => (emit('pick-image'), true) },
         // 文首 / 文尾跳转（FR-2.4.19）：主键盘区替代键位（笔记本上 Home / End 常需 Fn）；
         // CM 自带 scrollIntoView，视图随光标滚动
         { key: 'Mod-Shift-h', preventDefault: true, run: (target: EditorView) => (cursorDocStart(target), true) },
@@ -870,7 +920,8 @@ function createView(initialDoc: string): EditorView {
         emit('update:modelValue', update.state.doc.toString())
       }),
       autoCloseHtmlTags,
-      autocompletion({ override: [traceCompletions] })
+      // 斜杠命令在前（/ 激活），[[ 双链 / 相对路径 / 锚点在后——激活区间不相交，互斥由 CM 保证
+      autocompletion({ override: [slashCompletions, traceCompletions] })
     ]
   })
   return new EditorView({ state, parent: container.value! })

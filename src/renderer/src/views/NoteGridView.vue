@@ -8,6 +8,7 @@ import { collectNotes, exportNotesToHtml, exportNotesToPdf, exportMergePdf } fro
 import { useEditorStore } from '../stores/editor'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
 import TagPickerDialog from '../components/TagPickerDialog.vue'
+import ShareGistDialog from '../components/ShareGistDialog.vue'
 import { formatRelativeTime } from '../lib/relativeTime'
 import { stripFrontmatter } from '@shared/noteTags'
 import { SCRATCH_VAULT } from '@shared/types'
@@ -39,9 +40,13 @@ const section = computed<GridSection>(() =>
   app.view.name === 'grid' ? app.view.section : 'recents'
 )
 const title = computed(() => {
-  if (section.value === 'tags' && tagId.value) {
-    const tag = tree.tags.find((t) => t.id === tagId.value)
-    return tag ? `标签：${tag.name}` : '标签'
+  if (section.value === 'tags' && tagIds.value.length) {
+    const names = tagIds.value
+      .map((id) => tree.tags.find((t) => t.id === id)?.name)
+      .filter((n): n is string => !!n)
+    if (names.length === 1) return `标签：${names[0]}`
+    // 多标签组合（FR-2.6.13）：列出标签名（过长由 CSS 截断），口径在头部切换
+    return `标签：${names.join(' / ')}`
   }
   return SECTION_TITLE[section.value]
 })
@@ -129,15 +134,23 @@ watch(
   { immediate: true }
 )
 
-// ---------- 标签视图：按 tagId 加载笔记 ----------
-const tagId = computed(() =>
-  app.view.name === 'grid' && app.view.section === 'tags' ? app.view.tagId ?? '' : ''
+// ---------- 标签视图：多标签组合筛选（FR-2.6.13） ----------
+const tagIds = computed<string[]>(() =>
+  app.view.name === 'grid' && app.view.section === 'tags' ? app.view.tagIds ?? [] : []
 )
+/** 组合口径：all = 满足全部（AND）/ any = 满足任一（OR），localStorage 持久化 */
+const tagMatch = ref<'all' | 'any'>((localStorage.getItem('trace.tagMatch') as 'all' | 'any') || 'any')
+
+function setTagMatch(mode: 'all' | 'any'): void {
+  tagMatch.value = mode
+  localStorage.setItem('trace.tagMatch', mode)
+}
+
 const tagItems = ref<GridItem[]>([])
 
-watch(tagId, async (id) => {
-  if (!id) { tagItems.value = []; return }
-  const result = await window.trace.notesByTag(id)
+watch([tagIds, tagMatch], async ([ids, match]) => {
+  if (!ids.length) { tagItems.value = []; return }
+  const result = await window.trace.notesByTags(ids, match)
   if (result.ok && result.entries) {
     tagItems.value = result.entries.map((e) => ({
       vault: e.vault,
@@ -239,6 +252,10 @@ function openTagDialog(item: GridItem): void {
   tagDialogNote.value = item
   tagDialogVisible.value = true
 }
+
+// ---------- 分享对话框（FR-2.3.10） ----------
+const shareDialogVisible = ref(false)
+const shareDialogNote = ref<GridItem | null>(null)
 
 function dirOf(path: string): string {
   const parts = path.split('/')
@@ -342,6 +359,11 @@ async function onNoteMenuCommand(cmd: string, item: GridItem): Promise<void> {
   }
   if (cmd === 'tag') {
     await openTagDialog(item)
+    return
+  }
+  if (cmd === 'share') {
+    shareDialogNote.value = item
+    shareDialogVisible.value = true
     return
   }
   if (cmd === 'move') {
@@ -505,6 +527,17 @@ watch(section, () => {
         </el-icon>
         <span class="grid-title">{{ title }}</span>
         <span v-if="itemCount" class="grid-count">{{ itemCount }}</span>
+        <!-- 多标签组合口径切换（FR-2.6.13）：≥2 个标签时出现 -->
+        <el-radio-group
+          v-if="section === 'tags' && tagIds.length >= 2"
+          :model-value="tagMatch"
+          size="small"
+          class="tag-match-switch"
+          @update:model-value="setTagMatch($event as 'all' | 'any')"
+        >
+          <el-radio-button value="any">满足任一</el-radio-button>
+          <el-radio-button value="all">满足全部</el-radio-button>
+        </el-radio-group>
         <span class="grid-hint">
           {{ isVaults ? '双击打开笔记库' : '单击预览 · 双击编辑' }}
         </span>
@@ -534,7 +567,9 @@ watch(section, () => {
               : section === 'favorites'
                 ? '收藏的笔记会显示在这里'
                 : section === 'tags'
-                  ? '该标签下还没有笔记，可在笔记的「标签…」菜单中添加'
+                  ? tagIds.length >= 2 && tagMatch === 'all'
+                    ? '选中的标签组合下没有共同笔记，可试试切换为「满足任一」'
+                    : '该标签下还没有笔记，可在笔记的「标签…」菜单中添加'
                   : '还没有笔记库，点击侧栏「笔记库」旁的 + 创建'
         }}
       </p>
@@ -640,6 +675,7 @@ watch(section, () => {
                       <el-dropdown-menu>
                         <el-dropdown-item command="exportPdf">导出 PDF…</el-dropdown-item>
                         <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
+                        <el-dropdown-item command="share">分享…</el-dropdown-item>
                         <el-dropdown-item command="move">移动到…</el-dropdown-item>
                         <el-dropdown-item command="favorite">
                           {{ isFavorited({ vault: vaultName, path: node.path, name: node.name }) ? '取消收藏' : '收藏笔记' }}
@@ -704,6 +740,7 @@ watch(section, () => {
                   <el-dropdown-item command="tag">标签</el-dropdown-item>
                   <el-dropdown-item command="exportPdf" divided>导出 PDF…</el-dropdown-item>
                   <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
+                  <el-dropdown-item command="share">分享…</el-dropdown-item>
                   <el-dropdown-item command="delete" class="danger-item">删除笔记</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -759,6 +796,9 @@ watch(section, () => {
       :note="tagDialogNote"
       @changed="void tree.loadTags()"
     />
+
+    <!-- 分享为 Gist 对话框（FR-2.3.10） -->
+    <ShareGistDialog v-model:visible="shareDialogVisible" :note="shareDialogNote" />
   </div>
 </template>
 
