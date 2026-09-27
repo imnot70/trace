@@ -241,8 +241,7 @@ const mainView = computed(() => {
   switch (app.view.name) {
     case 'trash':
       return TrashView
-    case 'settings':
-      return SettingsView
+    // settings 不在此列（2026-09-27）：设置改为弹窗覆盖层，编辑/欢迎视图保持挂载
     case 'grid':
       return NoteGridView
     default:
@@ -369,11 +368,14 @@ onMounted(async () => {
     </div>
 
     <div class="main-cards">
-      <EditorView v-if="app.view.name === 'editor'" />
+      <EditorView v-if="app.view.name === 'editor' || app.view.name === 'settings'" />
       <div v-else class="page-card">
         <component :is="mainView" />
       </div>
     </div>
+
+    <!-- 设置弹窗（编辑 / 欢迎视图保持挂载，弹窗覆盖其上） -->
+    <SettingsView v-if="app.view.name === 'settings'" />
   </div>
   <NameDialog />
   <MoveDialog />
