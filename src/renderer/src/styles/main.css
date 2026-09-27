@@ -16,6 +16,11 @@
   --success-text: #2f7d33;
   /* 心流写作底色色板（柔和浅色，随用户在设置中选择） */
   --flow-paper-cream: #f8f3e6;
+  /* 纸面模式的表格线 / 当前行高亮 / 表头底（暖棕半透明，在米黄纸面上清晰可辨——
+     常规的 --border-color / --bg-hover 按白底调校，落在纸面上会被洗掉） */
+  --flow-paper-line: rgba(146, 116, 60, 0.45);
+  --flow-paper-active: rgba(146, 116, 60, 0.18);
+  --flow-paper-head: rgba(146, 116, 60, 0.14);
   --flow-paper-green: #edf3e6;
   --flow-paper-blue: #e9f0f8;
   --flow-paper-pink: #f9eef1;
@@ -55,6 +60,9 @@ html.dark {
   --success-text: #2f7d33;
   /* 心流写作底色色板（深色主题下的柔和暗色，与背景有轻微区分、不刺眼） */
   --flow-paper-cream: #2a271f;
+  --flow-paper-line: rgba(235, 213, 170, 0.28);
+  --flow-paper-active: rgba(235, 213, 170, 0.1);
+  --flow-paper-head: rgba(235, 213, 170, 0.07);
   --flow-paper-green: #232b25;
   --flow-paper-blue: #222a33;
   --flow-paper-pink: #2f262a;
@@ -775,6 +783,22 @@ body {
    仍清晰；仅作用于底色开启态。!important 是为覆盖 CM 内联写入的 zIndex。 */
 .editor-card.flow-mode.flow-paper-on .cm-selectionLayer {
   z-index: 0 !important;
+}
+
+/* 纸面模式下的对比度补偿（2026-09-27 用户反馈：整面纸色后行高亮与表格线不明显）：
+   常规的 --bg-hover（α0.06 蓝灰）与 --border-color（浅灰）按白底调校，落在暖色纸面上
+   被洗掉——行高亮 / 行号槽高亮 / 表格线 / 表头底改用纸面专属的暖棕半透明变量。
+   !important 用于压过 CM 主题生成规则（StyleModule 注入顺序在 main.css 之后）。 */
+.editor-card.flow-mode.flow-paper-on .cm-activeLine,
+.editor-card.flow-mode.flow-paper-on .cm-activeLineGutter {
+  background-color: var(--flow-paper-active) !important;
+}
+.editor-card.flow-mode.flow-paper-on .markdown-body th,
+.editor-card.flow-mode.flow-paper-on .markdown-body td {
+  border-color: var(--flow-paper-line);
+}
+.editor-card.flow-mode.flow-paper-on .markdown-body th {
+  background: var(--flow-paper-head);
 }
 
 /* 底色纹理（FR-2.9.8 扩展，用户提出）：羊皮纸 / 书页纤维——纯 CSS 程序化纹理，无图片素材。
