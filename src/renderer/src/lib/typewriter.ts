@@ -106,6 +106,11 @@ export function typewriter(mode: TypewriterMode): Extension {
             this.resizeObserver = new ResizeObserver((entries) => {
               // disconnect() 后仍可能收到一次已入队的空投递（迟到的僵尸回调）——早退
               if (this.destroyed || entries.length === 0) return
+              // 组词期间（中文输入法 IME）内容层高度会随组词文本增减（折行变化）触发本回调，
+              // 此时**绝不重锚**：锚定的程序化滚动会移动组词行、破坏 Chromium 的组词锚点
+              //（真机五笔实测：候选框脱落、上屏「测试」与编码双写且顺序随机、随机删除后续
+              // 若干行——2026-09-27 用户反馈）。组词结束由 compositionend 补锚兜底。
+              if (this.view.composing) return
               this.schedule()
             })
             this.resizeObserver.observe(view.scrollDOM)
@@ -144,9 +149,16 @@ export function typewriter(mode: TypewriterMode): Extension {
           this.schedule(true)
         }
 
-        /** 输入法组词结束：组词期间冻结，结束时补一次锚定 */
+        /** 输入法组词结束：组词期间冻结（见 RO 回调注释），结束后**延两帧**补一次锚定——
+         *  第一帧让 CM 完成提交事务与自身测量，避免用提交中途的临时几何算锚点
+         *  （真机五笔实测：提交后立即锚定曾把光标甩到视口顶部，2026-09-27 用户反馈） */
         private onCompositionEnd = (): void => {
-          this.schedule(true)
+          if (this.destroyed) return
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              if (!this.destroyed && !this.view.composing) this.schedule(true)
+            })
+          })
         }
 
         update(update: ViewUpdate): void {
@@ -188,6 +200,8 @@ export function typewriter(mode: TypewriterMode): Extension {
           if (this.raf) return
           this.raf = requestAnimationFrame(() => {
             this.raf = 0
+            // 排队期间进入组词：同样冻结（组词中的滚动会破坏组词锚点，见 RO 回调注释）
+            if (this.view.composing) return
             this.anchor()
           })
         }
