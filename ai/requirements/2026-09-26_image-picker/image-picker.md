@@ -1,6 +1,6 @@
 # 快速引入图片（FR-2.5.4）
 
-> 2026-09-26 立项（用户提案池 [#7](../../suggest/feature-proposals.md) 迁入）。**已随分支 `feat/proposal-batch` 实施（2026-09-27，待发版）**：入口 = 工具栏「图片」按钮 + `Ctrl+Shift+I`（编辑器 keymap 发 `pick-image` 事件，EditorView 统一处理）；命名 / 重名逻辑从 `saveImage` 抽出 `saveImageBuffer` 公共管线（`fsTree.ts`），`importImages` 主进程一次 IPC 完成弹窗 + 复制 + 命名；多文件单事务插入、格式与粘贴一致（`![原始文件名](引用)`）。原「待设计问题」的取舍：多文件插入采用**单事务**（一次 dispatch，全部引用一次插入，撤销一步回退）、插入后光标落在末尾换行之后。
+> 2026-09-26 立项（用户提案池 [#7](../../suggest/feature-proposals.md) 迁入）。**已实施并随 v0.11.0 发布（2026-09-27，分支 `feat/proposal-batch`）**：入口 = 工具栏「图片」按钮 + `Ctrl+Shift+I`（编辑器 keymap 发 `pick-image` 事件，EditorView 统一处理）；命名 / 重名逻辑从 `saveImage` 抽出 `saveImageBuffer` 公共管线（`fsTree.ts`），`importImages` 主进程一次 IPC 完成弹窗 + 复制 + 命名；多文件单事务插入、格式与粘贴一致（`![原始文件名](引用)`）。原「待设计问题」的取舍：多文件插入采用**单事务**（一次 dispatch，全部引用一次插入，撤销一步回退）、插入后光标落在末尾换行之后。
 
 ## 需求背景
 

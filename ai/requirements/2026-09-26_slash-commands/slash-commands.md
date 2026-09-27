@@ -1,6 +1,6 @@
 # 斜杠命令（FR-2.4.22）
 
-> 2026-09-26 立项（用户提案池 [#4](../../suggest/feature-proposals.md) 迁入）。**已随分支 `feat/proposal-batch` 实施（2026-09-27，待发版）**：命令注册表 `lib/slashCommands.ts` 单一数据源（label + 英文别名 + detail + action），过滤纯函数含单测；补全源 `slashCompletions` 挂在 `autocompletion({ override: [slash, trace] })` 首位，激活策略 = **行首 `/` + 非空白过滤文本**（matchBefore 起点须在行首，URL / 日期中的 / 不触发）；apply 先删除「/命令文本」再经 `runSlashAction` 落到与快捷键相同的既有函数（`beginTablePrompt` / `setHeading` / `insertSnippet` / `insertText`）。原「待设计问题」的取舍：命令清单 = FR 列表 + `/行内代码` `/链接`（覆盖工具栏全部插入类动作）；别名见源码 `aliases` 字段；**不开放给插件命令**（FR-2.11 插件命令走工具栏按钮通道，斜杠命令仅封装内置编辑动作，避免跨进程时序问题）。
+> 2026-09-26 立项（用户提案池 [#4](../../suggest/feature-proposals.md) 迁入）。**已实施并随 v0.11.0 发布（2026-09-27，分支 `feat/proposal-batch`）**：命令注册表 `lib/slashCommands.ts` 单一数据源（label + 英文别名 + detail + action），过滤纯函数含单测；补全源 `slashCompletions` 挂在 `autocompletion({ override: [slash, trace] })` 首位，激活策略 = **行首 `/` + 非空白过滤文本**（matchBefore 起点须在行首，URL / 日期中的 / 不触发）；apply 先删除「/命令文本」再经 `runSlashAction` 落到与快捷键相同的既有函数（`beginTablePrompt` / `setHeading` / `insertSnippet` / `insertText`）。原「待设计问题」的取舍：命令清单 = FR 列表 + `/行内代码` `/链接`（覆盖工具栏全部插入类动作）；别名见源码 `aliases` 字段；**不开放给插件命令**（FR-2.11 插件命令走工具栏按钮通道，斜杠命令仅封装内置编辑动作，避免跨进程时序问题）。
 
 ## 需求背景
 
