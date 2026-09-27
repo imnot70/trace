@@ -4,6 +4,7 @@ import { useAppStore } from '../stores/app'
 import { useEditorStore } from '../stores/editor'
 import { useTreeStore } from '../stores/tree'
 import { useGitStore } from '../stores/git'
+import { useSearchStore } from '../stores/search'
 import { useDraftStore, scratchVaultLabel } from '../stores/draft'
 import { useNoteActions } from '../composables/actions'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
@@ -21,6 +22,9 @@ const tree = useTreeStore()
 const git = useGitStore()
 const draft = useDraftStore()
 const actions = useNoteActions()
+
+/** 跨库引用确认框打开期间置顶预览临时让位（见 insertPreviewTarget 内注释） */
+const confirmOverPreview = ref(false)
 
 const editorRef = ref<InstanceType<typeof MarkdownEditor> | null>(null)
 const previewRef = ref<InstanceType<typeof MarkdownPreview> | null>(null)
@@ -66,6 +70,9 @@ async function insertPreviewTarget(target: { vault: string; path: string; name: 
     // 确认框文案即需求原文；设置开关「跨库引用免确认」可跳过（默认弹框）
     const copyDir = app.settings.crossVaultCopyDir?.trim() || '跨库引用'
     if (!app.settings.skipCrossVaultCopyConfirm) {
+      // 置顶态（搜索框打开时预览盖在弹窗之上）需要临时让位：确认框 z 序低于置顶预览，
+      // 不让位会被预览卡片盖住按钮（确认框关闭后恢复置顶）
+      confirmOverPreview.value = true
       try {
         await ElMessageBox.confirm(
           `跨库文件会将笔记从原库复制到当前库的「${copyDir}」目录中（重复引入相同内容会自动复用已有副本），改变原笔记时复制内容不会同时改变，确定要强制引用吗？`,
@@ -74,6 +81,8 @@ async function insertPreviewTarget(target: { vault: string; path: string; name: 
         )
       } catch {
         return // 用户取消：保留悬浮预览，继续阅读
+      } finally {
+        confirmOverPreview.value = false
       }
     }
     const copied = await window.trace.crossVaultCopy(target.vault, target.path, current.vault, `${copyDir}/${target.vault}`)
@@ -116,6 +125,11 @@ function rebindScrollSync(): void {
   unbindScrollSync?.()
   unbindScrollSync = null
   void nextTick(() => {
+    // 悬浮预览展示「别的笔记」时（搜索结果预览 / 补全预览）：内容与当前笔记没有行号对应
+    // 关系，完全不绑双向同步——否则键盘滚动预览会经反向同步把正在编辑的笔记拖走（实测
+    // Ctrl+Shift+E 跳预览尾部的同时编辑笔记被滚到末尾），编辑器滚动也不会抢走预览位置。
+    // 展示当前笔记（Alt+P 同文一瞥）时维持原有双向同步
+    if (completionPreview.value) return
     const scroller = editorWrapRef.value?.querySelector('.cm-scroller') as HTMLElement | null
     const activePreview = floatPreviewRef.value ?? previewRef.value
     const previewEl: HTMLElement | null = activePreview?.scrollElement ?? null
@@ -291,6 +305,13 @@ async function onBacklinkOpenNote(vault: string, path: string, line?: number): P
 }
 
 // Ctrl/Cmd+S 手动保存；Alt+P 呼出/收起悬浮预览；Esc 收起悬浮预览
+// 悬浮预览键盘滚动（2026-09-27 用户反馈，FR-2.9.10 补充）：搜索结果预览等「非编辑态」
+// 无法经编辑器光标 + 同步滚动让预览滚动，鼠标滚轮之外补键盘动线——
+// ↑/↓ 逐屏滚动内容；Ctrl+Shift+H / Ctrl+Shift+E 跳到头部 / 尾部。
+// 让位规则：焦点在编辑器内不抢（↑/↓ 是光标移动、Ctrl+Shift+H/E 是跳文件首尾的既有键位）；
+// 搜索框打开时不抢（↑/↓ 归结果选择）；焦点在输入框时不抢（正常输入导航）。
+const searchStore = useSearchStore()
+
 function onKeydown(e: KeyboardEvent): void {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault()
@@ -303,6 +324,31 @@ function onKeydown(e: KeyboardEvent): void {
     else app.openFloatingPreview()
   }
   // Esc 的分级回退统一由 App.vue 的 onEscape 处置（唯一入口，避免一次按键退两级）
+
+  if (app.floatingPreview && floatPreviewRef.value?.scrollElement) {
+    const el = floatPreviewRef.value.scrollElement
+    const focusInEditor = !!document.activeElement?.closest?.('.cm-editor')
+    const key = e.key.toLowerCase()
+    // 跳头部 / 尾部：Ctrl+Shift+H / E（编辑器聚焦时让位）
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && (key === 'h' || key === 'e') && !focusInEditor) {
+      e.preventDefault()
+      el.scrollTop = key === 'h' ? 0 : el.scrollHeight
+      return
+    }
+    // 逐屏滚动：↑/↓。让位规则：编辑器聚焦（光标移动）、「其它输入框」聚焦且搜索框未打开
+    // （正常输入导航）。搜索框打开且预览也在时 ↑/↓ 归预览——此时选结果走 Alt+↑/↓（搜索弹窗处理）
+    if (
+      !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey &&
+      (e.key === 'ArrowDown' || e.key === 'ArrowUp') &&
+      !focusInEditor &&
+      !(searchStore.visible
+        ? false
+        : !!document.activeElement?.closest?.('input, textarea, [contenteditable="true"]'))
+    ) {
+      e.preventDefault()
+      el.scrollBy({ top: e.key === 'ArrowDown' ? 72 : -72 })
+    }
+  }
 }
 
 // ---------- 悬浮预览「一瞥」语义：回到写作即自动收回 ----------
@@ -337,12 +383,41 @@ function locateCurrent(): void {
 }
 
 // 悬浮预览开/关后把键盘焦点交还编辑器：预览按钮与 Alt+P 都可能让焦点滞留在按钮上，
-// 焦点不在编辑器则无法继续输入，「输入自动收回」也随之失效
+// 焦点不在编辑器则无法继续输入，「输入自动收回」也随之失效。
+// 例外：搜索框打开时（Alt+Enter 预览动线）不抢焦点——焦点留在搜索框继续 ↑/↓ 选结果
 watch(
   () => app.floatingPreview,
   async () => {
     await nextTick()
+    if (searchStore.visible) return
     editorRef.value?.focus()
+  }
+)
+
+// 搜索框关闭而悬浮预览仍在（Alt+Enter 预览后 Esc 收搜索框去阅读，FR-2.9.11 三轮反馈）：
+// 焦点交给预览容器（tabindex=-1），↑/↓ / Ctrl+Shift+H/E 才能滚动预览——否则 EP 会在关窗
+// 时把焦点机械还原到后面的编辑器，键盘滚动被「焦点在编辑器」让位规则挡住。
+// ⚠️ EP 的焦点还原发生在 close 事件**之前**（先还焦点、后通知关闭），所以拦截器必须在
+// 「预览打开且搜索框开着」时就武装，跨过关窗瞬间；拦截到还原落在编辑器 → 改道预览。
+// 解除：用户点回编辑区（mousedown 先收回预览，floatingPreview 已为 false）或搜索框重开
+//（重新武装是同一函数引用，addEventListener 天然幂等）
+const floatPreviewEl = ref<HTMLElement | null>(null)
+function onFloatFocusDivert(e: FocusEvent): void {
+  // 实测时序（2026-09-27）：EP 还原焦点到编辑器发生在 close 事件之前——此刻 search.visible
+  // 仍为 true，不能用「搜索框已关」做放行条件；模态开着时焦点落到编辑器只可能是关窗还原
+  if (!app.floatingPreview) {
+    document.removeEventListener('focusin', onFloatFocusDivert, true)
+    return
+  }
+  if ((e.target as HTMLElement | null)?.closest?.('.cm-editor')) {
+    document.removeEventListener('focusin', onFloatFocusDivert, true)
+    floatPreviewEl.value?.focus()
+  }
+}
+watch(
+  () => app.floatingPreview && searchStore.visible,
+  (on) => {
+    if (on) document.addEventListener('focusin', onFloatFocusDivert, true)
   }
 )
 
@@ -836,9 +911,16 @@ onBeforeUnmount(() => {
     />
   </div>
 
-  <!-- 悬浮预览（长按预览按钮呼出，Esc 或关闭按钮收起）；跨库预览态加红色萤光边框（FR-2.9.11） -->
+  <!-- 悬浮预览（长按预览按钮呼出，Esc 或关闭按钮收起）；跨库预览态加红色萤光边框（FR-2.9.11）。
+       tabindex=-1：搜索框关闭而预览仍在时焦点落在这里（见下方 watch），↑/↓ / Ctrl+Shift+H/E 键盘滚动才不被「焦点在编辑器」让位规则挡住 -->
   <Transition name="float-preview">
-    <div v-if="app.floatingPreview" class="floating-preview" :class="{ 'cross-vault': previewCrossVault }">
+    <div
+      v-if="app.floatingPreview"
+      ref="floatPreviewEl"
+      class="floating-preview"
+      :class="{ 'cross-vault': previewCrossVault, 'above-search': searchStore.visible && !confirmOverPreview }"
+      tabindex="-1"
+    >
         <div class="floating-preview-header">
           <span class="floating-preview-title">
             {{ completionPreview ? `预览：${completionPreview.name}` : '预览' }}
@@ -967,6 +1049,19 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* 程序化聚焦的容器（搜索框关闭后承接键盘滚动焦点）：不显示焦点环 */
+.floating-preview:focus {
+  outline: none;
+}
+
+/* 搜索框打开期间的置顶态（FR-2.9.10 ③ 二次变更）：悬浮预览要盖在搜索弹窗的模态遮罩
+   之上正常显示（EP 弹窗 z 序从 2000 起按次递增，3000 稳定高于任何会话内的弹窗计数，
+   与 mode-toast 同级、DOM 靠后故提示条仍在其上）。跨库引用确认框打开期间临时让位
+   （above-search 类摘除），否则确认框会被置顶预览盖住 */
+.floating-preview.above-search {
+  z-index: 3000;
 }
 
 .floating-preview-header {

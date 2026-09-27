@@ -109,9 +109,21 @@ function onEscape(): boolean {
 const nameDialog = useNameDialog()
 const moveDialog = useMoveDialog()
 
-/** 对话框 / 弹窗打开时跳过全局键，避免劫持输入与确认操作 */
+/** 对话框 / 弹窗打开时跳过全局键，避免劫持输入与确认操作。
+ *  EP 的 .el-overlay 在对话框关闭后仍驻留 DOM（v-show 打上 display: none），因此不能用
+ *  「节点存在」或内联样式子串判定，必须看**实际渲染可见性**：内联样式在 EP 重写 zIndex /
+ *  过渡中途被打断等情况下可能不含 "display: none" 字样，误判会让全局快捷键被静默吞掉
+ *  （用户实测：心流中 Ctrl+, 往返设置后几乎全部快捷键失效，只能重启——按可见性判定后，
+ *  未真正显示的遗留节点不再吞键） */
 function hasModalOpen(): boolean {
-  return nameDialog.visible || moveDialog.visible || !!document.querySelector('.el-message-box__wrapper, .el-overlay:not([style*="display: none"])')
+  if (nameDialog.visible || moveDialog.visible) return true
+  const overlays = document.querySelectorAll<HTMLElement>('.el-message-box__wrapper, .el-overlay')
+  for (const el of overlays) {
+    if (getComputedStyle(el).display === 'none') continue
+    if (el.getClientRects().length === 0) continue
+    return true
+  }
+  return false
 }
 
 /** Esc 捕获阶段入口：网格内的「返回上级 / 关闭网格」仍由 NoteGridView 自行处理（模式未命中时不消费）。
@@ -124,6 +136,9 @@ function onEscapeCapture(e: KeyboardEvent): void {
 }
 
 function onGlobalKeydown(e: KeyboardEvent): void {
+  // 长按自动重复（e.repeat）对开关 / 导航类按键只会造成来回翻转（Ctrl+, 按住 =
+  // 设置 ↔ 编辑器快速抖动），一律忽略，一次物理按下只处理一次
+  if (e.repeat) return
   if (hasModalOpen()) return
 
   // Alt 系：界面视图切换（与 Ctrl 系通用动作分层）。

@@ -14,6 +14,7 @@ import {
   RETRO_PUSH_DURATION_S,
   RETRO_PUSH_ONLY_DURATION_S,
   RETRO_PUSH_START_S,
+  RETRO_RATCHET_SKIP_TEETH,
   SOUND_MIN_INTERVAL_MS,
   gateReturn,
   renderRetroBell,
@@ -139,6 +140,16 @@ describe('复古打字机回车音色（按键 + 推回车 + 回车铃）', () =
     expect(lastGap).toBeLessThan(firstGap) // 渐密
     expect(clicks[clicks.length - 1].amp).toBeGreaterThan(clicks[0].amp) // 渐强
     expect(RETRO_PUSH_START_S).toBeLessThan(RETRO_BELL_START_S)
+  })
+
+  it('复古打字机的棘轮去掉开头 2 颗（2026-09-27 用户反馈）；独立「推回车」音色保持完整序列', () => {
+    expect(RETRO_RATCHET_SKIP_TEETH).toBe(2)
+    const full = returnRatchetSchedule(() => 0.5, RETRO_PUSH_DURATION_S)
+    const kept = full.slice(RETRO_RATCHET_SKIP_TEETH)
+    // 去的是**开头**：保留序列起点后移、长度少 2，渐强包络（尾颗最响）不受影响
+    expect(kept.length).toBe(full.length - 2)
+    expect(kept[0].t).toBeGreaterThan(full[0].t)
+    expect(kept[kept.length - 1].amp).toBeGreaterThan(kept[0].amp)
   })
 
   it('推回车段（70-200ms）有明显棘轮能量（远高于按键结束后的静默段）', () => {

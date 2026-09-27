@@ -7,7 +7,7 @@
  * - bell     回车铃「叮」：2742 / 6527 / 9700 / 11449Hz 四个分音，余振约 0.7s；
  * - retro    复古打字机「回车」：三段结构——
  *           ① 按键：宽带咔（5-12kHz）+ 四个微冲击 + 字锤/纸卷共振（1.2k / 2.9kHz）+ 延迟 12ms 的机体「咚」（96/182Hz）；
- *           ② 70ms 推回车：约 0.26s / 30 余颗棘轮齿（间隔 9ms 渐密到 6ms、振幅渐强，实测间隔 6-10ms）；
+ *           ② 70ms 推回车：约 0.26s / 30 颗左右棘轮齿（间隔 9ms 渐密到 6ms、振幅渐强，实测间隔 6-10ms；2026-09-27 按用户反馈去掉开头 2 颗）；
  *           ③ 240ms 回车铃：2742 / 6527 / 9700 / 11449Hz 四个分音，衰减 0.33-0.63s（整段 1.0s，末尾 60ms 淡出）。
  *           不随包音频文件，仅按实测声学特征重建（分析与比对见 flow-mode_design.md 第 10.5–10.8 节）；
  * - rotate  轮换：每次回车依次使用上面三种，避免长时间写作的重复感。
@@ -23,8 +23,8 @@ export type ConcreteVariant = (typeof CONCRETE_VARIANTS)[number]
 /** 连续回车的限流窗口：窗口内的重复触发直接丢弃（避免机关枪） */
 export const SOUND_MIN_INTERVAL_MS = 120
 
-/** 音量上限系数：主增益 = volume/100 × 0.5，留足余量防爆音 */
-const GAIN_SCALE = 0.5
+/** 音量上限系数：主增益 = volume/100 × 0.6（2026-09-27 用户反馈整体加大 20%，原 0.5；归一化后峰值 0.95×0.95×0.6 ≈ 0.54，仍有余量防爆音） */
+const GAIN_SCALE = 0.6
 
 /** 是否应当发声（纯函数，可单测） */
 export function shouldPlayReturn(now: number, lastPlayAt: number): boolean {
@@ -124,6 +124,8 @@ export const RETRO_DURATION_S = 1.0
 /** 推回车（棘轮）的起始与时长（0.13s 加倍为 0.26s） */
 export const RETRO_PUSH_START_S = 0.07
 export const RETRO_PUSH_DURATION_S = 0.26
+/** 「复古打字机」整声里棘轮去掉的开头颗数（2026-09-27 用户反馈减 2 颗；独立「推回车」音色不受影响） */
+export const RETRO_RATCHET_SKIP_TEETH = 2
 /** 回车铃的起始（推回车进行中开始响，与实录音效一致） */
 export const RETRO_BELL_START_S = 0.24
 /** 缓冲末尾的淡出时长（秒）：铃的余振被截断处需要淡出，否则会有咔哒声 */
@@ -189,8 +191,10 @@ export const RETRO_PUSH_ONLY_DURATION_S = 0.3
 /** 独立「回车铃」的时长（秒） */
 export const RETRO_BELL_ONLY_DURATION_S = 0.8
 
-/** 三层波形（长度 = RETRO_DURATION_S）：按键（含机体咚）/ 推回车棘轮 / 回车铃 */
-function retroLayers(sampleRate: number, rand: () => number): { strike: Float32Array; push: Float32Array; bell: Float32Array } {
+/** 三层波形（长度 = RETRO_DURATION_S）：按键（含机体咚）/ 推回车棘轮 / 回车铃。
+ *  skipRatchetTeeth：去掉棘轮序列开头 N 颗——独立「推回车」音色保持完整序列，
+ *  「复古打字机」整声按用户反馈减 2 颗（2026-09-27） */
+function retroLayers(sampleRate: number, rand: () => number, skipRatchetTeeth = 0): { strike: Float32Array; push: Float32Array; bell: Float32Array } {
   const p = retroParams(rand)
   const n = Math.max(1, Math.floor(sampleRate * RETRO_DURATION_S))
 
@@ -209,7 +213,7 @@ function retroLayers(sampleRate: number, rand: () => number): { strike: Float32A
   }
 
   const tau = 2 * Math.PI
-  const push = returnRatchetSchedule(rand)
+  const push = returnRatchetSchedule(rand).slice(skipRatchetTeeth)
   const bell = RETRO_BELL_PARTIALS.map((b) => ({ ...b, freq: b.freq * p.bellDetune }))
 
   const strike = new Float32Array(n)
@@ -253,12 +257,12 @@ function retroLayers(sampleRate: number, rand: () => number): { strike: Float32A
 /**
  * 渲染一次「复古打字机回车」波形（纯函数，可单测）。三段结构（实测见设计文档 10.5–10.8）：
  * ① 0ms  按键：噪声脉冲（一阶高通 + 低通整形）+ 四个微冲击 + 字锤 / 纸卷共振 + 延迟 12ms 的机体「咚」；
- * ② 70ms 推回车：约 35 颗棘轮齿（噪声 + 木质共振，间隔 9ms 渐密到 6ms、振幅渐强）；
+ * ② 70ms 推回车：约 33 颗棘轮齿（噪声 + 木质共振，间隔 9ms 渐密到 6ms、振幅渐强；开头 2 颗去掉，2026-09-27 用户反馈）；
  * ③ 240ms 回车铃：四个分音（2.7k / 6.5k / 9.7k / 11.4kHz）各自指数衰减，整段 1.0s、末尾 60ms 淡出。
  */
 export function renderRetroReturn(sampleRate: number, rand: () => number = Math.random): Float32Array {
   const n = Math.max(1, Math.floor(sampleRate * RETRO_DURATION_S))
-  const { strike, push: pushLayer, bell: bellLayer } = retroLayers(sampleRate, rand)
+  const { strike, push: pushLayer, bell: bellLayer } = retroLayers(sampleRate, rand, RETRO_RATCHET_SKIP_TEETH)
   const pushStart = Math.floor(sampleRate * RETRO_PUSH_START_S)
 
   // 三层合成：**按键定标**——按键是这一声的起手，必须保持全局最强；

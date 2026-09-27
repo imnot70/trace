@@ -751,6 +751,15 @@ body {
   background: var(--flow-paper);
 }
 
+/* 底色会盖住选区：CM 的 drawSelection 把选区画在滚动层下 z-index:-1 的独立图层里，
+   靠内容层透明透出来；上面给 .cm-content 涂的不透明底色正好把它盖住（实测：心流 +
+   底色下选中文字无任何高亮，常规模式正常）。底色开启时把选区图层抬到内容层之上——
+   选区色 --accent-soft 是半透明色，文字在选区下仍清晰；仅作用于底色开启态，常规模式
+   保持 CM 默认层序不变。!important 是为覆盖 CM 内联写入的 zIndex。 */
+.editor-card.flow-mode.flow-paper-on .cm-selectionLayer {
+  z-index: 0 !important;
+}
+
 /* 底色纹理（FR-2.9.8 扩展，用户提出）：羊皮纸 / 书页纤维——纯 CSS 程序化纹理，无图片素材。
    纹理全部为均匀重复图案（feTurbulence 颗粒经 stitchTiles 无缝化、细纹不随 x 变化），
    跨行号槽 / 内容层两个元素不会出现接缝；羊皮纸的暖棕颗粒 + 疏色斑叠加在所选底色上。 */

@@ -18,8 +18,6 @@
             placeholder="搜索笔记..."
             clearable
             @input="handleSearchInput"
-            @keydown.down.prevent="moveActive(1)"
-            @keydown.up.prevent="moveActive(-1)"
             @keydown.enter.exact="onEnterKey"
             @keydown.alt.enter.prevent="onPreviewKey"
           >
@@ -27,8 +25,8 @@
               <el-icon><Search /></el-icon>
             </template>
           </el-input>
-          <el-dropdown trigger="click" :hide-on-click="false" popper-class="search-vault-dropdown">
-            <el-button class="vault-trigger" :class="{ 'vault-trigger--error': noVaultSelected }">
+          <el-dropdown ref="vaultDropdownRef" trigger="click" :hide-on-click="false" popper-class="search-vault-dropdown">
+            <el-button class="vault-trigger" :class="{ 'vault-trigger--error': noVaultSelected }" title="搜索范围（Alt+V 展开列表）">
               <el-icon><Folder /></el-icon>
               <span class="vault-trigger-text">{{ vaultLabel }}</span>
               <el-icon class="vault-trigger-arrow"><ArrowDown /></el-icon>
@@ -55,8 +53,8 @@
             </template>
           </el-dropdown>
           <!-- 标签维度筛选（FR-2.9.11）：多选 OR 命中，可与关键词叠加；只选标签不输关键词 = 浏览模式 -->
-          <el-dropdown trigger="click" :hide-on-click="false" popper-class="search-vault-dropdown search-tag-dropdown">
-            <el-button class="vault-trigger" :class="{ 'vault-trigger--active': selectedTags.length > 0 }">
+          <el-dropdown ref="tagDropdownRef" trigger="click" :hide-on-click="false" popper-class="search-vault-dropdown search-tag-dropdown">
+            <el-button class="vault-trigger" :class="{ 'vault-trigger--active': selectedTags.length > 0 }" title="标签筛选（Alt+T 展开列表）">
               <el-icon><PriceTag /></el-icon>
               <span class="vault-trigger-text">{{ tagLabel }}</span>
               <el-icon class="vault-trigger-arrow"><ArrowDown /></el-icon>
@@ -79,10 +77,10 @@
           </el-dropdown>
         </div>
         <div class="search-scope-row">
-          <el-checkbox v-model="searchInTitle" @change="handleOptionChange">标题</el-checkbox>
-          <el-checkbox v-model="searchInContent" @change="handleOptionChange">内容</el-checkbox>
+          <el-checkbox v-model="searchInTitle" title="标题筛选（Alt+1）" @change="handleOptionChange">标题</el-checkbox>
+          <el-checkbox v-model="searchInContent" title="内容筛选（Alt+2）" @change="handleOptionChange">内容</el-checkbox>
           <!-- 勾选 = 把「跨库引用目录」的副本纳入搜索（默认不勾 = 排除副本，FR-2.9.11）；localStorage 记忆 -->
-          <el-checkbox v-model="includeCopies" @change="handleOptionChange">跨库引用</el-checkbox>
+          <el-checkbox v-model="includeCopies" title="跨库引用筛选（Alt+3）" @change="handleOptionChange">跨库引用</el-checkbox>
           <span v-if="noVaultSelected" class="vault-hint">请选择至少一个笔记库</span>
         </div>
       </div>
@@ -145,7 +143,7 @@
         </span>
         <span v-else />
         <div>
-          <el-button size="small" @click="buildIndex" :loading="isBuildingIndex">
+          <el-button size="small" title="重建搜索索引（Alt+R）" @click="buildIndex" :loading="isBuildingIndex">
             重建索引
           </el-button>
         </div>
@@ -155,8 +153,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, type Ref } from 'vue'
+import { ElMessage, type DropdownInstance } from 'element-plus'
 import { Search, Loading, Folder, ArrowDown, PriceTag } from '@element-plus/icons-vue'
 import { SCRATCH_VAULT } from '@shared/types'
 import type { SearchTagInfo, SearchResultItem } from '@shared/types'
@@ -203,6 +201,67 @@ const copiesDir = computed(() => app.settings.crossVaultCopyDir?.trim() || '跨�
 // ---------- 键盘导航（FR-2.9.10）：↑ / ↓ 移动高亮，Enter 打开，Alt+Enter 悬浮预览 ----------
 const activeIndex = ref(-1)
 
+/** 库范围 / 标签下拉实例：快捷键 Alt+V / Alt+T 程序化展开列表（FR-2.9.11 三轮反馈） */
+const vaultDropdownRef = ref<DropdownInstance | null>(null)
+const tagDropdownRef = ref<DropdownInstance | null>(null)
+
+/**
+ * 搜索框打开期间的全局键位（FR-2.9.11 三轮反馈，2026-09-27）：
+ * ① ↑/↓ 结果选择不再依赖搜索输入框焦点——鼠标点击弹窗任意位置后仍可用；悬浮预览打开时
+ *   ↑/↓ 让位给预览滚动，改用 Alt+↑/↓ 选结果（选中变更后预览内容同步跟随）；
+ * ② Alt+1 / 2 / 3 切换标题 / 内容 / 跨库引用筛选；Alt+V / Alt+T 展开库范围 / 标签下拉
+ *   （列表内 ↑/↓ 选择、空格勾选由 el-dropdown 自带）；Alt+R 重建索引；
+ * ③ Enter / Alt+Enter 在焦点不在输入框 / 按钮上时同样生效（结果列表全键盘动线）；
+ *   焦点在输入框 / 按钮上时让位给元素自身的键盘语义，避免双触发。
+ */
+function onDialogKeydown(e: KeyboardEvent): void {
+  if (!props.visible) return
+  // 下拉列表展开：↑/↓ / 空格 / Enter 全归菜单，应用级快捷键一并让位
+  if (document.querySelector('.search-bar [aria-expanded="true"]')) return
+  if ((e.target as HTMLElement | null)?.closest?.('.el-dropdown-menu, .el-popper')) return
+  const target = e.target as HTMLElement | null
+  const inInput = !!target?.closest?.('input, textarea')
+  const onButton = !!target?.closest?.('button')
+
+  if (e.altKey && !e.ctrlKey && !e.metaKey) {
+    if (e.repeat) return
+    if (e.key === '1') toggleOption(searchInTitle, e)
+    else if (e.key === '2') toggleOption(searchInContent, e)
+    else if (e.key === '3') toggleOption(includeCopies, e)
+    else if (e.key.toLowerCase() === 'v') { e.preventDefault(); vaultDropdownRef.value?.handleOpen() }
+    else if (e.key.toLowerCase() === 't') { e.preventDefault(); tagDropdownRef.value?.handleOpen() }
+    else if (e.key.toLowerCase() === 'r') { e.preventDefault(); if (!isBuildingIndex.value) void buildIndex() }
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      // Alt+↑/↓：悬浮预览打开时=变更选中项且预览内容同步跟随（不关预览直接换结果）；
+      // 预览未打开时=纯结果选择
+      e.preventDefault()
+      moveActive(e.key === 'ArrowDown' ? 1 : -1)
+      if (app.floatingPreview) onPreviewKey()
+    } else if (e.key === 'Enter' && !inInput && !onButton) { e.preventDefault(); onPreviewKey() }
+    return
+  }
+  if (e.ctrlKey || e.metaKey || e.shiftKey) return
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    // 悬浮预览打开时 ↑/↓ 归预览滚动（EditorView 处理），Alt+↑/↓ 才是选结果
+    if (app.floatingPreview) return
+    e.preventDefault()
+    moveActive(e.key === 'ArrowDown' ? 1 : -1)
+  } else if (e.key === 'Enter' && !inInput && !onButton) {
+    e.preventDefault()
+    onEnterKey()
+  }
+}
+
+/** 快捷键切换筛选勾选：v-model 的 ref 直接翻转后手动触发重搜（el-checkbox 的 change 事件不会因程序赋值触发） */
+function toggleOption(opt: Ref<boolean>, e: KeyboardEvent): void {
+  e.preventDefault()
+  opt.value = !opt.value
+  handleOptionChange()
+}
+
+onMounted(() => window.addEventListener('keydown', onDialogKeydown))
+onBeforeUnmount(() => window.removeEventListener('keydown', onDialogKeydown))
+
 watch(searchResults, (list) => {
   activeIndex.value = list.length > 0 ? 0 : -1
 })
@@ -229,8 +288,8 @@ function onEnterKey(): void {
 function onPreviewKey(): void {
   const target = searchResults.value[activeIndex.value] ?? searchResults.value[0]
   if (!target) return
-  // 决策 D3：搜索框是模态对话框（遮罩压悬浮预览的 z 序），预览前先关闭；Ctrl+F 可立即重开
-  emit('close')
+  // 决策 D3（2026-09-27 二次变更，用户反馈）：预览后搜索框**保持打开**——↑/↓ 换结果
+  // 可连续 Alt+Enter 预览，动线不断；需要专注阅读预览时 Esc 收起搜索框（悬浮预览保留）
   emit('preview-note', target.vault, target.path, target.title)
 }
 
