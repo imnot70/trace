@@ -13,6 +13,7 @@ import TipButton from '../components/TipButton.vue'
 import BacklinkPanel from '../components/BacklinkPanel.vue'
 import TablePromptHud from '../components/TablePromptHud.vue'
 import type { HeadingLevel } from '../lib/heading'
+import { anchorRatioFor, typewriterPadding } from '../lib/typewriter'
 import { SCRATCH_VAULT } from '@shared/types'
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 
@@ -154,6 +155,16 @@ function rebindScrollSync(): void {
 
     const onEditorScroll = (): void => {
       if (Date.now() - syncGuard.time < 100 && syncGuard.source === 'preview') return
+      // 打字机留白区（文档头部）：视口顶边落在留白内时行号映射失义——映射函数把整个留白区
+      // 折算成第 1 行、比例钳 0，预览会被推到第 1 块顶部而编辑器顶边其实在留白区中间。两侧
+      // 顶部留白等量（同源变量），直接按滚动坐标 1:1 传即可精确对齐
+      const padTop = twPad.value.top
+      if (padTop > 0 && scroller.scrollTop <= padTop) {
+        syncGuard.time = Date.now()
+        syncGuard.source = 'editor'
+        previewEl.scrollTop = scroller.scrollTop
+        return
+      }
       const pos = editorRef.value?.firstVisibleLine()
       if (!pos) return
       syncGuard.time = Date.now()
@@ -162,6 +173,14 @@ function rebindScrollSync(): void {
     }
     const onPreviewScroll = (): void => {
       if (Date.now() - syncGuard.time < 100 && syncGuard.source === 'editor') return
+      // 编辑器方向头部区的镜像：预览顶边在留白区内时 1:1 回传（见上注释）
+      const padTop = twPad.value.top
+      if (padTop > 0 && previewEl.scrollTop <= padTop) {
+        syncGuard.time = Date.now()
+        syncGuard.source = 'preview'
+        scroller.scrollTop = previewEl.scrollTop
+        return
+      }
       const line = activePreview?.lineAtScrollTop()
       if (line == null) return
       syncGuard.time = Date.now()
@@ -188,6 +207,46 @@ function rebindScrollSync(): void {
 // 拖动分隔条
 const editorCardRef = ref<HTMLElement | null>(null)
 const editorWrapRef = ref<HTMLElement | null>(null)
+
+// ---------- 打字机留白（2026-09-27 重设计：CSS 变量的唯一写者）----------
+// 数值 = 形态比例 × 滚动区高度，绑定在编辑卡 :style 的 --tw-pad-top / --tw-pad-bottom 上；
+// 打字机扩展的 theme（.cm-content 的 padding 规则）与预览组件共同消费这套变量。扩展摘除
+// （关）时规则被 CM 自动移除、padding 无条件回基线，本层只需把变量归零——留白清理不再
+// 依赖任何 JS 时序（此前插件以内联样式直写 .cm-content、destroy() 里清理，真机上出现过
+// 残留，见 2026-09-27_typewriter-padding-redesign/ 设计文档 1.1）。
+const twPad = ref({ top: 0, bottom: 0 })
+
+function updateTwPad(): void {
+  const ratio = anchorRatioFor(app.effectiveTypewriterMode)
+  if (ratio === null) {
+    twPad.value = { top: 0, bottom: 0 }
+    return
+  }
+  const wrap = editorWrapRef.value
+  // 高度取滚动区实测值；滚动区尚未挂载（MarkdownEditor 随笔记 v-if）时用包裹层兜底——
+  // .editor-cm 是 flex:1，高度由编辑卡决定、与内容无关，两者一致
+  const scroller = wrap?.querySelector('.cm-scroller') as HTMLElement | null
+  const height = scroller?.clientHeight || wrap?.clientHeight || 0
+  if (!height) return
+  twPad.value = typewriterPadding(ratio, height)
+}
+
+watch(() => app.effectiveTypewriterMode, () => updateTwPad())
+
+let twPadRo: ResizeObserver | null = null
+onMounted(() => {
+  updateTwPad()
+  if (typeof ResizeObserver !== 'undefined' && editorWrapRef.value) {
+    // 观察常驻的包裹层：窗口缩放 / 分栏拖拽 / 心流进出（卡片变高）都会改变它；
+    // MarkdownEditor 随笔记 v-if 重建也不需要重挂 RO
+    twPadRo = new ResizeObserver(() => updateTwPad())
+    twPadRo.observe(editorWrapRef.value)
+  }
+})
+onBeforeUnmount(() => {
+  twPadRo?.disconnect()
+  twPadRo = null
+})
 
 function startDrag(): void {
   dragging.value = true
@@ -522,6 +581,18 @@ function syncPreviewToEditor(
   target?: typeof previewRef | typeof floatPreviewRef
 ): void {
   void nextTick(() => {
+    const padTop = twPad.value.top
+    const scroller = editorWrapRef.value?.querySelector('.cm-scroller') as HTMLElement | null
+    // 头部留白区 1:1 直传（与 onEditorScroll 同规则；编辑器停在留白区内时行号映射失义）
+    if (padTop > 0 && scroller && scroller.scrollTop <= padTop) {
+      const active = target?.value ?? previewRef.value
+      if (active?.scrollElement) {
+        syncGuard.time = Date.now()
+        syncGuard.source = 'editor'
+        active.scrollElement.scrollTop = scroller.scrollTop
+        return
+      }
+    }
     const pos = editorRef.value?.firstVisibleLine()
     if (!pos) return
     syncGuard.time = Date.now()
@@ -628,7 +699,9 @@ onBeforeUnmount(() => {
     :style="{
       flexBasis: app.previewVisible ? (app.zenMode ? '50%' : `${splitPercent}%`) : '100%',
       '--flow-measure': `${app.flowMeasure}em`,
-      '--flow-paper': `var(--flow-paper-${app.settings.flowPaperColor})`
+      '--flow-paper': `var(--flow-paper-${app.settings.flowPaperColor})`,
+      '--tw-pad-top': `${twPad.top}px`,
+      '--tw-pad-bottom': `${twPad.bottom}px`
     }"
   >
     <!-- 专注隐藏顶栏时的悬停热区：卡片顶部横条，进入即唤出头部 -->
@@ -928,6 +1001,8 @@ onBeforeUnmount(() => {
       :vault="vaultName"
       :note-path="editor.current.path"
       :font-size="app.settings.editorFontSize"
+      :typewriter-pad-top="twPad.top"
+      :typewriter-pad-bottom="twPad.bottom"
       @open-note="onPreviewOpenNote"
     />
   </div>
@@ -973,6 +1048,8 @@ onBeforeUnmount(() => {
           :vault="vaultName"
           :note-path="editor.current.path"
           :font-size="app.settings.editorFontSize"
+          :typewriter-pad-top="completionPreview ? 0 : twPad.top"
+          :typewriter-pad-bottom="completionPreview ? 0 : twPad.bottom"
           @open-note="onPreviewOpenNote"
         />
       </div>

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import type { AppSettings, ThemePackage } from '@shared/types'
 import { useTreeStore } from './tree'
 import { THEME_PRESETS, buildThemeCss } from '../styles/presets'
-import { effectiveTypewriterMode, flowMeasureEm } from '../lib/flow'
+import { effectiveTypewriterMode, flowMeasureEm, nextTypewriterCycle } from '../lib/flow'
 import type { TypewriterMode } from '../lib/typewriter'
 
 /** 卡片网格视图的区块类型 */
@@ -101,6 +101,11 @@ export const useAppStore = defineStore('app', {
       previewVisible: boolean
       editorWysiwyg: boolean
     },
+    /** 心流内的打字机形态（会话级，2026-09-27 三态循环）：进入心流时由设置一次性推导
+     *  （关 → 自动低位），此后心流内 Alt+T / 设置页的切换都更新本态（「关」真实生效），
+     *  不再每次从设置重新推导——原推导会把「关」强制映射回低位，「关」在心流内不可表达。
+     *  null = 非心流（形态直接按设置走） */
+    flowTypewriter: null as TypewriterMode | null,
     /** 网格/列表视图模式（localStorage 持久化） */
     viewMode: 'grid' as ViewMode,
     /** 已导入的自定义主题（userData/themes），与内置预设在 UI 中并列 */
@@ -121,8 +126,10 @@ export const useAppStore = defineStore('app', {
     })()
   }),
   getters: {
-    /** 心流模式内实际生效的打字机形态（关闭 → 默认低位；用户选过则沿用） */
+    /** 实际生效的打字机形态：心流内读会话态（进入时推导、此后跟随心流内切换，可为「关」），
+     *  非心流按设置走 */
     effectiveTypewriterMode(state): TypewriterMode {
+      if (state.flowMode && state.flowTypewriter) return state.flowTypewriter
       return effectiveTypewriterMode(state.flowMode, state.settings.typewriterMode)
     },
     /** 心流模式写作栏宽（em） */
@@ -238,8 +245,32 @@ export const useAppStore = defineStore('app', {
     requestNotePreview(vault: string, path: string, name: string): void {
       this.pendingNotePreview = { vault, path, name }
     },
-    /** 切换打字机模式（Alt+T）：关 ↔ 上次使用的形态（高位 / 低位，本地持久化记忆） */
+    /** 切换打字机模式（Alt+T）：非心流为「关 ↔ 上次使用的形态」二态（本地持久化记忆）；
+     *  心流内为 高位→低位→关 三态循环，「关」真实生效（切换经 updateSettings 写回设置，
+     *  退出心流后内外一致） */
     toggleTypewriter(): void {
+      if (this.flowMode) {
+        const leaving = this.effectiveTypewriterMode
+        const next = nextTypewriterCycle(leaving)
+        // 记忆维护：切到关时记住离开的形态，循环到具体形态时刷新记忆（与二态语义一致）
+        if (next !== 'off') {
+          this.typewriterResume = next
+          try {
+            localStorage.setItem('trace.typewriterResume', next)
+          } catch {
+            /* ignore */
+          }
+        } else if (leaving !== 'off') {
+          this.typewriterResume = leaving
+          try {
+            localStorage.setItem('trace.typewriterResume', leaving)
+          } catch {
+            /* ignore */
+          }
+        }
+        void this.updateSettings({ typewriterMode: next })
+        return
+      }
       if (this.settings.typewriterMode === 'off') {
         this.updateSettings({ typewriterMode: this.typewriterResume })
       } else {
@@ -254,7 +285,8 @@ export const useAppStore = defineStore('app', {
     },
     /**
      * 进入心流模式：快照外围界面状态 → 拨动各轴（沉浸）。
-     * 只改会话状态，不改设置项（打字机形态由 effectiveTypewriterMode 推导）。
+     * 打字机形态在进入瞬间由设置推导一次（关 → 自动低位）落为会话态 flowTypewriter，
+     * 此后心流内的切换不再经过推导（「关」可表达，见 flowTypewriter 注释）。
      */
     enterFlow(): void {
       if (this.flowMode) return
@@ -264,6 +296,7 @@ export const useAppStore = defineStore('app', {
         previewVisible: this.previewVisible,
         editorWysiwyg: this.editorWysiwyg
       }
+      this.flowTypewriter = effectiveTypewriterMode(true, this.settings.typewriterMode)
       this.zenSidebarOverlay = false
       this.floatingPreview = false
       this.editorWysiwyg = true
@@ -272,11 +305,12 @@ export const useAppStore = defineStore('app', {
       this.previewVisible = false
       this.flowMode = true
     },
-    /** 退出心流模式：还原进入前的外围界面状态 */
+    /** 退出心流模式：还原进入前的外围界面状态（打字机会话态一并撤销，回到按设置走） */
     exitFlow(): void {
       if (!this.flowMode) return
       const snap = this.flowSnapshot
       this.flowMode = false
+      this.flowTypewriter = null
       this.zenSidebarOverlay = false
       if (snap) {
         this.sidebarVisible = snap.sidebarVisible
@@ -400,6 +434,9 @@ export const useAppStore = defineStore('app', {
     },
     async updateSettings(patch: Partial<AppSettings>): Promise<void> {
       this.settings = { ...this.settings, ...patch }
+      // 心流内改打字机设置（设置页等入口）：同步会话态，保证生效形态即时跟随（收口一处，
+      // Alt+T 的心流分支也走这里）
+      if (patch.typewriterMode && this.flowMode) this.flowTypewriter = patch.typewriterMode
       this.applyTheme()
       await window.trace.setSettings(patch)
     },

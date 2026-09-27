@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
  * 心流模式纯函数单元测试：写作栏宽映射、打字机形态推导。
  * 进入 / 退出的快照还原属 app store 会话状态，见设计文档手动清单。
  */
-import { FLOW_MEASURE_EM, effectiveTypewriterMode, flowMeasureEm } from '../src/renderer/src/lib/flow'
+import { FLOW_MEASURE_EM, effectiveTypewriterMode, flowMeasureEm, nextTypewriterCycle } from '../src/renderer/src/lib/flow'
 
 describe('心流模式：写作栏宽', () => {
   it('三档映射到对应 em 值', () => {
@@ -37,5 +37,20 @@ describe('心流模式：打字机形态推导', () => {
 
   it('心流内默认形态可配置', () => {
     expect(effectiveTypewriterMode(true, 'off', 'center')).toBe('center')
+  })
+})
+
+describe('心流模式：打字机三态循环（2026-09-27，「关」在心流内可表达）', () => {
+  it('高位 → 低位 → 关 → 高位 循环', () => {
+    expect(nextTypewriterCycle('center')).toBe('bottom')
+    expect(nextTypewriterCycle('bottom')).toBe('off')
+    expect(nextTypewriterCycle('off')).toBe('center')
+  })
+
+  it('三轮回到原点（循环闭合）', () => {
+    let mode = nextTypewriterCycle('center')
+    mode = nextTypewriterCycle(mode)
+    mode = nextTypewriterCycle(mode)
+    expect(mode).toBe('center')
   })
 })
