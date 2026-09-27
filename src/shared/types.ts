@@ -180,7 +180,7 @@ export interface AppSettings {
   flowPaperEnabled: boolean
   /** 心流写作底色颜色（深浅主题各有对应的一套柔和值） */
   flowPaperColor: 'cream' | 'green' | 'blue' | 'pink' | 'gray'
-  /** 底色过渡：写作栏两侧各 15% 栏宽的渐隐带，从编辑区向非编辑区透明度渐增（默认关闭） */
+  /** 底色过渡：写作栏两侧各 30% 栏宽的渐隐带，从编辑区向非编辑区透明度渐增（默认关闭） */
   flowPaperFade: boolean
   /** 底色纹理：在底色上叠加的程序化纸面质感（none 纯色 / parchment 羊皮纸 / fiber 书页纤维） */
   flowPaperTexture: 'none' | 'parchment' | 'fiber'

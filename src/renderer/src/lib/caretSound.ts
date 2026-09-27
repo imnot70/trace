@@ -5,7 +5,8 @@
  * 四种音色（设置项 flowSoundVariant；后三者均按用户提供的实录音效实测特征合成）：
  * - carriage 推回车「棘轮」：约 0.26s 的一串齿（间隔 9ms 渐密到 6ms、振幅渐强）；
  * - bell     回车铃「叮」：2742 / 6527 / 9700 / 11449Hz 四个分音，余振约 0.7s
- *           （2026-09-27 按用户反馈：尾部颤音衰减 +15%、颤音段音量 +10%、整段放长到 0.95s）；
+ *           （2026-09-27 按用户反馈：尾部颤音衰减 +15%、颤音段音量 +10%、整段放长到 0.95s、
+ *           末段 0.3s 余弦渐弱收尾）；
  * - retro    复古打字机「回车」：三段结构——
  *           ① 按键：宽带咔（5-12kHz）+ 四个微冲击 + 字锤/纸卷共振（1.2k / 2.9kHz）+ 延迟 12ms 的机体「咚」（96/182Hz）；
  *           ② 70ms 推回车：约 0.26s / 30 颗左右棘轮齿（间隔 9ms 渐密到 6ms、振幅渐强，实测间隔 6-10ms；2026-09-27 按用户反馈去掉开头 2 颗）；
@@ -141,6 +142,9 @@ export const BELL_TAIL_GAIN = 1.1
 /** 颤音段音量爬升的起点与过渡时长（秒）：起音 80ms 后开始爬升、60ms 平滑过渡避免台阶感 */
 export const BELL_TAIL_RAMP_START_S = 0.08
 export const BELL_TAIL_RAMP_S = 0.06
+/** 末段余音渐弱的时长（秒）：0.3s 余弦缓降 1→0（2026-09-27 二轮反馈「最后有些戛然而止」
+ *  ——长度不变，收尾从 60ms 线性淡出改为更长的余弦曲线，听感是「融进安静」而非「被切断」） */
+export const BELL_TAIL_OFF_S = 0.3
 
 /** 按键的微冲击（实录音效单次按键在 100-190ms 内有 9 个能量峰：键帽 / 连杆 / 字锤 / 纸卷相继撞击） */
 const RETRO_IMPACTS = [
@@ -337,6 +341,7 @@ export function renderRetroPush(sampleRate: number, rand: () => number = Math.ra
  * ① 尾部颤音衰减时间常数 ×1.15（余振更长），缓冲同步放长到 0.95s 避免硬截；
  * ② 起音 80ms 后的颤音段音量 +10%（60ms 平滑爬升）——在**归一化之后**施加，
  *    否则位于起音处的全局峰值归一化会把相对提升抵消掉；尾段振幅远低于峰值，无削波风险。
+ * ③ 末段 0.3s 余弦渐弱收尾（二轮反馈「戛然而止」）——在颤音提升之后施加，终点精确为 0。
  * 复古打字机整声里的铃不受影响（其口径 2026-09-26 试听确认过）。
  */
 export function renderRetroBell(sampleRate: number, rand: () => number = Math.random): Float32Array {
@@ -346,10 +351,22 @@ export function renderRetroBell(sampleRate: number, rand: () => number = Math.ra
   const layer = renderBellLayer(sampleRate, p, n + shift, BELL_TAIL_DECAY_SCALE)
   const out = new Float32Array(n)
   for (let i = 0; i < n; i++) out[i] = layer[i + shift]
-  fadeOut(out, sampleRate, RETRO_FADE_OUT_S)
   normalize(out)
   applyBellTailGain(out, sampleRate)
+  applyBellTailOff(out, sampleRate)
   return out
+}
+
+/** 末段余音渐弱（纯函数，可单测）：末尾 BELL_TAIL_OFF_S 内余弦缓降 1→0。
+ *  余弦端点导数为 0——起点无台阶、终点无咔哒；曲线前半下降慢、后半快，
+ *  与指数衰减叠加后听感是「逐渐沉入安静」而不是戛然而止 */
+export function applyBellTailOff(buf: Float32Array, sampleRate: number): void {
+  const off = Math.min(buf.length, Math.floor(sampleRate * BELL_TAIL_OFF_S))
+  const from = buf.length - off
+  for (let i = from; i < buf.length; i++) {
+    const x = (i - from) / off
+    buf[i] *= 0.5 * (1 + Math.cos(Math.PI * x))
+  }
 }
 
 /** 颤音段音量提升（纯函数，可单测）：[起点, 起点+过渡) 线性爬升到 +10%，其后全段乘定值。

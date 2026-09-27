@@ -778,12 +778,13 @@ body {
    纹理全部为均匀重复图案（feTurbulence 颗粒经 stitchTiles 无缝化、细纹不随 x 变化），
    跨行号槽 / 内容层两个元素不会出现接缝；羊皮纸的暖棕颗粒 + 疏色斑叠加在所选底色上。
    2026-09-27 按用户观感反馈调优：颗粒尺度放大（feTurbulence baseFrequency 0.75→0.5、
-   色斑 0.12→0.085）并提高两层不透明度（0.09→0.13 / 0.05→0.08）增强纸面质感对比。 */
+   色斑 0.12→0.085）、不透明度两轮提高（0.09→0.13→0.18 / 0.05→0.08→0.11）且颗粒
+   颜色加深（0.42/0.33/0.18 → 0.36/0.27/0.14），与浅色纸底的区分度逐轮加大。 */
 .editor-card.flow-mode.flow-paper-on.flow-paper-tex-parchment .cm-gutters,
 .editor-card.flow-mode.flow-paper-on.flow-paper-tex-parchment .cm-content {
   background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.33 0 0 0 0 0.18 0 0 0 0.13 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23p)'/%3E%3C/svg%3E"),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340'%3E%3Cfilter id='q'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.085' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.42 0 0 0 0 0.2 0 0 0 0.08 0'/%3E%3C/filter%3E%3Crect width='340' height='340' filter='url(%23q)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.27 0 0 0 0 0.14 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23p)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340'%3E%3Cfilter id='q'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.085' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.42 0 0 0 0 0.2 0 0 0 0.11 0'/%3E%3C/filter%3E%3Crect width='340' height='340' filter='url(%23q)'/%3E%3C/svg%3E"),
     var(--flow-paper);
 }
 
@@ -796,7 +797,8 @@ body {
     var(--flow-paper);
 }
 
-/* 底色过渡（FR-2.9.8 扩展，用户提出）：写作栏两侧各 15% 栏宽的渐隐带——
+/* 底色过渡（FR-2.9.8 扩展，用户提出）：写作栏两侧各 30% 栏宽的渐隐带——
+   2026-09-27 用户反馈由 15% 扩大一倍（15 栏宽分母 → 7.5），过渡更绵长；
    渐变画在滚动层上（透明 → 底色 → 透明）；渐变的实心段在栏边前 8px 即达全浓度
    （8px 吸收滚动条宽度差，中段被上方行号槽 / 内容层的实底覆盖）——若实心段推迟到
    栏边之后才全浓度，栏边处会出现明显的浓度分界（三轮实测反馈已修）。
@@ -805,10 +807,10 @@ body {
   background: linear-gradient(
     to right,
     transparent 0,
-    transparent calc((100% - var(--flow-measure, 42em)) / 2 - var(--flow-measure, 42em) / 15 - 8px),
+    transparent calc((100% - var(--flow-measure, 42em)) / 2 - var(--flow-measure, 42em) / 7.5 - 8px),
     var(--flow-paper) calc((100% - var(--flow-measure, 42em)) / 2 - 8px),
     var(--flow-paper) calc((100% + var(--flow-measure, 42em)) / 2 + 8px),
-    transparent calc((100% + var(--flow-measure, 42em)) / 2 + var(--flow-measure, 42em) / 15 + 8px)
+    transparent calc((100% + var(--flow-measure, 42em)) / 2 + var(--flow-measure, 42em) / 7.5 + 8px)
   );
 }
 
