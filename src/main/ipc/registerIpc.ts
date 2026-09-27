@@ -349,7 +349,14 @@ export function registerIpc(deps: IpcDeps): void {
   })
 
   // ---------- 分享为 Gist（FR-2.3.10） ----------
-  handle('gist:list', () => ({ ok: true, shares: deps.gistShares.list() }))
+  handle('gist:list', () => {
+    // 自愈清理：应用内删除走 node:delete 钩子清记录，但外部删除 / git 同步移除文件
+    // 无钩子可走，死记录会让分享网格残留「读取失败」的卡片——列表读取时顺手清掉
+    //（远端 gist 不受影响，只是解除本机关联）
+    const dead = deps.gistShares.list().filter((s) => !deps.fsTree.readNote(s.vault, s.path).ok)
+    for (const s of dead) deps.gistShares.removeRecord(s.vault, s.path)
+    return { ok: true, shares: deps.gistShares.list() }
+  })
   handle('gist:get', (vault: string, relPath: string) => ({ ok: true, share: deps.gistShares.get(vault, relPath) }))
   handle('gist:share', async (vault: string, relPath: string) => {
     const token = deps.account.getToken()

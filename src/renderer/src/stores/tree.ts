@@ -123,7 +123,7 @@ export const useTreeStore = defineStore('tree', {
     clearLocationIfVault(vault: string): void {
       if (this.lastLocation?.vault === vault) this.lastLocation = null
     },
-    /** 文件变更事件：刷新对应库的树与 git 状态 */
+    /** 文件变更事件：刷新对应库的树、git 状态与分享记录（分享数随文件删除 / 外部改动保持新鲜） */
     async handleFsChanged(vault: string): Promise<void> {
       if (this.vaults.some((v) => v.name === vault)) {
         await this.loadTree(vault)
@@ -131,6 +131,7 @@ export const useTreeStore = defineStore('tree', {
       } else {
         await this.loadVaults()
       }
+      void this.loadShared()
     }
   }
 })

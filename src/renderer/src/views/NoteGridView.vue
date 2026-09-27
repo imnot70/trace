@@ -527,6 +527,8 @@ function onKeydown(e: KeyboardEvent): void {
   if (isVaults.value) close()
 }
 
+/** 分享网格随 tree.shared 变化自动更新（刷新统一在 tree.handleFsChanged，App.vue 全局订阅） */
+
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
@@ -567,8 +569,11 @@ watch(section, () => {
       </template>
       <template v-else>
         <el-icon>
+          <!-- 与侧栏入口图标同款（Clock/Star/EditPen/Share）；标签 / 断链引用 / 笔记库无独立侧栏图标，用 Collection 兜底 -->
           <Clock v-if="section === 'recents'" />
           <Star v-else-if="section === 'favorites'" />
+          <EditPen v-else-if="section === 'drafts'" />
+          <Share v-else-if="section === 'shared'" />
           <Collection v-else />
         </el-icon>
         <span class="grid-title">{{ title }}</span>
@@ -602,6 +607,8 @@ watch(section, () => {
         <FolderOpen v-if="inVaultContent" />
         <Clock v-else-if="section === 'recents'" />
         <Star v-else-if="section === 'favorites'" />
+        <EditPen v-else-if="section === 'drafts'" />
+        <Share v-else-if="section === 'shared'" />
         <Collection v-else />
       </el-icon>
       <p>
