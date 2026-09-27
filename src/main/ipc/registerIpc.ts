@@ -658,14 +658,15 @@ export function registerIpc(deps: IpcDeps): void {
     }
   })
 
-  handle('search:search', (query: string, maxResults?: number, options?: { searchInTitle?: boolean; searchInContent?: boolean; vaults?: string[]; tags?: string[] }) => {
+  handle('search:search', (query: string, maxResults?: number, options?: { searchInTitle?: boolean; searchInContent?: boolean; vaults?: string[]; tags?: string[]; excludeDir?: string }) => {
     try {
       // 防御：确保数组是普通副本（Vue reactive Proxy 经 IPC 传输可能异常）
       const opts = options ? {
         searchInTitle: options.searchInTitle,
         searchInContent: options.searchInContent,
         vaults: Array.isArray(options.vaults) ? [...options.vaults] : options.vaults,
-        tags: Array.isArray(options.tags) ? [...options.tags] : options.tags
+        tags: Array.isArray(options.tags) ? [...options.tags] : options.tags,
+        excludeDir: options.excludeDir
       } : undefined
       const result = deps.search.search(query, maxResults, opts)
       return result

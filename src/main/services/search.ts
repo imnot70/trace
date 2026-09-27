@@ -122,11 +122,13 @@ export class SearchService {
    * 执行搜索查询
    * @param options.tags 标签维度过滤（OR 语义：命中任一选中标签即入围；FR-2.9.11）。
    *   关键词与标签同时给出时取交集；**仅给标签不给关键词** = 浏览模式，该标签下全部笔记各出一条
+   * @param options.excludeDir 排除各库内的指定目录（库内相对路径前缀，如「跨库引用」副本目录；
+   *   FR-2.9.11。只按 `<目录>/` 前缀过滤，不影响同名前缀的其他文件）
    */
   search(
     query: string,
     maxResults = 100,
-    options?: { searchInTitle?: boolean; searchInContent?: boolean; vaults?: string[]; tags?: string[] }
+    options?: { searchInTitle?: boolean; searchInContent?: boolean; vaults?: string[]; tags?: string[]; excludeDir?: string }
   ): SearchResult {
     const startTime = Date.now()
 
@@ -142,11 +144,19 @@ export class SearchService {
     const searchTitle = options?.searchInTitle !== false
     const searchContent = options?.searchInContent !== false
     const vaultFilter = options?.vaults
+    const excludePrefix = options?.excludeDir ? `${options.excludeDir}/` : null
+
+    // 库范围 + 目录排除（跨库引用副本，FR-2.9.11）
+    const inScope = (item: SearchIndexItem): boolean => {
+      if (vaultFilter && vaultFilter.length > 0 && !vaultFilter.includes(item.vault)) return false
+      if (excludePrefix && item.path.startsWith(excludePrefix)) return false
+      return true
+    }
 
     if (!normalizedQuery) {
       // 浏览模式：仅按标签（+范围）筛笔记，每篇一条，按最近修改排序
       for (const item of this.index.values()) {
-        if (vaultFilter && vaultFilter.length > 0 && !vaultFilter.includes(item.vault)) continue
+        if (!inScope(item)) continue
         if (!this.matchesTags(item, tagFilter)) continue
         results.push({
           vault: item.vault,
@@ -174,8 +184,7 @@ export class SearchService {
 
     // 搜索索引
     for (const item of this.index.values()) {
-      // 按库筛选
-      if (vaultFilter && vaultFilter.length > 0 && !vaultFilter.includes(item.vault)) {
+      if (!inScope(item)) {
         continue
       }
       // 按标签筛选（OR 语义）

@@ -202,7 +202,7 @@ export interface TraceApi {
   /** 构建搜索索引（应用启动时调用） */
   searchBuildIndex(force?: boolean): Promise<OpResult & { totalFiles?: number; isIndexing?: boolean }>
   /** 执行搜索查询（options.tags：标签维度过滤，OR 语义；FR-2.9.11） */
-  searchQuery(query: string, maxResults?: number, options?: { searchInTitle?: boolean; searchInContent?: boolean; vaults?: string[]; tags?: string[] }): Promise<SearchResult>
+  searchQuery(query: string, maxResults?: number, options?: { searchInTitle?: boolean; searchInContent?: boolean; vaults?: string[]; tags?: string[]; excludeDir?: string }): Promise<SearchResult>
   /** 获取搜索索引状态 */
   getSearchIndexStatus(): Promise<OpResult & { totalFiles?: number; isIndexing?: boolean }>
   /** 聚合索引中的标签（供标签筛选下拉；跨库去重，按篇数降序） */

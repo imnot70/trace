@@ -2,7 +2,7 @@
   <el-dialog
     :model-value="visible"
     title="全局搜索"
-    width="80%"
+    width="65%"
     :close-on-click-modal="false"
     :close-on-press-escape="true"
     class="search-dialog"
@@ -81,6 +81,8 @@
         <div class="search-scope-row">
           <el-checkbox v-model="searchInTitle" @change="handleOptionChange">标题</el-checkbox>
           <el-checkbox v-model="searchInContent" @change="handleOptionChange">内容</el-checkbox>
+          <!-- 跨库副本目录默认不参与搜索（FR-2.9.11）；开关状态 localStorage 记忆 -->
+          <el-checkbox v-model="excludeCopies" @change="handleOptionChange">排除跨库引用</el-checkbox>
           <span v-if="noVaultSelected" class="vault-hint">请选择至少一个笔记库</span>
         </div>
       </div>
@@ -160,6 +162,9 @@ import { Search, Loading, Folder, ArrowDown, PriceTag } from '@element-plus/icon
 import { SCRATCH_VAULT } from '@shared/types'
 import type { SearchTagInfo, SearchResultItem } from '@shared/types'
 import { scratchVaultLabel } from '../stores/draft'
+import { useAppStore } from '../stores/app'
+
+const app = useAppStore()
 
 const props = defineProps<{
   visible: boolean
@@ -188,6 +193,13 @@ const allVaultsMode = ref(true)
 const selectedTags = ref<string[]>([])
 const availableTags = ref<SearchTagInfo[]>([])
 const indexStatus = ref({ totalFiles: 0, isIndexing: false })
+/** 排除跨库引用副本目录（默认排除；localStorage 记忆，FR-2.9.11） */
+const EXCLUDE_COPIES_KEY = 'trace.searchExcludeCopies'
+const excludeCopies = ref(localStorage.getItem(EXCLUDE_COPIES_KEY) !== '0')
+watch(excludeCopies, (v) => localStorage.setItem(EXCLUDE_COPIES_KEY, String(v)))
+
+/** 副本目录名（设置「跨库引用目录」，留空回默认） */
+const copiesDir = computed(() => app.settings.crossVaultCopyDir?.trim() || '跨库引用')
 
 // ---------- 键盘导航（FR-2.9.10）：↑ / ↓ 移动高亮，Enter 打开，Alt+Enter 悬浮预览 ----------
 const activeIndex = ref(-1)
@@ -248,6 +260,13 @@ watch(
   () => props.visible,
   (visible) => {
     if (visible) {
+      // 上一次的关键词与结果不保留（对话框常驻挂载、ref 跨开合存活，残留结果会与本次
+      // 预置的范围不符——用户实测：第二次打开显示的是上次所有库的结果）；范围 / 标签等
+      // 筛选偏好保留
+      searchQuery.value = ''
+      searchResults.value = []
+      searchDurationMs.value = 0
+      activeIndex.value = -1
       loadVaults()
       loadTags()
       loadIndexStatus()
@@ -381,7 +400,8 @@ async function performSearch() {
         searchInTitle: searchInTitle.value,
         searchInContent: searchInContent.value,
         vaults,
-        tags: selectedTags.value.length > 0 ? [...selectedTags.value] : undefined
+        tags: selectedTags.value.length > 0 ? [...selectedTags.value] : undefined,
+        excludeDir: excludeCopies.value ? copiesDir.value : undefined
       }
     )
     if (result.ok && result.results) {
