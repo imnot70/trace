@@ -520,21 +520,18 @@ async function resetGitSource(): Promise<void> {
 </script>
 
 <template>
-  <div class="page">
-    <div class="page-header">
-      <h2>设置</h2>
-      <span v-if="editor.current" class="settings-back-note">正在编辑：{{ editor.current.name }}</span>
-      <el-button
-        v-if="editor.current"
-        size="small"
-        type="primary"
-        plain
-        @click="backToEditor"
-      >
-        返回编辑
-      </el-button>
-    </div>
+  <!-- 设置弹窗（2026-09-27 由整页视图改为弹出窗口）：编辑视图在弹窗下保持挂载，
+       Ctrl+, 呼出 / 再按关闭 / Esc 或点击遮罩关闭（关闭即回编辑，FR-2.10.5） -->
+  <div class="settings-overlay" @click.self="backToEditor">
+    <div class="settings-dialog">
+      <div class="settings-dialog-header">
+        <h2>设置</h2>
+        <button class="settings-close" title="关闭（Ctrl+, / Esc）" @click="backToEditor">
+          <el-icon><Close /></el-icon>
+        </button>
+      </div>
 
+      <div class="settings-dialog-body">
     <el-tabs v-model="tab">
       <!-- 账号 -->
       <el-tab-pane label="账号" name="account">
@@ -1102,10 +1099,12 @@ async function resetGitSource(): Promise<void> {
               style="width: 280px"
               @update:model-value="(v: string) => app.updateSettings({ flowSoundVariant: v as AppSettings['flowSoundVariant'] })"
             >
-              <el-option label="复古打字机（按键 + 推回车 + 回车铃）" value="retro" />
-              <!-- 2026-09-27 用户要求暂时隐藏：推回车（棘轮）/ 回车铃 / 轮换——代码与合成保留，
-                   恢复时把下面三个 option 加回即可；隐藏期间存量非 retro 值由主进程启动时迁移为 retro -->
+              <el-option label="复古打字机2（按键 + 推回车 + 回车铃）" value="retro2" />
+              <!-- 2026-09-27 音色收敛记录：推回车（棘轮）/ 回车铃 / 轮换 / 原复古打字机 均暂时隐藏
+                   （当前显示的复古打字机2 = 原复古打字机的副本，作为音色试验田）。合成代码全部保留，
+                   恢复时把对应 option 加回即可；隐藏期间存量其他值由主进程启动时迁移为 retro2 -->
               <!--
+              <el-option label="复古打字机（按键 + 推回车 + 回车铃）" value="retro" />
               <el-option label="推回车（棘轮）" value="carriage" />
               <el-option label="回车铃" value="bell" />
               <el-option label="轮换（三者依次交替）" value="rotate" />
@@ -1389,6 +1388,8 @@ async function resetGitSource(): Promise<void> {
         <el-button @click="closeDetail">关闭</el-button>
       </template>
     </el-dialog>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1473,15 +1474,7 @@ async function resetGitSource(): Promise<void> {
 }
 
 /* 返回编辑（设置页头部） */
-.settings-back-note {
-  margin-left: 12px;
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
 
-.settings-back-note + .el-button {
-  margin-left: auto;
-}
 
 .theme-preset-grid {
   display: grid;
@@ -1602,5 +1595,65 @@ async function resetGitSource(): Promise<void> {
 
 .flow-paper-swatch.active {
   border: 2px solid var(--accent);
+}
+
+/* ===== 设置弹窗（2026-09-27 由整页视图改为弹出窗口） ===== */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1500; /* 盖过编辑区与状态区，低于 EP 弹层（下拉 / 消息） */
+  background: rgba(15, 18, 24, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-dialog {
+  width: min(920px, 92vw);
+  height: min(82vh, 780px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.settings-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.settings-dialog-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.settings-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.settings-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.settings-dialog-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 18px 18px;
 }
 </style>

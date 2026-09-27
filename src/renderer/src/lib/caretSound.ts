@@ -12,15 +12,22 @@
  *           ② 70ms 推回车：约 0.26s / 30 颗左右棘轮齿（间隔 9ms 渐密到 6ms、振幅渐强，实测间隔 6-10ms；2026-09-27 按用户反馈去掉开头 2 颗）；
  *           ③ 240ms 回车铃：2742 / 6527 / 9700 / 11449Hz 四个分音，衰减 0.33-0.63s（整段 1.0s，末尾 60ms 淡出）。
  *           不随包音频文件，仅按实测声学特征重建（分析与比对见 flow-mode_design.md 第 10.5–10.8 节）；
+ * - retro2  复古打字机2：retro 的副本（2026-09-27 新增，当前设置页唯一开放项），
+ *           作为频率 / 音色试验田；与 retro 同参同声。
  * - rotate  轮换：每次回车依次使用上面三种，避免长时间写作的重复感。
  * 说明：旧的木质 / 金属 / 打字机棘齿三种音色已于 2026-09-24 下线，设置项旧值在启动时迁移到 retro。
  */
 
-export type SoundVariant = 'carriage' | 'bell' | 'retro' | 'rotate'
+export type SoundVariant = 'carriage' | 'bell' | 'retro' | 'retro2' | 'rotate'
+// retro2「复古打字机2」（2026-09-27）：retro 的完整副本，作为音色试验田——
+// 后续频率 / 音色调整只改 retro2 的合成路径，retro 保持已确认口径不动。
+// 当前 retro2 与 retro 同参同声（playReturn 的 default 分支同一渲染函数）。
 
 /** 可轮换的具体音色（rotate 会在这几者间循环） */
 export const CONCRETE_VARIANTS = ['carriage', 'bell', 'retro'] as const
 export type ConcreteVariant = (typeof CONCRETE_VARIANTS)[number]
+/** 可播放的具体音色（轮换池之外还有 retro2 试验田） */
+export type PlayableVariant = Exclude<SoundVariant, 'rotate'>
 
 /** 连续回车的限流窗口：窗口内的重复触发直接丢弃（避免机关枪） */
 export const SOUND_MIN_INTERVAL_MS = 120
@@ -40,7 +47,7 @@ export function shouldPlayReturn(now: number, lastPlayAt: number): boolean {
 export function resolveVariant(
   variant: SoundVariant,
   rotateIndex: number
-): { variant: ConcreteVariant; nextIndex: number } {
+): { variant: PlayableVariant; nextIndex: number } {
   if (variant !== 'rotate') return { variant, nextIndex: rotateIndex }
   const pick = CONCRETE_VARIANTS[rotateIndex % CONCRETE_VARIANTS.length]
   return { variant: pick, nextIndex: (rotateIndex + 1) % CONCRETE_VARIANTS.length }
@@ -397,7 +404,7 @@ export function createCaretSound(): CaretSound {
   let lastPlayedAt = 0
   let rotateIndex = 0
   /** 正在播放的节点：同一音色再次触发时先停掉上一声，避免叠加成噪音（异种音色可共存） */
-  const active = new Map<ConcreteVariant, AudioScheduledSourceNode[]>()
+  const active = new Map<PlayableVariant, AudioScheduledSourceNode[]>()
   /** 波形缓存：三种音色各渲染一次（按 `${variant}@${sampleRate}` 键），避免每次回车重算 */
   const buffers = new Map<string, AudioBuffer>()
 
@@ -420,7 +427,7 @@ export function createCaretSound(): CaretSound {
     }
   }
 
-  const trackVoice = (variant: ConcreteVariant, node: AudioScheduledSourceNode): void => {
+  const trackVoice = (variant: PlayableVariant, node: AudioScheduledSourceNode): void => {
     for (const old of active.get(variant) ?? []) {
       try {
         old.stop()
@@ -432,7 +439,7 @@ export function createCaretSound(): CaretSound {
   }
 
   // ---------- 波形缓存与播放（三种音色同一套路径：单缓冲 + 速率抖动 + 高频滚降） ----------
-  const ensureBuffer = (variant: ConcreteVariant): AudioBuffer | null => {
+  const ensureBuffer = (variant: PlayableVariant): AudioBuffer | null => {
     if (!ctx) return null
     const key = `${variant}@${ctx.sampleRate}`
     const cached = buffers.get(key)
@@ -445,7 +452,7 @@ export function createCaretSound(): CaretSound {
     return buffer
   }
 
-  const playBuffer = (variant: ConcreteVariant, gain: number, lowpass: number): void => {
+  const playBuffer = (variant: PlayableVariant, gain: number, lowpass: number): void => {
     if (!ctx || !master) return
     const buffer = ensureBuffer(variant)
     if (!buffer) return

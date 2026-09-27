@@ -218,10 +218,10 @@ app.whenReady().then(() => {
     }
   })
 
-  // 音色枚举收敛：2026-09-24 木质 / 金属 / 打字机棘齿三种旧音色下线；2026-09-27 用户要求
-  // 暂时隐藏「推回车棘轮 / 回车铃 / 轮换」（设置页只留复古打字机），隐藏期间存量非 retro 值
-  // 在这里一次性迁移为 retro，避免选择器空值。恢复音色时把 SOUND_VARIANTS 改回全量即可。
-  const SOUND_VARIANTS = ['retro']
+  // 音色枚举收敛：2026-09-24 木质 / 金属 / 打字机棘齿三种旧音色下线；2026-09-27 先隐藏
+  // 「推回车棘轮 / 回车铃 / 轮换」，再新增复古打字机2（retro 的副本，音色试验田）并隐藏
+  // 原复古打字机——设置页当前只留复古打字机2，存量其他值在这里一次性迁移，避免选择器空值。
+  const SOUND_VARIANTS = ['retro2']
   if (!SOUND_VARIANTS.includes(settingsStore.get().flowSoundVariant)) {
     settingsStore.update((s) => {
       s.flowSoundVariant = 'retro'

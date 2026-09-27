@@ -190,8 +190,9 @@ export interface AppSettings {
   flowSoundVolume: number
   /** 连续换行屏蔽音效：开启时一串快速换行只有第一次发声（默认开启） */
   flowSoundSkipRepeat: boolean
-  /** 回车音色：carriage 推回车棘轮 / bell 回车铃 / retro 复古打字机（三者合成） / rotate 轮换 */
-  flowSoundVariant: 'carriage' | 'bell' | 'retro' | 'rotate'
+  /** 回车音色：retro2 复古打字机2（当前唯一开放，试验田）/ carriage 推回车棘轮 / bell 回车铃 /
+   *  retro 复古打字机（已隐藏）/ rotate 轮换（已隐藏） */
+  flowSoundVariant: 'retro2' | 'carriage' | 'bell' | 'retro' | 'rotate'
   /** 跨库引用免确认：开启后引入跨库笔记时直接复制到当前库，不再弹确认框（FR-2.9.11，默认关） */
   skipCrossVaultCopyConfirm: boolean
   /** 跨库引用目录：强制引用时把源库笔记复制到目标库的此目录（相对库根，按来源库分子目录；
