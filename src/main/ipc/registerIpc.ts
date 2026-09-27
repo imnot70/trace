@@ -5,7 +5,7 @@ import { errMessage } from '../lib/errMessage'
 import { logger } from '../lib/logger'
 import { resolveWithin } from '../lib/paths'
 import { nativeTheme } from 'electron'
-import { readGitVersion, resolveBundledGitPath, applyWindowGlassEffect, applyOverlayTheme } from '../services'
+import { readGitVersion, resolveBundledGitPath, applyWindowGlassEffect, applyOverlayTheme, prepareGistContent } from '../services'
 import { promoteDraft } from '../services/scratchPromote'
 import { copyNoteAcrossVaults } from '../services/noteCopy'
 import { SCRATCH_VAULT } from '@shared/types'
@@ -355,18 +355,20 @@ export function registerIpc(deps: IpcDeps): void {
     if (!token) return { ok: false, error: '尚未登录 GitHub 账号，请先到 设置 → 账号 登录' }
     const read = deps.fsTree.readNote(vault, relPath)
     if (!read.ok) return { ok: false, error: read.error ?? '笔记读取失败' }
+    // 发布适配（FR-2.3.10）：剥离 frontmatter、[[双链]] 转纯文本、相对路径图片替换为占位说明
+    const content = prepareGistContent(read.content ?? '')
     // gist 文件扁平，仅取笔记名；描述带应用标识便于在 GitHub 侧辨认来源
     const fileName = relPath.replace(/.*\//, '').replace(/\.md$/i, '') + '.md'
     const description = `Trace 笔记分享：${fileName.replace(/\.md$/, '')}`
     const existing = deps.gistShares.get(vault, relPath)
 
     const create = async (): Promise<{ id: string; url: string }> =>
-      deps.github.createGist(token, fileName, read.content ?? '', description)
+      deps.github.createGist(token, fileName, content, description)
     try {
       let gist: { id: string; url: string }
       if (existing) {
         try {
-          gist = await deps.github.updateGist(token, existing.gistId, fileName, read.content ?? '', description)
+          gist = await deps.github.updateGist(token, existing.gistId, fileName, content, description)
         } catch (e) {
           // 记录里的 gist 已在 GitHub 侧被删（404）→ 落库新分享；权限缺失也是 404，
           // 但随后 create 同样 404 会被下方的 scope 分支拦住

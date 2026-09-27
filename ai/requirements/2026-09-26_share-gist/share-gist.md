@@ -1,6 +1,8 @@
 # 分享功能（FR-2.3.10）
 
 > 2026-09-26 立项（用户提案池 [#6](../../suggest/feature-proposals.md) 迁入，按提案建议做一期 Gist）。**一期已随分支 `feat/proposal-batch` 实施（2026-09-27，待发版）**：`GithubService` 新增 createGist / updateGist / deleteGist（octokit gists API，显式 token 模式）；分享记录存 `userData/gist-shares.json`（`GistShareService`，重命名 / 移动 / 删除 / 库更名挂钩与 favorites 同约定——删除笔记只解除关联，远端 gist 存活）；弹窗 `ShareGistDialog.vue`：发布 / 更新 / 删除（红色确认）/ 复制链接；**scope 引导**：GitHub 对缺 gist 权限返回 404，主进程识别后回传 `needScope` 标记，弹窗展示分步引导（打开令牌页 → 补勾 gist → 保存令牌值不变 → 重新发布）；更新时远端 404（gist 被外部删除）自动转为重新发布。原「待设计问题」的取舍：描述格式 = `Trace 笔记分享：{笔记名}`；gist 文件名取笔记名（gist 扁平，不含目录）；重命名 / 移动后关联由记录挂钩自动跟随；多库同名笔记按 `vault+path` 键天然消歧。
+>
+> **图片与双链的发布适配（2026-09-27 验收反馈 + 技术调研后拍板）**：真机验收发现分享页图片碎图、`[[双链]]` 呈现为纯文本。调研结论：① Gist REST API 文件内容仅收 UTF-8 文本，二进制图片经 API 上传必被编码破坏（无解）；② GitHub 渲染 Markdown 时剥离 `data:` URI 图片（github/markup#270 长期未解决）——即「图片随行」在 secret gist + API 发布约束下**无自包含方案**（曾短暂评估「图片打包进同一 gist」方向，因①废弃）。用户拍板：**一期做占位**（相对路径图片 → 「（图片未随分享：文件名）」，由 `services/gistShare.ts` 的纯函数 `prepareGistContent` 实现，含单测）；**二期评估公开图床仓库**（Contents API 是 GitHub 官方唯一二进制通道，与下方「发布到公开展示仓库」方向合并立项；代价是图片变为完全公开，超出 secret gist「有链接可见」的隐私语义，需用户知情）。同时实现：剥离 frontmatter（GitHub 会把 tags 渲染成表格）、`[[双链]]` 转纯文本（用户选定，读者无噪音）。
 
 ## 需求背景
 

@@ -117,7 +117,7 @@ async function removeShare(): Promise<void> {
         <p>把这篇笔记的 Markdown 原文发布为 <b>secret gist</b>：</p>
         <ul class="gist-notes">
           <li>拿到链接的人即可查看，不会出现在你的公开主页与搜索里</li>
-          <li>图片附件不随行（链接在本机笔记库才能解析）</li>
+          <li>图片附件不随行（原位置显示占位说明）；frontmatter 不随行；[[双链引用]] 转为纯文本</li>
           <li>分享后可随时在本弹窗更新内容或删除</li>
         </ul>
       </div>
