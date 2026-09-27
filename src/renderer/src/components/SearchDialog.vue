@@ -2,7 +2,7 @@
   <el-dialog
     :model-value="visible"
     title="全局搜索"
-    width="65%"
+    width="52%"
     :close-on-click-modal="false"
     :close-on-press-escape="true"
     class="search-dialog"
@@ -81,8 +81,8 @@
         <div class="search-scope-row">
           <el-checkbox v-model="searchInTitle" @change="handleOptionChange">标题</el-checkbox>
           <el-checkbox v-model="searchInContent" @change="handleOptionChange">内容</el-checkbox>
-          <!-- 跨库副本目录默认不参与搜索（FR-2.9.11）；开关状态 localStorage 记忆 -->
-          <el-checkbox v-model="excludeCopies" @change="handleOptionChange">排除跨库引用</el-checkbox>
+          <!-- 勾选 = 把「跨库引用目录」的副本纳入搜索（默认不勾 = 排除副本，FR-2.9.11）；localStorage 记忆 -->
+          <el-checkbox v-model="includeCopies" @change="handleOptionChange">跨库引用</el-checkbox>
           <span v-if="noVaultSelected" class="vault-hint">请选择至少一个笔记库</span>
         </div>
       </div>
@@ -148,7 +148,6 @@
           <el-button size="small" @click="buildIndex" :loading="isBuildingIndex">
             重建索引
           </el-button>
-          <el-button @click="handleClose">关闭</el-button>
         </div>
       </div>
     </template>
@@ -193,10 +192,10 @@ const allVaultsMode = ref(true)
 const selectedTags = ref<string[]>([])
 const availableTags = ref<SearchTagInfo[]>([])
 const indexStatus = ref({ totalFiles: 0, isIndexing: false })
-/** 排除跨库引用副本目录（默认排除；localStorage 记忆，FR-2.9.11） */
-const EXCLUDE_COPIES_KEY = 'trace.searchExcludeCopies'
-const excludeCopies = ref(localStorage.getItem(EXCLUDE_COPIES_KEY) !== '0')
-watch(excludeCopies, (v) => localStorage.setItem(EXCLUDE_COPIES_KEY, String(v)))
+/** 「跨库引用」开关：勾选 = 把副本目录纳入搜索；默认不勾（副本不参与搜索）。localStorage 记忆 */
+const INCLUDE_COPIES_KEY = 'trace.searchIncludeCopies'
+const includeCopies = ref(localStorage.getItem(INCLUDE_COPIES_KEY) === '1')
+watch(includeCopies, (v) => localStorage.setItem(INCLUDE_COPIES_KEY, v ? '1' : '0'))
 
 /** 副本目录名（设置「跨库引用目录」，留空回默认） */
 const copiesDir = computed(() => app.settings.crossVaultCopyDir?.trim() || '跨库引用')
@@ -238,6 +237,9 @@ function onPreviewKey(): void {
 const availableVaults = ref<string[]>([])
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
+/** 请求序号：只接受最新一次搜索的响应——勾选项快速连点时，慢速的旧请求若晚到
+ *  会把新状态下的清空 / 新结果覆盖回旧值（实测：关内容后闪回「仅标题」的旧结果） */
+let searchSeq = 0
 
 /** 是否没有选择任何库（自定义模式下 selectedVaults 为空） */
 const noVaultSelected = computed(() => !allVaultsMode.value && selectedVaults.value.length === 0)
@@ -363,10 +365,8 @@ function toggleAllVaults() {
 }
 
 function handleOptionChange() {
-  if (!searchInTitle.value && !searchInContent.value) {
-    searchInContent.value = true
-  }
-  if (searchQuery.value.trim()) performSearch()
+  // 标题 / 内容允许同时不勾（此时关键词搜索为空、仅标签筛选有效），不自动勾回
+  if (searchQuery.value.trim() || selectedTags.value.length > 0) performSearch()
 }
 
 function handleSearchInput() {
@@ -382,12 +382,14 @@ async function performSearch() {
     return
   }
 
-  if (!searchInTitle.value && !searchInContent.value) {
+  // 标题 / 内容都未勾时关键词搜索无匹配字段（空结果）；仅标签筛选的浏览模式不受限
+  if (query && !searchInTitle.value && !searchInContent.value) {
     searchResults.value = []
     return
   }
 
   isSearching.value = true
+  const seq = ++searchSeq
   try {
     // allVaultsMode 或无选择时不传 vaults（后端搜全部），自定义模式传具体列表
     const vaults = allVaultsMode.value || selectedVaults.value.length === 0
@@ -401,9 +403,10 @@ async function performSearch() {
         searchInContent: searchInContent.value,
         vaults,
         tags: selectedTags.value.length > 0 ? [...selectedTags.value] : undefined,
-        excludeDir: excludeCopies.value ? copiesDir.value : undefined
+        excludeDir: includeCopies.value ? undefined : copiesDir.value
       }
     )
+    if (seq !== searchSeq) return // 过期响应：已有更新的搜索发出
     if (result.ok && result.results) {
       searchResults.value = result.results
       searchDurationMs.value = result.durationMs || 0
@@ -412,10 +415,11 @@ async function performSearch() {
       searchResults.value = []
     }
   } catch (e: any) {
+    if (seq !== searchSeq) return
     ElMessage.error(e?.message || '搜索失败')
     searchResults.value = []
   } finally {
-    isSearching.value = false
+    if (seq === searchSeq) isSearching.value = false
   }
 }
 
