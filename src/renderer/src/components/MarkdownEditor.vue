@@ -1011,11 +1011,35 @@ watch(
 
 onMounted(() => {
   view = createView(props.modelValue)
-  // 挂载前 store 可能已置下「编辑位置」意图（首次打开笔记：先 openNote 再挂载编辑器）
-  applyPendingPlacement()
+  if (editorStore.pendingPlacement) {
+    // 挂载前 store 可能已置下「编辑位置」意图（首次打开笔记：先 openNote 再挂载编辑器）
+    applyPendingPlacement()
+  } else {
+    // 设置页往返等场景：编辑视图被整体卸载又重挂载（App 的 v-if），恢复离开时的
+    // 光标与滚动位置——新视图的光标默认落在文档开头，会丢位置（2026-09-27 用户反馈）
+    const saved = editorStore.savedCursor
+    const key = editorStore.current ? `${editorStore.current.vault}::${editorStore.current.path}` : ''
+    if (saved && saved.key === key && view) {
+      view.dispatch({ selection: { anchor: saved.anchor, head: saved.head } })
+      const targetScroll = saved.scrollTop
+      requestAnimationFrame(() => {
+        if (view) view.scrollDOM.scrollTop = targetScroll
+      })
+    }
+  }
 })
 
 onBeforeUnmount(() => {
+  // 存档光标与滚动位置（供重挂载恢复，见 onMounted）
+  if (view && editorStore.current) {
+    const sel = view.state.selection.main
+    editorStore.savedCursor = {
+      key: `${editorStore.current.vault}::${editorStore.current.path}`,
+      anchor: sel.anchor,
+      head: sel.head,
+      scrollTop: view.scrollDOM.scrollTop
+    }
+  }
   tablePrompt.cancel()
   view?.destroy()
   view = null
