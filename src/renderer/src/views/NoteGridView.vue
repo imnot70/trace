@@ -10,14 +10,18 @@ import MarkdownPreview from '../components/MarkdownPreview.vue'
 import TagPickerDialog from '../components/TagPickerDialog.vue'
 import { formatRelativeTime } from '../lib/relativeTime'
 import { stripFrontmatter } from '@shared/noteTags'
+import { SCRATCH_VAULT } from '@shared/types'
+import { noteDisplayName } from '@shared/validate'
+import { useDraftStore } from '../stores/draft'
 import type { TreeNode } from '@shared/types'
 
-/** 卡片网格视图：常用 / 收藏（笔记卡片，单击预览双击编辑）、笔记库（库卡片双击钻入，
+/** 卡片网格视图：常用 / 收藏 / 草稿（笔记卡片，单击预览双击编辑）、笔记库（库卡片双击钻入，
  *  库内容网格 = 文件夹卡片 + 笔记卡片，面包屑 / Esc 逐级回退，见 vault-grid-navigation-design.md） */
 const app = useAppStore()
 const tree = useTreeStore()
 const actions = useNoteActions()
 const editor = useEditorStore()
+const draft = useDraftStore()
 
 type GridItem = { id?: string; vault: string; path: string; name: string; openedAt?: string }
 type VaultCard = { id?: string; name: string; description?: string }
@@ -25,6 +29,7 @@ type VaultCard = { id?: string; name: string; description?: string }
 const SECTION_TITLE: Record<GridSection, string> = {
   recents: '常用',
   favorites: '收藏',
+  drafts: '草稿',
   vaults: '笔记库',
   tags: '标签',
   unresolved: '断链引用'
@@ -97,10 +102,32 @@ watch(
 const items = computed<GridItem[]>(() => {
   if (section.value === 'recents') return tree.recents
   if (section.value === 'favorites') return tree.favorites
+  if (section.value === 'drafts') return draftItems.value
   if (section.value === 'tags') return tagItems.value
   if (section.value === 'unresolved') return unresolvedItems.value
   return contentNotes.value
 })
+
+// ---------- 草稿视图：scratch 伪库的卡片网格（侧栏只留单行入口，列表不再展开） ----------
+const draftItems = computed<GridItem[]>(() =>
+  section.value === 'drafts'
+    ? draft.drafts.map((d) => ({
+        vault: SCRATCH_VAULT,
+        path: d.name,
+        name: noteDisplayName(d.name),
+        openedAt: new Date(d.mtime).toISOString()
+      }))
+    : []
+)
+
+// 进入草稿网格时刷新一次（scratch 目录不在 watcher 视野，靠主动刷新保持新鲜）
+watch(
+  () => section.value === 'drafts',
+  (isDrafts) => {
+    if (isDrafts) void draft.refresh()
+  },
+  { immediate: true }
+)
 
 // ---------- 标签视图：按 tagId 加载笔记 ----------
 const tagId = computed(() =>
@@ -263,11 +290,27 @@ function onFolderMenuCommand(cmd: string, node: TreeNode): void {
 }
 
 async function onNoteMenuCommand(cmd: string, item: GridItem): Promise<void> {
-  // 会移除当前卡片的操作（移出常用 / 收藏区取消收藏）先等 ⋮ 菜单收起动画结束：
+  // 会移除当前卡片的操作（移出常用 / 收藏区取消收藏 / 删除草稿）先等 ⋮ 菜单收起动画结束：
   // 否则 teleport 到 body 的 popper 会在锚点卡片消失时对分离元素重定位，闪现到视口左上角
   const removesCard =
-    cmd === 'removeRecent' || (section.value === 'favorites' && cmd === 'favorite')
+    cmd === 'removeRecent' ||
+    cmd === 'deleteDraft' ||
+    (section.value === 'favorites' && cmd === 'favorite')
   if (removesCard) await new Promise((resolve) => setTimeout(resolve, 350))
+
+  // 草稿卡片（FR-2.3.9）：保存为笔记 / 永久删除（不进回收站）
+  if (section.value === 'drafts') {
+    if (cmd === 'promote') draft.requestPromote(item.path)
+    else if (cmd === 'deleteDraft') {
+      await ElMessageBox.confirm(`确定删除草稿「${item.name}」吗？草稿不会进入回收站，删除后不可恢复。`, '删除草稿', {
+        type: 'warning',
+        confirmButtonText: '永久删除',
+        cancelButtonText: '取消'
+      })
+      await draft.remove(item.path)
+    }
+    return
+  }
 
   if (cmd === 'exportPdf') {
     void actions.exportNotes([{ vault: item.vault, path: item.path, name: item.name }])
@@ -629,7 +672,7 @@ watch(section, () => {
       <el-tooltip
         v-for="item in items"
         :key="item.id ?? `${item.vault}::${item.path}`"
-        :content="`${item.vault} / ${item.path}`"
+        :content="section === 'drafts' ? `草稿 / ${item.path}` : `${item.vault} / ${item.path}`"
         placement="bottom"
         :show-after="400"
       >
@@ -647,7 +690,11 @@ watch(section, () => {
                 <el-icon><MoreFilled /></el-icon>
               </button>
               <template #dropdown>
-                <el-dropdown-menu>
+                <el-dropdown-menu v-if="section === 'drafts'">
+                  <el-dropdown-item command="promote">保存为笔记…</el-dropdown-item>
+                  <el-dropdown-item command="deleteDraft" divided class="danger-item">删除草稿</el-dropdown-item>
+                </el-dropdown-menu>
+                <el-dropdown-menu v-else>
                   <el-dropdown-item command="favorite">
                     {{ isFavorited(item) ? '取消收藏' : '收藏笔记' }}
                   </el-dropdown-item>
@@ -668,11 +715,11 @@ watch(section, () => {
             <div class="note-card-excerpt">{{ excerpts[`${item.vault}::${item.path}`] ?? '' }}</div>
           </div>
           <div class="note-card-meta">
-            <template v-if="section === 'recents' && item.openedAt">
+            <template v-if="(section === 'recents' || section === 'drafts') && item.openedAt">
               {{ formatRelativeTime(item.openedAt) }}
             </template>
             <template v-else>
-              <span>{{ item.vault }}</span>
+              <span>{{ section === 'drafts' ? '草稿' : item.vault }}</span>
               <span v-if="dirOf(item.path)">/{{ dirOf(item.path) }}</span>
             </template>
           </div>

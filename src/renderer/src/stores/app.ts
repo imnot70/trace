@@ -6,7 +6,7 @@ import { effectiveTypewriterMode, flowMeasureEm } from '../lib/flow'
 import type { TypewriterMode } from '../lib/typewriter'
 
 /** 卡片网格视图的区块类型 */
-export type GridSection = 'recents' | 'favorites' | 'vaults' | 'tags' | 'unresolved'
+export type GridSection = 'recents' | 'favorites' | 'drafts' | 'vaults' | 'tags' | 'unresolved'
 export type ViewMode = 'grid' | 'list'
 
 export type ActiveView =

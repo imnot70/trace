@@ -58,7 +58,7 @@ const railVisible = computed(() => !app.flowMode && (app.zenMode || !app.sidebar
 const sidebarShown = computed(() => (!app.zenMode && app.sidebarVisible) || app.zenSidebarOverlay)
 
 /** 导航条图标对应的视图切换（与侧栏标题点击一致） */
-function toggleGrid(section: 'recents' | 'favorites' | 'vaults'): void {
+function toggleGrid(section: 'recents' | 'favorites' | 'drafts' | 'vaults'): void {
   if (app.view.name === 'grid' && app.view.section === section) app.view = { name: 'welcome' }
   else app.view = { name: 'grid', section }
 }
