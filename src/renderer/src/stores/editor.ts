@@ -31,6 +31,10 @@ export const useEditorStore = defineStore('editor', {
      * 都不应把光标挪走
      */
     pendingPlacement: null as 'start' | 'end' | null,
+    /** 跨重挂载的光标存档（2026-09-27）：打开设置页会整体卸载编辑视图（App 的 v-if），
+     *  关闭设置重挂载后 CM 视图是新建的、光标默认落在文档开头——存下离开时的选区与
+     *  滚动位置，重挂载时按笔记键恢复（打开笔记的落位意图 pendingPlacement 优先） */
+    savedCursor: null as { key: string; anchor: number; head: number; scrollTop: number } | null,
     saveTimer: null as ReturnType<typeof setTimeout> | null
   }),
   getters: {

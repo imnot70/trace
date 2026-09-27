@@ -846,38 +846,47 @@ body {
 /* ---------- 顶栏隐藏时的右下角状态区（专注隐藏顶栏 / 心流模式） ---------- */
 /* 长条形区域：有底色与圆角以区别于正文；85% 不透明度不喧宾夺主；
    悬停唤出顶栏时淡出——完整状态在顶栏里，避免同屏双份 */
-.zen-status-area {
+.zen-status-wrap {
   position: absolute;
   right: 12px;
   bottom: 12px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 12px;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+}
+
+.zen-status-wrap.peeking {
+  opacity: 0;
+}
+
+.zen-status-area {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  /* 与反向链接胶囊同高：26px = 内容 16px（同其计数徽章 line-height）+ 上下 padding 8 + 描边 2 */
+  box-sizing: border-box;
+  min-height: 26px;
   border-radius: 999px;
   /* 半透明底：透出心流纸面（2026-09-27 用户要求 85% 不透明的半透明胶囊） */
   background: color-mix(in srgb, var(--bg-tertiary) 78%, transparent);
   border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.4;
-  opacity: 0.85;
-  pointer-events: none;
-  z-index: 6;
-  transition: opacity 0.2s ease;
-  max-width: 60%;
   white-space: nowrap;
+  flex-shrink: 0; /* 不被 wrap 压缩（原 max-width 60% 在嵌套后会把胶囊压扁、裁掉末位图标） */
   overflow: hidden;
-}
-
-.zen-status-area.peeking {
-  opacity: 0;
 }
 
 /* 编辑模式图标：所见即所得用 accent 高亮（写作时最关心「现在能不能马上看到效果」） */
 
 /* 保存状态小圆点（回归 v0.8.0 的极微弱语义：写作专注优先，保存事件只轻点一下） */
-.zen-status-area .zen-status-dot {
+.zen-status-wrap .zen-status-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -887,21 +896,21 @@ body {
   flex-shrink: 0;
 }
 
-.zen-status-area .zen-status-dot.dirty {
+.zen-status-wrap .zen-status-dot.dirty {
   opacity: 0.35;
 }
 
-.zen-status-area .zen-status-dot.saving {
+.zen-status-wrap .zen-status-dot.saving {
   opacity: 0.6;
   animation: zen-save-pulse 0.9s ease-in-out infinite;
 }
 
-.zen-status-area .zen-status-dot.saved {
+.zen-status-wrap .zen-status-dot.saved {
   opacity: 0.75;
   animation: zen-save-flash 0.6s ease-out 1;
 }
 
-.zen-status-area .zen-status-dot.error {
+.zen-status-wrap .zen-status-dot.error {
   opacity: 1;
   background: var(--danger);
 }
@@ -931,7 +940,7 @@ body {
 
 /* 编辑模式三图标（所见即所得 / 心流 / 专注）：激活 accent 高亮 */
 .zen-status-area .zen-status-mode {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-tertiary);
 }
 

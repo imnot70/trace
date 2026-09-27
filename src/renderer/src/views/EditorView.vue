@@ -887,9 +887,11 @@ onBeforeUnmount(() => {
 
     <!-- 顶栏隐藏时（专注隐藏顶栏 / 心流）：右下角长条形状态区。
          有底色与圆角以区别于正文；编辑模式四图标（打字机 / 所见即所得 / 心流 / 专注），
-         各自激活时 accent 高亮；保存状态小圆点固定在最右（2026-09-27 用户要求：git 信息
-         从状态区移除，专注写作时不再展示分支 / 未提交状态）；悬停唤出顶栏时淡出 -->
-    <div v-if="concealed" class="zen-status-area" :class="{ peeking: topbarPeek }">
+         各自激活时 accent 高亮；保存状态小圆点在胶囊**外**右侧（2026-09-27 用户要求：
+         圆点静置时隐去，若留在胶囊内会让胶囊右侧空一块；git 信息已从状态区移除）；
+         悬停唤出顶栏时整体淡出 -->
+    <div v-if="concealed" class="zen-status-wrap" :class="{ peeking: topbarPeek }">
+      <div class="zen-status-area">
       <!-- 编辑模式四图标：打字机（字母 T——Aim 与定位图标重复）/ 所见即所得（魔法棒）/
            心流（咖啡杯）/ 专注（全屏）；
            各自激活时 accent 高亮——从顶栏隐藏后仍能确认当前处于哪些模式 -->
@@ -921,7 +923,8 @@ onBeforeUnmount(() => {
       >
         <FullScreen />
       </el-icon>
-      <!-- 保存状态小圆点：固定最右（回归 v0.8.0 的极微弱语义，写作专注优先） -->
+      </div>
+      <!-- 保存状态小圆点：胶囊外右侧（静置隐去，出现时才可见） -->
       <span class="zen-status-dot" :class="saveDotState" title=""></span>
     </div>
 
