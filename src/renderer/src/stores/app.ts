@@ -82,6 +82,9 @@ export const useAppStore = defineStore('app', {
     zenSidebarOverlay: false,
     /** 从设置等视图返回编辑时置位，EditorView 挂载后聚焦编辑器并清除 */
     focusEditorOnce: false,
+    /** Ctrl+F 意图（FR-2.9.11）：焦点在编辑器内时由 CM 键位自行接管，焦点在外（预览 /
+     *  工具栏等）由 App.vue 全局层置位，EditorView 消费——聚焦编辑器并打开查找/替换面板 */
+    pendingNoteSearch: false,
     /** 悬浮预览卡片（长按预览按钮触发，会话级不持久化） */
     floatingPreview: false,
     /** 所见即所得（Live Preview）编辑模式：运行态开关，初始值取设置 defaultEditMode（会话级） */

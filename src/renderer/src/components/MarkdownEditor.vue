@@ -29,7 +29,7 @@ import {
   indentOnInput,
   syntaxHighlighting
 } from '@codemirror/language'
-import { highlightSelectionMatches, searchKeymap } from '@codemirror/search'
+import { highlightSelectionMatches, searchKeymap, openSearchPanel } from '@codemirror/search'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import {
@@ -578,42 +578,86 @@ const traceTheme = EditorView.theme({
     marginLeft: 'auto',
     fontStyle: 'normal'
   },
-  // 内置查找/替换面板（FR-2.9.11 当前笔记内搜索）：配色走主题变量，与补全框同风格
+  // 内置查找/替换面板（FR-2.9.11 当前笔记内搜索）：按应用设计语言整体重做——
+  // flex 排布（吸收掉 CM 用来分行的 <br>，窄栏自然换行）、幽灵按钮、accent 聚焦环。
+  // 注意面板类名是 cm-search（非旧文档的 cm-searchPanel），按钮/输入框带 cm-button /
+  // cm-textfield 类，选项开关各包在一个 label 里，关闭按钮 name=close
   '.cm-panel.cm-search': {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: '6px 8px',
+    padding: '8px 12px',
     backgroundColor: 'var(--bg-primary)',
     borderTop: '1px solid var(--border-color)',
     color: 'var(--text-primary)',
-    padding: '6px 8px',
-    fontFamily: 'inherit'
+    fontFamily: 'inherit',
+    fontSize: '12px'
+  },
+  // br 不隐藏而是撑满一行：保留 CM 的两行分组（查找行 / 替换行），替换框不与它的按钮拆开
+  '.cm-panel.cm-search br': { display: 'block', flexBasis: '100%', height: '0px' },
+  '.cm-panel.cm-search label': {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    margin: 0,
+    color: 'var(--text-secondary)',
+    cursor: 'pointer',
+    userSelect: 'none'
   },
   '.cm-panel.cm-search input[type=checkbox]': {
     accentColor: 'var(--accent)',
-    verticalAlign: 'middle',
-    marginRight: '3px'
-  },
-  '.cm-panel.cm-search input.cm-textfield': {
-    backgroundColor: 'var(--bg-secondary)',
-    color: 'var(--text-primary)',
-    border: '1px solid var(--border-color)',
-    borderRadius: '4px',
-    padding: '2px 6px'
-  },
-  '.cm-panel.cm-search button': {
-    backgroundColor: 'var(--bg-secondary)',
-    color: 'var(--text-secondary)',
-    border: '1px solid var(--border-color)',
-    borderRadius: '4px',
-    padding: '2px 8px',
+    width: '13px',
+    height: '13px',
+    margin: 0,
     cursor: 'pointer'
   },
-  '.cm-panel.cm-search button:hover': {
+  '.cm-panel.cm-search input.cm-textfield': {
+    width: '16em',
+    padding: '4px 10px',
     color: 'var(--text-primary)',
-    backgroundColor: 'var(--bg-hover)'
+    backgroundColor: 'var(--bg-secondary)',
+    border: '1px solid var(--border-color)',
+    borderRadius: '6px',
+    outline: 'none',
+    fontFamily: 'inherit',
+    fontSize: '12px',
+    transition: 'border-color 0.15s ease, box-shadow 0.15s ease'
+  },
+  '.cm-panel.cm-search input.cm-textfield:focus': {
+    borderColor: 'var(--accent)',
+    boxShadow: '0 0 0 2px var(--accent-soft)'
+  },
+  '.cm-panel.cm-search button': {
+    appearance: 'none',
+    margin: 0,
+    padding: '4px 12px',
+    color: 'var(--text-secondary)',
+    backgroundColor: 'var(--bg-secondary)',
+    border: '1px solid var(--border-color)',
+    borderRadius: '6px',
+    fontFamily: 'inherit',
+    fontSize: '12px',
+    lineHeight: '1.5',
+    cursor: 'pointer',
+    transition: 'color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease'
+  },
+  '.cm-panel.cm-search button:hover': {
+    color: 'var(--accent)',
+    borderColor: 'var(--accent)',
+    backgroundColor: 'var(--accent-soft)'
   },
   '.cm-panel.cm-search button[name=close]': {
+    marginLeft: 'auto',
     border: 'none',
-    background: 'transparent',
-    fontSize: '14px'
+    backgroundColor: 'transparent',
+    color: 'var(--text-tertiary)',
+    fontSize: '15px',
+    padding: '2px 6px'
+  },
+  '.cm-panel.cm-search button[name=close]:hover': {
+    color: 'var(--text-primary)',
+    backgroundColor: 'var(--bg-hover)'
   }
 })
 
@@ -1055,6 +1099,9 @@ defineExpose({
   insertTable: insertTableAtCursor,
   beginTablePrompt,
   setHeading: setHeadingLevel,
+  /** 打开笔记内查找/替换面板（Ctrl+F 专用语义，FR-2.9.11）：焦点在编辑器外时经
+   *  EditorView 的 pendingNoteSearch 意图调用（先聚焦再开面板） */
+  openNoteSearch: () => (view ? openSearchPanel(view) : false),
   focus: () => {
     if (view) view.focus()
   },

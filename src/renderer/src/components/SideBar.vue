@@ -257,7 +257,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
     <div class="sidebar-header">
       <div class="sidebar-logo">迹</div>
       <div class="sidebar-title">Trace 笔迹</div>
-      <button class="sidebar-search-btn" title="全局搜索 (Ctrl+F)" @click="search.openSearch()">
+      <button class="sidebar-search-btn" title="全局搜索（Shift Shift 连按两次，或点此）" @click="search.openSearch()">
         <el-icon><Search /></el-icon>
       </button>
     </div>

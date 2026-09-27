@@ -352,10 +352,34 @@ watch(
 // 进入编辑视图」时 openNote（异步 IPC）晚于挂载完成，editorRef 此刻尚未绑定、聚焦静默
 // 落空（Ctrl+N 草稿自动聚焦实测踩中）——改为观察 editorRef 绑定，两种时序统一收口。
 watch(editorRef, (el) => {
-  if (!el || !app.focusEditorOnce) return
-  app.focusEditorOnce = false
-  void nextTick(() => el.focus())
+  if (!el) return
+  if (app.focusEditorOnce) {
+    app.focusEditorOnce = false
+    void nextTick(() => el.focus())
+  }
+  // Ctrl+F 在编辑器外按下（FR-2.9.11）：编辑器恰好在挂载窗口期内，绑定即消费
+  if (app.pendingNoteSearch) {
+    app.pendingNoteSearch = false
+    void nextTick(() => {
+      el.focus()
+      el.openNoteSearch()
+    })
+  }
 })
+
+// Ctrl+F 意图消费（FR-2.9.11）：焦点在预览 / 工具栏等编辑器外时由 App.vue 全局层置位，
+// 此处聚焦编辑器并打开查找/替换面板。编辑器聚焦时 CM 键位自行接管，App 层不会置位
+watch(
+  () => app.pendingNoteSearch,
+  (v) => {
+    if (!v || !editorRef.value) return
+    app.pendingNoteSearch = false
+    void nextTick(() => {
+      editorRef.value?.focus()
+      editorRef.value?.openNoteSearch()
+    })
+  }
+)
 
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)

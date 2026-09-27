@@ -182,12 +182,14 @@ function onGlobalKeydown(e: KeyboardEvent): void {
       void draft.createDraft()
     }
     if (e.key.toLowerCase() === 'f') {
-      // 焦点分流（FR-2.9.11）：编辑器聚焦时 Ctrl+F 归 CodeMirror 的笔记内查找/替换
-      // 面板（openSearchPanel 由 searchKeymap 承接，此处不 preventDefault）；
-      // 其余状态（网格 / 设置 / 侧栏等）才是全局搜索
+      // Ctrl+F 专用语义（FR-2.9.11 二轮调整）：只做「笔记内查找 / 替换」，与 Double-Shift
+      //（全局搜索 / 当前库搜索）完全隔离，避免两个键都开搜索弹窗的混乱。
+      // 非编辑视图 / 无当前笔记时不响应；焦点在编辑器内由 CM 键位自行接管（此处不拦截），
+      // 焦点在外（预览 / 工具栏等）置一次性意图，由 EditorView 聚焦编辑器并打开面板
+      if (app.view.name !== 'editor' || !editor.current) return
       if ((e.target as HTMLElement | null)?.closest?.('.cm-editor')) return
       e.preventDefault()
-      search.openSearch()
+      app.pendingNoteSearch = true
     }
     // Ctrl+E：源码 ↔ 所见即所得编辑模式切换（仅编辑视图，FR-W1）
     if (e.key.toLowerCase() === 'e' && app.view.name === 'editor' && editor.current) {

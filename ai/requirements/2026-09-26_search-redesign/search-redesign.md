@@ -18,9 +18,9 @@
 
 | 搜索层级 | 触发（拍板后） | 范围 | 实现 |
 | --- | --- | --- | --- |
-| 全局搜索 | `Ctrl+F`（编辑器外） | 跨所有库 | SearchDialog + SearchService（不变），新增标签筛选下拉 |
-| **当前库搜索** | `Shift Shift`（连按两次，D1 拍板） | 预置为当前笔记所在库（可下拉改回所有库） | 复用 SearchDialog，`stores/search.openSearch(vault)` 携带预置范围 |
-| **当前笔记内搜索** | `Ctrl+F`（编辑器聚焦时，D2 拍板焦点分流） | 当前笔记 | CodeMirror 6 内置 searchPanel（查找 / 替换 / 全部替换 / 大小写 / 整词 / 正则），面板文案经 `EditorState.phrases` 中文化 |
+| 全局搜索 | `Shift Shift` / 侧栏搜索按钮 | 跨所有库（范围可改） | SearchDialog + SearchService，新增标签筛选下拉 |
+| **搜索框快捷入口** | `Shift Shift`（连按两次，D1 拍板） | 预置为当前笔记所在库（可下拉改回所有库） | 复用 SearchDialog，`stores/search.openSearch(vault)` 携带预置范围 |
+| **当前笔记内搜索** | `Ctrl+F`（编辑视图内，D2 拍板专用语义） | 当前笔记 | CodeMirror 6 内置 searchPanel（查找 / 替换 / 全部替换 / 大小写 / 整词 / 正则），面板文案经 `EditorState.phrases` 中文化 |
 
 #### 子需求
 
@@ -41,7 +41,7 @@
 ## 3. 决策记录（2026-09-26 与用户逐项确认）
 
 - **D1 当前库搜索触发方式**：✅ **Double-Shift**（JetBrains 惯例，不占新快捷键）。350ms 窗口、中间无其他键、非 repeat、非输入法组词；带修饰键的 Shift（如 Ctrl+Shift+H）不计数。
-- **D2 当前笔记搜索快捷键**：✅ **焦点分流**——编辑器聚焦时 `Ctrl+F` 走 CM 搜索面板，编辑器外仍开全局搜索。无新增键位；编辑中想开全局搜索用侧栏搜索按钮或 Double-Shift。
+- **D2 当前笔记搜索快捷键**：✅ **`Ctrl+F` 专用语义**（一版为「焦点分流」，2026-09-27 用户反馈「编辑器外 Ctrl+F 和 Double-Shift 都开搜索弹窗、易混淆」后改为）——`Ctrl+F` **只做笔记内查找 / 替换**（编辑视图内生效；焦点在预览 / 工具栏时经 `pendingNoteSearch` 意图自动聚焦编辑器再开面板；非编辑视图不响应），全局搜索入口收敛为 `Shift Shift` 与侧栏搜索按钮，两个动作完全隔离。
 - **跨库「强制引用」语义**（实施中发现的文档歧义，补充拍板）：✅ **复制笔记到当前库**——确认框文案「会将笔记从原库复制到当前库中」即此义；直接插 `[[引用]]` 在当前库必然断链，无实用价值。
 - **D3 确认框交互**：✅ **ElMessageBox 模态弹窗**（与删除确认等全局交互一致；`hasModalOpen` 已纳入其 wrapper，Esc 不会级联）。
 - **D4 标签维度搜索形态**：✅ **独立标签多选下拉**（发现性好、零学习成本；选项从搜索索引跨库聚合，`search:listTags` IPC）。
@@ -55,7 +55,7 @@
 | IPC | `registerIpc.ts` / `shared/api.ts` / `preload` | 新增 `search:listTags`、`note:crossVaultCopy`；删除死通道 `search:updateFile` / `search:removeFile` / `search:clearIndex` |
 | 设置 | `shared/types.ts` + `main/index.ts` + `stores/app.ts` + `SettingsView.vue` | `skipCrossVaultCopyConfirm`（三处默认值 + 编辑器区块开关行） |
 | 编辑器 | `MarkdownEditor.vue` | 删除 `Mod-f` 拦截绑定（searchKeymap 自然接管）；`EditorState.phrases` 中文化面板；traceTheme 补 `.cm-panel.cm-search` 配色；Alt-Enter 跨库分支改为 emit `insert-cross-vault` 交外层统一处理 |
-| 应用壳 | `App.vue` | `Ctrl+F` 焦点分流（`activeElement` 在 `.cm-editor` 内则让位）；`onEscape` 给搜索面板让位（先收面板）；注册 Double-Shift 检测器（`hasModalOpen` 防误触）；Alt 系键在 CM 面板聚焦时让位（面板自带 Alt+C/R/W 切换键，避免 Alt+W 双触发） |
+| 应用壳 | `App.vue` | `Ctrl+F` 专用语义（编辑视图内置 `pendingNoteSearch` 意图交 EditorView 聚焦编辑器开面板；编辑器聚焦时由 CM 接管；非编辑视图不响应）；`onEscape` 给搜索面板让位（先收面板）；注册 Double-Shift 检测器（`hasModalOpen` 防误触）；Alt 系键在 CM 面板聚焦时让位（面板自带 Alt+C/R/W 切换键，避免 Alt+W 双触发） |
 | 搜索 UI | `SearchDialog.vue` + `stores/search.ts` | store 清理为 `visible / presetVault / openSearch(vault?)`（死链路销账）；预置范围消费；标签多选下拉；空关键词 + 标签的浏览模式 |
 | 悬浮预览 | `EditorView.vue` | `insertPreviewTarget` 收口库内直插 / 跨库确认复制两条路径（编辑器 Alt+Enter 与插入按钮共用）；跨库态 class（萤光边框 + 徽标）；移除旧 `canInsertReference` 拒绝式校验 |
 | 快捷键表 | `config/shortcuts.ts` | `Ctrl+F` 双语义、`Shift Shift`、Esc 链更新 |
@@ -84,6 +84,11 @@
 | 12 | 免确认开关（设置页切换 → is-checked）后重复跨库插入：无弹框直接复制 | ✅ |
 | 13 | 重名自动后缀：素材-2.md + pic-2.png、引用同步改写 `pic-2.png` | ✅ |
 | 14 | 顺带回归：自动保存、外部修改静默重载、watcher → 搜索索引增量更新 | ✅ |
+
+### 6.1 二轮调整（2026-09-27，用户反馈）
+
+1. **`Ctrl+F` 语义收敛**：一版按 D2 原建议做「焦点分流」（编辑器外 Ctrl+F 仍开全局搜索），用户试用后指出「编辑器外 Ctrl+F 与 Double-Shift 的动作含义重叠、易混乱」——改为 `Ctrl+F` 只做笔记内查找 / 替换，与搜索框完全隔离。实现：`Ctrl+F` 在编辑视图内且焦点不在编辑器时置 `app.pendingNoteSearch` 一次性意图，EditorView 两个 watcher（标志变化 + editorRef 绑定，覆盖挂载窗口期）消费——聚焦编辑器并调用新暴露的 `openNoteSearch()`（内部 `openSearchPanel(view)`）；编辑器聚焦时仍由 CM 键位自行接管。侧栏搜索按钮提示同步改为「Shift Shift 连按两次，或点此」。
+2. **面板样式重做**：原生控件质感与应用不符（截图反馈）——traceTheme 按应用设计语言整体重做：flex 排布、`br` 改为占满一行的换行元素（保留「查找行 / 替换行」分组、替换框不与它的按钮拆开）、输入框 16em + accent 聚焦环（`outline: none`）、幽灵按钮（bg-secondary / 描边 / hover 转 accent）、选项 label 样式化；`×` 关闭钮为 CM 自带的右上角绝对定位，套用幽灵样式。**隔离实例 CDP 复验**（2026-09-27）：非编辑视图 Ctrl+F 无响应 ✓；欢迎页 Double-Shift 回落全局搜索框 ✓；编辑器聚焦 Ctrl+F 开面板 ✓；blur 后 Ctrl+F 经意图路径重开面板并回焦编辑器 ✓；截图确认新样式与两行分组 ✓。
 
 **踩坑记录**（已同步 `ai/tech/tech_cm6-editor.md` 与 index 〇.3）：
 
