@@ -28,6 +28,17 @@ describe('表格尺寸状态机', () => {
     expect(promptDims(startPrompt())).toEqual({ rows: 2, cols: 2 })
   })
 
+  it('自定义默认行列（设置项 FR-2.4.20 扩展）：未输入时用设置的默认', () => {
+    expect(promptDims(startPrompt(), { defaultRows: 5, defaultCols: 4 })).toEqual({ rows: 5, cols: 4 })
+    const r = run('3 ')
+    expect(promptDims(r.state, { defaultRows: 5, defaultCols: 4 })).toEqual({ rows: 3, cols: 4 })
+  })
+
+  it('非法设置值兜底到内置默认（0 / 负数 / 非有限值）', () => {
+    expect(promptDims(startPrompt(), { defaultRows: 0, defaultCols: -3 })).toEqual({ rows: 2, cols: 2 })
+    expect(promptDims(startPrompt(), { defaultRows: Number.NaN, defaultCols: Number.NaN })).toEqual({ rows: 2, cols: 2 })
+  })
+
   it('输入「5 6 」→ 插入 5 行 6 列', () => {
     const { state, actions } = run('5 6 ')
     expect(state).toEqual({ rows: 5, cols: 6, pending: '' })

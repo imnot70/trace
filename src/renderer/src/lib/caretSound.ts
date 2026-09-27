@@ -4,7 +4,9 @@
  *
  * 四种音色（设置项 flowSoundVariant；后三者均按用户提供的实录音效实测特征合成）：
  * - carriage 推回车「棘轮」：约 0.26s 的一串齿（间隔 9ms 渐密到 6ms、振幅渐强）；
- * - bell     回车铃「叮」：2742 / 6527 / 9700 / 11449Hz 四个分音，余振约 0.7s；
+ * - bell     回车铃「叮」：2742 / 6527 / 9700 / 11449Hz 四个分音，余振约 0.7s
+ *           （2026-09-27 按用户反馈：尾部颤音衰减 +15%、颤音段音量 +10%、整段放长到 0.95s、
+ *           末段 0.3s 余弦渐弱收尾）；
  * - retro    复古打字机「回车」：三段结构——
  *           ① 按键：宽带咔（5-12kHz）+ 四个微冲击 + 字锤/纸卷共振（1.2k / 2.9kHz）+ 延迟 12ms 的机体「咚」（96/182Hz）；
  *           ② 70ms 推回车：约 0.26s / 30 颗左右棘轮齿（间隔 9ms 渐密到 6ms、振幅渐强，实测间隔 6-10ms；2026-09-27 按用户反馈去掉开头 2 颗）；
@@ -131,6 +133,19 @@ export const RETRO_BELL_START_S = 0.24
 /** 缓冲末尾的淡出时长（秒）：铃的余振被截断处需要淡出，否则会有咔哒声 */
 export const RETRO_FADE_OUT_S = 0.06
 
+/** 独立「回车铃」专属：尾部颤音衰减放长系数（+15%，2026-09-27 用户反馈「过于短促、
+ *  人耳只能听到尖锐部分」——四个分音的衰减时间常数统一 ×1.15，余振听感更长；
+ *  仅作用于独立「回车铃」，复古打字机里的铃保持 2026-09-26 试听确认过的口径） */
+export const BELL_TAIL_DECAY_SCALE = 1.15
+/** 独立「回车铃」专属：颤音段音量提升（+10%，起音段不变） */
+export const BELL_TAIL_GAIN = 1.1
+/** 颤音段音量爬升的起点与过渡时长（秒）：起音 80ms 后开始爬升、60ms 平滑过渡避免台阶感 */
+export const BELL_TAIL_RAMP_START_S = 0.08
+export const BELL_TAIL_RAMP_S = 0.06
+/** 末段余音渐弱的时长（秒）：0.3s 余弦缓降 1→0（2026-09-27 二轮反馈「最后有些戛然而止」
+ *  ——长度不变，收尾从 60ms 线性淡出改为更长的余弦曲线，听感是「融进安静」而非「被切断」） */
+export const BELL_TAIL_OFF_S = 0.3
+
 /** 按键的微冲击（实录音效单次按键在 100-190ms 内有 9 个能量峰：键帽 / 连杆 / 字锤 / 纸卷相继撞击） */
 const RETRO_IMPACTS = [
   { t: 0, amp: 1, tone: 1 },
@@ -188,8 +203,24 @@ function normalize(buf: Float32Array): void {
 
 /** 独立「棘轮（推回车）」的时长（秒） */
 export const RETRO_PUSH_ONLY_DURATION_S = 0.3
-/** 独立「回车铃」的时长（秒） */
-export const RETRO_BELL_ONLY_DURATION_S = 0.8
+/** 独立「回车铃」的时长（秒）：0.8 → 0.95（2026-09-27 颤音衰减放长 15% 后按原截断比例
+ *  同步放长缓冲，避免更长的尾音被硬截在半途） */
+export const RETRO_BELL_ONLY_DURATION_S = 0.95
+
+/** 铃分音层（纯渲染，可单测；导出供调音对比测试）：四个分音各自指数衰减 + 1.5ms 起音。
+ *  n = 采样点数；decayScale 缩放全部衰减时间常数（独立回车铃 +15% 用，复古打字机传 1）。
+ *  铃不依赖噪声床，独立生成即可与三段合成共用同一套参数。 */
+export function renderBellLayer(sampleRate: number, p: RetroParams, n: number, decayScale: number): Float32Array {
+  const out = new Float32Array(n)
+  const tau = 2 * Math.PI
+  const bell = RETRO_BELL_PARTIALS.map((b) => ({ ...b, freq: b.freq * p.bellDetune }))
+  for (let i = 0; i < n; i++) {
+    const dBell = i / sampleRate
+    const attack = 1 - Math.exp(-dBell / 0.0015) // 1.5ms 起音，避免爆音
+    for (const b of bell) out[i] += Math.sin(tau * b.freq * dBell) * Math.exp(-dBell / (b.decay * decayScale)) * b.amp * attack
+  }
+  return out
+}
 
 /** 三层波形（长度 = RETRO_DURATION_S）：按键（含机体咚）/ 推回车棘轮 / 回车铃。
  *  skipRatchetTeeth：去掉棘轮序列开头 N 颗——独立「推回车」音色保持完整序列，
@@ -214,11 +245,10 @@ function retroLayers(sampleRate: number, rand: () => number, skipRatchetTeeth = 
 
   const tau = 2 * Math.PI
   const push = returnRatchetSchedule(rand).slice(skipRatchetTeeth)
-  const bell = RETRO_BELL_PARTIALS.map((b) => ({ ...b, freq: b.freq * p.bellDetune }))
 
   const strike = new Float32Array(n)
   const pushLayer = new Float32Array(n)
-  const bellLayer = new Float32Array(n)
+  const bellLayer = renderBellLayer(sampleRate, p, n, 1)
 
   for (let i = 0; i < n; i++) {
     const t = i / sampleRate
@@ -242,12 +272,6 @@ function retroLayers(sampleRate: number, rand: () => number, skipRatchetTeeth = 
       if (dt < 0 || dt > 0.025) continue
       pushLayer[i] += noise[i] * Math.exp(-dt / 0.004) * 0.9 * c.amp
       pushLayer[i] += Math.sin(tau * c.freq * dt) * Math.exp(-dt / 0.0018) * 1.3 * c.amp
-    }
-    // ③ 回车铃（四个分音，各自的指数衰减）
-    const dBell = t - RETRO_BELL_START_S
-    if (dBell > 0) {
-      const attack = 1 - Math.exp(-dBell / 0.0015) // 1.5ms 起音，避免爆音
-      for (const b of bell) bellLayer[i] += Math.sin(tau * b.freq * dBell) * Math.exp(-dBell / b.decay) * b.amp * attack
     }
   }
 
@@ -312,21 +336,47 @@ export function renderRetroPush(sampleRate: number, rand: () => number = Math.ra
 }
 
 /**
- * 独立「回车铃」音色（纯函数，可单测）：把铃单独成声（0.8s），起点对齐到 0、
- * 末尾 60ms 淡出、峰值归一化——与「复古打字机」里的铃同一套分音与衰减。
+ * 独立「回车铃」音色（纯函数，可单测）：单独成声（0.95s），起点对齐到 0、末尾 60ms 淡出、
+ * 峰值归一化。2026-09-27 按用户反馈调整「过于短促、只听得到尖锐起音」：
+ * ① 尾部颤音衰减时间常数 ×1.15（余振更长），缓冲同步放长到 0.95s 避免硬截；
+ * ② 起音 80ms 后的颤音段音量 +10%（60ms 平滑爬升）——在**归一化之后**施加，
+ *    否则位于起音处的全局峰值归一化会把相对提升抵消掉；尾段振幅远低于峰值，无削波风险。
+ * ③ 末段 0.3s 余弦渐弱收尾（二轮反馈「戛然而止」）——在颤音提升之后施加，终点精确为 0。
+ * 复古打字机整声里的铃不受影响（其口径 2026-09-26 试听确认过）。
  */
 export function renderRetroBell(sampleRate: number, rand: () => number = Math.random): Float32Array {
-  const { bell } = retroLayers(sampleRate, rand)
+  const p = retroParams(rand)
   const n = Math.max(1, Math.floor(sampleRate * RETRO_BELL_ONLY_DURATION_S))
   const shift = Math.floor(sampleRate * RETRO_BELL_START_S)
+  const layer = renderBellLayer(sampleRate, p, n + shift, BELL_TAIL_DECAY_SCALE)
   const out = new Float32Array(n)
-  for (let i = 0; i < n; i++) {
-    const src = i + shift
-    out[i] = src < bell.length ? bell[src] : 0
-  }
-  fadeOut(out, sampleRate, RETRO_FADE_OUT_S)
+  for (let i = 0; i < n; i++) out[i] = layer[i + shift]
   normalize(out)
+  applyBellTailGain(out, sampleRate)
+  applyBellTailOff(out, sampleRate)
   return out
+}
+
+/** 末段余音渐弱（纯函数，可单测）：末尾 BELL_TAIL_OFF_S 内余弦缓降 1→0。
+ *  余弦端点导数为 0——起点无台阶、终点无咔哒；曲线前半下降慢、后半快，
+ *  与指数衰减叠加后听感是「逐渐沉入安静」而不是戛然而止 */
+export function applyBellTailOff(buf: Float32Array, sampleRate: number): void {
+  const off = Math.min(buf.length, Math.floor(sampleRate * BELL_TAIL_OFF_S))
+  const from = buf.length - off
+  for (let i = from; i < buf.length; i++) {
+    const x = (i - from) / off
+    buf[i] *= 0.5 * (1 + Math.cos(Math.PI * x))
+  }
+}
+
+/** 颤音段音量提升（纯函数，可单测）：[起点, 起点+过渡) 线性爬升到 +10%，其后全段乘定值。
+ *  必须在归一化之后调用——峰值在起音处，先提升再归一会被整体缩放抵消 */
+export function applyBellTailGain(buf: Float32Array, sampleRate: number): void {
+  const rampFrom = Math.min(buf.length, Math.floor(sampleRate * BELL_TAIL_RAMP_START_S))
+  const rampTo = Math.min(buf.length, Math.floor(sampleRate * (BELL_TAIL_RAMP_START_S + BELL_TAIL_RAMP_S)))
+  const span = Math.max(1, rampTo - rampFrom)
+  for (let i = rampFrom; i < rampTo; i++) buf[i] *= 1 + (BELL_TAIL_GAIN - 1) * ((i - rampFrom) / span)
+  for (let i = rampTo; i < buf.length; i++) buf[i] *= BELL_TAIL_GAIN
 }
 
 export interface CaretSound {

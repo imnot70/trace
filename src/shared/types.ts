@@ -168,6 +168,10 @@ export interface AppSettings {
   defaultEditMode: 'source' | 'wysiwyg'
   /** 编辑位置：打开笔记后光标落在文首（start）还是文末（end），默认文首（FR-2.4.18） */
   editPosition: 'start' | 'end'
+  /** 表格插入默认行数（含表头；Ctrl+T 浮层直接确认时插入该尺寸，1–50，FR-2.4.20 扩展） */
+  tableDefaultRows: number
+  /** 表格插入默认列数（Ctrl+T 浮层直接确认时插入该尺寸，1–20，FR-2.4.20 扩展） */
+  tableDefaultCols: number
   /** 打字机模式：off 关闭 / center 高位（光标垂直居中）/ bottom 低位（光标锚定在距底边 20% 处） */
   typewriterMode: 'off' | 'center' | 'bottom'
   /** 心流模式的写作栏宽：窄 32em / 中 42em / 宽 52em（仅心流模式内生效） */
@@ -176,7 +180,7 @@ export interface AppSettings {
   flowPaperEnabled: boolean
   /** 心流写作底色颜色（深浅主题各有对应的一套柔和值） */
   flowPaperColor: 'cream' | 'green' | 'blue' | 'pink' | 'gray'
-  /** 底色过渡：写作栏两侧各 15% 栏宽的渐隐带，从编辑区向非编辑区透明度渐增（默认关闭） */
+  /** 底色过渡：纸面（含纹理）在编辑卡左右缘各 15% 向编辑区底色渐隐（默认关闭） */
   flowPaperFade: boolean
   /** 底色纹理：在底色上叠加的程序化纸面质感（none 纯色 / parchment 羊皮纸 / fiber 书页纤维） */
   flowPaperTexture: 'none' | 'parchment' | 'fiber'

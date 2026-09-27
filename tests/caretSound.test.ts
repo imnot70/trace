@@ -16,10 +16,17 @@ import {
   RETRO_PUSH_START_S,
   RETRO_RATCHET_SKIP_TEETH,
   SOUND_MIN_INTERVAL_MS,
+  BELL_TAIL_DECAY_SCALE,
+  BELL_TAIL_GAIN,
+  BELL_TAIL_OFF_S,
+  applyBellTailGain,
+  applyBellTailOff,
   gateReturn,
+  renderBellLayer,
   renderRetroBell,
   renderRetroPush,
   renderRetroReturn,
+  retroParams,
   returnRatchetSchedule,
   resolveVariant,
   shouldPlayReturn
@@ -304,5 +311,86 @@ describe('独立「回车铃」音色', () => {
     // 余振：0.6-0.75s 仍有可闻信号，且最后样本接近 0（淡出干净）
     expect(g(RETRO_BELL_PARTIALS[0].freq, 0.6, 0.75)).toBeGreaterThan(0.002)
     expect(Math.abs(x[x.length - 1])).toBeLessThan(0.01)
+  })
+})
+
+describe('独立回车铃：尾部颤音调音（2026-09-27 用户反馈「过于短促」）', () => {
+  const SR = 48000
+
+  it('缓冲放长到 0.95s（衰减 +15% 后按原截断比例放长，尾音不再被硬截在半途）', () => {
+    expect(RETRO_BELL_ONLY_DURATION_S).toBeCloseTo(0.95)
+    const x = renderRetroBell(SR, () => 0.5)
+    expect(x.length).toBe(Math.floor(SR * RETRO_BELL_ONLY_DURATION_S))
+  })
+
+  it('颤音衰减放长 15%：尾段（0.6-0.85s）能量高于旧口径（衰减 ×1.0）', () => {
+    const p = retroParams(() => 0.5) // 固定种子：detune 抖动为 0，逐样本可比
+    const n = Math.floor(SR * 0.9)
+    const oldEnv = renderBellLayer(SR, p, n, 1.0)
+    const newEnv = renderBellLayer(SR, p, n, BELL_TAIL_DECAY_SCALE)
+    const rms = (a: Float32Array, from: number, to: number): number => {
+      let s = 0
+      for (let i = Math.floor(SR * from); i < Math.floor(SR * to); i++) s += a[i] * a[i]
+      return Math.sqrt(s / (Math.floor(SR * to) - Math.floor(SR * from)))
+    }
+    // 指数衰减 τ×1.15 → 同一尾窗能量更高；理论比值 = e^(0.725×0.15/(0.63×1.15)) ≈ 1.16
+    expect(rms(newEnv, 0.6, 0.85)).toBeGreaterThan(rms(oldEnv, 0.6, 0.85) * 1.05)
+  })
+
+  it('颤音段音量 +10%：起音段（<80ms）不变，爬升段（80-140ms）线性过渡，其后恒定 ×1.1', () => {
+    const buf = new Float32Array(Math.floor(SR * 0.5)).fill(0.5)
+    applyBellTailGain(buf, SR)
+    expect(buf[Math.floor(SR * 0.04)]).toBeCloseTo(0.5, 5) // 起音段不变
+    expect(buf[Math.floor(SR * 0.1)]).toBeGreaterThan(0.5) // 爬升段中点已抬升
+    expect(buf[Math.floor(SR * 0.11)]).toBeGreaterThan(buf[Math.floor(SR * 0.09)]) // 线性爬升
+    expect(buf[Math.floor(SR * 0.2)]).toBeCloseTo(0.5 * BELL_TAIL_GAIN, 5) // 颤音段 ×1.1
+  })
+
+  it('渲染管线逐样本一致：分音层(衰减×1.15) → 对齐裁剪 → 归一化 → 颤音提升 → 余弦渐弱', () => {
+    const p = retroParams(() => 0.5) // 固定种子
+    const shift = Math.floor(SR * RETRO_BELL_START_S)
+    const n = Math.floor(SR * RETRO_BELL_ONLY_DURATION_S)
+    const layer = renderBellLayer(SR, p, n + shift, BELL_TAIL_DECAY_SCALE)
+    const expectBuf = new Float32Array(n)
+    for (let i = 0; i < n; i++) expectBuf[i] = layer[i + shift]
+    let pk = 0
+    for (const v of expectBuf) pk = Math.max(pk, Math.abs(v))
+    for (let i = 0; i < expectBuf.length; i++) expectBuf[i] = (expectBuf[i] / pk) * 0.95
+    applyBellTailGain(expectBuf, SR)
+    applyBellTailOff(expectBuf, SR)
+    const x = renderRetroBell(SR, () => 0.5)
+    let diff = 0
+    for (let i = 0; i < n; i++) diff += Math.abs(x[i] - expectBuf[i])
+    expect(diff / n).toBeLessThan(1e-6)
+  })
+
+  it('末段余弦渐弱：最后 0.3s 平滑降到 0（终点精确为 0，无戛然而止），长度不变', () => {
+    expect(BELL_TAIL_OFF_S).toBeCloseTo(0.3)
+    const x = renderRetroBell(SR, () => 0.5)
+    expect(x.length).toBe(Math.floor(SR * RETRO_BELL_ONLY_DURATION_S))
+    expect(Math.abs(x[x.length - 1])).toBeLessThan(1e-6) // 终点趋近 0（<1e-6，无咔哒）
+    // 渐弱区间单调走低：0.7s → 0.85s → 0.95s 幅值逐级明显下降（指数衰减 + 余弦叠加）
+    const peakAt = (t: number): number => {
+      const i0 = Math.floor(SR * (t - 0.01))
+      let m = 0
+      for (let i = i0; i < i0 + Math.floor(SR * 0.02); i++) m = Math.max(m, Math.abs(x[i]))
+      return m
+    }
+    const a = peakAt(0.7)
+    const b = peakAt(0.85)
+    const c = peakAt(0.94)
+    expect(b).toBeLessThan(a * 0.75)
+    expect(c).toBeLessThan(b * 0.4)
+  })
+
+  it('余弦缓降纯函数：端点导数为 0（起点不改变原值、终点归 0）、中点约降一半', () => {
+    const buf = new Float32Array(Math.floor(SR * 0.5)).fill(0.6)
+    applyBellTailOff(buf, SR)
+    expect(buf[0]).toBeCloseTo(0.6, 5) // 渐弱区之外不变
+    expect(buf[Math.floor(SR * 0.2)]).toBeCloseTo(0.6, 5)
+    const from = buf.length - Math.floor(SR * 0.3)
+    expect(buf[from]).toBeCloseTo(0.6, 5) // 起点：cos(0)=1 → 不变（导数 0 无台阶）
+    expect(buf[Math.floor(from + (buf.length - from) / 2)]).toBeCloseTo(0.3, 1) // 中点约一半
+    expect(Math.abs(buf[buf.length - 1])).toBeLessThan(1e-6) // 终点趋近 0
   })
 })

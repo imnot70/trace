@@ -929,6 +929,28 @@ async function resetGitSource(): Promise<void> {
             >
           </div>
           <div class="setting-row">
+            <span class="setting-label">表格默认尺寸</span>
+            <el-input-number
+              :model-value="app.settings.tableDefaultRows"
+              :min="1"
+              :max="50"
+              style="width: 90px"
+              @update:model-value="(v: number | undefined) => app.updateSettings({ tableDefaultRows: Number(v ?? 2) })"
+            />
+            <span style="color: var(--text-secondary)">行 ×</span>
+            <el-input-number
+              :model-value="app.settings.tableDefaultCols"
+              :min="1"
+              :max="20"
+              style="width: 90px"
+              @update:model-value="(v: number | undefined) => app.updateSettings({ tableDefaultCols: Number(v ?? 2) })"
+            />
+            <span style="color: var(--text-secondary)">列</span>
+            <span class="settings-desc" style="margin: 0"
+              >Ctrl+T 插入表格的默认行列数（含表头）；浮层内仍可临时输入其他尺寸，上限 50 行 / 20 列</span
+            >
+          </div>
+          <div class="setting-row">
             <span class="setting-label">自动保存</span>
             <el-switch
               :model-value="app.settings.autoSave"
@@ -1081,9 +1103,13 @@ async function resetGitSource(): Promise<void> {
               @update:model-value="(v: string) => app.updateSettings({ flowSoundVariant: v as AppSettings['flowSoundVariant'] })"
             >
               <el-option label="复古打字机（按键 + 推回车 + 回车铃）" value="retro" />
+              <!-- 2026-09-27 用户要求暂时隐藏：推回车（棘轮）/ 回车铃 / 轮换——代码与合成保留，
+                   恢复时把下面三个 option 加回即可；隐藏期间存量非 retro 值由主进程启动时迁移为 retro -->
+              <!--
               <el-option label="推回车（棘轮）" value="carriage" />
               <el-option label="回车铃" value="bell" />
               <el-option label="轮换（三者依次交替）" value="rotate" />
+              -->
             </el-select>
             <span class="settings-desc" style="margin: 0">可先选「轮换」逐一听过再定</span>
           </div>

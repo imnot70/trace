@@ -258,6 +258,8 @@ beforeEach(() => {
     theme: 'system',
     themePreset: 'default',
     editorFontSize: 15,
+    tableDefaultRows: 2,
+    tableDefaultCols: 2,
     autoSave: true,
     zenHideTopbar: false,
     attachmentsDir: 'attachments',

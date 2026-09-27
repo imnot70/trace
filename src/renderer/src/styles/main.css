@@ -16,6 +16,11 @@
   --success-text: #2f7d33;
   /* 心流写作底色色板（柔和浅色，随用户在设置中选择） */
   --flow-paper-cream: #f8f3e6;
+  /* 纸面模式的表格线 / 当前行高亮 / 表头底（暖棕半透明，在米黄纸面上清晰可辨——
+     常规的 --border-color / --bg-hover 按白底调校，落在纸面上会被洗掉） */
+  --flow-paper-line: rgba(146, 116, 60, 0.45);
+  --flow-paper-active: rgba(146, 116, 60, 0.18);
+  --flow-paper-head: rgba(146, 116, 60, 0.14);
   --flow-paper-green: #edf3e6;
   --flow-paper-blue: #e9f0f8;
   --flow-paper-pink: #f9eef1;
@@ -55,6 +60,9 @@ html.dark {
   --success-text: #2f7d33;
   /* 心流写作底色色板（深色主题下的柔和暗色，与背景有轻微区分、不刺眼） */
   --flow-paper-cream: #2a271f;
+  --flow-paper-line: rgba(235, 213, 170, 0.28);
+  --flow-paper-active: rgba(235, 213, 170, 0.1);
+  --flow-paper-head: rgba(235, 213, 170, 0.07);
   --flow-paper-green: #232b25;
   --flow-paper-blue: #222a33;
   --flow-paper-pink: #2f262a;
@@ -756,58 +764,83 @@ body {
   padding-inline: max(0px, calc((100% - var(--flow-measure, 42em)) / 2));
 }
 
-/* 写作底色（FR-2.9.8 扩展）：给写作栏的两个直接子元素（行号槽 + 内容层）涂色。
-   两者高度随内容伸缩且相邻无隙，连成一根通到底的「纸带」；打字机顶部留白在
-   .cm-content 盒内、同样被覆盖。不要用滚动容器 + background-clip: content-box——
-   实测其绘制区域在滚动 / 打字机留白下与几何脱节（只涂出内容顶部一块）。 */
-.editor-card.flow-mode.flow-paper-on .cm-gutters,
-.editor-card.flow-mode.flow-paper-on .cm-content {
+/* 写作底色（FR-2.9.8 扩展，用户提出）：底色与纹理覆盖**整个编辑区**——直接涂在滚动层
+   这一个元素上，行号槽与内容层全透明透出纸面。
+   2026-09-27 用户反馈：纸色/纹理先前画在行号槽 + 内容层两个相邻元素上，交界处始终有
+   可见分界（纹理相位对齐后真机仍明显）——改为整面涂色，从根上消除接缝。
+   纹理层 background-attachment: fixed：视口对齐，文字滚动时纸面不动（真实纸张质感）。
+   打字机顶部留白在 .cm-content 盒内，整面底色自然覆盖。 */
+.editor-card.flow-mode.flow-paper-on .cm-scroller {
   background: var(--flow-paper);
 }
+.editor-card.flow-mode.flow-paper-on .cm-gutters,
+.editor-card.flow-mode.flow-paper-on .cm-content {
+  background: transparent;
+}
 
-/* 底色会盖住选区：CM 的 drawSelection 把选区画在滚动层下 z-index:-1 的独立图层里，
-   靠内容层透明透出来；上面给 .cm-content 涂的不透明底色正好把它盖住（实测：心流 +
-   底色下选中文字无任何高亮，常规模式正常）。底色开启时把选区图层抬到内容层之上——
-   选区色 --accent-soft 是半透明色，文字在选区下仍清晰；仅作用于底色开启态，常规模式
-   保持 CM 默认层序不变。!important 是为覆盖 CM 内联写入的 zIndex。 */
+/* 底色会盖住选区：CM 的 drawSelection 把选区画在滚动层下 z-index:-1 的独立图层里；
+   底色开启时把选区图层抬到内容层之上——选区色 --accent-soft 是半透明色，文字在选区下
+   仍清晰；仅作用于底色开启态。!important 是为覆盖 CM 内联写入的 zIndex。 */
 .editor-card.flow-mode.flow-paper-on .cm-selectionLayer {
   z-index: 0 !important;
 }
 
+/* 纸面模式下的对比度补偿（2026-09-27 用户反馈：整面纸色后行高亮与表格线不明显）：
+   常规的 --bg-hover（α0.06 蓝灰）与 --border-color（浅灰）按白底调校，落在暖色纸面上
+   被洗掉——行高亮 / 行号槽高亮 / 表格线 / 表头底改用纸面专属的暖棕半透明变量。
+   !important 用于压过 CM 主题生成规则（StyleModule 注入顺序在 main.css 之后）。 */
+.editor-card.flow-mode.flow-paper-on .cm-activeLine,
+.editor-card.flow-mode.flow-paper-on .cm-activeLineGutter {
+  background-color: var(--flow-paper-active) !important;
+}
+.editor-card.flow-mode.flow-paper-on .markdown-body th,
+.editor-card.flow-mode.flow-paper-on .markdown-body td {
+  border-color: var(--flow-paper-line);
+}
+.editor-card.flow-mode.flow-paper-on .markdown-body th {
+  background: var(--flow-paper-head);
+}
+
 /* 底色纹理（FR-2.9.8 扩展，用户提出）：羊皮纸 / 书页纤维——纯 CSS 程序化纹理，无图片素材。
-   纹理全部为均匀重复图案（feTurbulence 颗粒经 stitchTiles 无缝化、细纹不随 x 变化），
-   跨行号槽 / 内容层两个元素不会出现接缝；羊皮纸的暖棕颗粒 + 疏色斑叠加在所选底色上。 */
-.editor-card.flow-mode.flow-paper-on.flow-paper-tex-parchment .cm-gutters,
-.editor-card.flow-mode.flow-paper-on.flow-paper-tex-parchment .cm-content {
+   均匀重复图案（feTurbulence 颗粒经 stitchTiles 无缝化）。
+   2026-09-27 按用户观感反馈两轮调优：颗粒尺度放大（baseFrequency 0.75→0.5、色斑
+   0.12→0.085）、不透明度两轮提高（0.09→0.18 / 0.05→0.11）且颗粒颜色加深
+   （0.36/0.27/0.14）；书页纤维单向细横纹（横竖叠加观感偏网格）。 */
+.editor-card.flow-mode.flow-paper-on.flow-paper-tex-parchment .cm-scroller {
   background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.33 0 0 0 0 0.18 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23p)'/%3E%3C/svg%3E"),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340'%3E%3Cfilter id='q'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.12' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.42 0 0 0 0 0.2 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='340' height='340' filter='url(%23q)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.27 0 0 0 0 0.14 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23p)'/%3E%3C/svg%3E") fixed,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340'%3E%3Cfilter id='q'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.085' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.42 0 0 0 0 0.2 0 0 0 0.11 0'/%3E%3C/filter%3E%3Crect width='340' height='340' filter='url(%23q)'/%3E%3C/svg%3E") fixed,
     var(--flow-paper);
 }
 
-/* 书页纤维：极细横竖纹模拟纸张纤维方向 + 一层极淡颗粒 */
-.editor-card.flow-mode.flow-paper-on.flow-paper-tex-fiber .cm-gutters,
-.editor-card.flow-mode.flow-paper-on.flow-paper-tex-fiber .cm-content {
+/* 书页纤维：单向细横纹模拟纸张纤维方向 */
+.editor-card.flow-mode.flow-paper-on.flow-paper-tex-fiber .cm-scroller {
   background:
-    repeating-linear-gradient(0deg, rgba(96, 88, 70, 0.045) 0 1px, transparent 1px 3px),
-    repeating-linear-gradient(90deg, rgba(96, 88, 70, 0.028) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgba(96, 88, 70, 0.05) 0 1px, transparent 1px 4px) fixed,
     var(--flow-paper);
 }
 
-/* 底色过渡（FR-2.9.8 扩展，用户提出）：写作栏两侧各 15% 栏宽的渐隐带——
-   渐变画在滚动层上（透明 → 底色 → 透明）；渐变的实心段在栏边前 8px 即达全浓度
-   （8px 吸收滚动条宽度差，中段被上方行号槽 / 内容层的实底覆盖）——若实心段推迟到
-   栏边之后才全浓度，栏边处会出现明显的浓度分界（三轮实测反馈已修）。
-   100% 与栏宽 padding 同口径（scroller 宽度），中心对齐写作栏 */
+/* 底色过渡（FR-2.9.8 扩展，用户提出；2026-09-27 随整面涂色调整为编辑卡左右缘各 15%
+   渐隐——纸色与纹理一起淡出、融回编辑区底色）：渐隐用一层编辑区底色（--bg-primary）
+   的横向渐变**盖在纸面最上层**实现，替代原「透明→纸色」渐变（整面涂色后不再有栏外
+   区域可供透明过渡） */
 .editor-card.flow-mode.flow-paper-on.flow-paper-fade .cm-scroller {
-  background: linear-gradient(
-    to right,
-    transparent 0,
-    transparent calc((100% - var(--flow-measure, 42em)) / 2 - var(--flow-measure, 42em) / 15 - 8px),
-    var(--flow-paper) calc((100% - var(--flow-measure, 42em)) / 2 - 8px),
-    var(--flow-paper) calc((100% + var(--flow-measure, 42em)) / 2 + 8px),
-    transparent calc((100% + var(--flow-measure, 42em)) / 2 + var(--flow-measure, 42em) / 15 + 8px)
-  );
+  background:
+    linear-gradient(to right, var(--bg-primary) 0, transparent 15%, transparent 85%, var(--bg-primary)),
+    var(--flow-paper);
+}
+.editor-card.flow-mode.flow-paper-on.flow-paper-fade.flow-paper-tex-parchment .cm-scroller {
+  background:
+    linear-gradient(to right, var(--bg-primary) 0, transparent 15%, transparent 85%, var(--bg-primary)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.27 0 0 0 0 0.14 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23p)'/%3E%3C/svg%3E") fixed,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340'%3E%3Cfilter id='q'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.085' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.42 0 0 0 0 0.2 0 0 0 0.11 0'/%3E%3C/filter%3E%3Crect width='340' height='340' filter='url(%23q)'/%3E%3C/svg%3E") fixed,
+    var(--flow-paper);
+}
+.editor-card.flow-mode.flow-paper-on.flow-paper-fade.flow-paper-tex-fiber .cm-scroller {
+  background:
+    linear-gradient(to right, var(--bg-primary) 0, transparent 15%, transparent 85%, var(--bg-primary)),
+    repeating-linear-gradient(0deg, rgba(96, 88, 70, 0.05) 0 1px, transparent 1px 4px) fixed,
+    var(--flow-paper);
 }
 
 /* ---------- 顶栏隐藏时的右下角状态区（专注隐藏顶栏 / 心流模式） ---------- */
@@ -822,8 +855,9 @@ body {
   gap: 8px;
   padding: 4px 12px;
   border-radius: 999px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
+  /* 半透明底：透出心流纸面（2026-09-27 用户要求 85% 不透明的半透明胶囊） */
+  background: color-mix(in srgb, var(--bg-tertiary) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
   color: var(--text-secondary);
   font-size: 11px;
   line-height: 1.4;
@@ -840,26 +874,7 @@ body {
   opacity: 0;
 }
 
-.zen-status-area .zen-status-branch {
-  font-family: 'JetBrains Mono', 'Fira Code', 'Sarasa Mono SC', Consolas, monospace;
-  color: var(--text-secondary);
-}
-
-.zen-status-area .zen-status-flag {
-  color: var(--text-tertiary);
-}
-
-/* 未提交修改：主题色轻提醒（顶栏 tag 的 warning 语义在此弱化为 accent） */
-.zen-status-area .zen-status-flag[title='有未提交修改'] {
-  color: var(--accent);
-}
-
 /* 编辑模式图标：所见即所得用 accent 高亮（写作时最关心「现在能不能马上看到效果」） */
-/* Git 分支图标（Share 的分叉形状，视觉上说明后面是分支名） */
-.zen-status-area .zen-status-git-icon {
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
 
 /* 保存状态小圆点（回归 v0.8.0 的极微弱语义：写作专注优先，保存事件只轻点一下） */
 .zen-status-area .zen-status-dot {
@@ -945,6 +960,14 @@ body {
 
 .editor-pane .cm-editor {
   height: 100%;
+}
+
+/* 行尾长串逐字符断行（2026-09-27 打磨项，index 第二节「行尾连续字母折行」）：
+   默认西文按整词折行，行尾连续输入字母（kkk…）或长 URL 会先停在行尾、超宽后整串跳到
+   下一行，观感像「先溢出再跳」。anywhere 允许在任意字符处断行——仅在单个词超出栏宽时
+   生效，正常西文词间折行、CJK 逐字断行行为均不变 */
+.editor-pane .cm-content {
+  overflow-wrap: anywhere;
 }
 
 /* 分栏拖拽区：透明间隙，悬停时显示居中细条 */

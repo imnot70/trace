@@ -41,6 +41,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   showBacklinks: true,
   defaultEditMode: 'source',
   editPosition: 'start',
+  tableDefaultRows: 2,
+  tableDefaultCols: 2,
   typewriterMode: 'off',
   flowLineWidth: 'medium',
   flowPaperEnabled: false,

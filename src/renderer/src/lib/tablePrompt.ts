@@ -74,15 +74,25 @@ export function stepPrompt(cur: TablePrompt, key: PromptKey, digit = ''): Prompt
   }
 }
 
-/** 当前将插入的尺寸（含默认值与上限钳制） */
-export function promptDims(cur: TablePrompt): { rows: number; cols: number } {
+/** 当前将插入的尺寸（含默认值与上限钳制）。defaults：用户设置里的表格默认行列
+ *  （FR-2.4.20 扩展 2026-09-27，缺省用内置 2 × 2） */
+export function promptDims(
+  cur: TablePrompt,
+  defaults?: { defaultRows: number; defaultCols: number }
+): { rows: number; cols: number } {
   const pendingValue = cur.pending === '' ? null : Math.max(1, Number.parseInt(cur.pending, 10) || 1)
-  const rows = cur.rows ?? pendingValue ?? TABLE_PROMPT_LIMITS.defaultRows
-  const cols = cur.cols ?? (cur.rows !== null ? pendingValue : null) ?? TABLE_PROMPT_LIMITS.defaultCols
+  const rows = cur.rows ?? pendingValue ?? clampDefault(defaults?.defaultRows, TABLE_PROMPT_LIMITS.defaultRows)
+  const cols = cur.cols ?? (cur.rows !== null ? pendingValue : null) ?? clampDefault(defaults?.defaultCols, TABLE_PROMPT_LIMITS.defaultCols)
   return {
     rows: Math.min(rows, TABLE_PROMPT_LIMITS.maxRows),
     cols: Math.min(cols, TABLE_PROMPT_LIMITS.maxCols)
   }
+}
+
+/** 设置值兜底：非法（非有限正数）回落内置默认，且不低于 1 */
+function clampDefault(value: number | undefined, fallback: number): number {
+  if (value === undefined || !Number.isFinite(value) || value < 1) return fallback
+  return Math.floor(value)
 }
 
 /**
@@ -94,8 +104,11 @@ export function promptDims(cur: TablePrompt): { rows: number; cols: number } {
  * - 行列都齐：空格 / 回车立即插入。
  * 警告由调用方按最近一次 step 的 warning 渲染
  */
-export function promptText(cur: TablePrompt): { dims: string; hint: string; footer: string } {
-  const { rows, cols } = promptDims(cur)
+export function promptText(
+  cur: TablePrompt,
+  defaults?: { defaultRows: number; defaultCols: number }
+): { dims: string; hint: string; footer: string } {
+  const { rows, cols } = promptDims(cur, defaults)
   const typed = cur.rows !== null || cur.cols !== null || cur.pending !== ''
   let footer: string
   if (!typed) footer = `按空格或回车插入 ${rows} 行 × ${cols} 列`

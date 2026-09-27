@@ -190,6 +190,8 @@ app.whenReady().then(() => {
     showBacklinks: true,
     defaultEditMode: 'source',
     editPosition: 'start',
+    tableDefaultRows: 2,
+    tableDefaultCols: 2,
     typewriterMode: 'off',
     flowLineWidth: 'medium',
     flowPaperEnabled: false,
@@ -216,9 +218,10 @@ app.whenReady().then(() => {
     }
   })
 
-  // 音色枚举收敛（2026-09-24：木质 / 金属 / 打字机棘齿三种旧音色下线，改为「推回车棘轮 / 回车铃 / 复古打字机 / 轮换」）：
-  // 旧安装里存的 'wood' | 'metal' | 'ratchet' 在这里一次性迁移到 'retro'，避免选择器空值、静默无声
-  const SOUND_VARIANTS = ['carriage', 'bell', 'retro', 'rotate']
+  // 音色枚举收敛：2026-09-24 木质 / 金属 / 打字机棘齿三种旧音色下线；2026-09-27 用户要求
+  // 暂时隐藏「推回车棘轮 / 回车铃 / 轮换」（设置页只留复古打字机），隐藏期间存量非 retro 值
+  // 在这里一次性迁移为 retro，避免选择器空值。恢复音色时把 SOUND_VARIANTS 改回全量即可。
+  const SOUND_VARIANTS = ['retro']
   if (!SOUND_VARIANTS.includes(settingsStore.get().flowSoundVariant)) {
     settingsStore.update((s) => {
       s.flowSoundVariant = 'retro'
