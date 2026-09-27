@@ -855,8 +855,9 @@ body {
   gap: 8px;
   padding: 4px 12px;
   border-radius: 999px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
+  /* 半透明底：透出心流纸面（2026-09-27 用户要求 85% 不透明的半透明胶囊） */
+  background: color-mix(in srgb, var(--bg-tertiary) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
   color: var(--text-secondary);
   font-size: 11px;
   line-height: 1.4;
@@ -873,26 +874,7 @@ body {
   opacity: 0;
 }
 
-.zen-status-area .zen-status-branch {
-  font-family: 'JetBrains Mono', 'Fira Code', 'Sarasa Mono SC', Consolas, monospace;
-  color: var(--text-secondary);
-}
-
-.zen-status-area .zen-status-flag {
-  color: var(--text-tertiary);
-}
-
-/* 未提交修改：主题色轻提醒（顶栏 tag 的 warning 语义在此弱化为 accent） */
-.zen-status-area .zen-status-flag[title='有未提交修改'] {
-  color: var(--accent);
-}
-
 /* 编辑模式图标：所见即所得用 accent 高亮（写作时最关心「现在能不能马上看到效果」） */
-/* Git 分支图标（Share 的分叉形状，视觉上说明后面是分支名） */
-.zen-status-area .zen-status-git-icon {
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
 
 /* 保存状态小圆点（回归 v0.8.0 的极微弱语义：写作专注优先，保存事件只轻点一下） */
 .zen-status-area .zen-status-dot {

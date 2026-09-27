@@ -886,22 +886,10 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- 顶栏隐藏时（专注隐藏顶栏 / 心流）：右下角长条形状态区。
-         有底色与圆角以区别于正文；Git 状态在左（带分支图标），编辑模式四图标（打字机 / 所见即所得 / 心流 / 专注）在右，各自激活时 accent 高亮；保存为小圆点；悬停唤出顶栏时淡出 -->
+         有底色与圆角以区别于正文；编辑模式四图标（打字机 / 所见即所得 / 心流 / 专注），
+         各自激活时 accent 高亮；保存状态小圆点固定在最右（2026-09-27 用户要求：git 信息
+         从状态区移除，专注写作时不再展示分支 / 未提交状态）；悬停唤出顶栏时淡出 -->
     <div v-if="concealed" class="zen-status-area" :class="{ peeking: topbarPeek }">
-      <!-- Git 状态（有分支图标；非所有库都用 git，vaultGit 为空则整段不渲染） -->
-      <template v-if="vaultGit">
-        <el-icon v-if="git.syncing[vaultName]" class="is-loading zen-status-spin" title="同步中">
-          <Loading />
-        </el-icon>
-        <el-icon class="zen-status-git-icon" title="Git 分支">
-          <Share />
-        </el-icon>
-        <span class="zen-status-branch">{{ vaultGit.branch }}</span>
-        <span v-if="vaultGit.ahead" class="zen-status-flag" title="未推送">↑{{ vaultGit.ahead }}</span>
-        <span v-if="vaultGit.behind" class="zen-status-flag" title="未拉取">↓{{ vaultGit.behind }}</span>
-        <span v-if="vaultGit.dirty" class="zen-status-flag" title="有未提交修改">未提交</span>
-      </template>
-      <span class="zen-status-dot" :class="saveDotState" title=""></span>
       <!-- 编辑模式四图标：打字机（字母 T——Aim 与定位图标重复）/ 所见即所得（魔法棒）/
            心流（咖啡杯）/ 专注（全屏）；
            各自激活时 accent 高亮——从顶栏隐藏后仍能确认当前处于哪些模式 -->
@@ -933,6 +921,8 @@ onBeforeUnmount(() => {
       >
         <FullScreen />
       </el-icon>
+      <!-- 保存状态小圆点：固定最右（回归 v0.8.0 的极微弱语义，写作专注优先） -->
+      <span class="zen-status-dot" :class="saveDotState" title=""></span>
     </div>
 
     <!-- 表格尺寸输入浮层（FR-2.4.20）：跟随光标，实时回显将插入的行列数 -->
