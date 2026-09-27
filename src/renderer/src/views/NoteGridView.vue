@@ -150,7 +150,10 @@ const tagItems = ref<GridItem[]>([])
 
 watch([tagIds, tagMatch], async ([ids, match]) => {
   if (!ids.length) { tagItems.value = []; return }
-  const result = await window.trace.notesByTags(ids, match)
+  // ⚠️ 必须先拷贝成普通数组：ids 是 Pinia store 里的响应式数组（Proxy），
+  // Electron IPC 的结构化克隆不支持 Proxy，直接传会抛「could not be cloned」——
+  // promise 静默 reject，网格永远为空（实测踩中）
+  const result = await window.trace.notesByTags([...ids], match)
   if (result.ok && result.entries) {
     tagItems.value = result.entries.map((e) => ({
       vault: e.vault,

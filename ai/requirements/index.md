@@ -81,6 +81,7 @@
 
 ### 3. 关键技术教训（近期，防再踩；全量汇总见 [tech/](../tech/)）
 
+- **Pinia / Vue 响应式数组不能直接传 `ipcRenderer.invoke`**（标签多选查询全空的实测根因，2026-09-27）：响应式数组是 Proxy，Electron IPC 的结构化克隆不支持 Proxy（`structuredClone(reactive([1,2]))` 即抛「could not be cloned」），promise 静默 reject、UI 表现为「查询永远为空」且无报错弹窗——传 IPC 前先 `[...ids]` 拷贝成普通数组；既有代码大多传字符串字面量所以从未踩中，新增「数组 / 对象入参」的 IPC 时必须检查来源是否响应式；
 - **程序化写入被监听的滚动容器前，必须先置位防回环 guard**（预览初始位置修复中发现：否则触发反向同步把编辑器拖到错误位置）；
 - **CM 补全的 Enter 被 completionKeymap（Prec.highest）占用**，扩展键位用 Alt+Enter；
 - **补全候选项 label 不带 .md 扩展名**（是「路径/显示名」）；
