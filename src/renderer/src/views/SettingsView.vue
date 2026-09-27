@@ -1103,9 +1103,13 @@ async function resetGitSource(): Promise<void> {
               @update:model-value="(v: string) => app.updateSettings({ flowSoundVariant: v as AppSettings['flowSoundVariant'] })"
             >
               <el-option label="复古打字机（按键 + 推回车 + 回车铃）" value="retro" />
+              <!-- 2026-09-27 用户要求暂时隐藏：推回车（棘轮）/ 回车铃 / 轮换——代码与合成保留，
+                   恢复时把下面三个 option 加回即可；隐藏期间存量非 retro 值由主进程启动时迁移为 retro -->
+              <!--
               <el-option label="推回车（棘轮）" value="carriage" />
               <el-option label="回车铃" value="bell" />
               <el-option label="轮换（三者依次交替）" value="rotate" />
+              -->
             </el-select>
             <span class="settings-desc" style="margin: 0">可先选「轮换」逐一听过再定</span>
           </div>

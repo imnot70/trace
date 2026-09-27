@@ -90,7 +90,7 @@ describe('回车音效：音色解析与轮换', () => {
 
 describe('复古打字机回车音色（按键 + 推回车 + 回车铃）', () => {
   const SR = 48000
-  it('时长 1.0s（棘轮加倍 + 铃余音 +50%）、峰值归一化到 0.95 附近', () => {
+  it('时长 1.55s（按参考音频时间轴复刻：棘轮 0.38s / 咚 0.59s / 铃 0.89s）、峰值归一化到 0.95 附近', () => {
     const x = renderRetroReturn(SR, () => 0.5)
     expect(x.length).toBe(Math.floor(SR * RETRO_DURATION_S))
     let peak = 0
@@ -99,7 +99,7 @@ describe('复古打字机回车音色（按键 + 推回车 + 回车铃）', () =
     expect(peak).toBeLessThanOrEqual(0.96)
   })
 
-  it('按键始终是最强的一段：全局峰值落在按键段（前 70ms），前 2ms 内已有强瞬态', () => {
+  it('按键始终是最强的一段：全局峰值落在按键段（前 100ms，棘轮 380ms 才起），起手 2ms 内已有瞬态', () => {
     for (const seed of [0.3, 0.5, 0.7, 0.9]) {
       const x = renderRetroReturn(SR, () => seed)
       let peak = 0
@@ -111,17 +111,17 @@ describe('复古打字机回车音色（按键 + 推回车 + 回车铃）', () =
           peakIdx = i
         }
       }
-      expect(peakIdx / SR).toBeLessThan(0.07) // 按键段（棘轮从 70ms 起）
+      expect(peakIdx / SR).toBeLessThan(0.1) // 按键段（棘轮从 380ms 起）
       let early = 0
-      for (let i = 0; i < Math.floor(SR * 0.002); i++) early = Math.max(early, Math.abs(x[i]))
-      expect(early).toBeGreaterThan(peak * 0.5) // 起手 2ms 内已有强瞬态
+      for (let i = 0; i < Math.floor(SR * 0.02); i++) early = Math.max(early, Math.abs(x[i]))
+      expect(early).toBeGreaterThan(peak * 0.3) // 起手 20ms 内有瞬态（首个冲击在 2ms）
     }
   })
 
-  it('0-40ms 内有多个能量峰（实录音效的按键是若干微冲击，不是单脉冲）', () => {
+  it('0-100ms 内有多个能量峰（参考实测 14 个微冲击，不是单脉冲）', () => {
     const x = renderRetroReturn(SR, () => 0.5)
     const hop = Math.round(SR * 0.002)
-    const frames = Math.floor((SR * 0.04) / hop)
+    const frames = Math.floor((SR * 0.1) / hop)
     const env: number[] = []
     for (let f = 0; f < frames; f++) {
       let s2 = 0
@@ -133,13 +133,13 @@ describe('复古打字机回车音色（按键 + 推回车 + 回车铃）', () =
     for (let i = 1; i < env.length - 1; i++) {
       if (env[i] > env[i - 1] && env[i] >= env[i + 1] && env[i] > peak * 0.12) peaks++
     }
-    expect(peaks).toBeGreaterThanOrEqual(3)
+    expect(peaks).toBeGreaterThanOrEqual(4)
   })
 
-  it('推回车：棘轮齿序列在 0.13s 内约 15 颗、间隔渐密、振幅渐强', () => {
+  it('推回车：棘轮齿序列在 0.19s 内约 40-70 颗（参考更细密）、振幅渐强', () => {
     const clicks = returnRatchetSchedule(() => 0.5, RETRO_PUSH_DURATION_S)
-    expect(clicks.length).toBeGreaterThanOrEqual(25) // 0.26s（原 0.13s 加倍）
-    expect(clicks.length).toBeLessThanOrEqual(45)
+    expect(clicks.length).toBeGreaterThanOrEqual(40)
+    expect(clicks.length).toBeLessThanOrEqual(70)
     expect(clicks[0].t).toBe(0)
     expect(clicks[clicks.length - 1].t).toBeLessThan(RETRO_PUSH_DURATION_S)
     const firstGap = clicks[1].t - clicks[0].t
@@ -159,19 +159,20 @@ describe('复古打字机回车音色（按键 + 推回车 + 回车铃）', () =
     expect(kept[kept.length - 1].amp).toBeGreaterThan(kept[0].amp)
   })
 
-  it('推回车段（70-200ms）有明显棘轮能量（远高于按键结束后的静默段）', () => {
+  it('推回车段（390-560ms）有明显棘轮能量（远高于按键结束后的间隙段）', () => {
     const x = renderRetroReturn(SR, () => 0.5)
     const rms = (a: number, b: number): number => {
       let s2 = 0
       for (let i = a; i < b; i++) s2 += x[i] * x[i]
       return Math.sqrt(s2 / (b - a))
     }
-    const push = rms(Math.floor(SR * 0.08), Math.floor(SR * 0.18))
-    // 推回车结束、铃尚未进入余振中段（0.3s）之前，不应有第二个「咔」量级的事件
+    const push = rms(Math.floor(SR * 0.39), Math.floor(SR * 0.56))
+    const gap = rms(Math.floor(SR * 0.12), Math.floor(SR * 0.3)) // 按键结束到棘轮起之间的间隙
     expect(push).toBeGreaterThan(0.02)
+    expect(push).toBeGreaterThan(gap * 2)
   })
 
-  it('回车铃：四个分音（含 2742Hz 与 9700Hz）在 0.22-0.55s 窗口内显著', () => {
+  it('回车铃：分音（2743Hz 等）在铃段（0.89s 起）内显著', () => {
     const x = renderRetroReturn(SR, () => 0.5)
     const goertzel = (freq: number, fromS: number, toS: number): number => {
       const w = (2 * Math.PI * freq) / SR
@@ -187,21 +188,21 @@ describe('复古打字机回车音色（按键 + 推回车 + 回车铃）', () =
       }
       return Math.sqrt(Math.max(0, s1 * s1 + s2 * s2 - coeff * s1 * s2)) / Math.max(1, to - from)
     }
-    // 铃的分音在铃段（0.22s 起）内应高于空白频率（1500Hz 处无分音）
-    const bellMid = goertzel(RETRO_BELL_PARTIALS[0].freq, RETRO_BELL_START_S + 0.02, 0.5)
-    const bellHigh = goertzel(RETRO_BELL_PARTIALS[2].freq, RETRO_BELL_START_S + 0.02, 0.5)
-    const blank = goertzel(1500, RETRO_BELL_START_S + 0.02, 0.5)
+    // 铃的分音在铃段（0.89s 起）内应高于空白频率（1500Hz 处无分音）
+    const bellMid = goertzel(RETRO_BELL_PARTIALS[0].freq, RETRO_BELL_START_S + 0.02, RETRO_BELL_START_S + 0.3)
+    const blank = goertzel(1500, RETRO_BELL_START_S + 0.02, RETRO_BELL_START_S + 0.3)
     expect(bellMid).toBeGreaterThan(blank * 3)
-    expect(bellHigh).toBeGreaterThan(blank * 2)
   })
 
-  it('铃的余振使尾段（0.8-0.95s）仍有信号（余音加长 50% 后可闻）', () => {
+  it('铃的余振使尾段（1.3-1.55s）仍有信号（参考 τ≈0.68s 自然衰减）', () => {
     const x = renderRetroReturn(SR, () => 0.5)
     let s2 = 0
-    const from = Math.floor(SR * 0.8)
+    const from = Math.floor(SR * 1.3)
     for (let i = from; i < x.length; i++) s2 += x[i] * x[i]
     const tail = Math.sqrt(s2 / (x.length - from))
-    expect(tail).toBeGreaterThan(0.005)
+    // 参考音频对应段（1.4-1.6s）RMS ≈ 0.005 → 同量级
+    expect(tail).toBeGreaterThan(0.002)
+    expect(tail).toBeLessThan(0.03) // 快衰减口径：尾段是微弱余振而非肥tail
   })
 
   it('每次渲染带抖动（连续回车不机械重复）', () => {
@@ -348,11 +349,8 @@ describe('独立回车铃：尾部颤音调音（2026-09-27 用户反馈「过�
 
   it('渲染管线逐样本一致：分音层(衰减×1.15) → 对齐裁剪 → 归一化 → 颤音提升 → 余弦渐弱', () => {
     const p = retroParams(() => 0.5) // 固定种子
-    const shift = Math.floor(SR * RETRO_BELL_START_S)
     const n = Math.floor(SR * RETRO_BELL_ONLY_DURATION_S)
-    const layer = renderBellLayer(SR, p, n + shift, BELL_TAIL_DECAY_SCALE)
-    const expectBuf = new Float32Array(n)
-    for (let i = 0; i < n; i++) expectBuf[i] = layer[i + shift]
+    const expectBuf = renderBellLayer(SR, p, n, BELL_TAIL_DECAY_SCALE)
     let pk = 0
     for (const v of expectBuf) pk = Math.max(pk, Math.abs(v))
     for (let i = 0; i < expectBuf.length; i++) expectBuf[i] = (expectBuf[i] / pk) * 0.95

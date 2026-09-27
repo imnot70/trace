@@ -7,11 +7,12 @@
  * - bell     回车铃「叮」：2742 / 6527 / 9700 / 11449Hz 四个分音，余振约 0.7s
  *           （2026-09-27 按用户反馈：尾部颤音衰减 +15%、颤音段音量 +10%、整段放长到 0.95s、
  *           末段 0.3s 余弦渐弱收尾）；
- * - retro    复古打字机「回车」：三段结构——
- *           ① 按键：宽带咔（5-12kHz）+ 四个微冲击 + 字锤/纸卷共振（1.2k / 2.9kHz）+ 延迟 12ms 的机体「咚」（96/182Hz）；
- *           ② 70ms 推回车：约 0.26s / 30 颗左右棘轮齿（间隔 9ms 渐密到 6ms、振幅渐强，实测间隔 6-10ms；2026-09-27 按用户反馈去掉开头 2 颗）；
- *           ③ 240ms 回车铃：2742 / 6527 / 9700 / 11449Hz 四个分音，衰减 0.33-0.63s（整段 1.0s，末尾 60ms 淡出）。
- *           不随包音频文件，仅按实测声学特征重建（分析与比对见 flow-mode_design.md 第 10.5–10.8 节）；
+ * - retro    复古打字机「回车」：四段结构（2026-09-27 按用户提供的参考音频全量复刻，分析见 10.14）——
+ *           ① 0ms 按键：宽带咔 + 实测 14 个微冲击（间隔 2-8ms、42ms 处最强）+ 字锤/纸卷共振（0.75k / 1.2kHz）+ 延迟 ~590ms 的到位「咚」（165/275Hz）；
+ *           ② 380ms 推回车：约 0.19s / 50 颗细密棘轮齿（间隔 2-5ms、振幅渐强；实测齿间隔 1-6ms）；
+ *           ③ 590ms 到位「咚」：低频机体撞击 + 高频瞬态（参考 0.70s 处的 162/275/750Hz 成分）；
+ *           ④ 890ms 回车铃：2743 / 6528 / 11449Hz 分音（9700 弱化），τ≈0.68s 自然衰减（参考实测），整段 1.55s。
+ *           不随包音频文件，仅按实测声学特征重建（分析与比对见 flow-mode_design.md 第 10.14 节）；
  * - rotate  轮换：每次回车依次使用上面三种，避免长时间写作的重复感。
  * 说明：旧的木质 / 金属 / 打字机棘齿三种音色已于 2026-09-24 下线，设置项旧值在启动时迁移到 retro。
  */
@@ -109,27 +110,31 @@ export function retroParams(rand: () => number = Math.random): RetroParams {
   const jitter = (base: number, pct: number): number => base * (1 + (rand() * 2 - 1) * pct)
   return {
     clickDecay: jitter(0.0048, 0.18),
-    midFreq: jitter(2900, 0.06),
+    midFreq: jitter(1200, 0.06), // 字锤共振（参考按键窗实测 1120-1370Hz）
     midDecay: jitter(0.016, 0.15),
-    plankFreq: jitter(1200, 0.06),
+    plankFreq: jitter(750, 0.06), // 纸卷共振（参考 750Hz）
     plankDecay: jitter(0.02, 0.15),
-    bodyFreq1: jitter(96, 0.07),
-    bodyFreq2: jitter(182, 0.07),
-    thunkDelay: jitter(0.012, 0.25),
-    thunkDecay: jitter(0.09, 0.15),
+    bodyFreq1: jitter(165, 0.07), // 到位「咚」（参考 0.70s 处 162/275Hz）
+    bodyFreq2: jitter(275, 0.07),
+    thunkDelay: jitter(0.59, 0.01), // 推车到位时刻（参考 0.70s - 按键 0.11s）
+    thunkDecay: jitter(0.1, 0.12),
     bellDetune: 1 + (rand() * 2 - 1) * 0.004
   }
 }
 
-/** 整段「回车」的时长（秒）：咔 → 推回车 → 铃的余振（按用户听感反馈：棘轮加倍、铃余音 +50%） */
-export const RETRO_DURATION_S = 1.0
-/** 推回车（棘轮）的起始与时长（0.13s 加倍为 0.26s） */
-export const RETRO_PUSH_START_S = 0.07
-export const RETRO_PUSH_DURATION_S = 0.26
+/** 整段「回车」的时长（秒）：咔 → 推回车 → 到位咚 → 铃余振（2026-09-27 按参考音频 1.695s 的
+ *  实测时间轴复刻：按键 0-90ms、棘轮 380-570ms、咚 590ms、铃 890ms 起自然衰减） */
+export const RETRO_DURATION_S = 1.55
+/** 推回车（棘轮）的起始与时长（参考 0.49-0.68s，相对按键起点 0.38s 起、长 0.19s） */
+export const RETRO_PUSH_START_S = 0.38
+export const RETRO_PUSH_DURATION_S = 0.19
 /** 「复古打字机」整声里棘轮去掉的开头颗数（2026-09-27 用户反馈减 2 颗；独立「推回车」音色不受影响） */
 export const RETRO_RATCHET_SKIP_TEETH = 2
-/** 回车铃的起始（推回车进行中开始响，与实录音效一致） */
-export const RETRO_BELL_START_S = 0.24
+/** 回车铃的起始（参考 1.00s 铃正式鸣响，相对按键起点 0.89s） */
+export const RETRO_BELL_START_S = 0.89
+/** 复古打字机里铃的衰减缩放（2026-09-27 参考比对：参考「叮」的 RMS 峰后 100ms 掉 ~80%，
+ *  快衰减 + 微弱长尾；独立「回车铃」保持 1.15 慢衰减的已确认口径，两路径各自缩放） */
+export const BELL_DECAY_SCALE_RETRO = 0.22
 /** 缓冲末尾的淡出时长（秒）：铃的余振被截断处需要淡出，否则会有咔哒声 */
 export const RETRO_FADE_OUT_S = 0.06
 
@@ -146,12 +151,23 @@ export const BELL_TAIL_RAMP_S = 0.06
  *  ——长度不变，收尾从 60ms 线性淡出改为更长的余弦曲线，听感是「融进安静」而非「被切断」） */
 export const BELL_TAIL_OFF_S = 0.3
 
-/** 按键的微冲击（实录音效单次按键在 100-190ms 内有 9 个能量峰：键帽 / 连杆 / 字锤 / 纸卷相继撞击） */
+/** 按键的微冲击（2026-09-27 参考音频实测：0-90ms 内 14 个能量峰，间隔 2-8ms、42ms 处最强；
+ *  amp 按实测峰值 / 0.058 归一） */
 const RETRO_IMPACTS = [
-  { t: 0, amp: 1, tone: 1 },
-  { t: 0.007, amp: 0.42, tone: 0.6 },
-  { t: 0.014, amp: 0.3, tone: 0.5 },
-  { t: 0.023, amp: 0.2, tone: 0.4 }
+  { t: 0.002, amp: 0.36, tone: 1 },
+  { t: 0.004, amp: 0.34, tone: 1 },
+  { t: 0.006, amp: 0.41, tone: 1 },
+  { t: 0.008, amp: 0.47, tone: 1 },
+  { t: 0.012, amp: 0.36, tone: 0.9 },
+  { t: 0.015, amp: 0.48, tone: 0.9 },
+  { t: 0.024, amp: 0.59, tone: 0.85 },
+  { t: 0.032, amp: 1, tone: 0.8 },
+  { t: 0.04, amp: 0.64, tone: 0.8 },
+  { t: 0.045, amp: 0.53, tone: 0.75 },
+  { t: 0.051, amp: 0.31, tone: 0.7 },
+  { t: 0.054, amp: 0.55, tone: 0.7 },
+  { t: 0.072, amp: 0.48, tone: 0.65 },
+  { t: 0.078, amp: 0.38, tone: 0.65 }
 ] as const
 
 /**
@@ -159,10 +175,12 @@ const RETRO_IMPACTS = [
  * 铃在实录音效里是「高频亮 ting + 中频泛音」，这里保留四个分音以还原那种清脆感。
  */
 export const RETRO_BELL_PARTIALS = [
-  { freq: 2742, amp: 0.575, decay: 0.63 },
-  { freq: 6527, amp: 0.345, decay: 0.51 },
-  { freq: 9700, amp: 0.276, decay: 0.42 },
-  { freq: 11449, amp: 0.15, decay: 0.33 }
+  // 参考第二响的成分排序 6530 > 11450 > 2740（2026-09-27 实测）：主音是高频对，
+  // 2743 幅度低但 τ 最长（微弱长余振的担当）；9700 不显著仅保留
+  { freq: 2743, amp: 0.3, decay: 0.68 },
+  { freq: 6528, amp: 0.575, decay: 0.4 },
+  { freq: 9700, amp: 0.12, decay: 0.32 },
+  { freq: 11449, amp: 0.28, decay: 0.28 }
 ] as const
 
 /**
@@ -177,13 +195,14 @@ export function returnRatchetSchedule(
   let t = 0
   while (t < durationSec) {
     const progress = t / durationSec
-    const gap = (0.009 - 0.003 * progress) * (1 + (rand() - 0.5) * 0.3)
+    // 参考实测齿间隔以 1-6ms 为主（较旧参考更细密）：基线 4.5ms 渐收到 2ms、±40% 抖动
+    const gap = (0.0045 - 0.0025 * progress) * (1 + (rand() - 0.5) * 0.8)
     clicks.push({
       t,
-      freq: 900 + rand() * 800,
-      amp: 0.5 + 0.5 * Math.min(1, progress * 1.4)
+      freq: 1500 + rand() * 1200, // 参考「铁皮」棘轮的金属高频（1.5-2.7kHz）
+      amp: 0.4 + 0.6 * Math.min(1, progress * 1.3)
     })
-    t += Math.max(0.004, gap)
+    t += Math.max(0.0008, gap)
   }
   return clicks
 }
@@ -201,8 +220,8 @@ function normalize(buf: Float32Array): void {
   if (peak > 0) for (let i = 0; i < buf.length; i++) buf[i] = (buf[i] / peak) * 0.95
 }
 
-/** 独立「棘轮（推回车）」的时长（秒） */
-export const RETRO_PUSH_ONLY_DURATION_S = 0.3
+/** 独立「棘轮（推回车）」的时长（秒）：对齐新参考的棘轮段 0.19s + 余量 */
+export const RETRO_PUSH_ONLY_DURATION_S = 0.22
 /** 独立「回车铃」的时长（秒）：0.8 → 0.95（2026-09-27 颤音衰减放长 15% 后按原截断比例
  *  同步放长缓冲，避免更长的尾音被硬截在半途） */
 export const RETRO_BELL_ONLY_DURATION_S = 0.95
@@ -210,14 +229,26 @@ export const RETRO_BELL_ONLY_DURATION_S = 0.95
 /** 铃分音层（纯渲染，可单测；导出供调音对比测试）：四个分音各自指数衰减 + 1.5ms 起音。
  *  n = 采样点数；decayScale 缩放全部衰减时间常数（独立回车铃 +15% 用，复古打字机传 1）。
  *  铃不依赖噪声床，独立生成即可与三段合成共用同一套参数。 */
-export function renderBellLayer(sampleRate: number, p: RetroParams, n: number, decayScale: number): Float32Array {
+export function renderBellLayer(
+  sampleRate: number,
+  p: RetroParams,
+  n: number,
+  decayScale: number,
+  startDelayS = 0
+): Float32Array {
   const out = new Float32Array(n)
   const tau = 2 * Math.PI
   const bell = RETRO_BELL_PARTIALS.map((b) => ({ ...b, freq: b.freq * p.bellDetune }))
   for (let i = 0; i < n; i++) {
-    const dBell = i / sampleRate
+    const dBell = i / sampleRate - startDelayS
+    if (dBell < 0) continue
     const attack = 1 - Math.exp(-dBell / 0.0015) // 1.5ms 起音，避免爆音
-    for (const b of bell) out[i] += Math.sin(tau * b.freq * dBell) * Math.exp(-dBell / (b.decay * decayScale)) * b.amp * attack
+    // 双指数包络：快主音（听感的「叮」）+ 6% 幅度的五倍慢尾（参考里 2743Hz 的微弱长余振）
+    for (const b of bell) {
+      const d = b.decay * decayScale
+      const envelope = Math.exp(-dBell / d) + 0.06 * Math.exp(-dBell / (d * 5))
+      out[i] += Math.sin(tau * b.freq * dBell) * envelope * b.amp * attack
+    }
   }
   return out
 }
@@ -239,7 +270,7 @@ function retroLayers(sampleRate: number, rand: () => number, skipRatchetTeeth = 
     const hp = raw - hpPrevIn + 0.86 * hpPrevOut
     hpPrevIn = raw
     hpPrevOut = hp
-    lp += (hp - lp) * 0.72
+    lp += (hp - lp) * 0.85
     noise[i] = lp
   }
 
@@ -248,7 +279,8 @@ function retroLayers(sampleRate: number, rand: () => number, skipRatchetTeeth = 
 
   const strike = new Float32Array(n)
   const pushLayer = new Float32Array(n)
-  const bellLayer = renderBellLayer(sampleRate, p, n, 1)
+  // 铃在 890ms（推车到位后）才起振——参考时间轴，快衰减口径；独立「回车铃」用 startDelay 0 自行成声
+  const bellLayer = renderBellLayer(sampleRate, p, n, BELL_DECAY_SCALE_RETRO, RETRO_BELL_START_S)
 
   for (let i = 0; i < n; i++) {
     const t = i / sampleRate
@@ -264,7 +296,7 @@ function retroLayers(sampleRate: number, rand: () => number, skipRatchetTeeth = 
     const dThunk = t - p.thunkDelay
     if (dThunk > 0) {
       const env = Math.exp(-dThunk / p.thunkDecay) * (1 - Math.exp(-dThunk / 0.004))
-      strike[i] += (Math.sin(tau * p.bodyFreq1 * dThunk) * 0.16 + Math.sin(tau * p.bodyFreq2 * dThunk) * 0.09) * env
+      strike[i] += (Math.sin(tau * p.bodyFreq1 * dThunk) * 0.24 + Math.sin(tau * p.bodyFreq2 * dThunk) * 0.14) * env
     }
     // ② 推回车的棘轮齿
     for (const c of push) {
@@ -279,10 +311,11 @@ function retroLayers(sampleRate: number, rand: () => number, skipRatchetTeeth = 
 }
 
 /**
- * 渲染一次「复古打字机回车」波形（纯函数，可单测）。三段结构（实测见设计文档 10.5–10.8）：
- * ① 0ms  按键：噪声脉冲（一阶高通 + 低通整形）+ 四个微冲击 + 字锤 / 纸卷共振 + 延迟 12ms 的机体「咚」；
- * ② 70ms 推回车：约 33 颗棘轮齿（噪声 + 木质共振，间隔 9ms 渐密到 6ms、振幅渐强；开头 2 颗去掉，2026-09-27 用户反馈）；
- * ③ 240ms 回车铃：四个分音（2.7k / 6.5k / 9.7k / 11.4kHz）各自指数衰减，整段 1.0s、末尾 60ms 淡出。
+ * 渲染一次「复古打字机回车」波形（纯函数，可单测）。四段结构（2026-09-27 按参考音频实测复刻，见设计文档 10.14）：
+ * ① 0ms   按键：噪声脉冲（一阶高通 + 低通整形）+ 实测 14 个微冲击 + 字锤 / 纸卷共振；
+ * ② 380ms 推回车：约 50 颗细密棘轮齿（间隔 2-5ms、振幅渐强；开头 2 颗去掉）；
+ * ③ 590ms 到位「咚」：低频机体撞击（165/275Hz）；
+ * ④ 890ms 回车铃：分音（2.7k / 6.5k / 9.7k弱 / 11.4kHz）按 τ≈0.68s 自然衰减，整段 1.55s、末尾 60ms 淡出。
  */
 export function renderRetroReturn(sampleRate: number, rand: () => number = Math.random): Float32Array {
   const n = Math.max(1, Math.floor(sampleRate * RETRO_DURATION_S))
@@ -347,10 +380,7 @@ export function renderRetroPush(sampleRate: number, rand: () => number = Math.ra
 export function renderRetroBell(sampleRate: number, rand: () => number = Math.random): Float32Array {
   const p = retroParams(rand)
   const n = Math.max(1, Math.floor(sampleRate * RETRO_BELL_ONLY_DURATION_S))
-  const shift = Math.floor(sampleRate * RETRO_BELL_START_S)
-  const layer = renderBellLayer(sampleRate, p, n + shift, BELL_TAIL_DECAY_SCALE)
-  const out = new Float32Array(n)
-  for (let i = 0; i < n; i++) out[i] = layer[i + shift]
+  const out = renderBellLayer(sampleRate, p, n, BELL_TAIL_DECAY_SCALE)
   normalize(out)
   applyBellTailGain(out, sampleRate)
   applyBellTailOff(out, sampleRate)
