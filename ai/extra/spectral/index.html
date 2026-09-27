@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>复古打字机音效 · 频谱分析图册</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 28px 32px 64px; background: #0b0b0f; color: #e6e6ee;
+         font: 15px/1.65 -apple-system, "Segoe UI", "Noto Sans SC", sans-serif; }
+  h1 { font-size: 24px; margin: 0 0 6px; }
+  h2 { font-size: 17px; margin: 34px 0 10px; color: #9ecbff; }
+  .sub { color: #9a9aa8; font-size: 13px; margin-bottom: 8px; }
+  figure { margin: 0 0 8px; }
+  img { width: 100%; max-width: 1320px; border: 1px solid #2a2a34; border-radius: 6px; display: block; }
+  figcaption { color: #9a9aa8; font-size: 13px; margin-top: 7px; }
+  table { border-collapse: collapse; font-size: 13.5px; margin-top: 8px; }
+  th, td { border: 1px solid #2a2a34; padding: 5px 10px; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  th { background: #16161d; color: #cfcfe0; }
+  code { background: #16161d; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  .note { color: #c9a94e; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>复古打字机音效 · 频谱分析图册</h1>
+<div class="sub">对象：<code>reference_original.mp3</code>（44.1 kHz / 立体声 / 1.695 s）；
+分析代码：<code>analysis/spectral_report.py</code>；完整结论见 <code>SPECTRAL_REPORT.md</code></div>
+
+<h2>1. 频谱图（线性频率）+ 包络与击键标记</h2>
+<figure>
+  <img src="fig1_spectrogram_linear.png" alt="线性频谱图">
+  <figcaption>STFT Hann 1024 / 跳距 128（Δf 43 Hz，Δt 2.9 ms），90 dB 动态；顶部绿线为 1 ms RMS 包络，黄线为 8 次击键。</figcaption>
+</figure>
+
+<h2>2. 频谱图（对数频率 20 Hz–20 kHz）</h2>
+<figure>
+  <img src="fig1_spectrogram_log.png" alt="对数频谱图">
+  <figcaption>对数频率轴更适合观察低频撞击与高频嘶声的相对位置。</figcaption>
+</figure>
+
+<h2>3. 1/3 倍频程长期平均谱（LTAS）</h2>
+<figure>
+  <img src="fig3_third_octave.png" alt="1/3 倍频程 LTAS">
+  <figcaption>蓝柱：未加权；绿线：A 加权（IEC 61672）。峰值带为 12.5 kHz。</figcaption>
+</figure>
+
+<h2>4. 键击平均幅值谱与金属共振模态</h2>
+<figure>
+  <img src="fig2_key_hit_spectrum.png" alt="键击平均谱与模态">
+  <figcaption>6 次键击对齐平均（8192 点 FFT，Δf 5.4 Hz），标出 14 个共振峰。</figcaption>
+</figure>
+
+<h2>关键数据速览</h2>
+<table>
+  <tr><th>项目</th><th>数值</th></tr>
+  <tr><td>峰值 / RMS（中置）</td><td>−6.40 / −27.51 dBFS</td></tr>
+  <tr><td>波峰因数</td><td>21.1 dB</td></tr>
+  <tr><td>功率占比 &gt;6 kHz</td><td>63.2 %</td></tr>
+  <tr><td>谱重心</td><td>7.4 kHz</td></tr>
+  <tr><td>击键数 / IOI 中位</td><td>8 / 83 ms</td></tr>
+  <tr><td>起振 10–90%</td><td>0.34 – 6.19 ms</td></tr>
+  <tr><td>2–9 kHz 段 −20 dB 衰减</td><td>293 ms</td></tr>
+  <tr><td>L/R 相关度（全曲）</td><td>0.193</td></tr>
+  <tr><td>A 加权相对未加权</td><td>−2.32 dB</td></tr>
+</table>
+<div class="note">提示：SVG 为矢量原件（可无损缩放），PNG 为光栅化预览；重新生成用 <code>python3 analysis/spectral_report.py</code> + <code>bash analysis/render_svg.sh</code>。</div>
+</body>
+</html>
