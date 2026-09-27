@@ -12,6 +12,10 @@ const props = defineProps<{
   /** 当前笔记相对路径（用于解析相对图片路径） */
   notePath: string
   fontSize: number
+  /** 打字机留白（px，与编辑器 .cm-content 等量，2026-09-27）：两侧内容起点一致，
+   *  行级同步在文档头部 / 尾部不再偏移；0 = 不加（未开打字机 / 补全预览等不参与同步的容器） */
+  typewriterPadTop?: number
+  typewriterPadBottom?: number
 }>()
 
 const emit = defineEmits<{
@@ -253,7 +257,15 @@ watch(
   <div
     ref="rootRef"
     class="preview-pane markdown-body"
-    :style="{ '--preview-font-size': `${fontSize}px` }"
+    :style="{
+      '--preview-font-size': `${fontSize}px`,
+      paddingTop: typewriterPadTop
+        ? `calc(var(--preview-pad-top, 20px) + ${typewriterPadTop}px)`
+        : '',
+      paddingBottom: typewriterPadBottom
+        ? `calc(var(--preview-pad-bottom, 48px) + ${typewriterPadBottom}px)`
+        : ''
+    }"
     v-html="html"
     @click="onPreviewClick"
   ></div>

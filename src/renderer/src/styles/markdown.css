@@ -4,7 +4,9 @@
   line-height: 1.75;
   font-size: var(--preview-font-size, 15px);
   word-wrap: break-word;
-  padding: 20px 28px 48px;
+  /* 上下基础内边距抽成变量（默认值 = 原字面量，行为不变）：打字机开启时预览组件按
+     calc(基础 + 打字机留白) 叠加，两侧内容起点一致（2026-09-27_typewriter-padding-redesign） */
+  padding: var(--preview-pad-top, 20px) 28px var(--preview-pad-bottom, 48px);
   max-width: 860px;
 }
 

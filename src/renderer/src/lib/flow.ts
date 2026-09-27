@@ -17,11 +17,13 @@ export function flowMeasureEm(width: 'narrow' | 'medium' | 'wide'): number {
 }
 
 /**
- * 心流模式内实际生效的打字机形态：
+ * 进入心流瞬间的打字机形态推导（2026-09-27 语义收窄：只在进入那一刻用一次）：
  * - 用户已选高位 / 低位 → 沿用其偏好（心流不覆盖用户的选择）；
  * - 用户选的是关闭 → 心流模式内默认开启「低位」（创作场景的默认形态）。
- * 注意：这里只做「推导」，不改写设置项本身——退出心流后，非心流场景仍按设置走，
- * 因此无需快照与还原（区别于侧栏 / 专注 / 预览 / 编辑形态这四项会话状态）。
+ * 进入后形态记录为 app store 的会话态 flowTypewriter，心流内 Alt+T 三态循环
+ * （高 ↔ 低 ↔ 关，「关」真实生效）不再经过本函数——此前「关闭在心流内被强制映射为
+ * 低位」导致「关」不可表达（设置与观感矛盾），见
+ * ai/requirements/2026-09-27_typewriter-padding-redesign/ D2。
  */
 export function effectiveTypewriterMode(
   flowMode: boolean,
@@ -30,4 +32,9 @@ export function effectiveTypewriterMode(
 ): TypewriterMode {
   if (!flowMode) return mode
   return mode === 'off' ? flowDefault : mode
+}
+
+/** 心流内 Alt+T 的三态循环：高位 → 低位 → 关 → 高位 …（纯函数，可单测） */
+export function nextTypewriterCycle(mode: TypewriterMode): TypewriterMode {
+  return mode === 'center' ? 'bottom' : mode === 'bottom' ? 'off' : 'center'
 }
