@@ -168,6 +168,10 @@ export interface AppSettings {
   defaultEditMode: 'source' | 'wysiwyg'
   /** 编辑位置：打开笔记后光标落在文首（start）还是文末（end），默认文首（FR-2.4.18） */
   editPosition: 'start' | 'end'
+  /** 表格插入默认行数（含表头；Ctrl+T 浮层直接确认时插入该尺寸，1–50，FR-2.4.20 扩展） */
+  tableDefaultRows: number
+  /** 表格插入默认列数（Ctrl+T 浮层直接确认时插入该尺寸，1–20，FR-2.4.20 扩展） */
+  tableDefaultCols: number
   /** 打字机模式：off 关闭 / center 高位（光标垂直居中）/ bottom 低位（光标锚定在距底边 20% 处） */
   typewriterMode: 'off' | 'center' | 'bottom'
   /** 心流模式的写作栏宽：窄 32em / 中 42em / 宽 52em（仅心流模式内生效） */

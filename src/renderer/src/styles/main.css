@@ -776,21 +776,23 @@ body {
 
 /* 底色纹理（FR-2.9.8 扩展，用户提出）：羊皮纸 / 书页纤维——纯 CSS 程序化纹理，无图片素材。
    纹理全部为均匀重复图案（feTurbulence 颗粒经 stitchTiles 无缝化、细纹不随 x 变化），
-   跨行号槽 / 内容层两个元素不会出现接缝；羊皮纸的暖棕颗粒 + 疏色斑叠加在所选底色上。 */
+   跨行号槽 / 内容层两个元素不会出现接缝；羊皮纸的暖棕颗粒 + 疏色斑叠加在所选底色上。
+   2026-09-27 按用户观感反馈调优：颗粒尺度放大（feTurbulence baseFrequency 0.75→0.5、
+   色斑 0.12→0.085）并提高两层不透明度（0.09→0.13 / 0.05→0.08）增强纸面质感对比。 */
 .editor-card.flow-mode.flow-paper-on.flow-paper-tex-parchment .cm-gutters,
 .editor-card.flow-mode.flow-paper-on.flow-paper-tex-parchment .cm-content {
   background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.33 0 0 0 0 0.18 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23p)'/%3E%3C/svg%3E"),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340'%3E%3Cfilter id='q'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.12' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.42 0 0 0 0 0.2 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='340' height='340' filter='url(%23q)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.33 0 0 0 0 0.18 0 0 0 0.13 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23p)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340'%3E%3Cfilter id='q'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.085' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.42 0 0 0 0 0.2 0 0 0 0.08 0'/%3E%3C/filter%3E%3Crect width='340' height='340' filter='url(%23q)'/%3E%3C/svg%3E"),
     var(--flow-paper);
 }
 
-/* 书页纤维：极细横竖纹模拟纸张纤维方向 + 一层极淡颗粒 */
+/* 书页纤维：单向细横纹模拟纸张纤维方向（2026-09-27 按用户反馈去掉竖向纹——
+   横竖叠加观感偏网格；单向纹更接近纸面纤维，密度略收） */
 .editor-card.flow-mode.flow-paper-on.flow-paper-tex-fiber .cm-gutters,
 .editor-card.flow-mode.flow-paper-on.flow-paper-tex-fiber .cm-content {
   background:
-    repeating-linear-gradient(0deg, rgba(96, 88, 70, 0.045) 0 1px, transparent 1px 3px),
-    repeating-linear-gradient(90deg, rgba(96, 88, 70, 0.028) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgba(96, 88, 70, 0.05) 0 1px, transparent 1px 4px),
     var(--flow-paper);
 }
 
@@ -945,6 +947,14 @@ body {
 
 .editor-pane .cm-editor {
   height: 100%;
+}
+
+/* 行尾长串逐字符断行（2026-09-27 打磨项，index 第二节「行尾连续字母折行」）：
+   默认西文按整词折行，行尾连续输入字母（kkk…）或长 URL 会先停在行尾、超宽后整串跳到
+   下一行，观感像「先溢出再跳」。anywhere 允许在任意字符处断行——仅在单个词超出栏宽时
+   生效，正常西文词间折行、CJK 逐字断行行为均不变 */
+.editor-pane .cm-content {
+  overflow-wrap: anywhere;
 }
 
 /* 分栏拖拽区：透明间隙，悬停时显示居中细条 */

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { promptDims, startPrompt, stepPrompt, type PromptKey, type TablePrompt } from '../lib/tablePrompt'
+import { useAppStore } from './app'
 
 interface Anchor {
   x: number
@@ -25,9 +26,19 @@ export const useTablePromptStore = defineStore('tablePrompt', {
     pendingInsert: null as { rows: number; cols: number } | null
   }),
   getters: {
-    /** 当前将插入的尺寸（浮层实时回显） */
+    /** 当前将插入的尺寸（浮层实时回显）；默认行列取用户设置（FR-2.4.20 扩展），非法值由
+     *  promptDims 内部兜底 */
     dims(state): { rows: number; cols: number } {
-      return promptDims(state.prompt)
+      const app = useAppStore()
+      return promptDims(state.prompt, {
+        defaultRows: app.settings.tableDefaultRows,
+        defaultCols: app.settings.tableDefaultCols
+      })
+    },
+    /** 设置里的默认行列（浮层文案用） */
+    dimsDefaults(): { defaultRows: number; defaultCols: number } {
+      const app = useAppStore()
+      return { defaultRows: app.settings.tableDefaultRows, defaultCols: app.settings.tableDefaultCols }
     }
   },
   actions: {

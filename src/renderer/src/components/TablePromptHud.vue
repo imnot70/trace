@@ -11,7 +11,7 @@ import { promptText } from '../lib/tablePrompt'
 
 const prompt = useTablePromptStore()
 
-const text = computed(() => promptText(prompt.prompt))
+const text = computed(() => promptText(prompt.prompt, prompt.dimsDefaults))
 const style = computed(() => ({
   left: `${prompt.anchor.x}px`,
   top: `${prompt.anchor.y}px`

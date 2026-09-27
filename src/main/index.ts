@@ -190,6 +190,8 @@ app.whenReady().then(() => {
     showBacklinks: true,
     defaultEditMode: 'source',
     editPosition: 'start',
+    tableDefaultRows: 2,
+    tableDefaultCols: 2,
     typewriterMode: 'off',
     flowLineWidth: 'medium',
     flowPaperEnabled: false,

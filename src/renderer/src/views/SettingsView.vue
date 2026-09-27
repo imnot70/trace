@@ -929,6 +929,28 @@ async function resetGitSource(): Promise<void> {
             >
           </div>
           <div class="setting-row">
+            <span class="setting-label">表格默认尺寸</span>
+            <el-input-number
+              :model-value="app.settings.tableDefaultRows"
+              :min="1"
+              :max="50"
+              style="width: 90px"
+              @update:model-value="(v: number | undefined) => app.updateSettings({ tableDefaultRows: Number(v ?? 2) })"
+            />
+            <span style="color: var(--text-secondary)">行 ×</span>
+            <el-input-number
+              :model-value="app.settings.tableDefaultCols"
+              :min="1"
+              :max="20"
+              style="width: 90px"
+              @update:model-value="(v: number | undefined) => app.updateSettings({ tableDefaultCols: Number(v ?? 2) })"
+            />
+            <span style="color: var(--text-secondary)">列</span>
+            <span class="settings-desc" style="margin: 0"
+              >Ctrl+T 插入表格的默认行列数（含表头）；浮层内仍可临时输入其他尺寸，上限 50 行 / 20 列</span
+            >
+          </div>
+          <div class="setting-row">
             <span class="setting-label">自动保存</span>
             <el-switch
               :model-value="app.settings.autoSave"
