@@ -91,7 +91,7 @@
 ### 6.1 二轮调整（2026-09-27，用户反馈）
 
 1. **`Ctrl+F` 语义收敛**：一版按 D2 原建议做「焦点分流」（编辑器外 Ctrl+F 仍开全局搜索），用户试用后指出「编辑器外 Ctrl+F 与 Double-Shift 的动作含义重叠、易混乱」——改为 `Ctrl+F` 只做笔记内查找 / 替换，与搜索框完全隔离。实现：`Ctrl+F` 在编辑视图内且焦点不在编辑器时置 `app.pendingNoteSearch` 一次性意图，EditorView 两个 watcher（标志变化 + editorRef 绑定，覆盖挂载窗口期）消费——聚焦编辑器并调用新暴露的 `openNoteSearch()`（内部 `openSearchPanel(view)`）；编辑器聚焦时仍由 CM 键位自行接管。侧栏搜索按钮提示同步改为「Shift Shift 连按两次，或点此」。
-2. **面板样式重做**：原生控件质感与应用不符（截图反馈）——traceTheme 按应用设计语言整体重做：flex 排布、`br` 改为占满一行的换行元素（保留「查找行 / 替换行」分组、替换框不与它的按钮拆开）、输入框 16em + accent 聚焦环（`outline: none`）、幽灵按钮（bg-secondary / 描边 / hover 转 accent）、选项 label 样式化；`×` 关闭钮为 CM 自带的右上角绝对定位，套用幽灵样式。**隔离实例 CDP 复验**（2026-09-27）：非编辑视图 Ctrl+F 无响应 ✓；欢迎页 Double-Shift 回落全局搜索框 ✓；编辑器聚焦 Ctrl+F 开面板 ✓；blur 后 Ctrl+F 经意图路径重开面板并回焦编辑器 ✓；截图确认新样式与两行分组 ✓。
+2. **面板样式重做**：原生控件质感与应用不符（截图反馈）——traceTheme 按应用设计语言整体重做：**grid 显式两行布局**（逐个子元素按 `name` / 顺序指定行列：第一行查找框 + 下一个 / 上一个 / 全部 + 三个选项开关，第二行替换框 + 替换 / 全部替换；关闭钮沿用 CM 的右上角绝对定位）——不能用 flex-wrap + `br` 换行的技巧，**Chromium 的 flex 不把 `<br>` 当换行盒**（宽窗口下替换框被挤上第一行，用户实测踩中）；输入框 accent 聚焦环（`outline: none`）；幽灵按钮（描边 + bg-secondary、hover 转 accent；**`background` 简写 + `background-image: none`**——Windows 上 UA 给原生按钮画白→灰纵向渐变，仅设 background-color 压不住）；窄面板下 `overflow-x: auto` 兜底。**隔离实例 CDP 复验**（2026-09-27）：非编辑视图 Ctrl+F 无响应 ✓；欢迎页 Double-Shift 回落全局搜索框 ✓；编辑器聚焦 Ctrl+F 开面板 ✓；blur 后 Ctrl+F 经意图路径重开面板并回焦编辑器 ✓；替换框第二行几何 + 按钮计算样式（appearance: none / background-image: none / 纯色背景）断言 ✓；截图确认 ✓。
 
 ### 6.2 三轮调整（2026-09-27，用户反馈）
 

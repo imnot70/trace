@@ -578,24 +578,35 @@ const traceTheme = EditorView.theme({
     marginLeft: 'auto',
     fontStyle: 'normal'
   },
-  // 内置查找/替换面板（FR-2.9.11 当前笔记内搜索）：按应用设计语言整体重做——
-  // flex 排布（吸收掉 CM 用来分行的 <br>，窄栏自然换行）、幽灵按钮、accent 聚焦环。
-  // 注意面板类名是 cm-search（非旧文档的 cm-searchPanel），按钮/输入框带 cm-button /
-  // cm-textfield 类，选项开关各包在一个 label 里，关闭按钮 name=close
+  // 内置查找/替换面板（FR-2.9.11 当前笔记内搜索）：按应用设计语言整体重做。
+  // 布局用 grid 逐个子元素定位成两行（查找行 / 替换行）——DOM 是扁平的，且 Chromium 的
+  // flex 不把 <br> 当换行盒（宽窗口下替换框会被挤上第一行，用户实测踩中），不能用
+  // flex-wrap + br 的换行技巧。面板类名是 cm-search（非旧文档的 cm-searchPanel）；
+  // 查找框 input[name=search]（带 main-field 属性）、替换框 input[name=replace]、
+  // 三个选项开关各包在一个 label 里、关闭按钮 name=close（CM baseTheme 将其绝对
+  // 定位在右上角，这里只改配色）。
   '.cm-panel.cm-search': {
-    display: 'flex',
-    flexWrap: 'wrap',
+    position: 'relative',
+    display: 'grid',
+    gridTemplateColumns: 'minmax(12em, 1fr) repeat(6, auto)',
+    gridTemplateRows: 'auto auto',
+    columnGap: '8px',
+    rowGap: '6px',
     alignItems: 'center',
-    gap: '6px 8px',
-    padding: '8px 12px',
+    padding: '8px 40px 8px 12px',
+    overflowX: 'auto',
     backgroundColor: 'var(--bg-primary)',
     borderTop: '1px solid var(--border-color)',
     color: 'var(--text-primary)',
     fontFamily: 'inherit',
     fontSize: '12px'
   },
-  // br 不隐藏而是撑满一行：保留 CM 的两行分组（查找行 / 替换行），替换框不与它的按钮拆开
-  '.cm-panel.cm-search br': { display: 'block', flexBasis: '100%', height: '0px' },
+  '.cm-panel.cm-search br': { display: 'none' },
+  // 第一行：查找框 + 下一个 / 上一个 / 全部 + 三个选项开关
+  '.cm-panel.cm-search input[name=search]': { gridRow: '1', gridColumn: '1' },
+  '.cm-panel.cm-search button[name=next]': { gridRow: '1', gridColumn: '2' },
+  '.cm-panel.cm-search button[name=prev]': { gridRow: '1', gridColumn: '3' },
+  '.cm-panel.cm-search button[name=select]': { gridRow: '1', gridColumn: '4' },
   '.cm-panel.cm-search label': {
     display: 'inline-flex',
     alignItems: 'center',
@@ -603,8 +614,16 @@ const traceTheme = EditorView.theme({
     margin: 0,
     color: 'var(--text-secondary)',
     cursor: 'pointer',
-    userSelect: 'none'
+    userSelect: 'none',
+    whiteSpace: 'nowrap'
   },
+  '.cm-panel.cm-search label:nth-of-type(1)': { gridRow: '1', gridColumn: '5' },
+  '.cm-panel.cm-search label:nth-of-type(2)': { gridRow: '1', gridColumn: '6' },
+  '.cm-panel.cm-search label:nth-of-type(3)': { gridRow: '1', gridColumn: '7' },
+  // 第二行：替换框 + 替换 / 全部替换（替换框与查找框同列同宽，两行左缘对齐）
+  '.cm-panel.cm-search input[name=replace]': { gridRow: '2', gridColumn: '1' },
+  '.cm-panel.cm-search button[name=replace]': { gridRow: '2', gridColumn: '2' },
+  '.cm-panel.cm-search button[name=replaceAll]': { gridRow: '2', gridColumn: '3' },
   '.cm-panel.cm-search input[type=checkbox]': {
     accentColor: 'var(--accent)',
     width: '13px',
@@ -613,7 +632,7 @@ const traceTheme = EditorView.theme({
     cursor: 'pointer'
   },
   '.cm-panel.cm-search input.cm-textfield': {
-    width: '16em',
+    width: '100%',
     padding: '4px 10px',
     color: 'var(--text-primary)',
     backgroundColor: 'var(--bg-secondary)',
@@ -622,6 +641,7 @@ const traceTheme = EditorView.theme({
     outline: 'none',
     fontFamily: 'inherit',
     fontSize: '12px',
+    boxSizing: 'border-box',
     transition: 'border-color 0.15s ease, box-shadow 0.15s ease'
   },
   '.cm-panel.cm-search input.cm-textfield:focus': {
@@ -630,34 +650,38 @@ const traceTheme = EditorView.theme({
   },
   '.cm-panel.cm-search button': {
     appearance: 'none',
+    WebkitAppearance: 'none',
     margin: 0,
     padding: '4px 12px',
     color: 'var(--text-secondary)',
-    backgroundColor: 'var(--bg-secondary)',
+    // background 简写（而非 background-color）+ 显式清掉 background-image：
+    // Windows 上 UA 会给原生按钮画白→灰的纵向渐变，仅设 background-color 压不住
+    background: 'var(--bg-secondary)',
+    backgroundImage: 'none',
     border: '1px solid var(--border-color)',
     borderRadius: '6px',
     fontFamily: 'inherit',
     fontSize: '12px',
     lineHeight: '1.5',
+    whiteSpace: 'nowrap',
     cursor: 'pointer',
-    transition: 'color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease'
+    transition: 'color 0.15s ease, border-color 0.15s ease, background 0.15s ease'
   },
   '.cm-panel.cm-search button:hover': {
     color: 'var(--accent)',
     borderColor: 'var(--accent)',
-    backgroundColor: 'var(--accent-soft)'
+    background: 'var(--accent-soft)'
   },
   '.cm-panel.cm-search button[name=close]': {
-    marginLeft: 'auto',
     border: 'none',
-    backgroundColor: 'transparent',
+    background: 'transparent',
     color: 'var(--text-tertiary)',
     fontSize: '15px',
     padding: '2px 6px'
   },
   '.cm-panel.cm-search button[name=close]:hover': {
     color: 'var(--text-primary)',
-    backgroundColor: 'var(--bg-hover)'
+    background: 'var(--bg-hover)'
   }
 })
 
