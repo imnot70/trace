@@ -14,7 +14,7 @@ export const SHORTCUTS: ShortcutItem[] = [
   { keys: 'Ctrl + S', desc: '保存当前笔记', group: '全局' },
   { keys: 'Alt + P', desc: '呼出 / 收起悬浮预览', group: '全局' },
   { keys: 'Alt + 1 / 2 / 3 / 4', desc: '打开常用 / 收藏 / 回收站 / 笔记库网格（再按一次关闭，回收站仅进入）', group: '全局' },
-  { keys: 'Ctrl + ,', desc: '打开设置', group: '全局' },
+  { keys: 'Ctrl + ,', desc: '打开 / 关闭设置弹窗（Esc 或点击遮罩也可关闭）', group: '全局' },
   { keys: 'Alt + F', desc: '进入 / 退出专注模式', group: '全局' },
   { keys: 'Alt + W', desc: '进入 / 退出心流模式（沉浸创作：隐藏界面 + 所见即所得 + 打字机）', group: '全局' },
   { keys: 'Alt + B', desc: '显示 / 隐藏左侧栏', group: '全局' },

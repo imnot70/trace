@@ -30,9 +30,25 @@ const FLOW_PAPER_COLORS = [
   { key: 'gray', label: '淡灰' }
 ] as const
 
-const tab = computed<'account' | 'plugins' | 'general'>({
-  get: () => (app.view.name === 'settings' ? app.view.tab : 'general'),
-  set: (value: string) => {
+// 设置分类（左侧导航，2026-09-27 由三标签改为按功能分类）
+const SETTINGS_CATEGORIES = [
+  { key: 'account', label: '账号' },
+  { key: 'general', label: '通用' },
+  { key: 'appearance', label: '外观' },
+  { key: 'editor', label: '编辑器' },
+  { key: 'flow', label: '心流模式' },
+  { key: 'sync', label: '同步与数据' },
+  { key: 'plugins', label: '插件' }
+] as const
+type SettingsCategory = (typeof SETTINGS_CATEGORIES)[number]['key']
+
+const tab = computed<SettingsCategory>({
+  get: () =>
+    app.view.name === 'settings' &&
+    ['account', 'general', 'appearance', 'editor', 'flow', 'sync', 'plugins'].includes(app.view.tab as string)
+      ? (app.view.tab as SettingsCategory)
+      : 'general',
+  set: (value) => {
     app.view = { name: 'settings', tab: value as 'account' | 'plugins' | 'general' }
   }
 })
@@ -498,9 +514,9 @@ const themeOptions: { label: string; value: 'light' | 'dark' | 'system' }[] = [
 
 /** 返回编辑：保留设置入口的「回来继续写」路径 */
 function backToEditor(): void {
-  if (!editor.current) return
-  app.focusEditorOnce = true
-  app.view = { name: 'editor' }
+  // 无条件关闭（2026-09-27：欢迎页打开设置时 editor.current 为空，带早退的旧实现导致 X 失效）
+  if (editor.current) app.focusEditorOnce = true
+  app.view = { name: editor.current ? 'editor' : 'welcome' }
 }
 
 /** 当前 Git 来源的中文标签 */
@@ -520,24 +536,33 @@ async function resetGitSource(): Promise<void> {
 </script>
 
 <template>
-  <div class="page">
-    <div class="page-header">
-      <h2>设置</h2>
-      <span v-if="editor.current" class="settings-back-note">正在编辑：{{ editor.current.name }}</span>
-      <el-button
-        v-if="editor.current"
-        size="small"
-        type="primary"
-        plain
-        @click="backToEditor"
-      >
-        返回编辑
-      </el-button>
-    </div>
+  <!-- 设置弹窗（2026-09-27 由整页视图改为弹出窗口）：编辑视图在弹窗下保持挂载，
+       Ctrl+, 呼出 / 再按关闭 / Esc 或点击遮罩关闭（关闭即回编辑，FR-2.10.5）。
+       设置项按功能分类：左侧分类导航 + 右侧内容（2026-09-27） -->
+  <div class="settings-overlay" @click.self="backToEditor">
+    <div class="settings-dialog">
+      <div class="settings-dialog-header">
+        <h2>设置</h2>
+        <button class="settings-close" title="关闭（Ctrl+, / Esc）" @click="backToEditor">
+          <el-icon><Close /></el-icon>
+        </button>
+      </div>
 
-    <el-tabs v-model="tab">
-      <!-- 账号 -->
-      <el-tab-pane label="账号" name="account">
+      <div class="settings-columns">
+        <div class="settings-nav">
+          <button
+            v-for="c in SETTINGS_CATEGORIES"
+            :key="c.key"
+            class="settings-nav-item"
+            :class="{ active: tab === c.key }"
+            @click="tab = c.key"
+          >
+            {{ c.label }}
+          </button>
+        </div>
+
+        <div class="settings-content">
+          <template v-if="tab === 'account'">
         <div class="settings-block">
           <h3>GitHub 账号</h3>
           <p class="settings-desc">
@@ -602,124 +627,8 @@ async function resetGitSource(): Promise<void> {
             </div>
           </template>
         </div>
-      </el-tab-pane>
-
-      <!-- 插件 -->
-      <el-tab-pane label="插件" name="plugins">
-        <div class="settings-block">
-          <h3>插件功能</h3>
-          <p class="settings-desc">
-            插件运行在独立进程中，通过声明的权限读写笔记、订阅事件、注册命令。
-            插件目录：设置 → 通用 → 工作区同级的用户数据目录 plugins/（示例插件首次启动自动放置）。
-          </p>
-          <div class="setting-row">
-            <span class="setting-label">启用插件</span>
-            <el-switch
-              :model-value="app.settings.enablePlugins"
-              @update:model-value="(v: string | number | boolean) => toggleEnablePlugins(Boolean(v))"
-            />
-          </div>
-        </div>
-
-        <div class="settings-block">
-          <div class="setting-row" style="margin-bottom: 4px">
-            <h3 style="margin: 0">已安装的插件</h3>
-            <el-button size="small" @click="importPlugin">导入插件…</el-button>
-          </div>
-          <el-empty v-if="plugins.length === 0" description="暂无插件" :image-size="60" />
-          <div v-for="plugin in plugins" :key="plugin.id" class="setting-row">
-            <div style="flex: 1">
-              <div>
-                <strong>{{ plugin.name }}</strong>
-                <span style="color: var(--text-tertiary); margin-left: 8px">v{{ plugin.version }}</span>
-                <span v-if="plugin.running" class="plugin-badge plugin-badge-ok">运行中</span>
-                <span v-else-if="plugin.enabled && plugin.permissionsConfirmed" class="plugin-badge">未运行</span>
-                <span v-else-if="plugin.enabled && !plugin.permissionsConfirmed" class="plugin-badge plugin-badge-warn">需确认权限</span>
-                <span v-if="plugin.crashCount > 0" class="plugin-badge plugin-badge-warn">崩溃 {{ plugin.crashCount }} 次</span>
-                <span v-if="isDelisted(plugin.id)" class="plugin-badge plugin-badge-warn">已下架</span>
-                <el-button
-                  v-if="marketUpdateVersion(plugin.id)"
-                  size="small"
-                  type="primary"
-                  plain
-                  style="margin-left: 8px"
-                  @click="previewMarketInstallById(plugin.id)"
-                >
-                  更新到 v{{ marketUpdateVersion(plugin.id) }}
-                </el-button>
-              </div>
-              <div class="settings-desc" style="margin: 2px 0 0">{{ plugin.description }}</div>
-              <div v-if="plugin.permissions.length" class="settings-desc" style="margin: 4px 0 0">
-                权限：{{ plugin.permissions.map(permissionLabel).join('、') }}
-              </div>
-              <div v-if="plugin.error" class="settings-desc" style="margin: 4px 0 0; color: var(--danger)">
-                {{ plugin.error }}
-              </div>
-              <div v-if="plugin.commands.length" class="settings-desc" style="margin: 6px 0 0">
-                <el-button
-                  v-for="cmd in plugin.commands"
-                  :key="cmd.id"
-                  size="small"
-                  style="margin-right: 8px"
-                  @click="runCommand(cmd.id)"
-                >
-                  {{ cmd.title }}
-                </el-button>
-              </div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px">
-              <el-button size="small" @click="openDetail(plugin.id)">详情</el-button>
-              <el-switch
-                :model-value="plugin.enabled"
-                @update:model-value="(v: string | number | boolean) => togglePlugin(plugin.id, Boolean(v))"
-              />
-            </div>
-          </div>
-        </div>
-      <div class="settings-block">
-          <div class="setting-row" style="margin-bottom: 4px">
-            <h3 style="margin: 0">插件市场</h3>
-            <el-button size="small" :loading="marketLoading" @click="loadMarket">刷新</el-button>
-          </div>
-          <p v-if="marketStale" class="settings-desc" style="margin: 0 0 8px; color: var(--danger)">
-            市场索引拉取失败，当前显示的是本地缓存（可能过期）。
-          </p>
-          <el-empty v-if="!marketLoading && marketPlugins.length === 0" description="市场暂无插件" :image-size="60" />
-          <div v-for="row in marketPlugins" :key="row.id" class="setting-row">
-            <div style="flex: 1">
-              <div>
-                <strong>{{ row.name }}</strong>
-                <span style="color: var(--text-tertiary); margin-left: 8px">v{{ row.latest }}</span>
-                <span v-if="row.author" style="color: var(--text-tertiary); margin-left: 8px">@{{ row.author }}</span>
-                <span v-if="isMarketInstalled(row.id)" class="plugin-badge plugin-badge-ok">
-                  已安装 v{{ marketVersionLabel(row.id) }}
-                </span>
-                <span v-if="isDelisted(row.id) && !isMarketInstalled(row.id)" class="plugin-badge">已下架</span>
-              </div>
-              <div class="settings-desc" style="margin: 2px 0 0">{{ row.description }}</div>
-              <div
-                v-if="row.versions[row.latest]?.permissions?.length"
-                class="settings-desc"
-                style="margin: 4px 0 0"
-              >
-                权限：{{ row.versions[row.latest].permissions.map(permissionLabel).join('、') }}
-              </div>
-            </div>
-            <el-button
-              v-if="!isMarketInstalled(row.id)"
-              size="small"
-              type="primary"
-              plain
-              @click="installFromMarket(row)"
-            >
-              安装
-            </el-button>
-          </div>
-        </div>
-</el-tab-pane>
-
-      <!-- 通用 -->
-      <el-tab-pane label="通用" name="general">
+          </template>
+          <template v-else-if="tab === 'general'">
         <div class="settings-block">
           <h3>工作区</h3>
           <p class="settings-desc">所有笔记库都保存在工作区目录下，可随时更换。</p>
@@ -732,6 +641,87 @@ async function resetGitSource(): Promise<void> {
           </div>
         </div>
 
+
+
+        <div class="settings-block">
+          <h3>侧栏菜单</h3>
+          <p class="settings-desc">控制左侧栏显示哪些菜单分区；「笔记库」始终显示。</p>
+          <div class="setting-row">
+            <span class="setting-label">常用</span>
+            <el-switch
+              :model-value="app.settings.sidebarMenus.recents"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, recents: Boolean(v) } })"
+            />
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">收藏</span>
+            <el-switch
+              :model-value="app.settings.sidebarMenus.favorites"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, favorites: Boolean(v) } })"
+            />
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">分享</span>
+            <el-switch
+              :model-value="app.settings.sidebarMenus.shared"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, shared: Boolean(v) } })"
+            />
+            <span class="settings-desc" style="margin: 0">已分享（Gist）笔记的管理入口</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">标签</span>
+            <el-switch
+              :model-value="app.settings.sidebarMenus.tags"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, tags: Boolean(v) } })"
+            />
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">断链引用</span>
+            <el-switch
+              :model-value="app.settings.sidebarMenus.unresolved"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, unresolved: Boolean(v) } })"
+            />
+            <span class="settings-desc" style="margin: 0">存在无法跳转的 [[双链]] 时在侧栏提示（仅有断链时显示）</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">回收站</span>
+            <el-switch
+              :model-value="app.settings.sidebarMenus.trash"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, trash: Boolean(v) } })"
+            />
+          </div>
+        </div>
+
+
+
+        <div class="settings-block">
+          <h3>快捷键</h3>
+          <table class="shortcut-table">
+            <tbody>
+              <template v-for="group in SHORTCUT_GROUPS" :key="group.group">
+                <tr class="shortcut-group-row">
+                  <td colspan="2">{{ group.group }}</td>
+                </tr>
+                <tr v-for="item in group.items" :key="item.keys">
+                  <td class="shortcut-keys"><kbd>{{ item.keys }}</kbd></td>
+                  <td class="shortcut-desc">{{ item.desc }}</td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+
+
+
+        <div class="settings-block">
+          <h3>关于</h3>
+          <div class="setting-row">
+            <span class="setting-label">Trace 笔迹</span>
+            <span style="color: var(--text-secondary)">v{{ app.version }} — 轻量级 Markdown 笔记</span>
+          </div>
+        </div>
+          </template>
+          <template v-else-if="tab === 'appearance'">
         <div class="settings-block">
           <h3>外观</h3>
           <div class="setting-row">
@@ -836,56 +826,8 @@ async function resetGitSource(): Promise<void> {
             Windows 11 支持 Mica/Acrylic 效果，macOS 支持毛玻璃效果，Linux 依赖桌面合成器。不透明度下限 50%，避免界面难以阅读。
           </p>
         </div>
-
-        <div class="settings-block">
-          <h3>侧栏菜单</h3>
-          <p class="settings-desc">控制左侧栏显示哪些菜单分区；「笔记库」始终显示。</p>
-          <div class="setting-row">
-            <span class="setting-label">常用</span>
-            <el-switch
-              :model-value="app.settings.sidebarMenus.recents"
-              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, recents: Boolean(v) } })"
-            />
-          </div>
-          <div class="setting-row">
-            <span class="setting-label">收藏</span>
-            <el-switch
-              :model-value="app.settings.sidebarMenus.favorites"
-              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, favorites: Boolean(v) } })"
-            />
-          </div>
-          <div class="setting-row">
-            <span class="setting-label">分享</span>
-            <el-switch
-              :model-value="app.settings.sidebarMenus.shared"
-              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, shared: Boolean(v) } })"
-            />
-            <span class="settings-desc" style="margin: 0">已分享（Gist）笔记的管理入口</span>
-          </div>
-          <div class="setting-row">
-            <span class="setting-label">标签</span>
-            <el-switch
-              :model-value="app.settings.sidebarMenus.tags"
-              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, tags: Boolean(v) } })"
-            />
-          </div>
-          <div class="setting-row">
-            <span class="setting-label">断链引用</span>
-            <el-switch
-              :model-value="app.settings.sidebarMenus.unresolved"
-              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, unresolved: Boolean(v) } })"
-            />
-            <span class="settings-desc" style="margin: 0">存在无法跳转的 [[双链]] 时在侧栏提示（仅有断链时显示）</span>
-          </div>
-          <div class="setting-row">
-            <span class="setting-label">回收站</span>
-            <el-switch
-              :model-value="app.settings.sidebarMenus.trash"
-              @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, trash: Boolean(v) } })"
-            />
-          </div>
-        </div>
-
+          </template>
+          <template v-else-if="tab === 'editor'">
         <div class="settings-block">
           <h3>编辑器</h3>
           <div class="setting-row">
@@ -1024,7 +966,8 @@ async function resetGitSource(): Promise<void> {
             相对于笔记库根目录，修改后只对之后粘贴的图片生效；已有图片的引用不受影响。
           </p>
         </div>
-
+          </template>
+          <template v-else-if="tab === 'flow'">
         <div class="settings-block">
           <h3>心流模式</h3>
           <p class="settings-desc">
@@ -1102,10 +1045,12 @@ async function resetGitSource(): Promise<void> {
               style="width: 280px"
               @update:model-value="(v: string) => app.updateSettings({ flowSoundVariant: v as AppSettings['flowSoundVariant'] })"
             >
-              <el-option label="复古打字机（按键 + 推回车 + 回车铃）" value="retro" />
-              <!-- 2026-09-27 用户要求暂时隐藏：推回车（棘轮）/ 回车铃 / 轮换——代码与合成保留，
-                   恢复时把下面三个 option 加回即可；隐藏期间存量非 retro 值由主进程启动时迁移为 retro -->
+              <el-option label="复古打字机2（按键 + 推回车 + 回车铃）" value="retro2" />
+              <!-- 2026-09-27 音色收敛记录：推回车（棘轮）/ 回车铃 / 轮换 / 原复古打字机 均暂时隐藏
+                   （当前显示的复古打字机2 = 原复古打字机的副本，作为音色试验田）。合成代码全部保留，
+                   恢复时把对应 option 加回即可；隐藏期间存量其他值由主进程启动时迁移为 retro2 -->
               <!--
+              <el-option label="复古打字机（按键 + 推回车 + 回车铃）" value="retro" />
               <el-option label="推回车（棘轮）" value="carriage" />
               <el-option label="回车铃" value="bell" />
               <el-option label="轮换（三者依次交替）" value="rotate" />
@@ -1136,33 +1081,8 @@ async function resetGitSource(): Promise<void> {
             </span>
           </div>
         </div>
-
-        <div class="settings-block">
-          <h3>回收站</h3>
-          <div class="setting-row">
-            <span class="setting-label">保留天数</span>
-            <el-select
-              :model-value="app.settings.trashRetentionDays"
-              style="width: 200px"
-              @update:model-value="(v: number) => app.updateSettings({ trashRetentionDays: v })"
-            >
-              <el-option v-for="opt in retentionOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
-            </el-select>
-            <span class="settings-desc" style="margin: 0">超过保留天数的回收站条目将在应用启动时自动清理（0 / 永久保留 = 不自动清理）</span>
-          </div>
-          <div class="setting-row">
-            <span class="setting-label">容量上限</span>
-            <el-select
-              :model-value="app.settings.trashMaxEntries"
-              style="width: 200px"
-              @update:model-value="(v: number) => app.updateSettings({ trashMaxEntries: v })"
-            >
-              <el-option v-for="opt in capOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
-            </el-select>
-            <span class="settings-desc" style="margin: 0">条目数超出上限时自动永久删除最旧的条目（0 / 不限 = 不限制数量）</span>
-          </div>
-        </div>
-
+          </template>
+          <template v-else-if="tab === 'sync'">
         <div class="settings-block">
           <h3>自动同步</h3>
           <p class="settings-desc">自动同步所有已关联 Git 仓库的笔记库；仅对磁盘上已保存的内容生效，失败时静默（状态见库徽标与编辑页）。</p>
@@ -1187,6 +1107,8 @@ async function resetGitSource(): Promise<void> {
             </el-select>
           </div>
         </div>
+
+
 
         <div class="settings-block">
           <h3>网络代理</h3>
@@ -1214,22 +1136,35 @@ async function resetGitSource(): Promise<void> {
           </div>
         </div>
 
+
+
         <div class="settings-block">
-          <h3>快捷键</h3>
-          <table class="shortcut-table">
-            <tbody>
-              <template v-for="group in SHORTCUT_GROUPS" :key="group.group">
-                <tr class="shortcut-group-row">
-                  <td colspan="2">{{ group.group }}</td>
-                </tr>
-                <tr v-for="item in group.items" :key="item.keys">
-                  <td class="shortcut-keys"><kbd>{{ item.keys }}</kbd></td>
-                  <td class="shortcut-desc">{{ item.desc }}</td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
+          <h3>回收站</h3>
+          <div class="setting-row">
+            <span class="setting-label">保留天数</span>
+            <el-select
+              :model-value="app.settings.trashRetentionDays"
+              style="width: 200px"
+              @update:model-value="(v: number) => app.updateSettings({ trashRetentionDays: v })"
+            >
+              <el-option v-for="opt in retentionOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </el-select>
+            <span class="settings-desc" style="margin: 0">超过保留天数的回收站条目将在应用启动时自动清理（0 / 永久保留 = 不自动清理）</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">容量上限</span>
+            <el-select
+              :model-value="app.settings.trashMaxEntries"
+              style="width: 200px"
+              @update:model-value="(v: number) => app.updateSettings({ trashMaxEntries: v })"
+            >
+              <el-option v-for="opt in capOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </el-select>
+            <span class="settings-desc" style="margin: 0">条目数超出上限时自动永久删除最旧的条目（0 / 不限 = 不限制数量）</span>
+          </div>
         </div>
+
+
 
         <div class="settings-block">
           <h3>Git 信息</h3>
@@ -1264,18 +1199,123 @@ async function resetGitSource(): Promise<void> {
             <span class="settings-desc" style="margin: 0">下次同步时重新检测 Git 可用性</span>
           </div>
         </div>
-
+          </template>
+          <template v-else-if="tab === 'plugins'">
         <div class="settings-block">
-          <h3>关于</h3>
+          <h3>插件功能</h3>
+          <p class="settings-desc">
+            插件运行在独立进程中，通过声明的权限读写笔记、订阅事件、注册命令。
+            插件目录：设置 → 通用 → 工作区同级的用户数据目录 plugins/（示例插件首次启动自动放置）。
+          </p>
           <div class="setting-row">
-            <span class="setting-label">Trace 笔迹</span>
-            <span style="color: var(--text-secondary)">v{{ app.version }} — 轻量级 Markdown 笔记</span>
+            <span class="setting-label">启用插件</span>
+            <el-switch
+              :model-value="app.settings.enablePlugins"
+              @update:model-value="(v: string | number | boolean) => toggleEnablePlugins(Boolean(v))"
+            />
           </div>
         </div>
-      </el-tab-pane>
-    </el-tabs>
 
-    <!-- 插件权限确认对话框：启用/权限变化时必须经用户同意（设计第 6 节知情同意防线） -->
+        <div class="settings-block">
+          <div class="setting-row" style="margin-bottom: 4px">
+            <h3 style="margin: 0">已安装的插件</h3>
+            <el-button size="small" @click="importPlugin">导入插件…</el-button>
+          </div>
+          <el-empty v-if="plugins.length === 0" description="暂无插件" :image-size="60" />
+          <div v-for="plugin in plugins" :key="plugin.id" class="setting-row">
+            <div style="flex: 1">
+              <div>
+                <strong>{{ plugin.name }}</strong>
+                <span style="color: var(--text-tertiary); margin-left: 8px">v{{ plugin.version }}</span>
+                <span v-if="plugin.running" class="plugin-badge plugin-badge-ok">运行中</span>
+                <span v-else-if="plugin.enabled && plugin.permissionsConfirmed" class="plugin-badge">未运行</span>
+                <span v-else-if="plugin.enabled && !plugin.permissionsConfirmed" class="plugin-badge plugin-badge-warn">需确认权限</span>
+                <span v-if="plugin.crashCount > 0" class="plugin-badge plugin-badge-warn">崩溃 {{ plugin.crashCount }} 次</span>
+                <span v-if="isDelisted(plugin.id)" class="plugin-badge plugin-badge-warn">已下架</span>
+                <el-button
+                  v-if="marketUpdateVersion(plugin.id)"
+                  size="small"
+                  type="primary"
+                  plain
+                  style="margin-left: 8px"
+                  @click="previewMarketInstallById(plugin.id)"
+                >
+                  更新到 v{{ marketUpdateVersion(plugin.id) }}
+                </el-button>
+              </div>
+              <div class="settings-desc" style="margin: 2px 0 0">{{ plugin.description }}</div>
+              <div v-if="plugin.permissions.length" class="settings-desc" style="margin: 4px 0 0">
+                权限：{{ plugin.permissions.map(permissionLabel).join('、') }}
+              </div>
+              <div v-if="plugin.error" class="settings-desc" style="margin: 4px 0 0; color: var(--danger)">
+                {{ plugin.error }}
+              </div>
+              <div v-if="plugin.commands.length" class="settings-desc" style="margin: 6px 0 0">
+                <el-button
+                  v-for="cmd in plugin.commands"
+                  :key="cmd.id"
+                  size="small"
+                  style="margin-right: 8px"
+                  @click="runCommand(cmd.id)"
+                >
+                  {{ cmd.title }}
+                </el-button>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px">
+              <el-button size="small" @click="openDetail(plugin.id)">详情</el-button>
+              <el-switch
+                :model-value="plugin.enabled"
+                @update:model-value="(v: string | number | boolean) => togglePlugin(plugin.id, Boolean(v))"
+              />
+            </div>
+          </div>
+        </div>
+      <div class="settings-block">
+          <div class="setting-row" style="margin-bottom: 4px">
+            <h3 style="margin: 0">插件市场</h3>
+            <el-button size="small" :loading="marketLoading" @click="loadMarket">刷新</el-button>
+          </div>
+          <p v-if="marketStale" class="settings-desc" style="margin: 0 0 8px; color: var(--danger)">
+            市场索引拉取失败，当前显示的是本地缓存（可能过期）。
+          </p>
+          <el-empty v-if="!marketLoading && marketPlugins.length === 0" description="市场暂无插件" :image-size="60" />
+          <div v-for="row in marketPlugins" :key="row.id" class="setting-row">
+            <div style="flex: 1">
+              <div>
+                <strong>{{ row.name }}</strong>
+                <span style="color: var(--text-tertiary); margin-left: 8px">v{{ row.latest }}</span>
+                <span v-if="row.author" style="color: var(--text-tertiary); margin-left: 8px">@{{ row.author }}</span>
+                <span v-if="isMarketInstalled(row.id)" class="plugin-badge plugin-badge-ok">
+                  已安装 v{{ marketVersionLabel(row.id) }}
+                </span>
+                <span v-if="isDelisted(row.id) && !isMarketInstalled(row.id)" class="plugin-badge">已下架</span>
+              </div>
+              <div class="settings-desc" style="margin: 2px 0 0">{{ row.description }}</div>
+              <div
+                v-if="row.versions[row.latest]?.permissions?.length"
+                class="settings-desc"
+                style="margin: 4px 0 0"
+              >
+                权限：{{ row.versions[row.latest].permissions.map(permissionLabel).join('、') }}
+              </div>
+            </div>
+            <el-button
+              v-if="!isMarketInstalled(row.id)"
+              size="small"
+              type="primary"
+              plain
+              @click="installFromMarket(row)"
+            >
+              安装
+            </el-button>
+          </div>
+        </div>
+          </template>
+        </div>
+      </div>
+
+<!-- 插件权限确认对话框：启用/权限变化时必须经用户同意（设计第 6 节知情同意防线） -->
     <el-dialog
       :model-value="pendingPermission !== null"
       title="启用插件需要确认权限"
@@ -1389,6 +1429,7 @@ async function resetGitSource(): Promise<void> {
         <el-button @click="closeDetail">关闭</el-button>
       </template>
     </el-dialog>
+    </div>
   </div>
 </template>
 
@@ -1473,15 +1514,7 @@ async function resetGitSource(): Promise<void> {
 }
 
 /* 返回编辑（设置页头部） */
-.settings-back-note {
-  margin-left: 12px;
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
 
-.settings-back-note + .el-button {
-  margin-left: auto;
-}
 
 .theme-preset-grid {
   display: grid;
@@ -1602,5 +1635,116 @@ async function resetGitSource(): Promise<void> {
 
 .flow-paper-swatch.active {
   border: 2px solid var(--accent);
+}
+
+/* ===== 设置弹窗（2026-09-27 由整页视图改为弹出窗口） ===== */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1500; /* 盖过编辑区与状态区，低于 EP 弹层（下拉 / 消息） */
+  background: rgba(15, 18, 24, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-dialog {
+  width: min(920px, 92vw);
+  height: min(82vh, 780px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.settings-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.settings-dialog-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.settings-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.settings-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.settings-dialog-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+}
+
+/* 左右分栏：左侧分类导航 + 右侧内容（2026-09-27） */
+.settings-columns {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.settings-nav {
+  width: 148px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-color);
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.settings-nav-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.settings-nav-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.settings-nav-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.settings-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 20px 20px;
+  min-width: 0;
 }
 </style>
