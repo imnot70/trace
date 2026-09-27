@@ -765,6 +765,14 @@ body {
   background: var(--flow-paper);
 }
 
+/* 渐隐带开启时行号槽 / 内容层改为透明底：纸色与其 30% 渐隐统一由滚动层的渐变提供——
+   行号槽若保持不透明纸色，会在渐隐带的渐变里成为一块「色块岛」，左右各留一条竖向硬边
+   （2026-09-27 用户反馈的分界线之一）。纹理的渐隐带专属覆盖见下方各纹理段。 */
+.editor-card.flow-mode.flow-paper-on.flow-paper-fade .cm-gutters,
+.editor-card.flow-mode.flow-paper-on.flow-paper-fade .cm-content {
+  background: transparent;
+}
+
 /* 底色会盖住选区：CM 的 drawSelection 把选区画在滚动层下 z-index:-1 的独立图层里，
    靠内容层透明透出来；上面给 .cm-content 涂的不透明底色正好把它盖住（实测：心流 +
    底色下选中文字无任何高亮，常规模式正常）。底色开启时把选区图层抬到内容层之上——
@@ -783,23 +791,36 @@ body {
 .editor-card.flow-mode.flow-paper-on.flow-paper-tex-parchment .cm-gutters,
 .editor-card.flow-mode.flow-paper-on.flow-paper-tex-parchment .cm-content {
   background:
-    /* 纹理左右缘各 40px 用纸色渐隐盖住（2026-09-27 用户反馈：开启「底色过渡」时纹理在
-       栏边突然出现、与栏外渐隐带之间有一条明显分界线）——纹理从栏边向内 40px 渐入，
-       与渐隐带在栏边处的全浓度纸色自然衔接 */
-    linear-gradient(to right, var(--flow-paper) 0, transparent 40px, transparent calc(100% - 40px), var(--flow-paper)),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.27 0 0 0 0 0.14 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23p)'/%3E%3C/svg%3E"),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340'%3E%3Cfilter id='q'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.085' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.42 0 0 0 0 0.2 0 0 0 0.11 0'/%3E%3C/filter%3E%3Crect width='340' height='340' filter='url(%23q)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.27 0 0 0 0 0.14 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23p)'/%3E%3C/svg%3E") fixed,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340'%3E%3Cfilter id='q'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.085' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.42 0 0 0 0 0.2 0 0 0 0.11 0'/%3E%3C/filter%3E%3Crect width='340' height='340' filter='url(%23q)'/%3E%3C/svg%3E") fixed,
     var(--flow-paper);
 }
 
+/* 渐隐带开启（纹理版）：只画纹理不画纸色（纸色由滚动层渐变提供）。
+   纹理层 background-attachment: fixed——行号槽与内容层采样同一张视口对齐的纹理，
+   两元素各自原点造成的颗粒相位错位（行号槽 / 内容层交界的竖向分界，2026-09-27
+   用户截图反馈）随之消失；纹理视口对齐、文字滚动时纸面不动，更接近真实纸张 */
+.editor-card.flow-mode.flow-paper-on.flow-paper-fade.flow-paper-tex-parchment .cm-gutters,
+.editor-card.flow-mode.flow-paper-on.flow-paper-fade.flow-paper-tex-parchment .cm-content {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.27 0 0 0 0 0.14 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23p)'/%3E%3C/svg%3E") fixed,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340'%3E%3Cfilter id='q'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.085' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.42 0 0 0 0 0.2 0 0 0 0.11 0'/%3E%3C/filter%3E%3Crect width='340' height='340' filter='url(%23q)'/%3E%3C/svg%3E") fixed;
+}
+
 /* 书页纤维：单向细横纹模拟纸张纤维方向（2026-09-27 按用户反馈去掉竖向纹——
-   横竖叠加观感偏网格；单向纹更接近纸面纤维，密度略收） */
+   横竖叠加观感偏网格；单向纹更接近纸面纤维，密度略收）。fixed 对齐与渐隐带
+   透明底同羊皮纸段 */
 .editor-card.flow-mode.flow-paper-on.flow-paper-tex-fiber .cm-gutters,
 .editor-card.flow-mode.flow-paper-on.flow-paper-tex-fiber .cm-content {
   background:
-    linear-gradient(to right, var(--flow-paper) 0, transparent 40px, transparent calc(100% - 40px), var(--flow-paper)),
-    repeating-linear-gradient(0deg, rgba(96, 88, 70, 0.05) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgba(96, 88, 70, 0.05) 0 1px, transparent 1px 4px) fixed,
     var(--flow-paper);
+}
+
+.editor-card.flow-mode.flow-paper-on.flow-paper-fade.flow-paper-tex-fiber .cm-gutters,
+.editor-card.flow-mode.flow-paper-on.flow-paper-fade.flow-paper-tex-fiber .cm-content {
+  background:
+    repeating-linear-gradient(0deg, rgba(96, 88, 70, 0.05) 0 1px, transparent 1px 4px) fixed;
 }
 
 /* 底色过渡（FR-2.9.8 扩展，用户提出）：写作栏两侧各 30% 栏宽的渐隐带——
