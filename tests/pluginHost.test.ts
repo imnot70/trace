@@ -287,6 +287,7 @@ beforeEach(() => {
     flowSoundVariant: 'retro',
     flowSoundSkipRepeat: true,
     skipCrossVaultCopyConfirm: false,
+    crossVaultCopyDir: '跨库引用',
   })
   notifications = []
   logs.length = 0

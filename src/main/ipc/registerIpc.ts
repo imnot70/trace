@@ -708,6 +708,7 @@ export function registerIpc(deps: IpcDeps): void {
           return r.ok ? { ok: true, content: r.content } : { ok: false, error: r.error }
         },
         createNote: (v, d, n) => deps.fsTree.createNote(v, d, n),
+        createDir: (v, parent, name) => deps.fsTree.createDir(v, parent, name),
         writeNote: (v, rel, content) => {
           const r = deps.fsTree.writeNote(v, rel, content, null)
           if (r.ok) void deps.search.updateFileIndex(v, rel)

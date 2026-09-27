@@ -51,7 +51,8 @@ function buildStack() {
     flowSoundVolume: 60,
     flowSoundVariant: 'retro',
     flowSoundSkipRepeat: true,
-    skipCrossVaultCopyConfirm: false
+    skipCrossVaultCopyConfirm: false,
+    crossVaultCopyDir: '跨库引用'
   })
   const workspace = new WorkspaceService(settings, path.join(tmp, 'ws'))
   workspace.initDefault()
@@ -76,6 +77,7 @@ function copy(stack: ReturnType<typeof buildStack>, opts: Partial<Parameters<typ
       return r.ok ? { ok: true, content: r.content } : { ok: false, error: r.error }
     },
     createNote: (v, d, n) => fsTree.createNote(v, d, n),
+    createDir: (v, parent, name) => fsTree.createDir(v, parent, name),
     writeNote: (v, rel, content) => fsTree.writeNote(v, rel, content, null),
     ...opts
   })
@@ -220,5 +222,118 @@ describe('跨库复制', () => {
     expect(r.ok).toBe(true)
     const read = stack.fsTree.readNote('目标库', '原文.md')
     if (read.ok) expect(read.content).toContain('https://example.com')
+  })
+})
+
+describe('专用目录与去重（2026-09-27 二轮，用户反馈）', () => {
+  const SOURCE = '---\ntags: 素材\n---\n# 会议记录\n\n内容正文\n'
+
+  function seedSource(stack: ReturnType<typeof buildStack>, content = SOURCE): void {
+    stack.vaults.create('源库')
+    stack.vaults.create('目标库')
+    stack.fsTree.createNote('源库', '', '会议记录')
+    stack.fsTree.writeNote('源库', '会议记录.md', content, null)
+  }
+
+  it('多级目标目录逐段自动创建', () => {
+    const stack = buildStack()
+    seedSource(stack)
+    const r = copy(stack, { sourcePath: '会议记录.md', targetDir: '跨库引用/库B' })
+    expect(r.ok).toBe(true)
+    expect(r.path).toBe('跨库引用/库B/会议记录.md')
+    expect(stack.fsTree.readNote('目标库', '跨库引用/库B/会议记录.md').ok).toBe(true)
+  })
+
+  it('同一来源重复复制：内容一致 → 复用已有副本，不再产生 -2', () => {
+    const stack = buildStack()
+    seedSource(stack)
+    const first = copy(stack, { sourcePath: '会议记录.md', targetDir: '跨库引用/库B' })
+    expect(first.reused).toBe(false)
+    const second = copy(stack, { sourcePath: '会议记录.md', targetDir: '跨库引用/库B' })
+    expect(second.ok).toBe(true)
+    expect(second.reused).toBe(true)
+    expect(second.path).toBe(first.path)
+    // 目录里只有一份
+    expect(
+      fs.readdirSync(path.join(stack.vaults.vaultPath('目标库'), '跨库引用', '库B')).filter((n) => n.endsWith('.md'))
+    ).toEqual(['会议记录.md'])
+  })
+
+  it('副本被用户改动后不再复用：再次复制生成新副本（-2），改动保留', () => {
+    const stack = buildStack()
+    seedSource(stack)
+    const first = copy(stack, { sourcePath: '会议记录.md', targetDir: '跨库引用/库B' })
+    // 用户改动副本
+    stack.fsTree.writeNote('目标库', first.path!, '---\ntags: 素材\n---\n# 会议记录\n\n我自己补充的批注\n', null)
+    const second = copy(stack, { sourcePath: '会议记录.md', targetDir: '跨库引用/库B' })
+    expect(second.reused).toBe(false)
+    expect(second.name).toBe('会议记录-2')
+    const oldNote = stack.fsTree.readNote('目标库', first.path!)
+    if (oldNote.ok) expect(oldNote.content).toContain('我自己补充的批注')
+  })
+
+  it('源笔记修改后再引入：生成新快照副本，旧快照原样保留', () => {
+    const stack = buildStack()
+    seedSource(stack)
+    const first = copy(stack, { sourcePath: '会议记录.md', targetDir: '跨库引用/库B' })
+    stack.fsTree.writeNote('源库', '会议记录.md', SOURCE + '\n新增的第二段内容\n', null)
+    const second = copy(stack, { sourcePath: '会议记录.md', targetDir: '跨库引用/库B' })
+    expect(second.reused).toBe(false)
+    expect(second.name).toBe('会议记录-2')
+    const newNote = stack.fsTree.readNote('目标库', second.path!)
+    if (newNote.ok) expect(newNote.content).toContain('新增的第二段内容')
+    const oldNote = stack.fsTree.readNote('目标库', first.path!)
+    if (oldNote.ok) expect(oldNote.content).not.toContain('新增的第二段内容')
+  })
+
+  it('附件随路径稳定复用：同一来源重复复制不产生 pic-2（笔记级复用顺带覆盖）', () => {
+    const stack = buildStack()
+    stack.vaults.create('源库')
+    stack.vaults.create('目标库')
+    stack.fsTree.createNote('源库', '', '会议记录')
+    const attachDir = path.join(stack.vaults.vaultPath('源库'), 'attachments')
+    fs.mkdirSync(attachDir, { recursive: true })
+    fs.writeFileSync(path.join(attachDir, 'pic.png'), 'PNG', 'utf-8')
+    stack.fsTree.writeNote('源库', '会议记录.md', '![图](./attachments/pic.png)\n', null)
+
+    const first = copy(stack, { sourcePath: '会议记录.md', targetDir: '跨库引用/库B' })
+    expect(first.reused).toBe(false)
+    const second = copy(stack, { sourcePath: '会议记录.md', targetDir: '跨库引用/库B' })
+    expect(second.reused).toBe(true)
+    const copied = fs.readdirSync(path.join(stack.vaults.vaultPath('目标库'), 'attachments'))
+    expect(copied).toEqual(['pic.png'])
+  })
+
+  it('同名异内容附件仍加序号，互不覆盖', () => {
+    const stack = buildStack()
+    stack.vaults.create('源库')
+    stack.vaults.create('源库2')
+    stack.vaults.create('目标库')
+    stack.fsTree.createNote('源库', '', '会议记录')
+    stack.fsTree.createNote('源库2', '', '会议记录')
+    const a1 = path.join(stack.vaults.vaultPath('源库'), 'attachments')
+    const a2 = path.join(stack.vaults.vaultPath('源库2'), 'attachments')
+    fs.mkdirSync(a1, { recursive: true })
+    fs.mkdirSync(a2, { recursive: true })
+    fs.writeFileSync(path.join(a1, 'pic.png'), 'AAA', 'utf-8')
+    fs.writeFileSync(path.join(a2, 'pic.png'), 'BBB', 'utf-8')
+    stack.fsTree.writeNote('源库', '会议记录.md', '![a](./attachments/pic.png)\n', null)
+    stack.fsTree.writeNote('源库2', '会议记录.md', '![b](./attachments/pic.png)\n', null)
+
+    const r1 = copy(stack, { sourcePath: '会议记录.md', targetDir: '跨库引用/库B' })
+    const r2 = copy(stack, {
+      sourceVault: '源库2',
+      sourceVaultPath: stack.vaults.vaultPath('源库2'),
+      sourcePath: '会议记录.md',
+      targetDir: '跨库引用/库C'
+    })
+    expect(r1.ok).toBe(true)
+    expect(r2.ok).toBe(true)
+    // 不同来源库的子目录互不干扰：两边都叫 会议记录.md，不产生 -2
+    expect(r1.path).toBe('跨库引用/库B/会议记录.md')
+    expect(r2.path).toBe('跨库引用/库C/会议记录.md')
+    // 附件同名同内容复用 / 异内容加序号
+    const copied = fs.readdirSync(path.join(stack.vaults.vaultPath('目标库'), 'attachments')).sort()
+    expect(copied).toEqual(['pic-2.png', 'pic.png'])
   })
 })

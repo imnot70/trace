@@ -60,12 +60,15 @@ async function insertPreviewTarget(target: { vault: string; path: string; name: 
   let insertRel = target.path.replace(/\.md$/i, '')
 
   if (target.vault !== current.vault && current.vault !== SCRATCH_VAULT) {
-    // 跨库「强制引用」= 把笔记复制进当前库（双链只在库内解析，直接插引用必然断链）。
+    // 跨库「强制引用」= 把笔记复制进当前库的专用目录（双链只在库内解析，直接插引用
+    // 必然断链）。目录 = 设置「跨库引用目录」/ 源库名（按来源库分子目录：同名来源文件
+    // 互不干扰、来源可辨）；重复引入相同内容自动复用已有副本（noteCopy 服务去重）。
     // 确认框文案即需求原文；设置开关「跨库引用免确认」可跳过（默认弹框）
+    const copyDir = app.settings.crossVaultCopyDir?.trim() || '跨库引用'
     if (!app.settings.skipCrossVaultCopyConfirm) {
       try {
         await ElMessageBox.confirm(
-          '跨库文件会将笔记从原库复制到当前库中，改变原笔记时复制笔记内容不会同时改变，确定要强制引用吗？',
+          `跨库文件会将笔记从原库复制到当前库的「${copyDir}」目录中（重复引入相同内容会自动复用已有副本），改变原笔记时复制内容不会同时改变，确定要强制引用吗？`,
           '跨库引用',
           { type: 'warning', confirmButtonText: '复制并引用', cancelButtonText: '取消' }
         )
@@ -73,15 +76,13 @@ async function insertPreviewTarget(target: { vault: string; path: string; name: 
         return // 用户取消：保留悬浮预览，继续阅读
       }
     }
-    // 复制目标：当前笔记所在目录（引用就近）；返回的最终名已含重名后缀
-    const targetDir = current.path.includes('/') ? current.path.slice(0, current.path.lastIndexOf('/')) : ''
-    const copied = await window.trace.crossVaultCopy(target.vault, target.path, current.vault, targetDir)
+    const copied = await window.trace.crossVaultCopy(target.vault, target.path, current.vault, `${copyDir}/${target.vault}`)
     if (!copied.ok || !copied.path) {
       ElMessage.error(copied.error ?? '跨库复制失败')
       return
     }
     insertRel = copied.path.replace(/\.md$/i, '')
-    ElMessage.success(`已复制「${copied.name ?? target.name}」到当前库`)
+    ElMessage.success(copied.reused ? `已复用现有副本「${copied.name ?? target.name}」` : `已复制「${copied.name ?? target.name}」到「${copyDir}」目录`)
   }
 
   // 当前是草稿（FR-2.3.9 D7 例外）：不复制，直接落引用文本，转正时再定归宿

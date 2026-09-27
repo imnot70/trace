@@ -168,6 +168,9 @@ export interface AppSettings {
   flowSoundVariant: 'carriage' | 'bell' | 'retro' | 'rotate'
   /** 跨库引用免确认：开启后引入跨库笔记时直接复制到当前库，不再弹确认框（FR-2.9.11，默认关） */
   skipCrossVaultCopyConfirm: boolean
+  /** 跨库引用目录：强制引用时把源库笔记复制到目标库的此目录（相对库根，按来源库分子目录；
+   *  重复引入相同内容自动复用已有副本，FR-2.9.11） */
+  crossVaultCopyDir: string
 }
 
 /** 自定义主题包：一组 CSS 变量覆盖（light/dark 两套），存 userData/themes/<id>.json */

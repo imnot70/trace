@@ -209,8 +209,9 @@ export interface TraceApi {
   searchListTags(): Promise<OpResult & { tags?: SearchTagInfo[] }>
 
   // ---- 跨库复制（FR-2.9.11 跨库引用改进）----
-  /** 把笔记从源库复制到目标库目录（图片附件随迁 + 引用改写，重名自动加后缀），返回新笔记路径 */
-  crossVaultCopy(sourceVault: string, sourcePath: string, targetVault: string, targetDir: string): Promise<{ ok: boolean; path?: string; name?: string; error?: string }>
+  /** 把笔记从源库复制到目标库目录（图片随迁 + 引用改写；目录内已有同源同版本副本时直接
+   *  复用不重复复制，reused = true），返回最终笔记路径 */
+  crossVaultCopy(sourceVault: string, sourcePath: string, targetVault: string, targetDir: string): Promise<{ ok: boolean; path?: string; name?: string; reused?: boolean; error?: string }>
 
   // ---- 双链 P3：反向链接 / 断链引用 ----
   /** 获取引用指定笔记的反向链接列表 */
