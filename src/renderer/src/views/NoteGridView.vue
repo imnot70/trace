@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAppStore, type GridSection } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import { useNoteActions } from '../composables/actions'
@@ -24,7 +24,7 @@ const actions = useNoteActions()
 const editor = useEditorStore()
 const draft = useDraftStore()
 
-type GridItem = { id?: string; vault: string; path: string; name: string; openedAt?: string }
+type GridItem = { id?: string; vault: string; path: string; name: string; openedAt?: string; gistUrl?: string }
 type VaultCard = { id?: string; name: string; description?: string }
 
 const SECTION_TITLE: Record<GridSection, string> = {
@@ -33,7 +33,8 @@ const SECTION_TITLE: Record<GridSection, string> = {
   drafts: '草稿',
   vaults: '笔记库',
   tags: '标签',
-  unresolved: '断链引用'
+  unresolved: '断链引用',
+  shared: '分享'
 }
 
 const section = computed<GridSection>(() =>
@@ -110,6 +111,7 @@ const items = computed<GridItem[]>(() => {
   if (section.value === 'drafts') return draftItems.value
   if (section.value === 'tags') return tagItems.value
   if (section.value === 'unresolved') return unresolvedItems.value
+  if (section.value === 'shared') return sharedItems.value
   return contentNotes.value
 })
 
@@ -133,6 +135,39 @@ watch(
   },
   { immediate: true }
 )
+
+// ---------- 分享管理网格（FR-2.3.10）：已分享笔记的卡片网格，卡片 ⋮ 菜单做分享管理 ----------
+watch(
+  () => section.value === 'shared',
+  (isShared) => {
+    if (isShared) void tree.loadShared()
+  },
+  { immediate: true }
+)
+
+const sharedItems = computed<GridItem[]>(() =>
+  section.value === 'shared'
+    ? tree.shared.map((s) => ({
+        id: s.gistId,
+        vault: s.vault,
+        path: s.path,
+        name: s.path.replace(/\.md$/i, '').replace(/.*\//, ''),
+        openedAt: s.updatedAt,
+        gistUrl: s.url
+      }))
+    : []
+)
+
+/** 复制分享链接（分享网格卡片快捷操作） */
+async function copyGistLink(item: GridItem): Promise<void> {
+  if (!item.gistUrl) return
+  try {
+    await navigator.clipboard.writeText(item.gistUrl)
+    ElMessage.success('链接已复制')
+  } catch {
+    ElMessage.warning('复制失败，请通过「分享管理…」手动复制')
+  }
+}
 
 // ---------- 标签视图：多标签组合筛选（FR-2.6.13） ----------
 const tagIds = computed<string[]>(() =>
@@ -369,6 +404,14 @@ async function onNoteMenuCommand(cmd: string, item: GridItem): Promise<void> {
     shareDialogVisible.value = true
     return
   }
+  if (cmd === 'copyGistLink') {
+    void copyGistLink(item)
+    return
+  }
+  if (cmd === 'openGistUrl') {
+    if (item.gistUrl) window.open(item.gistUrl, '_blank', 'noreferrer')
+    return
+  }
   if (cmd === 'move') {
     actions.moveNode(item.vault, item.path, 'note', item.name)
     return
@@ -573,7 +616,9 @@ watch(section, () => {
                   ? tagIds.length >= 2 && tagMatch === 'all'
                     ? '选中的标签组合下没有共同笔记，可试试切换为「满足任一」'
                     : '该标签下还没有笔记，可在笔记的「标签…」菜单中添加'
-                  : '还没有笔记库，点击侧栏「笔记库」旁的 + 创建'
+                  : section === 'shared'
+                    ? '还没有分享过的笔记。在笔记的 ⋮ 菜单选择「分享…」即可发布为 secret gist'
+                    : '还没有笔记库，点击侧栏「笔记库」旁的 + 创建'
         }}
       </p>
     </div>
@@ -734,6 +779,11 @@ watch(section, () => {
                   <el-dropdown-item command="deleteDraft" divided class="danger-item">删除草稿</el-dropdown-item>
                 </el-dropdown-menu>
                 <el-dropdown-menu v-else>
+                  <!-- 分享网格：卡片菜单顶部是分享管理快捷操作（FR-2.3.10） -->
+                  <template v-if="section === 'shared'">
+                    <el-dropdown-item command="copyGistLink">复制链接</el-dropdown-item>
+                    <el-dropdown-item command="openGistUrl">打开分享页</el-dropdown-item>
+                  </template>
                   <el-dropdown-item command="favorite">
                     {{ isFavorited(item) ? '取消收藏' : '收藏笔记' }}
                   </el-dropdown-item>
@@ -743,7 +793,7 @@ watch(section, () => {
                   <el-dropdown-item command="tag">标签</el-dropdown-item>
                   <el-dropdown-item command="exportPdf" divided>导出 PDF…</el-dropdown-item>
                   <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
-                  <el-dropdown-item command="share">分享…</el-dropdown-item>
+                  <el-dropdown-item command="share">{{ section === 'shared' ? '分享管理…' : '分享…' }}</el-dropdown-item>
                   <el-dropdown-item command="delete" class="danger-item">删除笔记</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -755,7 +805,7 @@ watch(section, () => {
             <div class="note-card-excerpt">{{ excerpts[`${item.vault}::${item.path}`] ?? '' }}</div>
           </div>
           <div class="note-card-meta">
-            <template v-if="(section === 'recents' || section === 'drafts') && item.openedAt">
+            <template v-if="(section === 'recents' || section === 'drafts' || section === 'shared') && item.openedAt">
               {{ formatRelativeTime(item.openedAt) }}
             </template>
             <template v-else>
@@ -800,8 +850,12 @@ watch(section, () => {
       @changed="void tree.loadTags()"
     />
 
-    <!-- 分享为 Gist 对话框（FR-2.3.10） -->
-    <ShareGistDialog v-model:visible="shareDialogVisible" :note="shareDialogNote" />
+    <!-- 分享为 Gist 对话框（FR-2.3.10）：分享 / 删除成功后刷新分享计数与网格 -->
+    <ShareGistDialog
+      v-model:visible="shareDialogVisible"
+      :note="shareDialogNote"
+      @changed="void tree.loadShared()"
+    />
   </div>
 </template>
 

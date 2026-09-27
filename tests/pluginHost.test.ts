@@ -272,7 +272,7 @@ beforeEach(() => {
     gitSource: null,
     windowGlassEffect: 'auto',
     windowOpacity: 100,
-    sidebarMenus: { recents: true, favorites: true, tags: true, unresolved: true, trash: true },
+    sidebarMenus: { recents: true, favorites: true, shared: true, tags: true, unresolved: true, trash: true },
     showBacklinks: true,
     defaultEditMode: 'source',
     editPosition: 'start',

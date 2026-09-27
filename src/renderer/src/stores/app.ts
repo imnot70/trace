@@ -6,7 +6,7 @@ import { effectiveTypewriterMode, flowMeasureEm } from '../lib/flow'
 import type { TypewriterMode } from '../lib/typewriter'
 
 /** 卡片网格视图的区块类型 */
-export type GridSection = 'recents' | 'favorites' | 'drafts' | 'vaults' | 'tags' | 'unresolved'
+export type GridSection = 'recents' | 'favorites' | 'drafts' | 'vaults' | 'tags' | 'unresolved' | 'shared'
 export type ViewMode = 'grid' | 'list'
 
 export type ActiveView =
@@ -37,7 +37,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   gitSource: null,
   windowGlassEffect: 'auto',
   windowOpacity: 100,
-  sidebarMenus: { recents: true, favorites: true, tags: true, unresolved: true, trash: true },
+  sidebarMenus: { recents: true, favorites: true, shared: true, tags: true, unresolved: true, trash: true },
   showBacklinks: true,
   defaultEditMode: 'source',
   editPosition: 'start',

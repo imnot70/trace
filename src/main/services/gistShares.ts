@@ -14,6 +14,11 @@ export class GistShareService {
     return this.store.get().shares.find((s) => s.vault === vault && s.path === relPath) ?? null
   }
 
+  /** 全部分享记录（侧栏「分享」管理入口，按更新时间倒序） */
+  list(): GistShare[] {
+    return [...this.store.get().shares].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
+  }
+
   /** 新建或更新（按 vault+path 定位；远端 gist id / 链接以本次调用结果为准） */
   upsert(share: Omit<GistShare, 'createdAt' | 'updatedAt'> & { createdAt?: string }): GistShare {
     const now = new Date().toISOString()

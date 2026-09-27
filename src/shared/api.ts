@@ -195,6 +195,8 @@ export interface TraceApi {
   notesByTags(tagIds: string[], match: 'all' | 'any'): Promise<OpResult & { entries?: NoteRefEntry[] }>
 
   // ---- 分享为 Gist（FR-2.3.10） ----
+  /** 全部分享记录（侧栏「分享」管理入口，按更新时间倒序） */
+  gistList(): Promise<OpResult & { shares?: GistShare[] }>
   /** 查询某笔记的分享记录（无记录时 share 为 null） */
   gistGet(vault: string, path: string): Promise<OpResult & { share?: GistShare | null }>
   /** 发布（无记录）或更新（有记录）为 secret gist */

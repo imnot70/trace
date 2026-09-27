@@ -79,6 +79,7 @@ const hasQuickSections = computed(
   () =>
     app.settings.sidebarMenus.recents ||
     app.settings.sidebarMenus.favorites ||
+    app.settings.sidebarMenus.shared ||
     app.settings.sidebarMenus.tags ||
     (app.settings.sidebarMenus.unresolved && unresolvedCount.value > 0) ||
     app.settings.sidebarMenus.trash
@@ -104,7 +105,7 @@ function onVaultMenuVisible(visible: boolean, vaultName: string): void {
   }
 }
 
-function toggleGrid(section: 'recents' | 'favorites' | 'drafts' | 'vaults' | 'tags', tagId?: string): void {
+function toggleGrid(section: 'recents' | 'favorites' | 'drafts' | 'vaults' | 'tags' | 'shared', tagId?: string): void {
   if (section === 'tags' && tagId) {
     // 多标签组合筛选（FR-2.6.13）：点击行 = 把标签加入 / 移出筛选集合；集合清空即关闭网格
     if (app.view.name === 'grid' && app.view.section === 'tags') {
@@ -120,7 +121,7 @@ function toggleGrid(section: 'recents' | 'favorites' | 'drafts' | 'vaults' | 'ta
   app.toggleGridSection(section)
 }
 
-function isGridOpen(section: 'recents' | 'favorites' | 'drafts' | 'vaults' | 'tags', tagId?: string): boolean {
+function isGridOpen(section: 'recents' | 'favorites' | 'drafts' | 'vaults' | 'tags' | 'shared', tagId?: string): boolean {
   if (app.view.name !== 'grid' || app.view.section !== section) return false
   if (section === 'tags') return !!tagId && (app.view.tagIds ?? []).includes(tagId)
   return true
@@ -266,6 +267,22 @@ defineProps<{ vaults?: VaultInfo[] }>()
           <span>收藏</span>
           <span v-if="tree.favorites.length" class="side-section-count">{{
             tree.favorites.length
+          }}</span>
+        </div>
+      </div>
+
+      <!-- 分享（FR-2.3.10）：已分享笔记的管理入口，与常用 / 收藏同款单行入口；
+           点击在主区域打开卡片网格，分享管理（复制链接 / 更新 / 删除）在卡片 ⋮ 菜单 -->
+      <div class="side-section" v-if="app.settings.sidebarMenus.shared">
+        <div
+          class="side-section-header"
+          :class="{ active: isGridOpen('shared') }"
+          @click="toggleGrid('shared')"
+        >
+          <el-icon><Share /></el-icon>
+          <span>分享</span>
+          <span v-if="tree.shared.length" class="side-section-count">{{
+            tree.shared.length
           }}</span>
         </div>
       </div>

@@ -120,6 +120,7 @@ const api: TraceApi = {
   notesByTag: (tagId) => ipcRenderer.invoke('tag:byTag', tagId),
   notesByTags: (tagIds, match) => ipcRenderer.invoke('tag:byTags', tagIds, match),
 
+  gistList: () => ipcRenderer.invoke('gist:list'),
   gistGet: (vault, path) => ipcRenderer.invoke('gist:get', vault, path),
   gistShare: (vault, path) => ipcRenderer.invoke('gist:share', vault, path),
   gistRemove: (vault, path, deleteRemote) => ipcRenderer.invoke('gist:remove', vault, path, deleteRemote),

@@ -153,6 +153,8 @@ export interface AppSettings {
     recents: boolean
     /** 收藏 */
     favorites: boolean
+    /** 分享（已分享笔记的管理入口，FR-2.3.10） */
+    shared: boolean
     /** 标签 */
     tags: boolean
     /** 断链引用 */

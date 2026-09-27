@@ -17,6 +17,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:visible', v: boolean): void
+  /** 分享 / 删除成功后通知外层刷新分享计数与网格 */
+  (e: 'changed'): void
 }>()
 
 const share = ref<GistShare | null>(null)
@@ -47,6 +49,7 @@ async function doShare(): Promise<void> {
       needScope.value = false
       await copyLink(res.share.url)
       ElMessage.success('分享成功，链接已复制')
+      emit('changed')
     } else if (res.needScope) {
       needScope.value = true
     } else {
@@ -79,6 +82,7 @@ async function removeShare(): Promise<void> {
     if (res.ok) {
       share.value = null
       ElMessage.success('分享已删除')
+      emit('changed')
     } else {
       ElMessage.error(res.error ?? '删除失败')
     }

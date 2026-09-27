@@ -192,6 +192,7 @@ const shareDialogVisible = ref(false)
       :visible="shareDialogVisible"
       :note="{ vault, path: node.path, name: node.name }"
       @update:visible="shareDialogVisible = $event"
+      @changed="void tree.loadShared()"
     />
     <template v-if="isDir && expanded">
       <VaultNode

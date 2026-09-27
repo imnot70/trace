@@ -349,6 +349,7 @@ export function registerIpc(deps: IpcDeps): void {
   })
 
   // ---------- 分享为 Gist（FR-2.3.10） ----------
+  handle('gist:list', () => ({ ok: true, shares: deps.gistShares.list() }))
   handle('gist:get', (vault: string, relPath: string) => ({ ok: true, share: deps.gistShares.get(vault, relPath) }))
   handle('gist:share', async (vault: string, relPath: string) => {
     const token = deps.account.getToken()
