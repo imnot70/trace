@@ -137,3 +137,29 @@ if (app.flowMode) {
 - **跨块判定多块方向不对称**：向下连跨多块应取文档序**首个**命中（离起点最近），向上应取**最后一个**——首版统一取首个，单测当场抓出（向上两块时落点错到最远的块尾）。
 - **CDP 断言读到过期文档**：`const doc = view.state.doc` 捕获后，删除类事务产生**新 state**，旧 `doc` 常量读出的长度 / 行号恒为事务前——`dj` 一度误判为「无删除」。断言一律经 `view.state.doc` 现取（「验证脚本自身要自证正确」的又一实例）。
 - **vim motion 的粘滞列**：包内 `moveByLines` 每步把 `lastHSPos` 更新为落点行的 `charCoords().left`；落点在渲染块内时 `coordsAtPos` 返回 null（适配层取 `|| 0`），照抄会把粘滞列写成 0——修正发生时保留旧值更接近真实列（回落源码后列号不变）。
+
+## 8. 打字机锚定失效（2026-09-28 用户实测截图反馈，当日修复）
+
+### 8.1 现象与根因
+
+- **现象**：心流 / 打字机 + vim 时，normal 移动（`j`/`k` 及 `gg`/`G`/计数跳转）后视图不跟随，光标漂离锚点线且「时灵时不灵」——截图里光标停在视口上部，远离心流低位锚点（80%）。
+- **根因**：打字机的重锚判定按事务的 `Transaction.userEvent` 注解分流（`typewriter.ts` 的 `isAnchorEvent`，匹配 `input|delete|undo|redo|select|move` 前缀 → 强制重锚；无匹配只剩会被滚动冷却吞掉的几何软调度）。而 **vim 适配层绕过 CM 输入管线直接 `view.dispatch`，移动类事务不带任何 userEvent**（探针实证：`j`/`k` 事务注解为 null）——打字机对 vim 的移动完全失明；normal 编辑（`x`/`dd`/`o`/`p`）由包内 `dispatchChange` 自带 `input.type.compose` 注解、insert 打字走原生管线自带 `input.type`，这两条线本就正常——**缺口恰为纯选区事务（移动 / 可视选区 / 模式切换后的选区重置）**。长距离跳转偶尔能追上是 `viewportChanged` → 几何软调度在起作用（不受滚动冷却时），造成「时灵时不灵」的观感。
+
+### 8.2 修法
+
+`vimMode.ts` 新增 `annotateVimDispatch`（挂 `buildVimExtension` 返回的插件里，每 view 一次）：包装 `view.dispatch`，仅当事务产生于 vim 操作内（包内 `findKey` 的 `cm.operation` 包裹置位 `curOp.isVimOp`）且 spec 未带注解时按形状归类——有 `changes` → `input.trace-vim`、纯选区 → `select.trace-vim`；vim 之外的 dispatch（含打字机自身的 `scrollIntoView`）与已注解的 spec 一律原样透传。vim 关闭后适配层随之移除（`getCM` 为 null），包装层恒走透传分支，无副作用。
+
+连带调整：回车音效的 `isReturnInsertion`（MarkdownEditor.vue）排除 `input.trace-vim`——回车音效语义是打字流中的回车（insert 模式 Enter 走原生 `input.type` 照常发声），vim normal 的结构编辑（`o`/`O`/`p`）不误响。`isAnchorEvent` 无需改动（`input` / `select` 前缀已覆盖两个注解值）。
+
+### 8.3 验证（CDP 隔离实例，心流 + 打字机低位 + vim，与用户截图同态）
+
+| # | 断言 | 修复前 | 修复后 |
+| --- | --- | --- | --- |
+| 1 | `3j` 移动后光标行视口占比 | **23.2%**（不跟随，截图同症状） | **80.0%**（精确回锚） |
+| 2 | `k` / `20j` / `x` 编辑后 | 23.2% / 83.4%（软路径偶追）/ 偏移 | 80.0% / 80.0% / 80.0% |
+| 3 | vim insert 模式打字（原生管线） | 80%（本来就正常） | 80%（回归不变） |
+| 4 | 非 vim `↓`（原生 select 注解路径） | 80% | 80%（回归不变） |
+
+单测 +4（`tests/vimMode.test.ts`）：移动事务带 select 注解（修复前为 null）/ 编辑事务自带包内 input 注解（既有行为锚定）/ 无注解 spec 按形状归类且已注解的不改写 / vim 操作之外透传；`tests/typewriter.test.ts` 的 `isAnchorEvent` 清单纳入两个注解值。全仓 454 项全绿。
+
+**泛化教训**（已登记 tech_cm6-editor）：CM6 生态里绕过输入管线的第三方 dispatch（如各编辑器适配层）不带 userEvent——凡按 userEvent 分流的扩展（打字机锚定 / 回车音效 / 将来任何类似机制）集成此类组件时必须显式补注解，不能假定事务自带来源标记。

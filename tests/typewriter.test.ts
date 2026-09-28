@@ -83,7 +83,9 @@ describe('打字机模式：重锚事件判定', () => {
       'redo',
       'select',
       'select.pointer',
-      'move'
+      'move',
+      'input.trace-vim',
+      'select.trace-vim'
     ]) {
       expect(isAnchorEvent(ev), ev).toBe(true)
     }

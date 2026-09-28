@@ -18,16 +18,48 @@
  *   无浮层且编辑器聚焦时让位 vim 返回 normal——退出心流改用 Alt+W / 顶栏咖啡杯
  *   （判定函数 shouldYieldEscapeToVim，App.vue 的 onEscape 心流分支调用）。
  */
-import type { Extension } from '@codemirror/state'
+import type { Extension, TransactionSpec } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
 import { Prec } from '@codemirror/state'
-import { keymap } from '@codemirror/view'
+import { ViewPlugin, keymap } from '@codemirror/view'
 import { getCM, vim, Vim, type MotionFn } from '@replit/codemirror-vim'
 import { crossBlockLanding } from './livePreview/smartMove'
 import { renderedBlockRanges } from './livePreview/decorations'
 
 /** CM5 适配层实例（订阅 `vim-mode-change` 事件用） */
 export const getVimCM = getCM
+
+/** vim 事务的 userEvent 注解（2026-09-28 用户实测：vim 下打字机锚定失效）。
+ *  适配层绕过 CM 输入管线直接 view.dispatch，事务**不带任何 userEvent**——按注解分流的
+ *  消费者（打字机锚定的 isAnchorEvent 等）对 vim 全部失明：normal 移动（j/k）不重锚、
+ *  normal 编辑（x/dd/o/p）只剩会被滚动冷却吞掉的软调度路径。insert 模式打字走 DOM
+ *  输入管线自带 input.type，故只有 normal / visual 动线受影响。 */
+export const VIM_INPUT_EVENT = 'input.trace-vim'
+export const VIM_SELECT_EVENT = 'select.trace-vim'
+
+/** 给 vim 驱动的 dispatch 补 userEvent 注解（每 view 一次；包装层挂在 buildVimExtension
+ *  的插件里随 vim 生命周期挂摘）。仅当事务产生于 vim 操作内（包内 findKey 的
+ *  cm.operation 包裹置位 curOp.isVimOp）且 spec 未带注解时归类：有 changes → 编辑、
+ *  纯选区 → 移动；vim 之外的 dispatch（含打字机自身的 scrollIntoView）原样透传。
+ *  vim 关闭后适配层随之移除（getCM 为 null），包装层恒走透传分支，无副作用。 */
+function annotateVimDispatch(view: EditorView): void {
+  const host = view as unknown as { __traceVimDispatchAnnotated?: boolean }
+  if (host.__traceVimDispatchAnnotated) return
+  host.__traceVimDispatchAnnotated = true
+  const origin = view.dispatch.bind(view) as (...args: unknown[]) => void
+  // dispatch 有 (tr) / (...specs) 两个重载；适配层恒传普通 spec 对象，宽松签名包装即可
+  ;(view as unknown as { dispatch: unknown }).dispatch = (...args: unknown[]) => {
+    const cm = getCM(view)
+    if (!cm?.curOp?.isVimOp) return origin(...args)
+    return origin(
+      ...args.map((arg) => {
+        const spec = arg as TransactionSpec
+        if (spec.userEvent) return arg
+        return { ...spec, userEvent: spec.changes != null ? VIM_INPUT_EVENT : VIM_SELECT_EVENT }
+      })
+    )
+  }
+}
 
 /** 让渡给应用的 vim 键（CM5 键名记法；卸载后穿透给应用层键位） */
 export const VIM_YIELDED_KEYS = ['<C-f>', '<C-b>', '<C-e>', '<C-i>', '<C-n>', '<C-t>'] as const
@@ -147,7 +179,15 @@ export function buildVimExtension(): Extension {
   return [
     vim(),
     // Ctrl-[ → vim 的 Esc（含退出 insert / 退出 visual）；须高于基础 keymap 的 Mod-[ indentLess
-    Prec.high(keymap.of([{ key: 'Ctrl-[', run: handleEscapeKey }]))
+    Prec.high(keymap.of([{ key: 'Ctrl-[', run: handleEscapeKey }])),
+    // vim 事务的 userEvent 注解补全（打字机锚定等按注解分流的消费者依赖它）
+    ViewPlugin.fromClass(
+      class {
+        constructor(view: EditorView) {
+          annotateVimDispatch(view)
+        }
+      }
+    )
   ]
 }
 

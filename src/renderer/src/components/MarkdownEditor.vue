@@ -48,7 +48,7 @@ import { useEditorStore } from '../stores/editor'
 import { livePreview } from '../lib/livePreview'
 import { smartVerticalMove } from '../lib/livePreview/smartMove'
 import { typewriter, type TypewriterMode } from '../lib/typewriter'
-import { buildVimExtension, getVimCM, readVimMode } from '../lib/vimMode'
+import { buildVimExtension, getVimCM, readVimMode, VIM_INPUT_EVENT } from '../lib/vimMode'
 import { createCaretSound, type SoundVariant } from '../lib/caretSound'
 import { setHeading, type HeadingLevel } from '../lib/heading'
 import { insertTable } from '../lib/table'
@@ -208,10 +208,12 @@ function insertReferenceFromCompletion(): boolean {
   return true
 }
 
-/** 该事务是否为「插入换行」的用户输入（排除粘贴：粘贴多行不应发声） */
+/** 该事务是否为「插入换行」的用户输入（排除粘贴：粘贴多行不应发声）。
+ *  input.trace-vim（vim normal 模式的结构编辑 o/O/p 等，见 vimMode.ts）一并排除——
+ *  回车音效语义是打字流中的回车（insert 模式 Enter 走原生 input.type 不受影响） */
 function isReturnInsertion(tr: Transaction): boolean {
   const event = tr.annotation(Transaction.userEvent) ?? ''
-  if (!event.startsWith('input') || event.startsWith('input.paste')) return false
+  if (!event.startsWith('input') || event.startsWith('input.paste') || event === VIM_INPUT_EVENT) return false
   let hasNewline = false
   tr.changes.iterChanges((_fromA, _toA, _fromB, _toB, inserted) => {
     if (inserted.toString().includes('\n')) hasNewline = true
