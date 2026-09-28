@@ -189,6 +189,11 @@ function onGlobalKeydown(e: KeyboardEvent): void {
       // 打字机模式开关（编辑视图内；FR-2.4.14）
       e.preventDefault()
       if (app.view.name === 'editor' && editor.current) app.toggleTypewriter()
+    } else if (e.key.toLowerCase() === 'm') {
+      // Vim 编辑模式开关（FR-2.4.23）。Alt+V 已被「显示/隐藏预览区」占用（另为搜索弹窗
+      // 的库范围下拉键），故取空闲的 Alt+M（Mode）；与 Alt+T 同守卫（编辑视图内生效）
+      e.preventDefault()
+      if (app.view.name === 'editor' && editor.current) app.toggleVim()
     }
     return
   }

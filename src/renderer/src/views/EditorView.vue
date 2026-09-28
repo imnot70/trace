@@ -788,6 +788,17 @@ onBeforeUnmount(() => {
           <span class="tw-letter">T<span v-if="app.settings.typewriterMode !== 'off'" class="tw-arrow">{{ app.settings.typewriterMode === 'center' ? '↑' : '↓' }}</span></span>
         </button>
       </el-tooltip>
+      <el-tooltip content="Vim 编辑模式（Alt+M 切换）：开启后编辑器支持 normal / insert / visual 键位" placement="bottom" :hide-after="0">
+        <button
+          class="tool-btn"
+          :class="{ 'flow-on': app.settings.vimEnabled }"
+          :title="app.settings.vimEnabled ? 'Vim 模式：开' : 'Vim 模式：关'"
+          @click="app.toggleVim(); editorRef?.focus()"
+        >
+          <!-- 字母 V 状态标志：与打字机 T 同款字母标识，激活时 accent 高亮（2026-09-28） -->
+          <span class="tw-letter">V</span>
+        </button>
+      </el-tooltip>
       <el-tooltip content="所见即所得编辑（Ctrl+E 切换）" placement="bottom" :hide-after="0">
         <button
           class="tool-btn"
@@ -908,6 +919,14 @@ onBeforeUnmount(() => {
         :title="`打字机模式：${app.effectiveTypewriterMode === 'center' ? '高位' : app.effectiveTypewriterMode === 'bottom' ? '低位' : '关'}`"
       >
         T<span v-if="app.effectiveTypewriterMode !== 'off'" class="tw-arrow">{{ app.effectiveTypewriterMode === 'center' ? '↑' : '↓' }}</span>
+      </span>
+      <!-- Vim 状态标志：心流 / 专注（顶栏隐藏）下确认 Vim 是否开启（Vim + 心流是自然组合） -->
+      <span
+        class="zen-status-mode tw-letter"
+        :class="{ 'mode-on': app.settings.vimEnabled }"
+        :title="app.settings.vimEnabled ? 'Vim 模式：开' : 'Vim 模式：关'"
+      >
+        V
       </span>
       <el-icon
         class="zen-status-mode"

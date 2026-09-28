@@ -248,6 +248,11 @@ export const useAppStore = defineStore('app', {
       const current = this.flowMode ? this.effectiveTypewriterMode : this.settings.typewriterMode
       void this.updateSettings({ typewriterMode: nextTypewriterCycle(current) })
     },
+    /** 开关 Vim 编辑模式（Alt+M / 顶栏 V 按钮，FR-2.4.23）：纯设置翻转，
+     *  编辑器经 vimCompartment 换装即时生效 */
+    toggleVim(): void {
+      void this.updateSettings({ vimEnabled: !this.settings.vimEnabled })
+    },
     /**
      * 进入心流模式：快照外围界面状态 → 拨动各轴（沉浸）。
      * 打字机形态在进入瞬间由设置推导一次（关 → 自动低位）落为会话态 flowTypewriter，

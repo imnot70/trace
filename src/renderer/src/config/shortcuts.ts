@@ -34,6 +34,7 @@ export const SHORTCUTS: ShortcutItem[] = [
   { keys: 'Ctrl + Shift + H / E（悬浮预览打开时）', desc: '悬浮预览跳到头部 / 尾部（编辑器聚焦时仍是光标跳文件首尾）', group: '全局' },
   { keys: 'Alt + Enter（[[ 补全时）', desc: '悬浮预览选中的笔记（不插入、不切走）；悬浮预览打开时再按 = 插入该笔记的引用', group: '编辑器' },
   { keys: 'Alt + T', desc: '打字机模式：关 → 高位 → 低位 三态循环（图标角标 ↑ 高位 / ↓ 低位，心流内外一致）', group: '编辑器' },
+  { keys: 'Alt + M', desc: '开关 Vim 编辑模式（Alt+V 已被「显示/隐藏预览区」占用；顶栏 V 按钮同义，激活时高亮）', group: '编辑器' },
   { keys: 'Ctrl + Enter', desc: '在当前行下方插入一个空行，光标移到新行行首（补全打开时 = 接受补全）', group: '编辑器' },
   { keys: 'Ctrl + Shift + Enter', desc: '在当前行上方插入一个空行，光标移到新行行首', group: '编辑器' },
   { keys: 'Ctrl + E', desc: '切换源码 / 所见即所得编辑模式（编辑视图内）', group: '编辑器' },
