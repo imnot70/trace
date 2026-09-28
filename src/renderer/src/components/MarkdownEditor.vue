@@ -931,13 +931,26 @@ function createView(initialDoc: string): EditorView {
     ]
   })
   const v = new EditorView({ state, parent: container.value! })
-  // vim 模式徽标（FR-2.4.23）：模式变化经 CM5 适配层事件写入 editor store（工具栏读取渲染）。
-  // 监听器随 view 生命周期（销毁后不再触发），无需显式解绑
-  getVimCM(v)?.on('vim-mode-change', () => {
-    editorStore.vimMode = readVimMode(v)
-  })
+  attachVimModeListener()
   if (props.vimEnabled) editorStore.vimMode = readVimMode(v) ?? 'normal'
   return v
+}
+
+/**
+ * vim 模式徽标（FR-2.4.23）：模式变化经 CM5 适配层事件写入 editor store（工具栏读取渲染）。
+ * ⚠️ 适配层实例随 vim 扩展的挂载/摘除重建（Compartment 换装 → ViewPlugin 重建 → 新适配层），
+ * 监听器必须跟着重挂——只在 createView 时挂一次的话，开关切换后的事件全部丢失
+ * （实测：模式正常切换但徽标永久停留在挂载初值）。同一实例不重复挂。
+ */
+let vimListenerCM: ReturnType<typeof getVimCM> | null = null
+function attachVimModeListener(): void {
+  if (!view) return
+  const cm = getVimCM(view)
+  if (!cm || cm === vimListenerCM) return
+  vimListenerCM = cm
+  cm.on('vim-mode-change', () => {
+    editorStore.vimMode = view ? readVimMode(view) : null
+  })
 }
 
 /** 组装所见即所得扩展：结构（含 StateField）必须常驻挂载——Compartment 不允许增删
@@ -990,13 +1003,19 @@ watch(
   }
 )
 
-// Vim 开关（FR-2.4.23）：经 Compartment 换装；关闭即摘除扩展（键位完全恢复现状）并清空模式徽标
+// Vim 开关（FR-2.4.23）：经 Compartment 换装；关闭即摘除扩展（键位完全恢复现状）并清空模式徽标。
+// 挂载后必须重挂适配层监听（新适配层实例，见 attachVimModeListener 注释）
 watch(
   () => props.vimEnabled,
   (enabled) => {
     if (!view) return
     view.dispatch({ effects: vimCompartment.reconfigure(enabled ? buildVimExtension() : []) })
-    editorStore.vimMode = enabled ? (readVimMode(view) ?? 'normal') : null
+    if (enabled) {
+      attachVimModeListener()
+      editorStore.vimMode = readVimMode(view) ?? 'normal'
+    } else {
+      editorStore.vimMode = null
+    }
   }
 )
 

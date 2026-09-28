@@ -71,4 +71,25 @@ if (app.flowMode) {
 - 代码：`lib/vimMode.ts`（新）、`MarkdownEditor.vue`（compartment + 模式监听 + 卸载清理）、`EditorView.vue`（props 透传 + 徽标 + 样式）、`App.vue`（Esc 让位分支 + `isEditorFocused`）、`SettingsView.vue`（开关 + 速查说明）、`config/shortcuts.ts`（2 条登记）、`shared/types.ts` + `main/index.ts` + `stores/app.ts` + `stores/editor.ts`（设置与状态字段）；
 - 测试：`tests/vimMode.test.ts` 8 项（Esc 三态 / 让渡键清单 / 构建幂等 / **unmap 真实生效断言** / 徽标文案）；既有 3 个测试文件的合成 settings 补 `vimEnabled: false`（类型必需）；
 - 顺手修复：音色收敛迁移目标 bug——retro2 批次把 `SOUND_VARIANTS` 改为 `['retro2']` 但迁移目标漏改为 `'retro2'`（仍写 `'retro'`），存量值永不收敛、每次启动重复写盘且设置页选择器可能出现空值；已改为迁移到 `'retro2'`；
-- 单测全绿；CDP / 真机验收按第 4 节清单执行（待办）。
+- 单测全绿；**CDP 隔离实例验证全过**（见第 6 节）；真机 IME / 键位手感待用户验证。
+
+## 6. CDP 验证记录（2026-09-28，隔离实例 TRACE_TEST_USERDATA + TRACE_CDP=9222）
+
+全部通过（页面内合成 KeyboardEvent 注入 + DOM/ store 双侧断言）：
+
+| # | 断言 | 结果 |
+| --- | --- | --- |
+| 1 | 开启 vim → 工具栏出现 NORMAL 徽标（watch → compartment 挂载 → readVimMode） | ✅ |
+| 2 | `i` → INSERT（cm.state.vim → vim-mode-change 事件 → store → 徽标全链路） | ✅ |
+| 3 | `Esc` → NORMAL（含 vim 返回 normal + preventDefault） | ✅ |
+| 4 | `v` → VISUAL、`Shift+V` → V-LINE（子模式文案缩写） | ✅ |
+| 5 | `Ctrl+F` 打开查找面板——**unmap 生效，应用键位优先**（vim 已卸载 `<C-f>`） | ✅ |
+| 6 | normal 模式 `dd` 删行（vim 文本动作，status "d" → 删行） | ✅ |
+| 7 | `Alt+W` 进 / 出心流（应用键位未被 vim 干扰） | ✅ |
+| 8 | **心流内 Esc 不退出心流**（vim 让位判定生效，Esc 归 vim；徽标保持） | ✅ |
+| 9 | 关闭开关 → 徽标消失、`i` 恢复普通输入（Compartment 摘除无残留） | ✅ |
+
+### 实施中发现并修复的缺陷（重要教训）
+
+- **适配层监听器随 Compartment 换装失效**：vim 的模式变化事件（`vim-mode-change`）挂在 CM5 适配层实例上，而**适配层实例随扩展的挂载/摘除整个重建**（`vimCompartment.reconfigure` → ViewPlugin 重建 → `new CodeMirror(view)`）。只在 `createView` 时挂一次监听的话，开关切换后所有模式事件丢失——表现为**功能正常但徽标永久停留在挂载初值**。修法：`attachVimModeListener()` 在 createView 与每次开关挂载后调用，记录已挂的适配层实例避免重复。**泛化教训：Compartment 换装一个 ViewPlugin 类扩展 = 插件实例与其持有的一切资源/事件订阅全部重建，跨实例的订阅必须在每次挂载后重挂。**
+- 验证过程的其他观察（记入验证方法学）：① CDP `Input.dispatchKeyEvent` 在本环境对后台窗口不可靠（与既有教训一致），**页面内合成 `KeyboardEvent`（在 contentDOM 上 dispatch、bubbles）是可靠的按键注入方式**，编辑器键位（target 阶段）与应用层 window 监听（冒泡）都能收到；② 心流 / 专注的顶栏隐藏是 **CSS 隐藏而非 DOM 移除**，验证脚本不能用「元素不存在」判定顶栏隐藏，应读 app store 的 `flowMode` / `zenMode`；③ 调试通道：`.editor-pane.__vueParentComponent.setupState.view` 可从页面直接拿到 CM `EditorView` 实例，配合 `getCM(view).state.vim` 三点联动（包状态 → 事件 → store）可精确定位断链层。
