@@ -569,7 +569,7 @@ async function resetGitSource(): Promise<void> {
         <div class="settings-block">
           <h3>GitHub 账号</h3>
           <p class="settings-desc">
-            用于笔记库的 Git 云端同步。Trace 只申请仓库读写权限，令牌保存在系统加密存储中，不会上传。
+            仅用于 Git 同步；令牌存于系统加密存储，不会上传
           </p>
 
           <template v-if="!git.account.loggedIn">
@@ -634,7 +634,7 @@ async function resetGitSource(): Promise<void> {
           <template v-else-if="tab === 'general'">
         <div class="settings-block">
           <h3>工作区</h3>
-          <p class="settings-desc">所有笔记库都保存在工作区目录下，可随时更换。</p>
+          <p class="settings-desc">所有笔记库保存在此目录下，可随时更换</p>
           <div class="setting-row">
             <el-input v-model="workspaceInput" style="flex: 1" />
             <el-button @click="chooseWorkspace">选择…</el-button>
@@ -648,7 +648,7 @@ async function resetGitSource(): Promise<void> {
 
         <div class="settings-block">
           <h3>侧栏菜单</h3>
-          <p class="settings-desc">控制左侧栏显示哪些菜单分区；「笔记库」始终显示。</p>
+          <p class="settings-desc">控制侧栏显示哪些菜单；「笔记库」始终显示</p>
           <div class="setting-row">
             <span class="setting-label">常用</span>
             <el-switch
@@ -669,7 +669,7 @@ async function resetGitSource(): Promise<void> {
               :model-value="app.settings.sidebarMenus.shared"
               @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, shared: Boolean(v) } })"
             />
-            <span class="settings-desc" style="margin: 0">已分享（Gist）笔记的管理入口</span>
+            <span class="settings-desc" style="margin: 0">已分享笔记的管理入口</span>
           </div>
           <div class="setting-row">
             <span class="setting-label">标签</span>
@@ -684,7 +684,7 @@ async function resetGitSource(): Promise<void> {
               :model-value="app.settings.sidebarMenus.unresolved"
               @update:model-value="(v: string | number | boolean) => app.updateSettings({ sidebarMenus: { ...app.settings.sidebarMenus, unresolved: Boolean(v) } })"
             />
-            <span class="settings-desc" style="margin: 0">存在无法跳转的 [[双链]] 时在侧栏提示（仅有断链时显示）</span>
+            <span class="settings-desc" style="margin: 0">有失效的 [[双链]] 时在侧栏提示</span>
           </div>
           <div class="setting-row">
             <span class="setting-label">回收站</span>
@@ -790,7 +790,7 @@ async function resetGitSource(): Promise<void> {
               <el-option label="Acrylic（Windows）" value="acrylic" />
               <el-option label="毛玻璃（macOS）" value="vibrancy" />
             </el-select>
-            <span class="settings-desc" style="margin: 0">{{ isWindows ? 'Mica / Acrylic 需 Windows 11 22H2+（旧系统自动降级为仅透明度）；毛玻璃建议不透明度 100%' : '窗口半透明和毛玻璃效果，不同平台支持程度不同' }}</span>
+            <span class="settings-desc" style="margin: 0">{{ isWindows ? 'Mica / Acrylic 需 Windows 11 22H2+，旧系统自动降级' : '按平台支持情况自动适配' }}</span>
           </div>
           <div class="setting-row">
             <span class="setting-label">窗口不透明度</span>
@@ -807,7 +807,7 @@ async function resetGitSource(): Promise<void> {
             </span>
           </div>
           <p class="settings-desc" style="margin: 0 0 0 102px">
-            Windows 11 支持 Mica/Acrylic 效果，macOS 支持毛玻璃效果，Linux 依赖桌面合成器。不透明度下限 50%，避免界面难以阅读。
+            最低 50%，保证界面可读
           </p>
         </div>
           </template>
@@ -838,7 +838,7 @@ async function resetGitSource(): Promise<void> {
               <el-option value="source" label="源码模式" />
               <el-option value="wysiwyg" label="所见即所得" />
             </el-select>
-            <span class="settings-desc" style="margin: 0">打开笔记时使用的编辑模式；编辑器内 Ctrl+E 随时切换</span>
+            <span class="settings-desc" style="margin: 0">打开笔记时的编辑模式（Ctrl+E 可切换）</span>
           </div>
           <div class="setting-row">
             <span class="setting-label">编辑位置</span>
@@ -851,7 +851,7 @@ async function resetGitSource(): Promise<void> {
               <el-option value="end" label="从尾部开始" />
             </el-select>
             <span class="settings-desc" style="margin: 0"
-              >打开笔记后光标落在文首还是文末（心流模式内同样生效）；编辑器内 Ctrl+Shift+H / Ctrl+Shift+E 可随时跳到文首 / 文末</span
+              >打开笔记后光标落在文首 / 文末</span
             >
           </div>
           <div class="setting-row">
@@ -873,7 +873,7 @@ async function resetGitSource(): Promise<void> {
             />
             <span style="color: var(--text-secondary)">列</span>
             <span class="settings-desc" style="margin: 0"
-              >Ctrl+T 插入表格的默认行列数（含表头）；浮层内仍可临时输入其他尺寸，上限 50 行 / 20 列</span
+              >Ctrl+T 插入表格的默认行列数（含表头），插入时可临时更改</span
             >
           </div>
           <div class="setting-row">
@@ -882,12 +882,10 @@ async function resetGitSource(): Promise<void> {
               :model-value="app.settings.vimEnabled"
               @update:model-value="(v: string | number | boolean) => app.updateSettings({ vimEnabled: Boolean(v) })"
             />
-            <span class="settings-desc" style="margin: 0">normal / insert / visual 全套 vim 键位（工具栏右端显示当前模式）</span>
+            <span class="settings-desc" style="margin: 0">开启后支持 vim 键位（工具栏右端显示当前模式）</span>
           </div>
           <p v-if="app.settings.vimEnabled" class="settings-desc" style="margin: 0 0 0 102px">
-            键位约定：Ctrl+F 查找、Ctrl+B 加粗、Ctrl+I 斜体、Ctrl+E 编辑形态、Ctrl+N 新建、Ctrl+T 表格仍归应用，Vim 不占用；
-            编辑器聚焦时 Esc 与 Ctrl+[ 归 Vim（返回 normal），退出心流模式用 Alt+W 或顶栏按钮；悬浮预览 / 浮层侧栏 /
-            各弹窗的 Esc 行为不变。Ctrl+D / U 半页滚动、Ctrl+O 跳回与临时 normal、Ctrl+R 重做、Ctrl+V 块可视等 Vim 动作可直接使用。
+            Ctrl+F / B / I / E / N / T 仍归应用；编辑器聚焦时 Esc 与 Ctrl+[ 归 Vim，退出心流模式用 Alt+W；其余 Esc 行为不变
           </p>
           <div class="setting-row">
             <span class="setting-label">自动保存</span>
@@ -895,7 +893,7 @@ async function resetGitSource(): Promise<void> {
               :model-value="app.settings.autoSave"
               @update:model-value="(v: string | number | boolean) => app.updateSettings({ autoSave: Boolean(v) })"
             />
-            <span class="settings-desc" style="margin: 0">编辑后 1 秒自动写入文件（Ctrl+S 可手动保存）</span>
+            <span class="settings-desc" style="margin: 0">编辑后 1 秒自动保存（Ctrl+S 手动保存）</span>
           </div>
           <div class="setting-row">
             <span class="setting-label">专注隐藏顶栏</span>
@@ -903,7 +901,7 @@ async function resetGitSource(): Promise<void> {
               :model-value="app.settings.zenHideTopbar"
               @update:model-value="(v: string | number | boolean) => app.updateSettings({ zenHideTopbar: Boolean(v) })"
             />
-            <span class="settings-desc" style="margin: 0">专注时隐藏顶栏与格式工具栏，鼠标移到编辑卡顶部可整体唤出</span>
+            <span class="settings-desc" style="margin: 0">专注时隐藏顶栏，鼠标移到顶部可唤出</span>
           </div>
           <div class="setting-row">
             <span class="setting-label">显示反向链接</span>
@@ -911,7 +909,7 @@ async function resetGitSource(): Promise<void> {
               :model-value="app.settings.showBacklinks"
               @update:model-value="(v: string | number | boolean) => app.updateSettings({ showBacklinks: Boolean(v) })"
             />
-            <span class="settings-desc" style="margin: 0">编辑卡右下角的「反向链接」入口，显示引用当前笔记的笔记</span>
+            <span class="settings-desc" style="margin: 0">在编辑卡右下角显示「反向链接」入口</span>
           </div>
           <div class="setting-row">
             <span class="setting-label">跨库引用免确认</span>
@@ -920,22 +918,20 @@ async function resetGitSource(): Promise<void> {
               @update:model-value="(v: string | number | boolean) => app.updateSettings({ skipCrossVaultCopyConfirm: Boolean(v) })"
             />
             <span class="settings-desc" style="margin: 0"
-              >引入跨库笔记时直接复制到当前库（图片随迁），不再弹确认框；副本与原笔记不会同步更新</span
+              >引入跨库笔记时直接复制、不再确认（副本不随源更新）</span
             >
           </div>
           <div class="setting-row">
             <span class="setting-label">跨库引用目录</span>
             <el-input
               v-model="crossVaultCopyDirInput"
-              style="flex: 1"
+              style="width: 260px"
               placeholder="跨库笔记的保存目录，如 跨库引用（可多级，如 引用/跨库）"
               @blur="applyCrossVaultCopyDir"
               @keydown.enter="($event.target as HTMLInputElement).blur()"
             />
+            <span class="settings-desc" style="margin: 0">跨库副本的存放目录（留空恢复默认「跨库引用」）</span>
           </div>
-          <p class="settings-desc" style="margin: 0 0 0 102px">
-            位于目标笔记库根目录，并按来源库分子目录；重复引入相同内容的笔记会自动复用已有副本。留空恢复默认「跨库引用」。
-          </p>
           <div class="setting-row">
             <span class="setting-label">打字机模式</span>
             <el-select
@@ -947,21 +943,19 @@ async function resetGitSource(): Promise<void> {
               <el-option label="高位（光标垂直居中）" value="center" />
               <el-option label="低位（光标靠下，文字上移）" value="bottom" />
             </el-select>
-            <span class="settings-desc" style="margin: 0">光标固定、文字流动；用户滚动查看前文时不干预，下次输入回到锚点</span>
+            <span class="settings-desc" style="margin: 0">输入时光标固定、文字滚动</span>
           </div>
           <div class="setting-row">
             <span class="setting-label">附件目录</span>
             <el-input
               v-model="attachmentsDirInput"
-              style="flex: 1"
+              style="width: 260px"
               placeholder="粘贴图片的保存目录，可多级，如 media/image"
               @blur="applyAttachmentsDir"
               @keydown.enter="($event.target as HTMLInputElement).blur()"
             />
+            <span class="settings-desc" style="margin: 0">相对笔记库根目录，只影响之后粘贴的图片</span>
           </div>
-          <p class="settings-desc" style="margin: 0 0 0 102px">
-            相对于笔记库根目录，修改后只对之后粘贴的图片生效；已有图片的引用不受影响。
-          </p>
         </div>
           </template>
           <template v-else-if="tab === 'shortcuts'">
@@ -986,8 +980,7 @@ async function resetGitSource(): Promise<void> {
         <div class="settings-block">
           <h3>心流模式</h3>
           <p class="settings-desc">
-            一键进入沉浸创作：隐藏侧栏与顶栏、切所见即所得、开启打字机（形态沿用上面的「打字机模式」，未开启时默认低位）。
-            按 <b>Alt + W</b> 或编辑卡顶栏的咖啡杯按钮进入；<b>Esc</b> 一键退出并恢复进入前的界面状态。
+            按 <b>Alt + W</b> 或咖啡杯按钮进入沉浸创作；<b>Esc</b> 退出并恢复原界面
           </p>
           <div class="setting-row">
             <span class="setting-label">写作栏宽</span>
@@ -1000,7 +993,7 @@ async function resetGitSource(): Promise<void> {
               <el-option label="中（约 42 字符）" value="medium" />
               <el-option label="宽（约 52 字符）" value="wide" />
             </el-select>
-            <span class="settings-desc" style="margin: 0">正文列宽限制并居中，宽屏下长行阅读更省力；仅心流模式内生效</span>
+            <span class="settings-desc" style="margin: 0">限制正文列宽并居中，仅心流内生效</span>
           </div>
           <div class="setting-row">
             <span class="setting-label">写作底色</span>
@@ -1008,7 +1001,7 @@ async function resetGitSource(): Promise<void> {
               :model-value="app.settings.flowPaperEnabled"
               @update:model-value="(v: string | number | boolean) => app.updateSettings({ flowPaperEnabled: Boolean(v) })"
             />
-            <span class="settings-desc" style="margin: 0">为心流模式的写作栏涂一层柔和底色，帮助视线聚焦（跟随写作栏宽，仅心流模式内生效）</span>
+            <span class="settings-desc" style="margin: 0">为写作栏涂柔和底色帮助聚焦，仅心流内生效</span>
           </div>
           <div class="setting-row" v-if="app.settings.flowPaperEnabled">
             <span class="setting-label">底色颜色</span>
@@ -1035,7 +1028,7 @@ async function resetGitSource(): Promise<void> {
               <el-option label="羊皮纸" value="parchment" />
               <el-option label="书页纤维" value="fiber" />
             </el-select>
-            <span class="settings-desc" style="margin: 0">在所选底色上叠加程序化的纸面质感（无图片素材，不增加体积）</span>
+            <span class="settings-desc" style="margin: 0">在底色上叠加纸面质感</span>
           </div>
           <div class="setting-row" v-if="app.settings.flowPaperEnabled">
             <span class="setting-label">底色过渡</span>
@@ -1043,7 +1036,7 @@ async function resetGitSource(): Promise<void> {
               :model-value="app.settings.flowPaperFade"
               @update:model-value="(v: string | number | boolean) => app.updateSettings({ flowPaperFade: Boolean(v) })"
             />
-            <span class="settings-desc" style="margin: 0">写作栏两侧各增加 15% 栏宽的过渡区，底色向两侧逐渐变透明</span>
+            <span class="settings-desc" style="margin: 0">底色向两侧渐隐</span>
           </div>
           <div class="setting-row">
             <span class="setting-label">回车音效</span>
@@ -1051,7 +1044,7 @@ async function resetGitSource(): Promise<void> {
               :model-value="app.settings.flowSoundEnabled"
               @update:model-value="(v: string | number | boolean) => app.updateSettings({ flowSoundEnabled: Boolean(v) })"
             />
-            <span class="settings-desc" style="margin: 0">回车时播放合成的机械键盘音（程序合成、无音频文件；仅心流模式内生效，连续回车自动限流）</span>
+            <span class="settings-desc" style="margin: 0">回车时播放合成打字机音，仅心流内生效</span>
           </div>
           <div class="setting-row" v-if="app.settings.flowSoundEnabled">
             <span class="setting-label">音色</span>
@@ -1071,7 +1064,6 @@ async function resetGitSource(): Promise<void> {
               <el-option label="轮换（三者依次交替）" value="rotate" />
               -->
             </el-select>
-            <span class="settings-desc" style="margin: 0">可先选「轮换」逐一听过再定</span>
           </div>
           <div class="setting-row" v-if="app.settings.flowSoundEnabled">
             <span class="setting-label">连续换行屏蔽音效</span>
@@ -1079,7 +1071,7 @@ async function resetGitSource(): Promise<void> {
               :model-value="app.settings.flowSoundSkipRepeat"
               @update:model-value="(v: string | number | boolean) => app.updateSettings({ flowSoundSkipRepeat: Boolean(v) })"
             />
-            <span class="settings-desc" style="margin: 0">连按回车加空行时只有第一次发声，避免音效叠在一起</span>
+            <span class="settings-desc" style="margin: 0">连续回车时只有第一次发声</span>
           </div>
           <div class="setting-row" v-if="app.settings.flowSoundEnabled">
             <span class="setting-label">音效音量</span>
@@ -1100,7 +1092,7 @@ async function resetGitSource(): Promise<void> {
           <template v-else-if="tab === 'sync'">
         <div class="settings-block">
           <h3>自动同步</h3>
-          <p class="settings-desc">自动同步所有已关联 Git 仓库的笔记库；仅对磁盘上已保存的内容生效，失败时静默（状态见库徽标与编辑页）。</p>
+          <p class="settings-desc">自动同步所有已关联远程的笔记库，失败时静默</p>
           <div class="setting-row">
             <span class="setting-label">同步方式</span>
             <el-select
@@ -1127,7 +1119,7 @@ async function resetGitSource(): Promise<void> {
 
         <div class="settings-block">
           <h3>网络代理</h3>
-          <p class="settings-desc">如果你的网络无法直连 GitHub，可为 Git 同步配置代理。代理仅用于同步，不会写入笔记库。</p>
+          <p class="settings-desc">Git 同步走此代理，不写入笔记库</p>
           <div class="setting-row">
             <span class="setting-label">代理地址</span>
             <el-input
@@ -1146,7 +1138,7 @@ async function resetGitSource(): Promise<void> {
             <span class="setting-label"></span>
             <el-button size="small" :loading="proxyTesting" @click="testProxy">测试连接</el-button>
             <span class="settings-desc" style="margin: 0">
-              修改或填写代理后点击「测试连接」验证可达性；测试通过后新同步立即生效。
+              填写后点「测试连接」验证
             </span>
           </div>
         </div>
@@ -1164,7 +1156,7 @@ async function resetGitSource(): Promise<void> {
             >
               <el-option v-for="opt in retentionOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
             </el-select>
-            <span class="settings-desc" style="margin: 0">超过保留天数的回收站条目将在应用启动时自动清理（0 / 永久保留 = 不自动清理）</span>
+            <span class="settings-desc" style="margin: 0">超期条目启动时自动清理；0 = 永久保留</span>
           </div>
           <div class="setting-row">
             <span class="setting-label">容量上限</span>
@@ -1175,7 +1167,7 @@ async function resetGitSource(): Promise<void> {
             >
               <el-option v-for="opt in capOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
             </el-select>
-            <span class="settings-desc" style="margin: 0">条目数超出上限时自动永久删除最旧的条目（0 / 不限 = 不限制数量）</span>
+            <span class="settings-desc" style="margin: 0">超出后自动删除最旧条目；0 = 不限</span>
           </div>
         </div>
 
@@ -1184,7 +1176,7 @@ async function resetGitSource(): Promise<void> {
         <div class="settings-block">
           <h3>Git 信息</h3>
           <p class="settings-desc">
-            笔记库的云端同步依赖 Git。Trace 已内置 Git，系统未安装时也能直接使用；首次同步时会自动检测并提示。
+            已内置 Git，无需系统安装
           </p>
           <div class="setting-row">
             <span class="setting-label">当前来源</span>
@@ -1211,7 +1203,7 @@ async function resetGitSource(): Promise<void> {
           <div class="setting-row">
             <span class="setting-label"></span>
             <el-button size="small" @click="resetGitSource">重置选择</el-button>
-            <span class="settings-desc" style="margin: 0">下次同步时重新检测 Git 可用性</span>
+            <span class="settings-desc" style="margin: 0">下次同步时重新检测</span>
           </div>
         </div>
           </template>
@@ -1219,8 +1211,7 @@ async function resetGitSource(): Promise<void> {
         <div class="settings-block">
           <h3>插件功能</h3>
           <p class="settings-desc">
-            插件运行在独立进程中，通过声明的权限读写笔记、订阅事件、注册命令。
-            插件目录：设置 → 通用 → 工作区同级的用户数据目录 plugins/（示例插件首次启动自动放置）。
+            插件独立进程运行，按声明的权限工作；示例插件首次启动自动放置
           </p>
           <div class="setting-row">
             <span class="setting-label">启用插件</span>
@@ -1348,7 +1339,7 @@ async function resetGitSource(): Promise<void> {
           </li>
         </ul>
         <p class="settings-desc" style="margin: 0">
-          请仅启用你信任的插件。插件的笔记读写仅限工作区内；本地安装的插件未经 Trace 市场审阅。
+          请仅启用信任的插件；本地安装的插件未经审阅
         </p>
       </template>
       <template #footer>
