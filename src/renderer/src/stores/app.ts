@@ -118,15 +118,7 @@ export const useAppStore = defineStore('app', {
     /** 提示自动消失定时器（重复切换时重置） */
     modeToastTimer: null as ReturnType<typeof setTimeout> | null,
     /** 跨组件的悬浮预览请求（FR-2.9.10：搜索框 Alt+Enter → EditorView 消费）；null = 无待处理 */
-    pendingNotePreview: null as { vault: string; path: string; name: string } | null,
-    /** 打字机开关（Alt+T）的记忆：关闭时记下之前的形态，再次开启时恢复（本地持久化） */
-    typewriterResume: ((): 'center' | 'bottom' => {
-      try {
-        return localStorage.getItem('trace.typewriterResume') === 'bottom' ? 'bottom' : 'center'
-      } catch {
-        return 'center'
-      }
-    })()
+    pendingNotePreview: null as { vault: string; path: string; name: string } | null
   }),
   getters: {
     /** 实际生效的打字机形态：心流内读会话态（进入时推导、此后跟随心流内切换，可为「关」），
@@ -248,43 +240,13 @@ export const useAppStore = defineStore('app', {
     requestNotePreview(vault: string, path: string, name: string): void {
       this.pendingNotePreview = { vault, path, name }
     },
-    /** 切换打字机模式（Alt+T）：非心流为「关 ↔ 上次使用的形态」二态（本地持久化记忆）；
-     *  心流内为 高位→低位→关 三态循环，「关」真实生效（切换经 updateSettings 写回设置，
-     *  退出心流后内外一致） */
+    /** 切换打字机模式（Alt+T，2026-09-28 统一三态）：关 → 高位 → 低位 循环，心流内外一致。
+     *  心流内从会话态（进入时推导）出发循环，非心流从设置值出发；切换经 updateSettings
+     *  写回设置（心流内同步会话态，退出心流后内外一致）。
+     *  旧版「非心流 关 ↔ 上次形态」二态与 typewriterResume 记忆随之废除 */
     toggleTypewriter(): void {
-      if (this.flowMode) {
-        const leaving = this.effectiveTypewriterMode
-        const next = nextTypewriterCycle(leaving)
-        // 记忆维护：切到关时记住离开的形态，循环到具体形态时刷新记忆（与二态语义一致）
-        if (next !== 'off') {
-          this.typewriterResume = next
-          try {
-            localStorage.setItem('trace.typewriterResume', next)
-          } catch {
-            /* ignore */
-          }
-        } else if (leaving !== 'off') {
-          this.typewriterResume = leaving
-          try {
-            localStorage.setItem('trace.typewriterResume', leaving)
-          } catch {
-            /* ignore */
-          }
-        }
-        void this.updateSettings({ typewriterMode: next })
-        return
-      }
-      if (this.settings.typewriterMode === 'off') {
-        this.updateSettings({ typewriterMode: this.typewriterResume })
-      } else {
-        this.typewriterResume = this.settings.typewriterMode
-        try {
-          localStorage.setItem('trace.typewriterResume', this.typewriterResume)
-        } catch {
-          /* ignore */
-        }
-        this.updateSettings({ typewriterMode: 'off' })
-      }
+      const current = this.flowMode ? this.effectiveTypewriterMode : this.settings.typewriterMode
+      void this.updateSettings({ typewriterMode: nextTypewriterCycle(current) })
     },
     /**
      * 进入心流模式：快照外围界面状态 → 拨动各轴（沉浸）。

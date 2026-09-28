@@ -776,15 +776,16 @@ onBeforeUnmount(() => {
           <el-icon><Expand v-if="!app.previewVisible && !app.floatingPreview" /><Fold v-else /></el-icon>
         </button>
       </el-tooltip>
-      <el-tooltip content="打字机模式：光标锚定固定行（Alt+T 切换）" placement="bottom" :hide-after="0">
+      <el-tooltip content="打字机模式：关 → 高位 → 低位 循环（Alt+T）" placement="bottom" :hide-after="0">
         <button
           class="tool-btn"
           :class="{ 'flow-on': app.settings.typewriterMode !== 'off' }"
           :title="app.settings.typewriterMode === 'center' ? '打字机：高位' : app.settings.typewriterMode === 'bottom' ? '打字机：低位' : '打字机：关'"
           @click="app.toggleTypewriter(); editorRef?.focus()"
         >
-          <!-- 字母 T 代替图标：Aim 与「定位笔记」的十字准星图标重复（用户实测反馈） -->
-          <span class="tw-letter">T</span>
+          <!-- 字母 T 代替图标：Aim 与「定位笔记」的十字准星图标重复（用户实测反馈）；
+               ↑ / ↓ 角标区分高位（锚点垂直居中）与低位（锚点靠下），关为纯 T（2026-09-28） -->
+          <span class="tw-letter">T<span v-if="app.settings.typewriterMode !== 'off'" class="tw-arrow">{{ app.settings.typewriterMode === 'center' ? '↑' : '↓' }}</span></span>
         </button>
       </el-tooltip>
       <el-tooltip content="所见即所得编辑（Ctrl+E 切换）" placement="bottom" :hide-after="0">
@@ -906,7 +907,7 @@ onBeforeUnmount(() => {
         :class="{ 'mode-on': app.effectiveTypewriterMode !== 'off' }"
         :title="`打字机模式：${app.effectiveTypewriterMode === 'center' ? '高位' : app.effectiveTypewriterMode === 'bottom' ? '低位' : '关'}`"
       >
-        T
+        T<span v-if="app.effectiveTypewriterMode !== 'off'" class="tw-arrow">{{ app.effectiveTypewriterMode === 'center' ? '↑' : '↓' }}</span>
       </span>
       <el-icon
         class="zen-status-mode"
@@ -1090,6 +1091,14 @@ onBeforeUnmount(() => {
   font-size: 13px;
   font-weight: 700;
   line-height: 1;
+}
+
+/* 高位 / 低位角标：小一号上标箭头（↑ 高位 / ↓ 低位），与 T 的视觉重量区分 */
+.tw-arrow {
+  font-size: 9px;
+  font-weight: 700;
+  vertical-align: super;
+  margin-left: 1px;
 }
 
 .editor-card {

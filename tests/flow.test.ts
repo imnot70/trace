@@ -53,4 +53,14 @@ describe('心流模式：打字机三态循环（2026-09-27，「关」在心流
     mode = nextTypewriterCycle(mode)
     expect(mode).toBe('center')
   })
+
+  it('Alt+T 统一三态（2026-09-28，取代非心流二态）：关起步为 关 → 高位 → 低位 → 关', () => {
+    let mode: ReturnType<typeof nextTypewriterCycle> = 'off'
+    mode = nextTypewriterCycle(mode)
+    expect(mode).toBe('center')
+    mode = nextTypewriterCycle(mode)
+    expect(mode).toBe('bottom')
+    mode = nextTypewriterCycle(mode)
+    expect(mode).toBe('off')
+  })
 })
