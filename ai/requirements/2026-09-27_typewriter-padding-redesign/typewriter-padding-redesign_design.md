@@ -71,6 +71,9 @@ typewriter(mode)                          # lib/typewriter.ts
   异步晚于挂载的项目教训）。
 - 写入：编辑卡 `:style` 增 `'--tw-pad-top' / '--tw-pad-bottom'` 两键。
 
+
+> **⚠️ 2026-09-28 更新（语义已被取代）**：本文 §3 设计的「非心流 关 ↔ 上次形态 二态（typewriterResume 记忆）+ 心流内三态」双语义，已按用户要求统一为**全形态三态循环**（`Alt+T`：关 → 高位 → 低位，心流内外一致；图标角标 T↑ / T↓ / T）。`toggleTypewriter` 收敛为单一实现，`typewriterResume` 状态与 localStorage 记忆已删除。权威描述见 PRD FR-2.4.14 与 CHANGELOG。
+
 ## 3. D2：心流内三态循环（会话态）
 
 ### 3.1 状态与数据流

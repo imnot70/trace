@@ -44,7 +44,8 @@
 | [2026-09-26_image-picker/](2026-09-26_image-picker/image-picker.md) | 快速引入图片（FR-2.5.4）：系统文件选择器多选 → 附件目录 → 光标处批量引用，与粘贴管线共用命名逻辑 | ✅ 已实施并发布（v0.11.0） |
 | [2026-09-27_typewriter-padding-redesign/](2026-09-27_typewriter-padding-redesign/typewriter-padding-redesign.md) | 打字机留白生命周期重设计：两收尾缺陷根治（声明式承载——padding 随扩展 theme 摘除，清理不依赖 JS）+ 心流内 Alt+T 三态循环（「关」可表达）+ 预览同值留白与头部区 1:1 同步 + 组词期被动重锚破坏输入法组词锚点的修复（五笔真机四症状） | ✅ 已实施并发布（**v0.12.0**；2026-09-27 用户真机确认正常） |
 | [tech/](../tech/) | **技术文档与踩坑记录**（tech_architecture 架构评估与选型 / tech_cm6-editor 编辑器 / tech_ui-css 渲染 / tech_electron-platform 平台 / tech_backend-data-git 主进程与数据 / tech_verification 验证方法学 / tech_product-interaction 产品交互，由技术债评审与 lessons 汇总拆分） | 📚 **持续维护**（新教训先入功能文档实施记录，再登记摘要） |
-| [handoff-2026-09-27.md](changelog/handoff-2026-09-27.md) | **09-27 会话交接（最新，Linux 机）**：提案池批量实施 → v0.11.0 发版全记录——Gist API 图片边界调研结论、user-guide 冲突标记遗留教训、验收状态、gh 未认证与分支清理备注、下一步建议顺序 | 📜 交接入口 |
+| [handoff-2026-09-27.md](changelog/handoff-2026-09-27.md) | **09-27 会话交接（Linux 机）**：提案池批量实施 → v0.11.0 发版全记录——Gist API 图片边界调研结论、user-guide 冲突标记遗留教训、验收状态、gh 未认证与分支清理备注、下一步建议顺序 | 📜 历史交接 |
+| [handoff-2026-09-28.md](changelog/handoff-2026-09-28.md) | **09-28 会话交接（Windows 机，最新）**：v0.12.0 收口 + Vim 模式全程 + 快捷键分类 + WCO 修复 + 设置说明简化 + Alt+T 三态；**含待实施方案 A 完整设计**（块级公式光标进入：根因实验数据 / smartVerticalMove 设计 / Vim mapCommand 候选 / 验收标准 / CDP 验证手法），另一台机器接力实施以此为准 | 📜 交接入口（含待实施） |
 | [2026-09-28_settings-dialog/](2026-09-28_settings-dialog/settings-dialog.md) | 设置弹窗化与分类分栏：设置由整页视图改为弹出窗口（Ctrl+, 开关 / Esc / 遮罩 / ✕），编辑视图保持挂载；设置项按功能七类左右分栏（左分类导航 + 右内容）；修复欢迎页下关闭按钮失效 | ✅ 已实施并发布（**v0.12.0**） |
 | [handoff-2026-09-07.md](changelog/handoff-2026-09-07.md) | 09-07 会话交接（Windows 机）：技术坑（IPC 返回值、闪影竞态、CDP 排查方法）与变更清单 | 📜 历史参考 |
 | [handoff-2026-09-08.md](changelog/handoff-2026-09-08.md) | 09-08 会话交接（Linux 机）：菜单失效回归修复、闪影两条触发路径、网格导航 P1 实施说明 | 📜 历史参考 |
@@ -82,6 +83,7 @@
 | 7 | **Vim 模式真机验证**（2026-09-28 实施后待验证；**CDP 隔离实例 9 项断言已全过**，见[设计文档 §6](2026-09-26_vim-mode/vim-mode_design.md)）：剩余真机项——中文输入法组词 + vim 组合（Windows 微软拼音 / 五笔、Linux fcitx）、键位手感与冲突矩阵实测 | 需用户真机 |
 | 8 | ~~**修复弹窗下右上角 WCO 系统按钮异常**~~（2026-09-28 销账，随 Vim 分支修复）：根因 = WCO 系统三键绘制层永远在 DOM 之上，全窗口遮罩盖不住它；修法 = 遮罩与悬浮卡片经 `env(titlebar-area-height)` 避让标题栏区域（`.settings-overlay` / `.el-overlay` / `.floating-preview` 三层，仅 `platform-win` 生效），标题栏在弹窗打开时保持可见可拖拽（桌面惯例），悬浮预览卡片头部不再被三键遮挡。CDP 实测三场景遮罩/卡片 top 精确避让（36 / 36 / 20+36）+ 截图确认；Linux / macOS 无 WCO 不受影响 | 第二节已销账 |
 | 9 | **新版本检测功能**（2026-09-28 用户提出，之后转正式需求立项实现）：检测 GitHub Release 最新版本并提示更新（方向：GitHub Releases API + 已有 PAT / 匿名请求，启动或手动触发，提示入口待设计）。立项时按目录规范建需求文档，本条仅为待办登记 | 未立项（提案） |
+| 10 | **块级公式光标可进入（方案 A）**（2026-09-28 用户反馈 + 已拍板方案）：所见即所得下渲染中的块级公式是键盘垂直移动的「护城河」——j/k 与 ↓/↑ 坐标扫描返回远端边界，整块被跳过、不回落源码（**既有交互缺口，非 Vim 回归**，非 Vim 靠点击进入）；根因实验数据与 smartVerticalMove 设计已完整交接给另一台机器实施，见 [handoff-2026-09-28](changelog/handoff-2026-09-28.md) 第二节 | 待实施（接力） |
 | 6 | ~~行尾连续字母折行观感~~（2026-09-27 销账）：编辑内容层加 `overflow-wrap: anywhere`——长串从行尾逐字符断行铺满栏宽，仅在单词超宽时生效；CDP 实测 200 字符单词占 4 个视觉行（旧行为整词溢出） | CHANGELOG 未发布段 |
 | 7 | ~~表格默认行列值设置~~（2026-09-27 销账）：设置 → 通用 → 编辑器「表格默认尺寸」（1–50 行 × 1–20 列，默认 2×2），浮层回显与直接确认按设置走、仍可临时输入（FR-2.4.20 扩展） | [table-insert-enhance.md](2026-09-24_table-insert-enhance/table-insert-enhance.md) |
 | 8 | ~~**底色纹理观感调优**~~（2026-09-27 销账）：羊皮纸颗粒放大提对比（baseFrequency 0.75→0.5、α 0.13/0.08）、书页纤维改单向细横纹弱化网格感；CDP 断言 + 截图核对通过 | [flow-mode 设计 10.11](2026-09-23_flow-mode/flow-mode_design.md) |
