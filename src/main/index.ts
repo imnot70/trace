@@ -203,7 +203,8 @@ app.whenReady().then(() => {
     flowSoundVariant: 'retro',
     flowSoundSkipRepeat: true,
     skipCrossVaultCopyConfirm: false,
-    crossVaultCopyDir: '跨库引用'
+    crossVaultCopyDir: '跨库引用',
+    vimEnabled: false
   }, {
     version: 1,
     // v0 → v1：旧版设置键升级（此前迁移散落各处，现统一走 JsonStore migrate 链）
@@ -224,7 +225,7 @@ app.whenReady().then(() => {
   const SOUND_VARIANTS = ['retro2']
   if (!SOUND_VARIANTS.includes(settingsStore.get().flowSoundVariant)) {
     settingsStore.update((s) => {
-      s.flowSoundVariant = 'retro'
+      s.flowSoundVariant = 'retro2'
     })
   }
 

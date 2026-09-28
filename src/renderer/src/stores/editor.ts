@@ -35,6 +35,9 @@ export const useEditorStore = defineStore('editor', {
      *  关闭设置重挂载后 CM 视图是新建的、光标默认落在文档开头——存下离开时的选区与
      *  滚动位置，重挂载时按笔记键恢复（打开笔记的落位意图 pendingPlacement 优先） */
     savedCursor: null as { key: string; anchor: number; head: number; scrollTop: number } | null,
+    /** Vim 当前模式（FR-2.4.23）：由 MarkdownEditor 经 vim-mode-change 事件写入；
+     *  null = vim 未开启（工具栏据此显隐模式徽标） */
+    vimMode: null as import('../lib/vimMode').VimMode | null,
     saveTimer: null as ReturnType<typeof setTimeout> | null
   }),
   getters: {

@@ -25,6 +25,7 @@ import NoteGridView from './views/NoteGridView.vue'
 import { ElMessage } from 'element-plus'
 import { noteDisplayName } from '@shared/validate'
 import { createDoubleShiftDetector } from './lib/doubleShift'
+import { shouldYieldEscapeToVim } from './lib/vimMode'
 
 const app = useAppStore()
 const tree = useTreeStore()
@@ -99,10 +100,22 @@ function onEscape(): boolean {
     return true
   }
   if (app.flowMode) {
+    // Vim 让位（FR-2.4.23 拍板：浮层优先、心流退出让位）——vim 开启且编辑器聚焦时，
+    // Esc 归 vim 返回 normal；退出心流改走 Alt+W / 顶栏咖啡杯。焦点不在编辑器
+    // （悬浮预览 / 工具栏按钮等）或 vim 未开启时维持现状：Esc 退出心流
+    if (shouldYieldEscapeToVim(app.settings.vimEnabled, isEditorFocused())) {
+      return false
+    }
     app.exitFlow()
     return true
   }
   return false
+}
+
+/** 编辑器是否持有焦点（含心流 / 专注形态）：activeElement 落在 CM 编辑区内 */
+function isEditorFocused(): boolean {
+  const el = document.activeElement as HTMLElement | null
+  return !!el?.closest?.('.cm-editor')
 }
 
 // ---------- 全局快捷键（速查表见 src/renderer/src/config/shortcuts.ts 与设置 → 通用） ----------

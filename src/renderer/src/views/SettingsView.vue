@@ -893,6 +893,19 @@ async function resetGitSource(): Promise<void> {
             >
           </div>
           <div class="setting-row">
+            <span class="setting-label">Vim 编辑模式</span>
+            <el-switch
+              :model-value="app.settings.vimEnabled"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ vimEnabled: Boolean(v) })"
+            />
+            <span class="settings-desc" style="margin: 0">normal / insert / visual 全套 vim 键位（工具栏右端显示当前模式）</span>
+          </div>
+          <p v-if="app.settings.vimEnabled" class="settings-desc" style="margin: 0 0 0 102px">
+            键位约定：Ctrl+F 查找、Ctrl+B 加粗、Ctrl+I 斜体、Ctrl+E 编辑形态、Ctrl+N 新建、Ctrl+T 表格仍归应用，Vim 不占用；
+            编辑器聚焦时 Esc 归 Vim（返回 normal），退出心流模式用 Alt+W 或顶栏按钮；悬浮预览 / 浮层侧栏 / 各弹窗的 Esc
+            行为不变。Ctrl+D / U 半页滚动、Ctrl+O 跳回与临时 normal、Ctrl+R 重做、Ctrl+V 块可视等 Vim 动作可直接使用。
+          </p>
+          <div class="setting-row">
             <span class="setting-label">自动保存</span>
             <el-switch
               :model-value="app.settings.autoSave"
