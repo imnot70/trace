@@ -3,13 +3,13 @@
  *  用法：livePreview({ vault, notePath, resolveName, openNote, openExternal })，
  *  由 MarkdownEditor 经 Compartment 挂载/摘除（模式切换零重建，光标滚动自然保持） */
 import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view'
-import { StateField, type Extension } from '@codemirror/state'
+import { type Extension } from '@codemirror/state'
 import { resolveRelRef } from '../markdown'
 import { noteDisplayName, openWikilinkByName } from '../wikilink'
 import {
-  computeBlockDecorations,
   computeInlineDecorations,
   livePreviewFacet,
+  lpBlockField,
   type ClickTarget,
   type LivePreviewConfig
 } from './decorations'
@@ -53,25 +53,8 @@ const lpPlugin = ViewPlugin.fromClass(LivePreviewPlugin, {
   decorations: (v) => v.decorations
 })
 
-// 块级装饰（frontmatter/公式块/表格/HTML 块/HR）必须经 StateField 提供（CM 硬性约束）；
-// 光标落入块内时回落源码 → 随 docChanged / selection 重新计算，纯变化仅映射位置
-const lpBlockField = StateField.define<{ decorations: DecorationSet; atomic: DecorationSet }>({
-  create: (state) => computeBlockDecorations(state, state.facet(livePreviewFacet)),
-  update(value, tr) {
-    const cfgChanged = tr.startState.facet(livePreviewFacet) !== tr.state.facet(livePreviewFacet)
-    if (cfgChanged || tr.docChanged || tr.selection) {
-      return computeBlockDecorations(tr.state, tr.state.facet(livePreviewFacet))
-    }
-    return {
-      decorations: value.decorations.map(tr.changes),
-      atomic: value.atomic.map(tr.changes)
-    }
-  },
-  provide: (f) => [
-    EditorView.decorations.from(f, (v) => v.decorations),
-    EditorView.atomicRanges.of((view) => view.state.field(f).atomic)
-  ]
-})
+// 块级装饰 StateField（lpBlockField）与 renderedBlockRanges 定义在 decorations.ts
+//（见其处注释：tests/** 的主进程 tsconfig 编译安全依赖链）
 
 // 行内 widget（双链/图片/公式/任务框）的原子区间：光标不可落入，
 // 点击即定位到边缘并触发该节点回落源码

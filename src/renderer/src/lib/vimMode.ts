@@ -22,7 +22,9 @@ import type { Extension } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
 import { Prec } from '@codemirror/state'
 import { keymap } from '@codemirror/view'
-import { getCM, vim, Vim } from '@replit/codemirror-vim'
+import { getCM, vim, Vim, type MotionFn } from '@replit/codemirror-vim'
+import { crossBlockLanding } from './livePreview/smartMove'
+import { renderedBlockRanges } from './livePreview/decorations'
 
 /** CM5 适配层实例（订阅 `vim-mode-change` 事件用） */
 export const getVimCM = getCM
@@ -32,6 +34,82 @@ export const VIM_YIELDED_KEYS = ['<C-f>', '<C-b>', '<C-e>', '<C-i>', '<C-n>', '<
 
 /** 卸载是否已执行过（unmap 作用于包内全局键位表，与编辑器实例无关，做一次即可） */
 let yieldedKeysRemoved = false
+
+/** 垂直移动 motion 是否已注册（mapCommand / defineMotion 同为包内全局注册表操作，做一次即可） */
+let verticalMotionsPatched = false
+
+/**
+ * 跨块修正的垂直移动 motion（方案 A：让 j/k 能进入渲染中的块级公式）。
+ *
+ * 包内默认 moveByLines 的护城河机制：findPosV（→ cm6.moveVertically 坐标扫描）遇到
+ * 渲染中的块 widget 直接落到远端，posV.line 超出「理想行」（head.line ± repeat）→
+ * hasMarkedText 判真 → 落点被 posV（远端）劫持，整块被跳过。
+ * 本 motion 逐行复刻 moveByLines 的粘滞列 / 文档边缘语义，唯一改动是在
+ * hasMarkedText 调和之前把 posV 拉回被飞跃块的近端边界（crossBlockLanding）——
+ * 近端行 ≤ 理想行，调和回到「理想行」文档语义：光标落进公式源码（occupied 触发回落），
+ * 计数（3j）按文档行推进，语义与 Obsidian 一致。
+ *
+ * 只以 context: normal / visual 映射（operatorPending 不映射）：dj/dw 等操作符仍走
+ * 包内默认 motion——操作符区间按远端截断（删过整块）是合理的删除语义。
+ * 可视模式的选区扩展（含 V 行选 / Ctrl+V 块选）由包内 evalInput → updateCmSelection
+ * 既有机制自理，motion 只需返回落点。
+ */
+const traceMoveByLines: MotionFn = (cm, head, motionArgs, vim) => {
+  const view: EditorView = cm.cm6
+  const forward = motionArgs.forward !== false
+  // 粘滞列：上一个动作也是本 motion 时沿用 lastHPos，否则以当前列重置（同包内 moveByLines）
+  let endCh = head.ch
+  if (vim.lastMotion === traceMoveByLines) {
+    endCh = vim.lastHPos
+  } else {
+    vim.lastHPos = endCh
+  }
+  const repeat = motionArgs.repeat + (motionArgs.repeatOffset || 0)
+  let line = forward ? head.line + repeat : head.line - repeat
+  const first = cm.firstLine()
+  const last = cm.lastLine()
+  const posV = cm.findPosV(head, forward ? repeat : -repeat, 'line', vim.lastHSPos)
+  // —— 方案 A 唯一的语义改动：跨块修正 posV ——
+  const corrected = crossBlockLanding(
+    cm.indexFromPos(head),
+    cm.indexFromPos(posV),
+    renderedBlockRanges(view.state),
+    forward ? 1 : -1
+  )
+  if (corrected != null) {
+    const correctedLine = view.state.doc.lineAt(corrected)
+    posV.line = correctedLine.number - 1
+    posV.ch = corrected - correctedLine.from
+  }
+  const hasMarkedText = forward ? posV.line > line : posV.line < line
+  if (hasMarkedText) {
+    line = posV.line
+    endCh = posV.ch
+  }
+  // 文档边缘：同包内 moveToStartOfLine / moveToEol(keepHPos) 语义（越界由包内 clip 兜底）
+  if (line < first && head.line === first) {
+    return { line: head.line, ch: 0 }
+  } else if (line > last && head.line === last) {
+    return { line: head.line + motionArgs.repeat - 1, ch: Infinity }
+  }
+  // 粘滞列像素坐标：落点在渲染块内时 coordsAtPos 为 null（left 为 0）——保留旧值
+  // 比写 0 更接近真实列（回落源码后列号不变）
+  const coords = cm.charCoords({ line, ch: endCh }, 'div')
+  if (coords.left) vim.lastHSPos = coords.left
+  return { line, ch: endCh }
+}
+
+/** 注册 j/k 的跨块修正 motion（normal + visual 各一条；operatorPending 不映射保 dj 语义）。
+ *  mapCommand 是 unshift 进包内全局键位表：同 context 下先于默认 moveByLines 命中 */
+function patchVerticalMotions(): void {
+  if (verticalMotionsPatched) return
+  verticalMotionsPatched = true
+  Vim.defineMotion('traceMoveByLines', traceMoveByLines)
+  for (const context of ['normal', 'visual'] as const) {
+    Vim.mapCommand('j', 'motion', 'traceMoveByLines', { forward: true, linewise: true }, { context })
+    Vim.mapCommand('k', 'motion', 'traceMoveByLines', { forward: false, linewise: true }, { context })
+  }
+}
 
 /** 包内 unmap 的实际运行时签名允许省略 ctx（d.ts 声明为必选，缺省 = 匹配无 context 的全局条目） */
 type UnmapFn = (lhs: string, ctx?: string) => unknown
@@ -62,9 +140,10 @@ export function handleEscapeKey(view: EditorView): boolean {
   return true
 }
 
-/** 构建 vim 扩展（挂入 vimCompartment；首次调用时完成冲突键卸载） */
+/** 构建 vim 扩展（挂入 vimCompartment；首次调用时完成冲突键卸载与垂直 motion 注册） */
 export function buildVimExtension(): Extension {
   removeYieldedKeys()
+  patchVerticalMotions()
   return [
     vim(),
     // Ctrl-[ → vim 的 Esc（含退出 insert / 退出 visual）；须高于基础 keymap 的 Mod-[ indentLess

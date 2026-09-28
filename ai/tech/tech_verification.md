@@ -11,6 +11,7 @@
 5. **HMR 会重置 pinia 状态**——验证脚本要先确保前置状态（循环 ensure 而非假定）；**vite watcher 可能漏掉快速连续编辑的变更事件**（模块图停在中间态、同文件一半新一半旧，页面 reload 无效）——touch 文件强制重编译，验证前先核对服务的模块内容是否为最新。（HANDOFF、[index 〇.3](../requirements/index.md)）
 6. **新起实例前必须 `pkill -9 -f "[e]lectron"` 并确认无残留**（单实例锁让新实例静默退出）；测试工作区固定 `/tmp/site-ws`，userData 固定 `$TMPDIR/trace-test-userdata` 可预写 settings.json。（HANDOFF）
 7. **冷启动需要等就绪**：tree store 与搜索索引就绪前断言会假红。
+8. **CDP 探针里的 `view.state.doc` 引用会过期**：每次 dispatch（尤其删除类事务）都产生**新 EditorState**，eval 开头捕获的 `doc` 常量此后读出的长度 / 行号恒为事务前——`dj` 删行一度被误判为「零删除」。断言一律经 `view.state.doc` 现取；同因，跨多次 dispatch 的对比要每次重新解析 selection。（[vim-mode 设计 §7.3](../requirements/2026-09-26_vim-mode/vim-mode_design.md)）
 
 ## 测试策略（2026-09-25 评审结论）
 

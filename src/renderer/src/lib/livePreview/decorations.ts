@@ -3,8 +3,8 @@
  *  对非光标区生成装饰：隐藏语法标记 / 行级样式 / 块级渲染 Widget。
  *  computeDecorations 为纯函数（state + 可视区间 → 装饰集），便于单元测试；
  *  光标与任一装饰区间相交 → 该区间本次不装饰（回落源码，设计文档 D3） */
-import { Decoration, type DecorationSet } from '@codemirror/view'
-import { EditorState, Facet, type Range, type Text } from '@codemirror/state'
+import { Decoration, EditorView, type DecorationSet } from '@codemirror/view'
+import { EditorState, Facet, StateField, type Range, type Text } from '@codemirror/state'
 import { syntaxTree } from '@codemirror/language'
 import type { SyntaxNode } from '@lezer/common'
 import { getFrontmatterTags } from '@shared/noteTags'
@@ -43,7 +43,7 @@ export type ClickTarget =
   | { from: number; to: number; kind: 'wikilink'; name: string }
   | { from: number; to: number; kind: 'link'; url: string }
 
-interface SimpleRange {
+export interface SimpleRange {
   from: number
   to: number
 }
@@ -195,17 +195,59 @@ export interface ComputeResult {
   targets: ClickTarget[]
 }
 
+export interface BlockComputeResult {
+  decorations: DecorationSet
+  atomic: DecorationSet
+  /** 本次实际渲染成块级 widget 的源码区间（frontmatter / 公式块 / 表格 / HTML 块 / 水平线，
+   *  文档序；光标回落源码的块不在其中）。供键盘垂直移动的跨块判定复用（smartMove.ts）：
+   *  坐标扫描只会飞跃「渲染中」的块，故判定必须以此为准而非 scanBlocks 的全部公式区间 */
+  blocks: SimpleRange[]
+}
+
+const EMPTY_BLOCK_RESULT: BlockComputeResult = { decorations: deco.none, atomic: deco.none, blocks: [] }
+
+/** 块级装饰 StateField（frontmatter/公式块/表格/HTML 块/HR）：CM 规定 block 装饰只能由
+ *  StateField 提供（ViewPlugin 会被抛 "Block decorations may not be specified via plugins"）。
+ *  定义在装饰计算同模块（而非 index.ts 装配层）：renderedBlockRanges 会被 vimMode /
+ *  smartMove 引用，而 tests/** 在主进程 tsconfig（无 DOM lib、无 env.d.ts 的 window 增强）
+ *  下编译，装饰模块的依赖链是测试安全的，装配层（index.ts → ../wikilink）不是 */
+export const lpBlockField = StateField.define<BlockComputeResult>({
+  create: (state) => computeBlockDecorations(state, state.facet(livePreviewFacet)),
+  update(value, tr) {
+    const cfgChanged = tr.startState.facet(livePreviewFacet) !== tr.state.facet(livePreviewFacet)
+    if (cfgChanged || tr.docChanged || tr.selection) {
+      return computeBlockDecorations(tr.state, tr.state.facet(livePreviewFacet))
+    }
+    return {
+      decorations: value.decorations.map(tr.changes),
+      atomic: value.atomic.map(tr.changes),
+      blocks: value.blocks
+    }
+  },
+  provide: (f) => [
+    EditorView.decorations.from(f, (v) => v.decorations),
+    EditorView.atomicRanges.of((view) => view.state.field(f).atomic)
+  ]
+})
+
+/** 当前实际渲染为块级 widget 的源码区间（文档序；光标回落源码的块不在其中）。
+ *  所见即所得关（或扩展未挂载）时为空数组——smartVerticalMove / vim motion 据此等价放行默认行为 */
+export function renderedBlockRanges(state: EditorState): SimpleRange[] {
+  return state.field(lpBlockField, false)?.blocks ?? []
+}
+
 /** 块级装饰（frontmatter / 块级公式 / 表格 / HTML 块 / HR）：
  *  CM 规定 block 装饰只能由 StateField 提供（ViewPlugin 会被抛
  *  "Block decorations may not be specified via plugins"），因此独立计算、覆盖全文档 */
 export function computeBlockDecorations(
   state: EditorState,
   cfg: LivePreviewConfig | undefined
-): { decorations: DecorationSet; atomic: DecorationSet } {
-  if (!cfg?.enabled) return { decorations: deco.none, atomic: deco.none }
+): BlockComputeResult {
+  if (!cfg?.enabled) return EMPTY_BLOCK_RESULT
   const doc = state.doc
   const decorations: Range<Decoration>[] = []
   const atomic: Range<Decoration>[] = []
+  const blocks: SimpleRange[] = []
 
   const pushBlock = (from: number, to: number, widget: Parameters<typeof Decoration.replace>[0]['widget']): void => {
     const lineFrom = doc.lineAt(from).from
@@ -213,6 +255,7 @@ export function computeBlockDecorations(
     const d = deco.replace({ widget, block: true })
     decorations.push(d.range(lineFrom, lineTo))
     atomic.push(d.range(lineFrom, lineTo))
+    blocks.push({ from: lineFrom, to: lineTo })
   }
 
   // ---- frontmatter：折叠为一行摘要 ----
@@ -262,7 +305,7 @@ export function computeBlockDecorations(
     }
   })
 
-  return { decorations: deco.set(decorations, true), atomic: deco.set(atomic, true) }
+  return { decorations: deco.set(decorations, true), atomic: deco.set(atomic, true), blocks }
 }
 
 /** 行内装饰（标题/粗斜/删除线/行内码/链接/双链/任务框/图片/行内公式）：

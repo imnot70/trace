@@ -46,6 +46,7 @@ import {
 import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
 import { livePreview } from '../lib/livePreview'
+import { smartVerticalMove } from '../lib/livePreview/smartMove'
 import { typewriter, type TypewriterMode } from '../lib/typewriter'
 import { buildVimExtension, getVimCM, readVimMode } from '../lib/vimMode'
 import { createCaretSound, type SoundVariant } from '../lib/caretSound'
@@ -816,6 +817,18 @@ function createView(initialDoc: string): EditorView {
       }),
       // Prec.high：这些是应用级绑定，必须优先于 basicSetup 内置键位（如 searchKeymap 的 Mod-f）
       Prec.high(keymap.of([
+        {
+          // 垂直移动的跨块修正（方案 A）：渲染中的块级公式不再整块跳过——
+          // 跨块时落点改为近端边界并触发源码回落；无渲染块（含所见即所得关）返回 false
+          // 放行 defaultKeymap。vim 开启时方向键被 vim 的 keydown 观察器先行接管
+          // （<Down>/<Up> 映射 j/k 走 vimMode 的跨块 motion），本绑定不会触发
+          key: 'ArrowDown',
+          run: (target: EditorView) => smartVerticalMove(target, 1)
+        },
+        {
+          key: 'ArrowUp',
+          run: (target: EditorView) => smartVerticalMove(target, -1)
+        },
         {
           // 行插入快捷键（用户提出）：不论光标在行内什么位置，在上方 / 下方插入一个空行
           // 并移动到新行行首（典型场景：[[ 补全落成引用后光标在行中，直接换行写下一行）。

@@ -95,3 +95,45 @@ if (app.flowMode) {
 
 - **适配层监听器随 Compartment 换装失效**：vim 的模式变化事件（`vim-mode-change`）挂在 CM5 适配层实例上，而**适配层实例随扩展的挂载/摘除整个重建**（`vimCompartment.reconfigure` → ViewPlugin 重建 → `new CodeMirror(view)`）。只在 `createView` 时挂一次监听的话，开关切换后所有模式事件丢失——表现为**功能正常但徽标永久停留在挂载初值**。修法：`attachVimModeListener()` 在 createView 与每次开关挂载后调用，记录已挂的适配层实例避免重复。**泛化教训：Compartment 换装一个 ViewPlugin 类扩展 = 插件实例与其持有的一切资源/事件订阅全部重建，跨实例的订阅必须在每次挂载后重挂。**
 - 验证过程的其他观察（记入验证方法学）：① CDP `Input.dispatchKeyEvent` 在本环境对后台窗口不可靠（与既有教训一致），**页面内合成 `KeyboardEvent`（在 contentDOM 上 dispatch、bubbles）是可靠的按键注入方式**，编辑器键位（target 阶段）与应用层 window 监听（冒泡）都能收到；② 心流 / 专注的顶栏隐藏是 **CSS 隐藏而非 DOM 移除**，验证脚本不能用「元素不存在」判定顶栏隐藏，应读 app store 的 `flowMode` / `zenMode`；③ 调试通道：`.editor-pane.__vueParentComponent.setupState.view` 可从页面直接拿到 CM `EditorView` 实例，配合 `getCM(view).state.vim` 三点联动（包状态 → 事件 → store）可精确定位断链层。
+
+## 7. 块级公式光标可进入（方案 A，2026-09-28 接力实施）
+
+> 交接来源：[handoff-2026-09-28 第二节](../changelog/handoff-2026-09-28.md)（根因实验数据与设计已拍板，本文记录落地实现与验证）。
+
+### 7.1 实现与交接设计的差异
+
+按交接候选 1 的方向落地，但 **Vim 侧改用 `Vim.defineMotion` + `Vim.mapCommand`（motion 替换）而非 action 映射**——action 会绕过包内可视模式的选区扩展机制（`updateCmSelection` 未导出，V-LINE / V-BLOCK 的行 / 块语义需手工复刻）；motion 只需返回落点，`evalInput` → clip → 可视选区扩展全部由包内既有机制自理，同时天然获得计数（`3j` 经 `motionArgs.repeat`）。
+
+- **motion `traceMoveByLines`**（`lib/vimMode.ts`）：逐行复刻包内 `moveByLines`（粘滞列 `lastHPos` / `lastHSPos`、文档边缘 `moveToStartOfLine` / `moveToEol` 分支），**唯一语义改动**：`findPosV` 的落点在 `hasMarkedText` 调和前经 `crossBlockLanding` 拉回被飞跃块的近端边界——护城河的传播机制（远端 posV 使 `hasMarkedText` 判真、劫持落点）由此消除，调和回到「理想行」文档语义，光标落进公式源码。粘滞列像素坐标在落点处于渲染块内时（`coordsAtPos` 为 null、left 为 0）保留旧值。
+- **只映射 `context: normal` / `visual`**（`j`/`k` 各两条，`mapCommand` unshift 先于默认命中）：`operatorPending` 不映射——`dj`/`dw` 等操作符仍走包内默认 motion，区间按远端截断（删过整块）是合理的删除语义。`<Down>`/`<Up>` 经包内 keyToKey 映射到 `j`/`k` 自动获得修正。
+- **非 Vim**：`smartVerticalMove(view, dir)`（`lib/livePreview/smartMove.ts`）——执行默认 `cursorLineDown`/`cursorLineUp` 后对跨块落点改写近端边界（第二事务 dispatch，`occupied` 贴边触发源码回落）；无渲染块（含所见即所得关）返回 false 放行 defaultKeymap。`ArrowDown`/`ArrowUp` 绑定挂在 MarkdownEditor.vue 应用级 `Prec.high` 键位组；vim 开启时方向键被 vim 的 keydown 观察器先行接管（plugin observers 先于一切 keymap handler），不会双触发。
+- **区间来源**：`computeBlockDecorations` 结果新增 `blocks`（本次**实际渲染**为块级 widget 的源码区间，光标回落源码的块不在其中——坐标扫描只会飞跃渲染中的块，判定必须以此为据），经 StateField 持有、`renderedBlockRanges(state)` 导出（decorations.ts；连带覆盖表格 / HTML 块 / 水平线 / frontmatter 的同类缺口）。位置在 decorations.ts 而非装配层 index.ts：`tests/**` 在主进程 tsconfig（无 DOM lib、无 env.d.ts 的 `window.trace` 增强）下编译，装饰模块的依赖链测试安全，index.ts → `../wikilink` 不是。
+
+### 7.2 验证（CDP 隔离实例，2026-09-28，全过）
+
+`TRACE_TEST_USERDATA=1 TRACE_CDP=9222`，页面内合成 KeyboardEvent 注入 + DOM/store 断言；笔记 = 标题行 + `top line` / 三行 `$$…$$` 块 / `bottom line` / 行内 `$t$`：
+
+| # | 断言 | 结果 |
+| --- | --- | --- |
+| 1 | 非 Vim `↓` 自块上一行 → 光标落块首行（`line4.from`），块回落源码（`.lp-math-block` 1→0，DOM 行 7→10） | ✅ |
+| 2 | 非 Vim 源码内 `↓` 逐行（块首行 → 公式正文行） | ✅ |
+| 3 | 非 Vim `↑` 自块下一行 → 光标落块尾行（`line6.to`），回落保持 | ✅ |
+| 4 | 非 Vim 光标离开区间 → 块重新渲染（现行为不回归） | ✅ |
+| 5 | 点击 widget 进入源码不回归（mousedown 于 widget 中心 → 贴边 → 回落） | ✅ |
+| 6 | 行内公式：`↓` 正常落行，busy 行行内 widget 隐藏（`$t$`） | ✅ |
+| 7 | 源码模式（所见即所得关）：`↓` 逐行零变化 | ✅ |
+| 8 | Vim `j` 自块上一行 → 落块首行内（粘滞列钳制到 `$$` 行内），回落 | ✅ |
+| 9 | Vim `k` 自块下一行 → 落块尾行内 | ✅ |
+| 10 | Vim `3j` 计数 → 理想行（块内最后一行） | ✅ |
+| 11 | Vim `v` + `j` → 选区 head 落块首行内（不跳块） | ✅ |
+| 12 | Vim `V` + `j` → 行选扩展至块首行整行（`updateCmSelection` 机制自理） | ✅ |
+| 13 | Vim 源码模式 `j` 逐行（语义与改动前一致） | ✅ |
+| 14 | Vim `dj` 操作符 linewise 删 2 行 + `u` 撤销（默认 motion 未受扰动） | ✅ |
+
+单测：`tests/smartMove.test.ts` 10 项（跨块判定纯函数八态 + 无块放行两态），全仓 450 项全绿。
+
+### 7.3 实施中发现的坑（防再踩）
+
+- **跨块判定多块方向不对称**：向下连跨多块应取文档序**首个**命中（离起点最近），向上应取**最后一个**——首版统一取首个，单测当场抓出（向上两块时落点错到最远的块尾）。
+- **CDP 断言读到过期文档**：`const doc = view.state.doc` 捕获后，删除类事务产生**新 state**，旧 `doc` 常量读出的长度 / 行号恒为事务前——`dj` 一度误判为「无删除」。断言一律经 `view.state.doc` 现取（「验证脚本自身要自证正确」的又一实例）。
+- **vim motion 的粘滞列**：包内 `moveByLines` 每步把 `lastHSPos` 更新为落点行的 `charCoords().left`；落点在渲染块内时 `coordsAtPos` 返回 null（适配层取 `|| 0`），照抄会把粘滞列写成 0——修正发生时保留旧值更接近真实列（回落源码后列号不变）。
