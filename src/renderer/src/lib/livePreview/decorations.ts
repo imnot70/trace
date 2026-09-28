@@ -528,7 +528,10 @@ export function computeInlineDecorations(
     if (marks.length >= 2) {
       const open = marks[0]
       const closeFrom = marks[1].from
-      if (closeFrom > open.to) {
+      // 链接文本着色必须以「真的有 URL」为前提：lezer 对无定义的引用式写法（如任务行里
+      // 被不可见字符破坏的 [x]）也会产出 Link 节点，无条件涂色会让普通方括号文本变成
+      // 链接蓝（实测：含 NBSP 的任务行渲染出蓝色 x，2026-09-28 用户反馈）
+      if (url && closeFrom > open.to) {
         decorations.push(deco.mark({ class: 'lp-link' }).range(open.to, closeFrom))
       }
       if (url && !occupied(state, node.from, node.to)) {

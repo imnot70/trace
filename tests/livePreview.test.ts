@@ -181,6 +181,23 @@ describe('所见即所得装饰：光标回落（D3）', () => {
     expect(marks2.some((c) => String(c.spec.class ?? '') === 'lp-inline-code')).toBe(true)
     expect(marks2.filter((c) => Object.keys(c.spec).length === 0 && c.to - c.from === 1).length).toBe(2)
   })
+
+  it('无 URL 的引用式方括号文本不涂链接色（任务行含 NBSP 时 [x] 被误解析为 Link）', () => {
+    // NBSP 混入任务行 → 语法树无 Task/TaskMarker，[x] 被解析为无 URL 的 Link 节点：
+    // 括号内文本不得获得 lp-link（2026-09-28 用户反馈的蓝色 x 来源）
+    const doc = '- [x] test'
+    const nbspDoc = '- [x]\u00A0test'
+    for (const [label, src] of [['标准任务', doc], ['NBSP 变体', nbspDoc]] as const) {
+      const state = mkState(src, src.length)
+      const marks = collect(state, computeInlineDecorations(state, allRanges(state), cfg).decorations)
+      const linkMarks = marks.filter((c) => String(c.spec.class ?? '') === 'lp-link')
+      expect(linkMarks, label).toEqual([])
+    }
+    // 有 URL 的真链接仍然着色
+    const withUrl = mkState('- [文字](https://a.b) 后续', 20)
+    const urlMarks = collect(withUrl, computeInlineDecorations(withUrl, allRanges(withUrl), cfg).decorations)
+    expect(urlMarks.some((c) => String(c.spec.class ?? '') === 'lp-link')).toBe(true)
+  })
 })
 
 describe('所见即所得装饰：公式与块级渲染', () => {
