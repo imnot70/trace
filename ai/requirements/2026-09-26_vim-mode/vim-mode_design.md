@@ -20,6 +20,7 @@
 | **Ctrl 系** | **应用优先、vim 保留空闲键**：卸载 vim 的 `<C-f>`（翻页）、`<C-b>`（翻页）、`<C-e>`（下滚一行）、`<C-i>`（跳转前进）、`<C-n>`（补全下一项）、`<C-t>`（缩进标签）——对应应用的 Ctrl+F 查找 / Ctrl+B 加粗 / Ctrl+I 斜体 / Ctrl+E 编辑形态 / Ctrl+N 新建 / Ctrl+T 表格。vim 保留应用未占用的键：`<C-d>` / `<C-u>` 半页滚动、`<C-y>` 上滚一行、`<C-o>` 跳回与 insert 临时 normal、`<C-r>` 重做、`<C-v>` 块可视、`<C-w>` 删词（insert）、`<C-a>` / `<C-x>` 数字自增减（应用无菜单加速键，Ctrl+W 无占用）。Alt 系 vim 不绑定，无冲突。 |
 | **模式指示** | **工具栏右端小徽标**：等宽字体胶囊（NORMAL / INSERT / VISUAL / V-LINE / V-BLOCK），配色按模式区分（normal 中性 / insert accent 描边 / visual accent 底）；心流 / 专注（顶栏隐藏）下靠光标形状区分，不占状态区。 |
 | **相对行号** | **首发不做**，按真机反馈再议（行号槽自绘，后续加设置项改动可控）。 |
+| **Ctrl+[ 退出 insert**（2026-09-28 用户反馈补） | 标准 vim 的 Esc 等价键。包内 defaultKeymap 虽有 `<C-[>` → `<Esc>` 映射，但被 CM 基础装配（traceSetup 的 defaultKeymap）自带的 `{ key: "Mod-[", run: indentLess }` 在 keymap 层**先命中即停**，形同虚设。修法：vimCompartment 内随 vim() 挂 `Prec.high` 的 `Ctrl-[` 绑定，run 转发 `Vim.handleKey(cm, '<Esc>')`；非 vim 用户（compartment 为空）保持 indentLess 不变。 |
 
 其余既定口径：设置 → 编辑器分类开关（默认关）；源码与所见即所得通用（都在 CM 层）；心流 / 专注可用；关闭开关完全恢复现状（Compartment 摘除，无残留）。
 
@@ -88,6 +89,7 @@ if (app.flowMode) {
 | 7 | `Alt+W` 进 / 出心流（应用键位未被 vim 干扰） | ✅ |
 | 8 | **心流内 Esc 不退出心流**（vim 让位判定生效，Esc 归 vim；徽标保持） | ✅ |
 | 9 | 关闭开关 → 徽标消失、`i` 恢复普通输入（Compartment 摘除无残留） | ✅ |
+| 10 | **`Ctrl+[` 退出 insert**（Esc 等价键转发绑定；同时确认 store / 徽标同步、normal 模式下无副作用） | ✅ |
 
 ### 实施中发现并修复的缺陷（重要教训）
 

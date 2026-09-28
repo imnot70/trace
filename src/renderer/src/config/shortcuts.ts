@@ -47,7 +47,7 @@ export const SHORTCUTS: ShortcutItem[] = [
   { keys: '/（编辑器内）', desc: '斜杠命令：行首输入 / 呼出命令面板（/表格 同 Ctrl+T、/标题1…6 同 Ctrl+1…6、/引用 /代码块 /任务列表 /分割线 /日期 等，行为与对应快捷键一致）', group: '编辑器' },
   { keys: 'Ctrl + Shift + H', desc: '光标跳到文件开头（Ctrl+Home 同义）', group: '编辑器' },
   { keys: 'Ctrl + Shift + E', desc: '光标跳到文件末尾（Ctrl+End 同义）', group: '编辑器' },
-  { keys: 'Esc（Vim 开启时）', desc: '编辑器聚焦且无浮层时归 Vim（返回 normal），退出心流模式用 Alt+W 或顶栏按钮；悬浮预览 / 浮层侧栏 / 各弹窗的 Esc 行为不变', group: '编辑器' },
+  { keys: 'Esc / Ctrl+[（Vim 开启时）', desc: '编辑器聚焦且无浮层时归 Vim（返回 normal，退出心流模式用 Alt+W 或顶栏按钮）；悬浮预览 / 浮层侧栏 / 各弹窗的 Esc 行为不变', group: '编辑器' },
   { keys: 'Vim 模式键位', desc: '设置开启后 normal / insert / visual 全套生效（工具栏右端显示当前模式）；Ctrl+F/B/E/I/N/T 仍归应用，Ctrl+D/U 半页滚动、Ctrl+O 跳回与临时 normal、Ctrl+R 重做、Ctrl+V 块可视等 Vim 动作可用', group: '编辑器' },
   { keys: 'Ctrl + Z / Ctrl + Shift + Z', desc: '撤销 / 重做', group: '编辑器' }
 ]

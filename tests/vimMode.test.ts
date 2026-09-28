@@ -1,8 +1,13 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
+import { EditorState } from '@codemirror/state'
+import { EditorView } from '@codemirror/view'
 import { Vim } from '@replit/codemirror-vim'
 import {
   buildVimExtension,
   formatVimModeLabel,
+  getVimCM,
+  handleEscapeKey,
   shouldYieldEscapeToVim,
   VIM_YIELDED_KEYS
 } from '../src/renderer/src/lib/vimMode'
@@ -53,5 +58,33 @@ describe('Vim 模式：徽标文案', () => {
   it('子模式缩写（避免胶囊过宽）', () => {
     expect(formatVimModeLabel('visual line')).toBe('V-LINE')
     expect(formatVimModeLabel('visual block')).toBe('V-BLOCK')
+  })
+})
+
+describe('Vim 模式：Ctrl-[ 退出 insert（Esc 等价键）', () => {
+  function createView(): EditorView {
+    return new EditorView({
+      state: EditorState.create({ doc: 'line one\nline two', extensions: [buildVimExtension()] }),
+      parent: document.body
+    })
+  }
+
+  it('无 vim 时 handleEscapeKey 返回 false（不拦截）', () => {
+    const view = new EditorView({
+      state: EditorState.create({ doc: 'x', extensions: [] }),
+      parent: document.body
+    })
+    expect(handleEscapeKey(view)).toBe(false)
+    view.destroy()
+  })
+
+  it('handleEscapeKey 退出 insert 并返回 true（Ctrl-[ 绑定的 run）', () => {
+    const view = createView()
+    const cm = getVimCM(view)!
+    expect(cm.state.vim).toBeTruthy()
+    cm.state.vim!.insertMode = true
+    expect(handleEscapeKey(view)).toBe(true)
+    expect(cm.state.vim!.insertMode).toBe(false)
+    view.destroy()
   })
 })

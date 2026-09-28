@@ -20,6 +20,8 @@
  */
 import type { Extension } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
+import { Prec } from '@codemirror/state'
+import { keymap } from '@codemirror/view'
 import { getCM, vim, Vim } from '@replit/codemirror-vim'
 
 /** CM5 适配层实例（订阅 `vim-mode-change` 事件用） */
@@ -46,10 +48,28 @@ function removeYieldedKeys(): void {
   }
 }
 
+/**
+ * Esc 的 Ctrl+[ 等价键（标准 vim，ASCII 0x1B 同源）：包内 defaultKeymap 虽有
+ * `<C-[>` → `<Esc>` 的 keyToKey 映射，但 CM 基础装配（traceSetup 的 defaultKeymap）
+ * 自带 `{ key: "Mod-[", run: indentLess }`——keymap 层先命中即停，该映射形同虚设。
+ * vim 启用时经 vimCompartment 挂更高优先级的 `Ctrl-[` 绑定转发给 vim；
+ * 非 vim 用户（compartment 为空）保持 indentLess 行为不变。
+ */
+export function handleEscapeKey(view: EditorView): boolean {
+  const cm = getCM(view)
+  if (!cm?.state.vim) return false
+  Vim.handleKey(cm, '<Esc>', 'user')
+  return true
+}
+
 /** 构建 vim 扩展（挂入 vimCompartment；首次调用时完成冲突键卸载） */
 export function buildVimExtension(): Extension {
   removeYieldedKeys()
-  return vim()
+  return [
+    vim(),
+    // Ctrl-[ → vim 的 Esc（含退出 insert / 退出 visual）；须高于基础 keymap 的 Mod-[ indentLess
+    Prec.high(keymap.of([{ key: 'Ctrl-[', run: handleEscapeKey }]))
+  ]
 }
 
 export type VimMode = 'normal' | 'insert' | 'visual' | 'visual line' | 'visual block'

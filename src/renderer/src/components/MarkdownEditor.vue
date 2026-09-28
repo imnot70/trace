@@ -931,7 +931,7 @@ function createView(initialDoc: string): EditorView {
     ]
   })
   const v = new EditorView({ state, parent: container.value! })
-  attachVimModeListener()
+  attachVimModeListener(v)
   if (props.vimEnabled) editorStore.vimMode = readVimMode(v) ?? 'normal'
   return v
 }
@@ -941,15 +941,17 @@ function createView(initialDoc: string): EditorView {
  * ⚠️ 适配层实例随 vim 扩展的挂载/摘除重建（Compartment 换装 → ViewPlugin 重建 → 新适配层），
  * 监听器必须跟着重挂——只在 createView 时挂一次的话，开关切换后的事件全部丢失
  * （实测：模式正常切换但徽标永久停留在挂载初值）。同一实例不重复挂。
+ * 注意：createView 时模块级 view 尚未赋值（返回后才赋值），必须显式传入目标 view。
  */
 let vimListenerCM: ReturnType<typeof getVimCM> | null = null
-function attachVimModeListener(): void {
-  if (!view) return
-  const cm = getVimCM(view)
+function attachVimModeListener(target?: EditorView): void {
+  const v = target ?? view
+  if (!v) return
+  const cm = getVimCM(v)
   if (!cm || cm === vimListenerCM) return
   vimListenerCM = cm
   cm.on('vim-mode-change', () => {
-    editorStore.vimMode = view ? readVimMode(view) : null
+    editorStore.vimMode = readVimMode(v)
   })
 }
 
