@@ -198,6 +198,8 @@ export interface AppSettings {
   /** 跨库引用目录：强制引用时把源库笔记复制到目标库的此目录（相对库根，按来源库分子目录；
    *  重复引入相同内容自动复用已有副本，FR-2.9.11） */
   crossVaultCopyDir: string
+  /** Vim 编辑模式：normal/insert/visual 全套键位（FR-2.4.23，默认关；键位冲突策略见设计文档） */
+  vimEnabled: boolean
 }
 
 /** 自定义主题包：一组 CSS 变量覆盖（light/dark 两套），存 userData/themes/<id>.json */

@@ -30,12 +30,13 @@ const FLOW_PAPER_COLORS = [
   { key: 'gray', label: '淡灰' }
 ] as const
 
-// 设置分类（左侧导航，2026-09-27 由三标签改为按功能分类）
+// 设置分类（左侧导航，2026-09-27 由三标签改为按功能分类；2026-09-28 快捷键速查表自「通用」独立成项）
 const SETTINGS_CATEGORIES = [
   { key: 'account', label: '账号' },
   { key: 'general', label: '通用' },
   { key: 'appearance', label: '外观' },
   { key: 'editor', label: '编辑器' },
+  { key: 'shortcuts', label: '快捷键' },
   { key: 'flow', label: '心流模式' },
   { key: 'sync', label: '同步与数据' },
   { key: 'plugins', label: '插件' }
@@ -45,7 +46,9 @@ type SettingsCategory = (typeof SETTINGS_CATEGORIES)[number]['key']
 const tab = computed<SettingsCategory>({
   get: () =>
     app.view.name === 'settings' &&
-    ['account', 'general', 'appearance', 'editor', 'flow', 'sync', 'plugins'].includes(app.view.tab as string)
+    ['account', 'general', 'appearance', 'editor', 'shortcuts', 'flow', 'sync', 'plugins'].includes(
+      app.view.tab as string
+    )
       ? (app.view.tab as SettingsCategory)
       : 'general',
   set: (value) => {
@@ -695,25 +698,6 @@ async function resetGitSource(): Promise<void> {
 
 
         <div class="settings-block">
-          <h3>快捷键</h3>
-          <table class="shortcut-table">
-            <tbody>
-              <template v-for="group in SHORTCUT_GROUPS" :key="group.group">
-                <tr class="shortcut-group-row">
-                  <td colspan="2">{{ group.group }}</td>
-                </tr>
-                <tr v-for="item in group.items" :key="item.keys">
-                  <td class="shortcut-keys"><kbd>{{ item.keys }}</kbd></td>
-                  <td class="shortcut-desc">{{ item.desc }}</td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
-        </div>
-
-
-
-        <div class="settings-block">
           <h3>关于</h3>
           <div class="setting-row">
             <span class="setting-label">Trace 笔迹</span>
@@ -893,6 +877,19 @@ async function resetGitSource(): Promise<void> {
             >
           </div>
           <div class="setting-row">
+            <span class="setting-label">Vim 编辑模式</span>
+            <el-switch
+              :model-value="app.settings.vimEnabled"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ vimEnabled: Boolean(v) })"
+            />
+            <span class="settings-desc" style="margin: 0">normal / insert / visual 全套 vim 键位（工具栏右端显示当前模式）</span>
+          </div>
+          <p v-if="app.settings.vimEnabled" class="settings-desc" style="margin: 0 0 0 102px">
+            键位约定：Ctrl+F 查找、Ctrl+B 加粗、Ctrl+I 斜体、Ctrl+E 编辑形态、Ctrl+N 新建、Ctrl+T 表格仍归应用，Vim 不占用；
+            编辑器聚焦时 Esc 与 Ctrl+[ 归 Vim（返回 normal），退出心流模式用 Alt+W 或顶栏按钮；悬浮预览 / 浮层侧栏 /
+            各弹窗的 Esc 行为不变。Ctrl+D / U 半页滚动、Ctrl+O 跳回与临时 normal、Ctrl+R 重做、Ctrl+V 块可视等 Vim 动作可直接使用。
+          </p>
+          <div class="setting-row">
             <span class="setting-label">自动保存</span>
             <el-switch
               :model-value="app.settings.autoSave"
@@ -965,6 +962,24 @@ async function resetGitSource(): Promise<void> {
           <p class="settings-desc" style="margin: 0 0 0 102px">
             相对于笔记库根目录，修改后只对之后粘贴的图片生效；已有图片的引用不受影响。
           </p>
+        </div>
+          </template>
+          <template v-else-if="tab === 'shortcuts'">
+        <div class="settings-block">
+          <h3>快捷键速查表</h3>
+          <table class="shortcut-table">
+            <tbody>
+              <template v-for="group in SHORTCUT_GROUPS" :key="group.group">
+                <tr class="shortcut-group-row">
+                  <td colspan="2">{{ group.group }}</td>
+                </tr>
+                <tr v-for="item in group.items" :key="item.keys">
+                  <td class="shortcut-keys"><kbd>{{ item.keys }}</kbd></td>
+                  <td class="shortcut-desc">{{ item.desc }}</td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
         </div>
           </template>
           <template v-else-if="tab === 'flow'">

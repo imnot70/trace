@@ -56,6 +56,7 @@ function buildStack() {
     flowSoundSkipRepeat: true,
     skipCrossVaultCopyConfirm: false,
     crossVaultCopyDir: '跨库引用',
+    vimEnabled: false,
   })
   const workspace = new WorkspaceService(settings, path.join(tmp, 'ws'))
   workspace.initDefault()

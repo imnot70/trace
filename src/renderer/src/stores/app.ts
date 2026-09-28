@@ -54,7 +54,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   flowSoundVariant: 'retro',
   flowSoundSkipRepeat: true,
   skipCrossVaultCopyConfirm: false,
-  crossVaultCopyDir: '跨库引用'
+  crossVaultCopyDir: '跨库引用',
+  vimEnabled: false
 }
 
 function prefersDark(): boolean {

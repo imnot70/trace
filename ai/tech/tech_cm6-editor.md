@@ -14,6 +14,8 @@
 8. **@codemirror/search 6.7+ 的查找面板类名是 `.cm-panel.cm-search`**（不是旧文档的 `.cm-searchPanel`）：按旧类名写的 Esc 让位判断与主题样式会静默失效——面板其实已打开，只是选择器没匹配上。面板文案经 `EditorState.phrases.of({...})` 中文化，无需自绘面板。（[search-redesign §6](../requirements/2026-09-26_search-redesign/search-redesign.md)）
 9. **重排查找面板只能用 grid 逐元素定位，flex + `<br>` 的换行技巧在 Chromium 不成立**：CM 面板 DOM 是扁平的，Chromium 的 flex 布局不把 `<br>` 当换行盒（`display: block` + `flex-basis: 100%` 也无效），宽窗口下替换框会被挤上第一行；子元素都有稳定的 `name` 属性（search/next/prev/select/replace/replaceAll/close），grid + 显式行列最可靠。另：Windows 的 UA 给原生 `<button>` 画白→灰纵向渐变，`background-color` 压不住（画在其上层的 background-image），须用 `background` 简写 + `background-image: none`。（[search-redesign §6.1](../requirements/2026-09-26_search-redesign/search-redesign.md)）
 
+10. **Compartment 换装一个 ViewPlugin 类扩展 = 插件实例与其持有的一切资源全部重建**：事件订阅挂在旧实例上会随换装整体失效（Vim 模式实测：模式事件监听挂在 CM5 适配层实例上，开关切换重建适配层后事件全部丢失，功能正常但 UI 状态永久停留在挂载初值）。跨实例的订阅必须在**每次挂载后重挂**（记录已挂实例避免重复）。另两条验证经验：CDP `Input.dispatchKeyEvent` 对后台窗口不可靠，页面内在 contentDOM 上合成 `KeyboardEvent`（bubbles）是可靠注入方式，编辑器键位与应用层 window 监听都能收到；心流 / 专注的顶栏隐藏是 CSS 隐藏而非 DOM 移除，验证脚本不能用「元素不存在」判定，应读 store 状态。（[vim-mode 设计 §6](../requirements/2026-09-26_vim-mode/vim-mode_design.md)）
+
 ## 几何与测量
 
 8. **块级 widget 的垂直间距禁止裸 `margin`**：CM 行高记账只取 widget 元素的 border-box，不含外边距，差额逐块累加导致行号整体漂移（实测公式块后 +15px、表格后 +27px）。间距一律用 `padding` 或 `display: flow-root` 包裹（已成文硬约定）。（[live-preview-render-fix 设计 §2](../requirements/2026-09-24_live-preview-render-fix/live-preview-render-fix_design.md)）

@@ -47,6 +47,7 @@ import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
 import { livePreview } from '../lib/livePreview'
 import { typewriter, type TypewriterMode } from '../lib/typewriter'
+import { buildVimExtension, getVimCM, readVimMode } from '../lib/vimMode'
 import { createCaretSound, type SoundVariant } from '../lib/caretSound'
 import { setHeading, type HeadingLevel } from '../lib/heading'
 import { insertTable } from '../lib/table'
@@ -68,6 +69,8 @@ const props = defineProps<{
   wysiwyg?: boolean
   /** 打字机模式：off 关闭 / center 高位 / bottom 低位（见 lib/typewriter.ts） */
   typewriterMode?: TypewriterMode
+  /** Vim 编辑模式（FR-2.4.23）：开启时挂载 vim 键位扩展（冲突键卸载与 Esc 策略见 lib/vimMode.ts） */
+  vimEnabled?: boolean
   /** 回车音效：启用时回车插入换行播放合成音（心流模式内由父组件置位） */
   returnSound?: { enabled: boolean; volume: number; variant: SoundVariant; skipRepeat: boolean }
   /** 悬浮预览正在展示的笔记（FR-2.9.10）：非空时 Alt+Enter 语义变为把该笔记落成引用 */
@@ -219,6 +222,8 @@ function isReturnInsertion(tr: Transaction): boolean {
 const livePreviewCompartment = new Compartment()
 /** 打字机扩展挂载点：模式切换经 Compartment 换装（无 StateField，允许增删） */
 const typewriterCompartment = new Compartment()
+/** Vim 扩展挂载点（FR-2.4.23）：设置开关经 Compartment 换装（键位扩展无 StateField，允许增删） */
+const vimCompartment = new Compartment()
 
 /**
  * 折叠标记：默认的文本字形（`⌄` / `›`）太小且与应用图标语言不一致，改为自绘线性箭头。
@@ -760,6 +765,7 @@ function createView(initialDoc: string): EditorView {
       traceTheme,
       livePreviewCompartment.of(buildLivePreview()),
       typewriterCompartment.of(typewriter(props.typewriterMode ?? 'off')),
+      vimCompartment.of(props.vimEnabled ? buildVimExtension() : []),
       // 表格尺寸提示态（FR-2.4.20）：最高优先级拦截数字 / 空格 / 回车 / Esc；未激活时一律放行。
       // 「其它按键即取消」用 keymap 的 any 处理器（仅在无具体绑定命中时执行）实现
       // ⚠️ 这些绑定同样不能带 preventDefault。CM 的语义是「标志只在命令未处理时生效」：
@@ -924,7 +930,29 @@ function createView(initialDoc: string): EditorView {
       autocompletion({ override: [slashCompletions, traceCompletions] })
     ]
   })
-  return new EditorView({ state, parent: container.value! })
+  const v = new EditorView({ state, parent: container.value! })
+  attachVimModeListener(v)
+  if (props.vimEnabled) editorStore.vimMode = readVimMode(v) ?? 'normal'
+  return v
+}
+
+/**
+ * vim 模式徽标（FR-2.4.23）：模式变化经 CM5 适配层事件写入 editor store（工具栏读取渲染）。
+ * ⚠️ 适配层实例随 vim 扩展的挂载/摘除重建（Compartment 换装 → ViewPlugin 重建 → 新适配层），
+ * 监听器必须跟着重挂——只在 createView 时挂一次的话，开关切换后的事件全部丢失
+ * （实测：模式正常切换但徽标永久停留在挂载初值）。同一实例不重复挂。
+ * 注意：createView 时模块级 view 尚未赋值（返回后才赋值），必须显式传入目标 view。
+ */
+let vimListenerCM: ReturnType<typeof getVimCM> | null = null
+function attachVimModeListener(target?: EditorView): void {
+  const v = target ?? view
+  if (!v) return
+  const cm = getVimCM(v)
+  if (!cm || cm === vimListenerCM) return
+  vimListenerCM = cm
+  cm.on('vim-mode-change', () => {
+    editorStore.vimMode = readVimMode(v)
+  })
 }
 
 /** 组装所见即所得扩展：结构（含 StateField）必须常驻挂载——Compartment 不允许增删
@@ -974,6 +1002,22 @@ watch(
   (mode) => {
     if (!view) return
     view.dispatch({ effects: typewriterCompartment.reconfigure(typewriter(mode ?? 'off')) })
+  }
+)
+
+// Vim 开关（FR-2.4.23）：经 Compartment 换装；关闭即摘除扩展（键位完全恢复现状）并清空模式徽标。
+// 挂载后必须重挂适配层监听（新适配层实例，见 attachVimModeListener 注释）
+watch(
+  () => props.vimEnabled,
+  (enabled) => {
+    if (!view) return
+    view.dispatch({ effects: vimCompartment.reconfigure(enabled ? buildVimExtension() : []) })
+    if (enabled) {
+      attachVimModeListener()
+      editorStore.vimMode = readVimMode(view) ?? 'normal'
+    } else {
+      editorStore.vimMode = null
+    }
   }
 )
 
@@ -1041,6 +1085,7 @@ onBeforeUnmount(() => {
     }
   }
   tablePrompt.cancel()
+  editorStore.vimMode = null
   view?.destroy()
   view = null
   caretSound.dispose()

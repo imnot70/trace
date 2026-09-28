@@ -46,3 +46,7 @@
   h3 / 块数不变量断言）——行号手术曾两度错切（误删 script 段 / 错删模板尾），教训：
   大段模板重组禁用行号切片，改用标记分割并加不变量断言。
 - CDP 验证：Ctrl+, 开关 / Esc / 点遮罩 / X / 分类切换 / 编辑器保活 / 光标保持全过。
+
+## 已知问题
+
+- ~~**弹窗打开时右上角 WCO 系统按钮异常**~~（2026-09-28 用户反馈，**当日已修复**）：根因 = WCO 系统三键绘制层永远在 DOM 之上，全窗口遮罩盖不住它——设置弹窗 / 搜索弹窗遮罩与三键区域视觉割裂（截图存档：[../issues/0007-wco-dialog-buttons.png](../issues/0007-wco-dialog-buttons.png)），悬浮预览卡片头部亦被三键白块遮挡。修法：遮罩层与悬浮卡片经 `env(titlebar-area-height)` 避让标题栏区域（`html.platform-win` 下 `.settings-overlay` / `.el-overlay` / `.floating-preview` 三条全局规则，见 main.css WCO 区块），标题栏在弹窗打开时保持可见可拖拽（桌面惯例）；非 Windows 无 WCO 不受影响。CDP 实测三场景 top 精确避让（36 / 36 / 20+36）+ 截图确认。

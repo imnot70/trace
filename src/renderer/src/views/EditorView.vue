@@ -8,6 +8,7 @@ import { useSearchStore } from '../stores/search'
 import { useDraftStore, scratchVaultLabel } from '../stores/draft'
 import { useNoteActions } from '../composables/actions'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
+import { formatVimModeLabel } from '../lib/vimMode'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
 import TipButton from '../components/TipButton.vue'
 import BacklinkPanel from '../components/BacklinkPanel.vue'
@@ -873,6 +874,11 @@ onBeforeUnmount(() => {
         <span style="font-size: 13px">{{ btn.icon }}</span>
       </TipButton>
     </template>
+    <!-- Vim 模式徽标（FR-2.4.23）：工具栏右端，仅 vim 开启时显示；
+         配色按模式区分——normal 中性 / insert accent 描边 / visual accent 底 -->
+    <span v-if="editor.vimMode" class="vim-badge" :class="`vim-${editor.vimMode.split(' ')[0]}`">
+      {{ formatVimModeLabel(editor.vimMode) }}
+    </span>
     </div>
     </div>
 
@@ -956,6 +962,7 @@ onBeforeUnmount(() => {
         :vault="editor.current.vault"
         :note-path="editor.current.path"
         :wysiwyg="app.editorWysiwyg"
+        :vim-enabled="app.settings.vimEnabled"
         :preview-target="completionPreview"
         @update:model-value="onEditorUpdate"
         @save="onEditorSave"
@@ -1051,6 +1058,33 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* Vim 模式徽标（FR-2.4.23）：等宽小胶囊，仅 vim 开启时渲染；模式配色——
+   normal 中性灰 / insert accent 描边 / visual accent 底（文字用 bg-primary 保证两主题对比度） */
+.vim-badge {
+  margin-left: auto;
+  font-family: ui-monospace, Consolas, 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+  user-select: none;
+}
+
+.vim-badge.vim-insert {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: transparent;
+}
+
+.vim-badge.vim-visual {
+  border-color: var(--accent);
+  color: var(--bg-primary);
+  background: var(--accent);
+}
+
 /* 打字机的字母 T 标识：与图标尺寸一致、加粗与图标视觉重量对齐（顶栏按钮 + 状态区共用） */
 .tw-letter {
   font-size: 13px;
