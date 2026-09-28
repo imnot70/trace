@@ -147,6 +147,20 @@ html.platform-win .app-shell {
   padding-top: calc(10px + env(titlebar-area-height, 36px));
 }
 
+/* Windows WCO：系统三键绘制层永远在 DOM 之上，任何全窗口遮罩都盖不住它——
+   遮罩与顶部悬浮卡片必须避让标题栏区域，否则三键区域与被压暗的遮罩视觉割裂，
+   悬浮预览卡片头部按钮会被三键白块遮挡（2026-09-28 用户反馈）。
+   遮罩从标题栏下缘开始：标题栏（应用名 / 拖拽区 / 系统三键）保持可见可拖拽，
+   这也是桌面应用惯例（模态打开时窗口仍可拖动与关闭）。非 Windows 无 WCO 不受影响。 */
+html.platform-win .settings-overlay,
+html.platform-win .el-overlay {
+  top: env(titlebar-area-height, 0px);
+}
+
+html.platform-win .floating-preview {
+  top: calc(20px + env(titlebar-area-height, 0px));
+}
+
 /* 玻璃模式：卡片背景半透明透出材质，文字层保持不透明（可读性不降级） */
 html.glass-on .app-shell {
   background: color-mix(in srgb, var(--bg-secondary) 55%, transparent);
