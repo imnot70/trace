@@ -7,7 +7,7 @@ export interface ShortcutItem {
   /** 键位显示形式 */
   keys: string
   desc: string
-  group: '全局' | '编辑器'
+  group: '全局' | '编辑器' | 'Vim'
 }
 
 export const SHORTCUTS: ShortcutItem[] = [
@@ -48,11 +48,32 @@ export const SHORTCUTS: ShortcutItem[] = [
   { keys: 'Ctrl + Shift + H', desc: '光标跳到文件开头（Ctrl+Home 同义）', group: '编辑器' },
   { keys: 'Ctrl + Shift + E', desc: '光标跳到文件末尾（Ctrl+End 同义）', group: '编辑器' },
   { keys: 'Esc / Ctrl+[（Vim 开启时）', desc: '编辑器聚焦且无浮层时归 Vim（返回 normal，退出心流模式用 Alt+W 或顶栏按钮）；悬浮预览 / 浮层侧栏 / 各弹窗的 Esc 行为不变', group: '编辑器' },
-  { keys: 'Vim 模式键位', desc: '设置开启后 normal / insert / visual 全套生效（工具栏右端显示当前模式）；Ctrl+F/B/E/I/N/T 仍归应用，Ctrl+D/U 半页滚动、Ctrl+O 跳回与临时 normal、Ctrl+R 重做、Ctrl+V 块可视等 Vim 动作可用', group: '编辑器' },
-  { keys: 'Ctrl + Z / Ctrl + Shift + Z', desc: '撤销 / 重做', group: '编辑器' }
+  { keys: 'Vim 模式键位', desc: '设置开启后 normal / insert / visual 全套生效（工具栏右端显示当前模式）；Ctrl+F/B/E/I/N/T 仍归应用——全部 Vim 键位见「快捷键」分类的 Vim 分组', group: '编辑器' },
+  { keys: 'Ctrl + Z / Ctrl + Shift + Z', desc: '撤销 / 重做', group: '编辑器' },
+  // Vim 分组（FR-2.4.23）：vim 模式下支持的普通键位速查（不含 :ex 命令——包内 ex 解释器未开放）。
+  // 应用让渡的六个 Ctrl 键已在上面「Vim 模式键位」条目说明
+  { keys: 'i / a / o / O', desc: '进入插入模式（光标前 / 后 / 下方新行 / 上方新行）', group: 'Vim' },
+  { keys: 'Esc / Ctrl+[', desc: '返回普通模式；可视模式下退出选择', group: 'Vim' },
+  { keys: 'v / V / Ctrl+V', desc: '可视模式（字符选择 / 行选择 / 块选择）', group: 'Vim' },
+  { keys: 'h j k l / w b e', desc: '按字符移动 / 按词前后移动（词首 / 词尾）', group: 'Vim' },
+  { keys: '0 / ^ / $ / gg / G', desc: '行首 / 首个非空白字符 / 行尾 / 文件开头 / 文件末尾', group: 'Vim' },
+  { keys: '{ / }', desc: '跳到上一段 / 下一段', group: 'Vim' },
+  { keys: 'f{c} / t{c} / F{c} / T{c}', desc: '行内向右查找字符（停在 / 前一格）、向左查找（停在 / 后一格）', group: 'Vim' },
+  { keys: '%', desc: '跳到与光标处配对的括号', group: 'Vim' },
+  { keys: 'x / dd / yy / p / P', desc: '删除字符 / 删除整行 / 复制整行 / 粘贴到光标后 / 前', group: 'Vim' },
+  { keys: 'cw / D / C / J / r / ~', desc: '改词 / 删至行尾 / 改至行尾 / 合并下一行 / 替换单个字符 / 翻转大小写', group: 'Vim' },
+  { keys: '>> / <<', desc: '当前行增加 / 减少缩进', group: 'Vim' },
+  { keys: 'u / Ctrl+R', desc: '撤销 / 重做', group: 'Vim' },
+  { keys: '. / 数字前缀', desc: '重复上一次修改 / 指定重复次数（如 3dd、5j）', group: 'Vim' },
+  { keys: '/ {词} / ? {词} + n / N', desc: '向下 / 向上搜索，跳到下一个 / 上一个匹配', group: 'Vim' },
+  { keys: 'Ctrl+D / Ctrl+U', desc: '向下 / 向上滚动半页', group: 'Vim' },
+  { keys: 'Ctrl+E / Ctrl+Y', desc: '向下 / 向上滚动一行', group: 'Vim' },
+  { keys: 'Ctrl+O', desc: '跳回上一个光标位置；插入模式下临时返回普通模式执行一步操作', group: 'Vim' },
+  { keys: 'Ctrl+A / Ctrl+X', desc: '光标处的数字加一 / 减一', group: 'Vim' },
+  { keys: '应用键位保留', desc: 'Ctrl+F 查找 / Ctrl+B 加粗 / Ctrl+I 斜体 / Ctrl+E 编辑形态 / Ctrl+N 新建 / Ctrl+T 表格仍归应用，Vim 不占用', group: 'Vim' }
 ]
 
 /** 按分组归类（设置页按组渲染） */
 export const SHORTCUT_GROUPS: { group: ShortcutItem['group']; items: ShortcutItem[] }[] = (
-  ['全局', '编辑器'] as const
+  ['全局', '编辑器', 'Vim'] as const
 ).map((group) => ({ group, items: SHORTCUTS.filter((s) => s.group === group) }))
