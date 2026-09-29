@@ -27,6 +27,7 @@ export { dispatchCapabilityCall, type GatewayServices } from './pluginGateway'
 export { PluginStorageService, type PluginStorageBackend } from './pluginStorage'
 export { MarketService, compareVersions, type MarketHttpClient, type MarketIndex } from './marketService'
 export { createMarketHttpClient } from './marketHttp'
+export { checkForUpdate } from './updateCheck'
 export {
   stagePluginZip,
   installStaged,

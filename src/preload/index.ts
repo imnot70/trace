@@ -17,6 +17,7 @@ const api: TraceApi = {
   setWorkspace: (root) => ipcRenderer.invoke('workspace:set', root),
   chooseDirectory: (current) => ipcRenderer.invoke('workspace:choose', current),
   getAppVersion: () => ipcRenderer.invoke('app:version'),
+  checkForUpdate: () => ipcRenderer.invoke('update:check'),
 
   listVaults: () => ipcRenderer.invoke('vault:list'),
   createVault: (name, description) => ipcRenderer.invoke('vault:create', name, description),

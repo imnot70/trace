@@ -49,6 +49,8 @@ export interface TraceApi {
   setWorkspace(root: string): Promise<OpResult>
   chooseDirectory(current: string): Promise<string | null>
   getAppVersion(): Promise<OpResult & { version?: string }>
+  /** 新版本检测（FR-2.10.6）：GitHub Releases latest 对比当前版本；网络失败 ok:false */
+  checkForUpdate(): Promise<import('./updateCheck').UpdateCheckResult>
 
   // ---- 笔记库 ----
   listVaults(): Promise<OpResult & { vaults?: VaultInfo[] }>

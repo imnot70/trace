@@ -3,6 +3,7 @@ import type { AppSettings, ThemePackage } from '@shared/types'
 import { useTreeStore } from './tree'
 import { THEME_PRESETS, buildThemeCss } from '../styles/presets'
 import { effectiveTypewriterMode, flowMeasureEm, nextTypewriterCycle } from '../lib/flow'
+import { shouldCheckUpdate } from '@shared/updateCheck'
 import type { TypewriterMode } from '../lib/typewriter'
 
 /** 卡片网格视图的区块类型 */
@@ -118,7 +119,10 @@ export const useAppStore = defineStore('app', {
     /** 提示自动消失定时器（重复切换时重置） */
     modeToastTimer: null as ReturnType<typeof setTimeout> | null,
     /** 跨组件的悬浮预览请求（FR-2.9.10：搜索框 Alt+Enter → EditorView 消费）；null = 无待处理 */
-    pendingNotePreview: null as { vault: string; path: string; name: string } | null
+    pendingNotePreview: null as { vault: string; path: string; name: string } | null,
+    /** 新版本检测（FR-2.10.6）：null = 本次会话尚未检查成功；available=true 时顶栏 / 设置展示入口 */
+    updateInfo: null as import('@shared/updateCheck').UpdateCheckResult | null,
+    updateChecking: false
   }),
   getters: {
     /** 实际生效的打字机形态：心流内读会话态（进入时推导、此后跟随心流内切换，可为「关」），
@@ -252,6 +256,30 @@ export const useAppStore = defineStore('app', {
      *  编辑器经 vimCompartment 换装即时生效 */
     toggleVim(): void {
       void this.updateSettings({ vimEnabled: !this.settings.vimEnabled })
+    },
+    /** 新版本检测（FR-2.10.6）：force=false 时按 24h 节流（localStorage 记上次检查时间）。
+     *  失败静默（updateInfo.ok=false，UI 不展示错误）——网络不可达是常态而非异常 */
+    async runUpdateCheck(force = false): Promise<void> {
+      if (this.updateChecking) return
+      let last: number | null = null
+      try {
+        const raw = localStorage.getItem('trace.updateCheckAt')
+        last = raw === null ? null : Number(raw)
+      } catch {
+        last = null
+      }
+      if (!force && !shouldCheckUpdate(last, Date.now())) return
+      this.updateChecking = true
+      try {
+        this.updateInfo = await window.trace.checkForUpdate()
+        try {
+          localStorage.setItem('trace.updateCheckAt', String(Date.now()))
+        } catch {
+          /* ignore */
+        }
+      } finally {
+        this.updateChecking = false
+      }
     },
     /**
      * 进入心流模式：快照外围界面状态 → 拨动各轴（沉浸）。

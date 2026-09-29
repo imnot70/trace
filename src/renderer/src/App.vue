@@ -286,6 +286,9 @@ function syncWindowClasses(): void {
 
 onMounted(async () => {
   await app.init()
+  // 新版本检测（FR-2.10.6）：启动静默检查（24h 节流，失败无感）——在 app.init 之后，
+  // 独立 await 不阻塞首屏（fire-and-forget）
+  void app.runUpdateCheck()
   // 窗口视觉形态类（macOS/Linux 透明玻璃路径见 createWindow 注释；Windows 走 WCO 玻璃，
   // 亦不碰 transparent: true——v0.4.4 回归教训，见 AGENTS.md 已知局限）
   syncWindowClasses()

@@ -6,6 +6,7 @@ import { initLogger, logger } from './lib/logger'
 import { resolveWithin } from './lib/paths'
 import { ScratchService } from './services/scratch'
 import { SCRATCH_VAULT } from '@shared/types'
+import type { UpdateCheckResult } from '../shared/updateCheck'
 import { JsonStore } from './lib/jsonStore'
 import {
   AccountService,
@@ -14,6 +15,7 @@ import {
   GitService,
   GithubService,
   GistShareService,
+  checkForUpdate as updateCheckService,
   pickGitBinary,
   PluginHost,
   spawnUtilityRuntime,
@@ -312,6 +314,11 @@ app.whenReady().then(() => {
     http: createMarketHttpClient(() => settingsStore.get().proxyUrl ?? null)
   })
 
+  // 新版本检测（FR-2.10.6）：复用市场 HTTP 适配器（UA / 超时 / 跟随代理），闭包注入 IPC
+  const updateClient = createMarketHttpClient(() => settingsStore.get().proxyUrl ?? null)
+  const checkForUpdate = (): Promise<UpdateCheckResult> =>
+    updateCheckService(updateClient, app.getVersion())
+
   // 侧栏状态区文字（ui:status）：宿主维护，变更即全量广播渲染端
   const pluginStatusTexts = new Map<string, string>()
   const broadcastPluginStatus = (): void => {
@@ -482,6 +489,7 @@ app.whenReady().then(() => {
     search,
     wikilink,
     market,
+    checkForUpdate,
     getWindow: () => mainWindow
   })
 

@@ -729,6 +729,22 @@ body {
   display: inline-block;
 }
 
+/* 新版本轻量入口（FR-2.10.6）：面包屑行内不抢眼文字链，点击打开 Release 页 */
+.update-entry {
+  margin-left: 10px;
+  color: var(--accent);
+  font-size: 12px;
+  text-decoration: none;
+  border: 1px solid var(--accent-soft);
+  border-radius: 10px;
+  padding: 1px 8px;
+  flex-shrink: 0;
+}
+
+.update-entry:hover {
+  background: var(--accent-soft);
+}
+
 .editor-toolbar {
   display: flex;
   align-items: center;

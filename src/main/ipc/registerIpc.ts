@@ -52,6 +52,8 @@ export interface IpcDeps {
   search: import('../services/search').SearchService
   wikilink: import('../services/wikilink').WikilinkService
   market: import('../services/marketService').MarketService
+  /** 新版本检测（FR-2.10.6）：main/index.ts 注入（闭包 HTTP 客户端 + app.getVersion），此处不依赖 electron net */
+  checkForUpdate: () => Promise<import('../../shared/updateCheck').UpdateCheckResult>
   getWindow: () => BrowserWindow | null
 }
 
@@ -107,6 +109,9 @@ export function registerIpc(deps: IpcDeps): void {
     return canceled ? null : filePaths[0]
   })
   handle('app:version', () => ({ ok: true, version: app.getVersion() }))
+
+  // ---------- 新版本检测（FR-2.10.6）：网络失败由 service 静默返回 ok:false ----------
+  handle('update:check', async () => await deps.checkForUpdate())
 
   // ---------- 笔记库 ----------
   handle('vault:list', () => ({

@@ -703,6 +703,23 @@ async function resetGitSource(): Promise<void> {
             <span class="setting-label">Trace 笔迹</span>
             <span style="color: var(--text-secondary)">v{{ app.version }} — 轻量级 Markdown 笔记</span>
           </div>
+          <div class="setting-row">
+            <span class="setting-label">检查更新</span>
+            <el-button size="small" :loading="app.updateChecking" @click="app.runUpdateCheck(true)">立即检查</el-button>
+            <span class="settings-desc" style="margin: 0">
+              <template v-if="app.updateChecking">正在检查…</template>
+              <template v-else-if="app.updateInfo?.ok && app.updateInfo.available">
+                新版本 v{{ app.updateInfo.latestVersion }} 可用——<a
+                  :href="app.updateInfo.releaseUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >查看更新说明与下载</a>
+              </template>
+              <template v-else-if="app.updateInfo?.ok">已是最新版本</template>
+              <template v-else-if="app.updateInfo">检查失败（网络不可达，稍后再试）</template>
+              <template v-else>启动时每日自动检查一次</template>
+            </span>
+          </div>
         </div>
           </template>
           <template v-else-if="tab === 'appearance'">

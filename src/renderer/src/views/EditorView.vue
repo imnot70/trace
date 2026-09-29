@@ -735,6 +735,15 @@ onBeforeUnmount(() => {
           <span class="crumb-current">{{ editor.current.name }}</span>
           <span v-if="editor.dirty" class="dirty-dot" title="未保存（自动保存已开启）"></span>
         </template>
+        <!-- 新版本轻量入口（FR-2.10.6）：发现新版本时常驻显示，点击打开 Release 页（更新说明 + 下载） -->
+        <a
+          v-if="app.updateInfo?.ok && app.updateInfo.available"
+          class="update-entry"
+          :href="app.updateInfo.releaseUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          :title="`新版本 v${app.updateInfo.latestVersion} 可用，点击查看更新说明与下载`"
+        >有更新 v{{ app.updateInfo.latestVersion }}</a>
       </div>
 
       <el-tag
