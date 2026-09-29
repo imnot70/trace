@@ -45,7 +45,7 @@ export const SHORTCUTS: ShortcutItem[] = [
   { keys: 'Ctrl + 0', desc: '清除标题层级', group: '编辑器' },
   { keys: 'Ctrl + T', desc: '在光标处插入表格', group: '编辑器' },
   { keys: 'Ctrl + Shift + I', desc: '引入图片（系统文件选择器多选，复制进附件目录并批量插入引用）', group: '编辑器' },
-  { keys: '/（编辑器内）', desc: '斜杠命令：行首输入 / 呼出命令面板（/表格 同 Ctrl+T、/标题1…6 同 Ctrl+1…6、/引用 /代码块 /任务列表 /分割线 /日期 等，行为与对应快捷键一致）', group: '编辑器' },
+  { keys: '/（编辑器内）', desc: '斜杠命令：行首输入 / 呼出命令面板（/表格 同 Ctrl+T、/标题1…6 同 Ctrl+1…6、/引用 /代码块 /任务列表 /分割线 /日期 /清理字符（清理不可见字符）等，行为与对应快捷键 / 按钮一致）', group: '编辑器' },
   { keys: 'Ctrl + Shift + H', desc: '光标跳到文件开头（Ctrl+Home 同义）', group: '编辑器' },
   { keys: 'Ctrl + Shift + E', desc: '光标跳到文件末尾（Ctrl+End 同义）', group: '编辑器' },
   { keys: 'Esc / Ctrl+[（Vim 开启时）', desc: '编辑器聚焦且无浮层时归 Vim（返回 normal，退出心流模式用 Alt+W 或顶栏按钮）；悬浮预览 / 浮层侧栏 / 各弹窗的 Esc 行为不变', group: '编辑器' },

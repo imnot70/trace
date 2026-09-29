@@ -42,4 +42,12 @@ describe('斜杠命令过滤', () => {
       expect(labels).toContain(required)
     }
   })
+
+  it('/清理字符 在册（FR-2.4.25）：别名 clean / invisible 与名称「清理」均可命中，动作为 cleanInvisible', () => {
+    const cmd = SLASH_COMMANDS.find((c) => c.label === '/清理字符')!
+    expect(cmd.action.kind).toBe('cleanInvisible')
+    expect(filterSlashCommands('clean').map((c) => c.label)).toContain('/清理字符')
+    expect(filterSlashCommands('invisible').map((c) => c.label)).toEqual(['/清理字符'])
+    expect(filterSlashCommands('清理').map((c) => c.label)).toEqual(['/清理字符'])
+  })
 })

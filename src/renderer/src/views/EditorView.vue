@@ -893,6 +893,11 @@ onBeforeUnmount(() => {
       <TipButton tip="公式块" @click="toolbarInsert('\n$$\n', '\n$$\n')">
         ∫
       </TipButton>
+      <!-- 清理不可见字符（FR-2.4.25，用户指定位置：公式块右侧）：网页粘贴夹带的 NBSP
+           会让任务行在预览与所见即所得中双双失效，存量笔记 / Gist 发布前经此一键归一 -->
+      <TipButton tip="清理不可见字符（NBSP→空格、零宽→删除）" @click="editorRef?.cleanInvisibleChars()">
+        <el-icon><Brush /></el-icon>
+      </TipButton>
     <template v-if="app.pluginToolbars.length">
       <span class="toolbar-sep"></span>
       <TipButton v-for="btn in app.pluginToolbars" :key="btn.command" :tip="`${btn.title}（${btn.pluginId}）`" @click="invokePluginCommand(btn.command)">

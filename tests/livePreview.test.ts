@@ -413,3 +413,74 @@ describe('任务勾选写回', () => {
     expect(newDoc).toContain('- [x] 待办')
   })
 })
+
+describe('任务框兜底扫描（FR-2.4.24：lezer 不认的不可见字符变体）', () => {
+  it('NBSP 前导（标记与 [ 之间）：标记与污染空白一并隐藏，复选框挂在真实 [ 位置', () => {
+    // `-`=0 ` `=1 NBSP=2 `[`=3：lezer 守卫只认 ASCII 空格 → 无 Task 节点 → 兜底
+    const doc = '- \u00A0[x] 任务\n\n尾行'
+    const state = mkState(doc, doc.length)
+    const marks = collect(state, computeInlineDecorations(state, allRanges(state), cfg).decorations)
+    expect(hiddenAt(marks, 0, 3)).toBe(true)
+    const box = marks.find((c) => c.from === 3 && c.to === 6)
+    expect(box?.spec.widget).toBeInstanceOf(CheckboxWidget)
+    expect((box?.spec.widget as CheckboxWidget).checked).toBe(true)
+    expect((box?.spec.widget as CheckboxWidget).pos).toBe(3)
+  })
+
+  it('NBSP 分隔（] 与正文之间）与中括号内变体同样兜底', () => {
+    // `- [x]\u00a0任务`：`]` 后直接 NBSP，lezer 守卫 [ \t] 不认 → 兜底勾选
+    const doc = '- [x]\u00A0任务\n\n尾行'
+    const state = mkState(doc, doc.length)
+    const marks = collect(state, computeInlineDecorations(state, allRanges(state), cfg).decorations)
+    expect(hiddenAt(marks, 0, 2)).toBe(true)
+    const box = marks.find((c) => c.from === 2 && c.to === 5)
+    expect((box?.spec.widget as CheckboxWidget).checked).toBe(true)
+    expect((box?.spec.widget as CheckboxWidget).pos).toBe(2)
+
+    // `- [\u00a0] 任务`：括号内 NBSP → 未勾选（D3）
+    const doc2 = '- [\u00A0] 任务\n\n尾行'
+    const state2 = mkState(doc2, doc2.length)
+    const box2 = collect(state2, computeInlineDecorations(state2, allRanges(state2), cfg).decorations).find(
+      (c) => c.from === 2 && c.to === 5
+    )
+    expect((box2?.spec.widget as CheckboxWidget).checked).toBe(false)
+  })
+
+  it('ASCII 任务行走 TaskMarker 分支：恰好一个复选框（与兜底互斥）', () => {
+    const doc = '- [x] 任务\n\n尾行'
+    const state = mkState(doc, doc.length)
+    const marks = collect(state, computeInlineDecorations(state, allRanges(state), cfg).decorations)
+    expect(hiddenAt(marks, 0, 2)).toBe(true)
+    const boxes = widgetsOf(state, computeInlineDecorations(state, allRanges(state), cfg).decorations).filter(
+      (w) => w instanceof CheckboxWidget
+    )
+    expect(boxes.length).toBe(1)
+    expect((boxes[0] as CheckboxWidget).pos).toBe(2)
+  })
+
+  it('正文中间的 [x] 不误判为任务（扫描自标记后锚定）；普通列表项仍是圆点', () => {
+    const doc = '- 普通项 [x] 备注\n\n尾行'
+    const state = mkState(doc, doc.length)
+    const widgets = widgetsOf(state, computeInlineDecorations(state, allRanges(state), cfg).decorations)
+    expect(widgets.some((w) => w instanceof CheckboxWidget)).toBe(false)
+    expect(widgets.some((w) => w instanceof BulletWidget)).toBe(true)
+  })
+
+  it('兜底复选框点击写回：toggleTaskAt 翻转真实 [ 位置的勾选字符', () => {
+    const doc = '- \u00A0[x] 任务'
+    const state = mkState(doc + '\n\n尾行', doc.length + 3)
+    const box = widgetsOf(state, computeInlineDecorations(state, allRanges(state), cfg).decorations).find(
+      (w) => w instanceof CheckboxWidget
+    ) as CheckboxWidget
+    expect(box.pos).toBe(3)
+    let newDoc = doc
+    const viewLike = {
+      state,
+      dispatch: (spec: { changes: { from: number; to: number; insert: string } }) => {
+        newDoc = doc.slice(0, spec.changes.from) + spec.changes.insert + doc.slice(spec.changes.to)
+      }
+    } as unknown as EditorView
+    toggleTaskAt(viewLike, box.pos)
+    expect(newDoc).toBe('- \u00A0[ ] 任务')
+  })
+})

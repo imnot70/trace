@@ -5,6 +5,7 @@ import MarkdownIt from 'markdown-it'
 import DOMPurify from 'dompurify'
 import texmath from 'markdown-it-texmath'
 import katex from 'katex'
+import { matchTaskMarker } from './invisibleChars'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
 import typescript from 'highlight.js/lib/languages/typescript'
@@ -158,7 +159,9 @@ md.renderer.rules.fence = (tokens, idx) => {
 }
 
 // GFM 任务列表：列表项首行 [x] / [ ] 渲染为只读复选框（span 实现——不用 <input>，
-// 与 DOMPurify 禁用清单冲突；笔记是文件，复选框点击不回写，仅展示勾选态）
+// 与 DOMPurify 禁用清单冲突；笔记是文件，复选框点击不回写，仅展示勾选态）。
+// 识别经 matchTaskMarker 容忍不可见字符变体（FR-2.4.24：NBSP 污染的任务行
+// 此前整行失效；ASCII 行为与旧正则逐字节一致），单一定义源见 lib/invisibleChars.ts
 md.core.ruler.push('trace_task_lists', (state) => {
   const tokens = state.tokens
   for (let i = 2; i < tokens.length; i++) {
@@ -168,15 +171,14 @@ md.core.ruler.push('trace_task_lists', (state) => {
     const children = tokens[i].children ?? []
     const first = children[0]
     if (!first || first.type !== 'text') continue
-    const m = first.content.match(/^\[([ xX])\]\s+/)
+    const m = matchTaskMarker(first.content)
     if (!m) continue
-    const checked = m[1] !== ' '
-    first.content = first.content.slice(m[0].length)
+    first.content = first.content.slice(m.contentStart)
     const box = new state.Token('html_inline', '', 0)
-    box.content = `<span class="task-item-checkbox"${checked ? ' data-checked="true"' : ''}></span>`
+    box.content = `<span class="task-item-checkbox"${m.checked ? ' data-checked="true"' : ''}></span>`
     children.unshift(box)
     tokens[i - 2].attrJoin('class', 'task-list-item')
-    if (checked) tokens[i - 2].attrJoin('class', 'task-list-item-checked')
+    if (m.checked) tokens[i - 2].attrJoin('class', 'task-list-item-checked')
   }
 })
 

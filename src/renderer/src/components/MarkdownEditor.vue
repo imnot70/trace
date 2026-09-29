@@ -59,6 +59,9 @@ import { SCRATCH_VAULT } from '@shared/types'
 import type { PromptKey } from '../lib/tablePrompt'
 import { flatCompletionOptions, type NoteTreeNode } from '../lib/noteCompletion'
 import { filterSlashCommands, type SlashAction } from '../lib/slashCommands'
+import { invisiblePasteExtension, buildCleanInvisibleTransaction } from '../lib/invisibleEdits'
+import { collectDocInvisible } from '../lib/invisibleChars'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import type { TreeNode } from '@shared/types'
 
 const props = defineProps<{
@@ -347,7 +350,39 @@ function runSlashAction(action: SlashAction): void {
     case 'text':
       insertText(action.text())
       break
+    case 'cleanInvisible':
+      void cleanInvisibleChars()
+      break
   }
+}
+
+/** 清理本文不可见字符（FR-2.4.25，顶栏按钮与 /清理字符 斜杠命令同一入口）：
+ *  扫描（计数与写回 change 同源，lib/invisibleChars.collectDocInvisible）→ 确认框列明
+ *  种类与处数 → 单事务替换（撤销 / 自动保存 / 外部修改保护既有机制自然生效）。
+ *  不做静默清理——文件是唯一事实来源，改文件必须用户确认（不悄悄丢数据） */
+async function cleanInvisibleChars(): Promise<void> {
+  if (!view) return
+  const { nbsp, zeroWidth, changes } = collectDocInvisible(view.state.doc)
+  if (changes.length === 0) {
+    ElMessage.info('未发现不可见字符')
+    return
+  }
+  const parts: string[] = []
+  if (nbsp) parts.push(`${nbsp} 处不换行空格（替换为普通空格）`)
+  if (zeroWidth) parts.push(`${zeroWidth} 处零宽字符（删除）`)
+  try {
+    await ElMessageBox.confirm(`发现 ${parts.join('、')}。清理后可撤销。`, '清理不可见字符', {
+      type: 'warning',
+      confirmButtonText: '清理',
+      cancelButtonText: '取消'
+    })
+  } catch {
+    return // 用户取消
+  }
+  const tr = buildCleanInvisibleTransaction(view.state)
+  if (!tr) return
+  view.dispatch(tr)
+  ElMessage.success(`已清理 ${nbsp + zeroWidth} 处不可见字符`)
 }
 
 function traceCompletions(context: CompletionContext): CompletionResult | null {
@@ -817,6 +852,11 @@ function createView(initialDoc: string): EditorView {
           return false
         }
       }),
+      // 粘贴归一化（FR-2.4.25）：网页粘贴夹带的 NBSP / 零宽字符在入库前归一（任务行
+      // 失效的污染源头，见 lib/invisibleChars.ts 模块注释）；有替换时 toast 告知
+      invisiblePasteExtension((nbsp, zeroWidth) => {
+        ElMessage.success(`已清理 ${nbsp + zeroWidth} 个不可见字符`)
+      }),
       // Prec.high：这些是应用级绑定，必须优先于 basicSetup 内置键位（如 searchKeymap 的 Mod-f）
       Prec.high(keymap.of([
         {
@@ -1258,6 +1298,8 @@ defineExpose({
   insertTable: insertTableAtCursor,
   beginTablePrompt,
   setHeading: setHeadingLevel,
+  /** 清理本文不可见字符（FR-2.4.25）：顶栏橡皮擦按钮经此调用（与 /清理字符 同一函数） */
+  cleanInvisibleChars: () => cleanInvisibleChars(),
   /** 打开笔记内查找/替换面板（Ctrl+F 专用语义，FR-2.9.11）：焦点在编辑器外时经
    *  EditorView 的 pendingNoteSearch 意图调用（先聚焦再开面板） */
   openNoteSearch: () => (view ? openSearchPanel(view) : false),

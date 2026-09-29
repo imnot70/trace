@@ -16,6 +16,8 @@
 
 10. **Compartment 换装一个 ViewPlugin 类扩展 = 插件实例与其持有的一切资源全部重建**：事件订阅挂在旧实例上会随换装整体失效（Vim 模式实测：模式事件监听挂在 CM5 适配层实例上，开关切换重建适配层后事件全部丢失，功能正常但 UI 状态永久停留在挂载初值）。跨实例的订阅必须在**每次挂载后重挂**（记录已挂实例避免重复）。另两条验证经验：CDP `Input.dispatchKeyEvent` 对后台窗口不可靠，页面内在 contentDOM 上合成 `KeyboardEvent`（bubbles）是可靠注入方式，编辑器键位与应用层 window 监听都能收到；心流 / 专注的顶栏隐藏是 CSS 隐藏而非 DOM 移除，验证脚本不能用「元素不存在」判定，应读 store 状态。（[vim-mode 设计 §6](../requirements/2026-09-26_vim-mode/vim-mode_design.md)）
 
+11. **自定义粘贴行为必须走 DOM `paste` 事件拦截，不能用 `EditorState.inputHandler`**：后者的调用点在 `@codemirror/view` 的 `applyDOMChange`——**所有 DOM 驱动的文本输入都经过它（含 IME 组词提交）**，且签名不携带事件、无法区分粘贴与打字，在组词路径上做归一化等于重蹈「介入组词」的雷（见教训 2）。正确姿势：`EditorView.domEventHandlers({ paste })` 中 `preventDefault()` + `view.dispatch(view.state.replaceSelection(text), { userEvent: 'input.paste', ... })`——**手工补 `input.paste` 注解**，否则按 userEvent 分流的下游（打字机重锚 / 回车音效）会误判这次输入。相关 API 事实：`Transaction` 实例**没有** `userEvent` 属性，读取用 `tr.annotation(Transaction.userEvent)`（spec 的 `userEvent:` 字段会自动转成该注解）；`TransactionSpec.changes` 接受 `{from,to,insert}[]` 区间数组，多区间单事务直接传数组。（[task-marker-tolerance 设计 §4 / §8](../requirements/2026-09-29_task-marker-tolerance/task-marker-tolerance_design.md)）
+
 ## 几何与测量
 
 8. **块级 widget 的垂直间距禁止裸 `margin`**：CM 行高记账只取 widget 元素的 border-box，不含外边距，差额逐块累加导致行号整体漂移（实测公式块后 +15px、表格后 +27px）。间距一律用 `padding` 或 `display: flow-root` 包裹（已成文硬约定）。（[live-preview-render-fix 设计 §2](../requirements/2026-09-24_live-preview-render-fix/live-preview-render-fix_design.md)）
