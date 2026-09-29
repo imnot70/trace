@@ -57,8 +57,8 @@ Alt+I（App.vue 全局键，编辑视图守卫）──┐
 | `→` | 展开文件夹；已是笔记则无操作 | — |
 | `←` | 收起文件夹；笔记则高亮跳到父文件夹 | — |
 | `Enter` | 引入高亮项 | 引入高亮项 |
-| `Alt+Enter` | 关面板 + 悬浮预览 | 同左 |
-| `Esc` | 关面板（el-dialog 内建） | 同左 |
+| `Alt+Enter` | 两段：预览未开 = 悬浮预览（面板**保持打开**——2026-09-29 用户反馈修订，预览随 ↑/↓ 选中自动跟随）；**预览开着 = 插入当前选中引用**（同日二次定案，与 `[[` 补全预览态一致） | 同左 |
+| `Esc` | 分级消费：预览开着先关预览回焦过滤框，再按关面板（组件内显式收口，幂等于 el-dialog 内建） | 同左 |
 | 任意字符 | 落入过滤框（焦点常驻输入框，导航键在输入框 keydown 上拦截 `preventDefault`） | 同左 |
 
 焦点模型照抄搜索弹窗：**焦点常驻过滤输入框**，↑↓/Enter/Alt+Enter 在输入框的 keydown 处理器里消费（`@keydown.enter.exact` / `@keydown.alt.enter.prevent` / 自定义 ↑↓ 处理）——避免焦点在树与输入框之间来回搬运；树节点 hover 高亮 + 点击即选中并引入（单击选中、双击引入会拖慢动线，取单击引入，鼠标用户与 `Enter` 同语义）。
@@ -122,3 +122,56 @@ function insertReferenceAtPath(path: string): void {
 - **草稿重名**：当前库可能存在与草稿同名的笔记（复制产物冲突）——复用 `crossVaultCopy` 的既有重名处理（副本专用目录 / md5 去重），不新写逻辑；
 - **`[[` 上下文跨行**：态 A 判定仅看光标所在行（与补全 `matchBefore` 同口径），上一行的 `[[` 不算——与既有补全行为一致，不放宽；
 - **Vim 模式**：面板焦点在 el-dialog 输入框，vim 键位不生效（vim 只绑定编辑器）；`Esc` 归面板——`shouldYieldEscapeToVim` 只在编辑器聚焦时让位，模态存在时 `hasModalOpen` 已先行短路，无冲突。
+
+## 9. 实施与验证记录（2026-09-29，分支 `feat/flow-quick-ref-picker`）
+
+### 9.1 交付清单（与设计 §1–§5 的对应）
+
+| 文件 | 内容 |
+| --- | --- |
+| `src/renderer/src/lib/quickRef.ts`（新） | §3 纯逻辑：`referenceInsertSpec`（两态括号一致性，`\[\[[^\]]*$` 口径 = 补全 matchBefore 同源）、`flattenVisibleTree`（光标序列投影，隐藏文件跳过）、`locateNote`（D5 祖先展开集）、`filterDrafts` |
+| `src/renderer/src/components/QuickRefPicker.vue`（新） | §3 面板：树形态 + 草稿分组 + 过滤态（`flatNoteOptions(collectNotes())` 同源匹配）；窗口级 keydown（搜索弹窗同款）；焦点常驻过滤框；单击目录行 = 展开（修正设计稿「单击即引入」对目录行的二义——目录行单击/Enter 均为切换展开，笔记/草稿行单击/Enter 均为引入）；Esc 组件内显式关闭（见 9.2-③） |
+| `src/renderer/src/stores/app.ts` | `quickRefPickerOpen` + `toggleQuickRefPicker` / `openQuickRefPicker` / `closeQuickRefPicker` |
+| `src/renderer/src/App.vue` | `Alt+I` 全局键（编辑视图守卫，同 Alt+T/M；toggle 语义，面板开着时再按关闭） |
+| `src/renderer/src/lib/slashCommands.ts` | `/引入`（别名 ref / insert，kind `insertRef`） |
+| `src/renderer/src/components/MarkdownEditor.vue` | `insertReferenceAtPath` expose（区间计算委托 `referenceInsertSpec`，事务带 `input.quickref` 注解）；`runSlashAction` 分支 |
+| `src/renderer/src/views/EditorView.vue` | 挂载面板 + `onQuickRefInsert`（三路语义收敛进 `insertPreviewTarget`）/ `onQuickRefPreview`（`pendingNotePreview` 握手）；`insertPreviewTarget` 草稿分支重构（见 9.2-①）+ 兜底插入升级为括号感知 |
+| `src/main/services/scratchPromote.ts` + `registerIpc.ts` + `shared/api.ts` + `preload/index.ts` | `keepDraft` 开关四件套（复制模式：原草稿与其 assets 保留、不删搜索索引）；IPC handler 逐段创建目标目录（见 9.2-②） |
+| `src/renderer/src/config/shortcuts.ts` | `Alt + I` 条目 + 斜杠命令描述补 `/引入`（用户明确要求同步） |
+
+### 9.2 实施中发现与修正（防再踩）
+
+1. **`insertPreviewTarget` 的草稿分支原是「阻止 + 提示转正」**，按 D3 重构为三分支：草稿→草稿直插引用（FR-2.3.9 D7，转正时随迁）；正式笔记→草稿确认复制（确认文案特化，目录 `跨库引用/草稿`）；原跨库分支不动。改动比设计预估的「5 行文案参数」大，但三条动线（悬浮预览按钮 / Alt+Enter / 面板）语义就此统一；
+2. **`promoteDraft` 是转正（move）语义**——`scratch.remove` + 逐个 `removeAsset`，直接复用会消费草稿，与 D3「复制、原草稿保留」相悖：加 `keepDraft` 开关跳过两类删除；**其 `createNote` 对不存在的父目录抛「父目录不存在」**（`subdirAbs` 守卫），首次复制到 `跨库引用/草稿` 必失败——IPC handler 按 `noteCopy.ensureTargetDir` 同口径逐段 `createDir`（「已存在」容错，文案含「已存在」即放行）；
+3. **Esc 显式收口**：el-dialog 的 close-on-press-escape 监听在 document 层、依赖焦点在弹窗内；焦点漂移（如确认框关闭后）时 Esc 收不到。面板 keydown 处理器显式处理 Escape → `emit('close')`（幂等，与 EP 内建关闭共存），任何焦点状态下都可关闭；
+4. CDP 冒烟两轮假阳性（脚本侧，非产品）：el-dialog 关闭后 DOM 驻留——「查到 .qr-row」不等于面板可见，必须断言 overlay 计算样式（index §3 既有教训的再次实例）；Alt+I 是 toggle 语义，脚本每节操作前先确认面板实际开合状态。
+
+### 9.3 验证结果
+
+- **单测 +15 项**（`tests/quickRef.test.ts` 14 项：两态插入矩阵含已闭合误判守卫 / 扁平化与隐藏文件 / 定位展开集 / 草稿过滤大小写；`slashCommands.test.ts` 1 项注册），全仓 **481 项**——gitService 8 项集成测试按 Windows 慢环境口径 `--testTimeout=90000` 单独验证 8/8 通过，其余全绿；lint / 主渲染双 typecheck 全绿；
+- **CDP 隔离实例冒烟 15/15**（心流态）：Alt+I 呼出（树 4 行含草稿分组）→ D5 落位高亮「首页」→ WCO 遮罩避让 top=36px → ↑/→/↓ 导航展开 → Enter 引入 `[[日记/2026-09-28]]` 且面板关闭、心流保留 → `[[` 未闭合前缀态（真实点击落位光标 + execCommand 输入）引入不产生双括号 → 过滤「会议」命中草稿 → 特化确认框 → 确认后 `[[跨库引用/草稿/会议草稿]]` 插入、**原草稿保留**（scratchList 仍 1 条）→ Esc 关面板心流保留。
+
+### 9.4 实施后用户反馈修订（2026-09-29 同日）
+
+**Alt+Enter 预览不再关闭面板**（用户真机反馈：原实现预览后面板消失，连续预览多篇要反复 Alt+I——正是 FR-2.9.10 ③ 在搜索弹窗上修过的同款问题，v0.10.0 已把搜索框改为「保持打开」）。修订为与搜索弹窗完全同款的三段语义：
+
+1. `Alt+Enter` → 悬浮预览打开，**面板保持打开**、焦点仍在过滤框（`onQuickRefPreview` 不再 `closeQuickRefPicker`）；
+2. 预览期间 `↑` / `↓` 移动高亮，**预览内容自动跟随**（`followPreview()`——搜索弹窗 `moveActive()` 后 `if (app.floatingPreview) onPreviewKey()` 的同款模式）；`Alt+Enter` 随时可换目标；
+3. `Esc` 分级消费：预览开着 → 关预览 + 回焦过滤框（`app.closeFloatingPreview()` + `inputRef.focus()`）；预览已关 → 关面板。App.vue `onEscape` 的浮层顺序（预览先于补全/模式回退）与本组件内分级语义一致。
+
+改动集中两处：`QuickRefPicker.vue`（previewCurrent 加目录行守卫 / followPreview / Esc 分支）+ `EditorView.vue`（onQuickRefPreview 去掉关面板一行）。CDP 冒烟补 4 项断言全过（Alt+Enter 后面板开 + 预览开 / ↑ 换目标预览跟随 / Esc 关预览面板仍在且焦点回过滤框 / 再按 Esc 关面板心流保留）。
+
+### 9.5 实施后用户反馈修订二（2026-09-29 同日，真机）
+
+上轮修订真机暴露两个问题，本轮修复：
+
+1. **悬浮预览被面板遮罩压住**：置顶类 `above-search`（z 3000）原本只挂搜索弹窗可见时——扩展条件为 `searchStore.visible || app.quickRefPickerOpen`（确认框让位 `!confirmOverPreview` 逻辑不变），面板动线与搜索动线同享置顶；
+2. **一次 Esc 把预览和面板都关了**：组件 window 级 Esc 分级只关了预览，但 **EP el-dialog 的 close-on-press-escape 在 dialog 元素上监听真实按键**，同一击把面板也关了——修法 = prop 动态化 `:close-on-press-escape="!app.floatingPreview"`（预览开着禁用内建关闭，关后恢复；与组件显式关闭幂等）；
+3. 顺带让位修正：EditorView 的预览滚动 ↑/↓ 分支在面板打开时让位（面板的 ↑/↓ = 移动选中 + 预览跟随，不应同时滚动预览）——滚动条件补 `|| app.quickRefPickerOpen`。
+
+**验证教训（合成事件的盲区）**：上一轮 CDP 冒烟 5/5 全过但真机仍双关闭——合成 `window.dispatchEvent(KeyboardEvent)` 到不了 EP 挂在 dialog 元素 / document 层的内建监听，**「组件自己的 window 处理器正确」不等于「真实按键路径正确」**；凡与 EP 内建按键行为共存的分级逻辑，须逐项核对内建监听是否也在消费同一按键（本轮用 prop 动态化从根上排除）。CDP 复验 5/5（z 序 3000 > 2011 / Esc 分级 / 心流保留）。
+
+### 9.6 实施后用户反馈修订三（2026-09-29 同日，真机）
+
+**预览态 Alt+Enter = 插入引用**（用户定案：让「插入引用」动作跨入口一致）：预览未开时 Alt+Enter 仍是预览（面板保持、跟随）；**预览开着再按 = 把当前选中笔记插入为引用**——与 `[[` 补全预览态的「再按落引用」（FR-2.9.10）、搜索弹窗的预览动线同一习惯。实现为 Alt+Enter 分支的一行分流：`app.floatingPreview ? insertCurrent() : previewCurrent()`（insert 走既有 onQuickRefInsert → 面板关闭 + 三路引入语义）。CDP 复验：预览态再按 Alt+Enter 后引用插入、预览与面板均关、心流保留。
+

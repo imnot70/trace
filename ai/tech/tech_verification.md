@@ -12,6 +12,8 @@
 6. **新起实例前必须 `pkill -9 -f "[e]lectron"` 并确认无残留**（单实例锁让新实例静默退出）；测试工作区固定 `/tmp/site-ws`，userData 固定 `$TMPDIR/trace-test-userdata` 可预写 settings.json。（HANDOFF）
 7. **冷启动需要等就绪**：tree store 与搜索索引就绪前断言会假红。
 8. **CDP 探针里的 `view.state.doc` 引用会过期**：每次 dispatch（尤其删除类事务）都产生**新 EditorState**，eval 开头捕获的 `doc` 常量此后读出的长度 / 行号恒为事务前——`dj` 删行一度被误判为「零删除」。断言一律经 `view.state.doc` 现取；同因，跨多次 dispatch 的对比要每次重新解析 selection。（[vim-mode 设计 §7.3](../requirements/2026-09-26_vim-mode/vim-mode_design.md)）
+9. **合成键盘事件测不到 EP 组件的内建按键监听——「自己的 window 处理器正确」≠「真实按键路径正确」**：`window.dispatchEvent(new KeyboardEvent(...))` 只到达 window 层监听器；Element Plus dialog 的 close-on-press-escape 挂在 dialog / document 层收**真实**按键。快速引用面板的 Esc 分级在自家处理器里正确关闭了预览（合成冒烟 5/5），真机却「预览 + 面板一起关」——EP 内建监听在同一击上把面板也关了。修法 = 与内建行为共存的分级逻辑从 prop 层面动态排除（`close-on-press-escape` 随状态禁用），而非依赖事件顺序。凡与 EP 内建按键行为共存的分级，逐项核对内建监听是否也在消费同一按键。（[flow-quick-ref-picker 设计 §9.5](../requirements/2026-09-29_flow-quick-ref-picker/flow-quick-ref-picker_design.md)）
+10. **CDP 后台窗口的 rAF 节流会挂起 Vue `<Transition>`**：enter-from 类不摘除 → `@transitionend` 永不发生、依赖「动画完成后」的钩子（如 el-dialog `@opened`）不触发、关闭动画停留 `leave-active`（overlay display 恒 block）——冒烟若断言焦点 / overlay 显隐会假红。修法：脚本开头 `Page.bringToFront` 前台化；判「弹窗关闭」优先读 store 状态而非 overlay 计算样式（后者受动画影响）。（[flow-quick-ref-picker 设计 §9.4](../requirements/2026-09-29_flow-quick-ref-picker/flow-quick-ref-picker_design.md)）
 
 ## 测试策略（2026-09-25 评审结论）
 

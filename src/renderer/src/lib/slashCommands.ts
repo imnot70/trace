@@ -15,6 +15,8 @@ export type SlashAction =
   | { kind: 'snippet'; before: string; after: string; placeholder: string }
   /** 插入纯文本片段（日期） */
   | { kind: 'text'; text: () => string }
+  /** 打开快速引用面板（FR-2.9.12）：目录树（含草稿）选笔记插入 [[引用]]，同 Alt+I */
+  | { kind: 'insertRef' }
 
 export interface SlashCommandDef {
   /** 命令名（含 /），过滤与展示都用它 */
@@ -50,7 +52,8 @@ export const SLASH_COMMANDS: SlashCommandDef[] = [
   { label: '/公式块', aliases: ['mathblock', 'formula-block'], detail: '插入公式块（同工具栏 ∫）', action: { kind: 'snippet', before: '\n$$\n', after: '\n$$\n', placeholder: '公式' } },
   { label: '/链接', aliases: ['link'], detail: '插入链接（同工具栏 🔗）', action: { kind: 'snippet', before: '[', after: '](https://)', placeholder: '链接文字' } },
   { label: '/分割线', aliases: ['hr', 'divider'], detail: '插入水平分割线 ---', action: { kind: 'snippet', before: '\n---\n', after: '', placeholder: '' } },
-  { label: '/日期', aliases: ['date'], detail: '插入今天日期（YYYY-MM-DD）', action: { kind: 'text', text: todayText } }
+  { label: '/日期', aliases: ['date'], detail: '插入今天日期（YYYY-MM-DD）', action: { kind: 'text', text: todayText } },
+  { label: '/引入', aliases: ['ref', 'insert'], detail: '打开引用面板：从目录树（含草稿）选笔记插入 [[引用]]（同 Alt+I）', action: { kind: 'insertRef' } }
 ]
 
 /**

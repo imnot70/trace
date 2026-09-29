@@ -22,6 +22,9 @@ export interface PromoteOptions {
   writeNote: (vault: string, relPath: string, content: string) => { ok: boolean; error?: string; hash?: string }
   /** 目标库附件目录内已存在的文件名（重名规避） */
   existingAttachments: (attachAbs: string) => string[]
+  /** true = 复制模式（FR-2.9.12 引用草稿）：原草稿与其 assets 保留不删；
+   *  缺省 false = 转正语义（草稿被消费，Ctrl+S 转正流程） */
+  keepDraft?: boolean
 }
 
 export interface PromoteResult {
@@ -60,7 +63,8 @@ export function promoteDraft(
   fs.mkdirSync(attachAbs, { recursive: true })
   const existing = new Set(opts.existingAttachments(attachAbs))
 
-  // 图片资产随迁：scratch/assets/x → 目标库附件目录（重名追加序号），引用路径同步改写
+  // 图片资产随迁：scratch/assets/x → 目标库附件目录（重名追加序号），引用路径同步改写。
+  // keepDraft（复制模式）不移除 scratch 侧资产——草稿继续可用
   for (const ref of extractAssetRefs(content)) {
     const base = path.posix.basename(ref)
     const base64 = scratch.assetBase64(ref)
@@ -75,13 +79,13 @@ export function promoteDraft(
     fs.writeFileSync(path.join(attachAbs, targetName), Buffer.from(base64, 'base64'))
     const newRef = relReference(created.path, `${attach.dir}/${targetName}`)
     content = content.replaceAll(ref, newRef)
-    scratch.removeAsset(ref)
+    if (!opts.keepDraft) scratch.removeAsset(ref)
   }
 
   const written = opts.writeNote(opts.vault, created.path, content)
   if (!written.ok) return { ok: false, error: written.error }
 
-  scratch.remove(opts.name)
+  if (!opts.keepDraft) scratch.remove(opts.name)
   return { ok: true, path: created.path }
 }
 

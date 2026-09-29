@@ -247,13 +247,24 @@ export function registerIpc(deps: IpcDeps): void {
     if (result.ok) deps.search.removeFileIndex(SCRATCH_VAULT, name)
     return result
   })
-  // 转正：草稿移入正式笔记库（图片资产随迁 + 引用改写），并移除草稿搜索索引
-  handle('scratch:promote', (name: string, vault: string, dir: string, newName: string) => {
+  // 转正：草稿移入正式笔记库（图片资产随迁 + 引用改写），并移除草稿搜索索引。
+  // keepDraft=true（FR-2.9.12 引用草稿）= 复制模式：原草稿与其 assets 保留，不删索引
+  handle('scratch:promote', (name: string, vault: string, dir: string, newName: string, keepDraft = false) => {
+    // 目标目录逐段创建（FR-2.9.12 引用草稿落「跨库引用/草稿」等嵌套目录，首次不存在；
+    // 与 noteCopy.ensureTargetDir 同口径：已存在容错，防路径逃逸交给 createDir 校验）
+    const segs = dir.split('/').filter(Boolean)
+    let parent = ''
+    for (const seg of segs) {
+      const r = deps.fsTree.createDir(vault, parent, seg)
+      if (!r.ok && !r.error?.includes('已存在')) return { ok: false, error: r.error ?? '创建目录失败' }
+      parent = parent ? `${parent}/${seg}` : seg
+    }
     const result = promoteDraft(deps.scratch, {
       name,
       vault,
       dir,
       newName,
+      keepDraft,
       attachmentsDir: deps.settings.get().attachmentsDir,
       vaultPath: deps.vaults.vaultPath(vault),
       createNote: (v, d, n) => deps.fsTree.createNote(v, d, n),

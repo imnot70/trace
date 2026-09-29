@@ -194,6 +194,12 @@ function onGlobalKeydown(e: KeyboardEvent): void {
       // 的库范围下拉键），故取空闲的 Alt+M（Mode）；与 Alt+T 同守卫（编辑视图内生效）
       e.preventDefault()
       if (app.view.name === 'editor' && editor.current) app.toggleVim()
+    } else if (e.key.toLowerCase() === 'i') {
+      // 快速引用面板开关（FR-2.9.12）：目录树（含草稿）选笔记插入 [[引用]]，不切走当前
+      // 笔记。与 Alt+T / Alt+M 同守卫（编辑视图内生效）；心流 / 专注均可用；面板开着时
+      // 再按关闭（el-dialog 模态不拦全局 keydown，焦点在面板输入框也照常到达）
+      e.preventDefault()
+      if (app.view.name === 'editor' && editor.current) app.toggleQuickRefPicker()
     }
     return
   }
