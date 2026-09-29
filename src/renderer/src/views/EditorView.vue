@@ -8,6 +8,7 @@ import { useSearchStore } from '../stores/search'
 import { useDraftStore, scratchVaultLabel } from '../stores/draft'
 import { useNoteActions } from '../composables/actions'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
+import QuickRefPicker from '../components/QuickRefPicker.vue'
 import { formatVimModeLabel } from '../lib/vimMode'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
 import TipButton from '../components/TipButton.vue'
@@ -51,21 +52,51 @@ function onEditorSave(): void {
   void editor.flushSave().then(() => ElMessage.success('已保存'))
 }
 
-/** 把正在预览的笔记落成引用（FR-2.9.11）：库内目标直接插入；跨库目标先确认 →
- *  复制到当前库（图片随迁 + 引用改写，重名自动加后缀）→ 插入指向副本的引用。
- *  编辑器内 Alt+Enter（经 insert-cross-vault 事件）与悬浮预览「插入引用」按钮共用此函数 */
+/** 把正在预览 / 面板选中的笔记落成引用（FR-2.9.11 / FR-2.9.12）：库内目标直接插入；
+ *  跨库目标先确认 → 复制到当前库（图片随迁 + 引用改写，重名自动加后缀）→ 插入指向
+ *  副本的引用。编辑器内 Alt+Enter（经 insert-cross-vault 事件）、悬浮预览「插入引用」
+ *  按钮、快速引用面板三条动线共用此函数 */
 async function insertPreviewTarget(target: { vault: string; path: string; name: string }): Promise<void> {
   const current = editor.current
   if (!current) return
-  // 草稿目标须先转正：草稿的归宿由 Ctrl+S 转正流程确定，不能被引用 / 复制走
-  if (target.vault === SCRATCH_VAULT) {
-    ElMessage.warning('「草稿」中的笔记尚未转正，请先在草稿上按 Ctrl+S 保存为正式笔记后再引用')
-    return
-  }
 
   let insertRel = target.path.replace(/\.md$/i, '')
 
-  if (target.vault !== current.vault && current.vault !== SCRATCH_VAULT) {
+  if (target.vault === SCRATCH_VAULT) {
+    if (current.vault === SCRATCH_VAULT) {
+      // 草稿内引用草稿（FR-2.3.9 D7 例外）：直接落引用文本，转正时再定归宿
+      const inserted = editorRef.value?.insertReferenceFromCompletion()
+      if (!inserted) editorRef.value?.insertReferenceAtPath(insertRel)
+      app.closeFloatingPreview()
+      editorRef.value?.focus()
+      return
+    }
+    // 正式笔记引用草稿（FR-2.9.12 D3）：确认后把草稿「复制」为当前库正式笔记
+    // （keepDraft——原草稿保留，与跨库复制同语义），引用指向正式笔记。草稿不在
+    // 双链索引，直接 [[草稿名]] 必然断链；目录沿用「跨库引用」体系（草稿子目录）
+    const draftCopyDir = `${app.settings.crossVaultCopyDir?.trim() || '跨库引用'}/草稿`
+    if (!app.settings.skipCrossVaultCopyConfirm) {
+      confirmOverPreview.value = true
+      try {
+        await ElMessageBox.confirm(
+          `草稿尚未转正：将先把草稿复制为当前库「${draftCopyDir}」目录下的正式笔记（原草稿保留，两者后续互不同步），并插入指向正式笔记的引用。确定要引用该草稿吗？`,
+          '引用草稿',
+          { type: 'warning', confirmButtonText: '复制并引用', cancelButtonText: '取消' }
+        )
+      } catch {
+        return // 用户取消
+      } finally {
+        confirmOverPreview.value = false
+      }
+    }
+    const promoted = await window.trace.scratchPromote(target.path, current.vault, draftCopyDir, target.name, true)
+    if (!promoted.ok || !promoted.path) {
+      ElMessage.error(promoted.error ?? '草稿复制失败')
+      return
+    }
+    insertRel = promoted.path.replace(/\.md$/i, '')
+    ElMessage.success(`已复制草稿「${target.name}」为正式笔记`)
+  } else if (target.vault !== current.vault && current.vault !== SCRATCH_VAULT) {
     // 跨库「强制引用」= 把笔记复制进当前库的专用目录（双链只在库内解析，直接插引用
     // 必然断链）。目录 = 设置「跨库引用目录」/ 源库名（按来源库分子目录：同名来源文件
     // 互不干扰、来源可辨）；重复引入相同内容自动复用已有副本（noteCopy 服务去重）。
@@ -96,11 +127,24 @@ async function insertPreviewTarget(target: { vault: string; path: string; name: 
     ElMessage.success(copied.reused ? `已复用现有副本「${copied.name ?? target.name}」` : `已复制「${copied.name ?? target.name}」到「${copyDir}」目录`)
   }
 
-  // 当前是草稿（FR-2.3.9 D7 例外）：不复制，直接落引用文本，转正时再定归宿
+  // 当前是草稿（FR-2.3.9 D7 例外）：不复制，直接落引用文本，转正时再定归宿。
+  // 补全活动态优先（括号语义由其处理）；面板 / 兜底走括号感知的按路径插入
   const inserted = editorRef.value?.insertReferenceFromCompletion()
-  if (!inserted) editorRef.value?.insertText(`[[${insertRel}]]`)
+  if (!inserted) editorRef.value?.insertReferenceAtPath(insertRel)
   app.closeFloatingPreview()
   editorRef.value?.focus()
+}
+
+/** 快速引用面板（FR-2.9.12）：引入（三路语义收敛在 insertPreviewTarget）与预览。
+ *  面板先关再动作——引入期间确认框 / 预览不再叠着面板 */
+function onQuickRefInsert(target: { vault: string; path: string; name: string }): void {
+  app.closeQuickRefPicker()
+  void insertPreviewTarget(target)
+}
+
+function onQuickRefPreview(target: { vault: string; path: string; name: string }): void {
+  // 面板保持打开（FR-2.9.10 ③ 同款语义）：继续换目标预览 / 引入，Esc 先关预览回焦面板
+  app.requestNotePreview(target.vault, target.path, target.name)
 }
 
 async function onImage(fileName: string, base64: string): Promise<void> {
@@ -417,14 +461,16 @@ function onKeydown(e: KeyboardEvent): void {
       return
     }
     // 逐屏滚动：↑/↓。让位规则：编辑器聚焦（光标移动）、「其它输入框」聚焦且搜索框未打开
-    // （正常输入导航）。搜索框打开且预览也在时 ↑/↓ 归预览——此时选结果走 Alt+↑/↓（搜索弹窗处理）
+    // （正常输入导航）、快速引用面板打开（面板的 ↑/↓ = 移动选中且预览内容跟随，FR-2.9.12）。
+    // 搜索框打开且预览也在时 ↑/↓ 归预览——此时选结果走 Alt+↑/↓（搜索弹窗处理）
     if (
       !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey &&
       (e.key === 'ArrowDown' || e.key === 'ArrowUp') &&
       !focusInEditor &&
       !(searchStore.visible
         ? false
-        : !!document.activeElement?.closest?.('input, textarea, [contenteditable="true"]'))
+        : (!!document.activeElement?.closest?.('input, textarea, [contenteditable="true"]') ||
+          app.quickRefPickerOpen))
     ) {
       e.preventDefault()
       el.scrollBy({ top: e.key === 'ArrowDown' ? 72 : -72 })
@@ -975,6 +1021,16 @@ onBeforeUnmount(() => {
     <!-- 表格尺寸输入浮层（FR-2.4.20）：跟随光标，实时回显将插入的行列数 -->
     <TablePromptHud />
 
+    <!-- 快速引用面板（FR-2.9.12）：Alt+I / /引入 呼出，目录树（含草稿分组）选笔记插入引用 -->
+    <QuickRefPicker
+      :visible="app.quickRefPickerOpen"
+      :vault="editor.current?.vault ?? ''"
+      :current-path="editor.current?.path ?? ''"
+      @close="app.closeQuickRefPicker(); editorRef?.focus()"
+      @insert="onQuickRefInsert"
+      @preview="onQuickRefPreview"
+    />
+
     <!-- 模式切换提示：屏幕居中大字号（顶栏隐藏时切换所见即所得，右下角图标被动高亮不够直观）。
          Teleport 到 body：fixed 居中不受编辑卡 overflow / 祖先 transform 影响；不拦截鼠标 -->
     <Teleport to="body">
@@ -1052,7 +1108,7 @@ onBeforeUnmount(() => {
       v-if="app.floatingPreview"
       ref="floatPreviewEl"
       class="floating-preview"
-      :class="{ 'cross-vault': previewCrossVault, 'above-search': searchStore.visible && !confirmOverPreview }"
+      :class="{ 'cross-vault': previewCrossVault, 'above-search': (searchStore.visible || app.quickRefPickerOpen) && !confirmOverPreview }"
       tabindex="-1"
     >
         <div class="floating-preview-header">
@@ -1227,10 +1283,10 @@ onBeforeUnmount(() => {
   outline: none;
 }
 
-/* 搜索框打开期间的置顶态（FR-2.9.10 ③ 二次变更）：悬浮预览要盖在搜索弹窗的模态遮罩
-   之上正常显示（EP 弹窗 z 序从 2000 起按次递增，3000 稳定高于任何会话内的弹窗计数，
-   与 mode-toast 同级、DOM 靠后故提示条仍在其上）。跨库引用确认框打开期间临时让位
-   （above-search 类摘除），否则确认框会被置顶预览盖住 */
+/* 搜索框 / 快速引用面板打开期间的置顶态（FR-2.9.10 ③ 二次变更 + FR-2.9.12）：悬浮预览要
+   盖在模态遮罩之上正常显示（EP 弹窗 z 序从 2000 起按次递增，3000 稳定高于任何会话内的
+   弹窗计数，与 mode-toast 同级、DOM 靠后故提示条仍在其上）。跨库引用确认框打开期间临时
+   让位（above-search 类摘除），否则确认框会被置顶预览盖住 */
 .floating-preview.above-search {
   z-index: 3000;
 }

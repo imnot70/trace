@@ -43,8 +43,8 @@ const api: TraceApi = {
   scratchStatus: () => ipcRenderer.invoke('scratch:status'),
   scratchCreate: () => ipcRenderer.invoke('scratch:create'),
   scratchDelete: (name: string) => ipcRenderer.invoke('scratch:delete', name),
-  scratchPromote: (name: string, vault: string, dir: string, newName: string) =>
-    ipcRenderer.invoke('scratch:promote', name, vault, dir, newName),
+  scratchPromote: (name: string, vault: string, dir: string, newName: string, keepDraft?: boolean) =>
+    ipcRenderer.invoke('scratch:promote', name, vault, dir, newName, keepDraft),
 
   listFavorites: () => ipcRenderer.invoke('favorite:list'),
   addFavorite: (vault, path, name) => ipcRenderer.invoke('favorite:add', vault, path, name),

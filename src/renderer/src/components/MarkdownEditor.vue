@@ -58,6 +58,7 @@ import { useAppStore } from '../stores/app'
 import { SCRATCH_VAULT } from '@shared/types'
 import type { PromptKey } from '../lib/tablePrompt'
 import { flatCompletionOptions, type NoteTreeNode } from '../lib/noteCompletion'
+import { referenceInsertSpec } from '../lib/quickRef'
 import { filterSlashCommands, type SlashAction } from '../lib/slashCommands'
 import { invisiblePasteExtension, buildCleanInvisibleTransaction } from '../lib/invisibleEdits'
 import { collectDocInvisible } from '../lib/invisibleChars'
@@ -211,6 +212,29 @@ function insertReferenceFromCompletion(): boolean {
   return true
 }
 
+/**
+ * 从快速引用面板落引用（FR-2.9.12）：按路径插入 `[[path]]`，两态括号一致性——
+ * 光标前有未闭合 `[[` 时从 `[[` 起替换并吸收光标后紧邻 `]]`（与上方补全落引用同款
+ * 实测收敛行为），否则光标处直接插入。区间计算抽 lib/quickRef.referenceInsertSpec
+ * （纯函数可单测）；跨库 / 草稿路径在 EditorView 侧解析为库内路径后也走本函数。
+ */
+function insertReferenceAtPath(path: string): void {
+  if (!view) return
+  const cursor = view.state.selection.main.head
+  const line = view.state.doc.lineAt(cursor)
+  const spec = referenceInsertSpec(
+    line.text.slice(0, cursor - line.from),
+    line.text.slice(cursor - line.from),
+    path
+  )
+  view.dispatch({
+    changes: { from: line.from + spec.start, to: line.from + spec.end, insert: spec.insert },
+    selection: { anchor: line.from + spec.start + spec.insert.length },
+    userEvent: 'input.quickref'
+  })
+  view.focus()
+}
+
 /** 该事务是否为「插入换行」的用户输入（排除粘贴：粘贴多行不应发声）。
  *  input.trace-vim（vim normal 模式的结构编辑 o/O/p 等，见 vimMode.ts）一并排除——
  *  回车音效语义是打字流中的回车（insert 模式 Enter 走原生 input.type 不受影响） */
@@ -352,6 +376,10 @@ function runSlashAction(action: SlashAction): void {
       break
     case 'cleanInvisible':
       void cleanInvisibleChars()
+      break
+    case 'insertRef':
+      // 快速引用面板（FR-2.9.12）：不聚焦编辑器——面板打开后焦点归过滤输入框
+      useAppStore().openQuickRefPicker()
       break
   }
 }
@@ -1292,6 +1320,8 @@ function setHeadingLevel(level: HeadingLevel): void {
 defineExpose({
   insertText,
   insertReferenceFromCompletion,
+  /** 快速引用面板落引用（FR-2.9.12）：按路径插入 [[path]]，两态括号一致性 */
+  insertReferenceAtPath,
   firstVisibleLine,
   scrollToLine,
   insertSnippet,

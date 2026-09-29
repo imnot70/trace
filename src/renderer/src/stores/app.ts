@@ -120,6 +120,9 @@ export const useAppStore = defineStore('app', {
     modeToastTimer: null as ReturnType<typeof setTimeout> | null,
     /** 跨组件的悬浮预览请求（FR-2.9.10：搜索框 Alt+Enter → EditorView 消费）；null = 无待处理 */
     pendingNotePreview: null as { vault: string; path: string; name: string } | null,
+    /** 快速引用面板（FR-2.9.12）：Alt+I / /引入 呼出，目录树（含草稿）选笔记插入 [[引用]]。
+     *  挂 EditorView（引入管线强依赖编辑器上下文）；el-dialog 模态走 hasModalOpen 让位链 */
+    quickRefPickerOpen: false,
     /** 新版本检测（FR-2.10.6）：null = 本次会话尚未检查成功；available=true 时顶栏 / 设置展示入口 */
     updateInfo: null as import('@shared/updateCheck').UpdateCheckResult | null,
     updateChecking: false
@@ -243,6 +246,16 @@ export const useAppStore = defineStore('app', {
     /** 请求以悬浮预览查看一篇笔记（搜索框等外部组件发起，EditorView 消费后清空） */
     requestNotePreview(vault: string, path: string, name: string): void {
       this.pendingNotePreview = { vault, path, name }
+    },
+    /** 快速引用面板开关（FR-2.9.12）：Alt+I 切换 / 关闭后编辑器回焦由 EditorView 负责 */
+    toggleQuickRefPicker(): void {
+      this.quickRefPickerOpen = !this.quickRefPickerOpen
+    },
+    openQuickRefPicker(): void {
+      this.quickRefPickerOpen = true
+    },
+    closeQuickRefPicker(): void {
+      this.quickRefPickerOpen = false
     },
     /** 切换打字机模式（Alt+T，2026-09-28 统一三态）：关 → 高位 → 低位 循环，心流内外一致。
      *  心流内从会话态（进入时推导）出发循环，非心流从设置值出发；切换经 updateSettings

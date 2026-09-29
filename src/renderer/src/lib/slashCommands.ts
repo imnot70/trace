@@ -15,8 +15,10 @@ export type SlashAction =
   | { kind: 'snippet'; before: string; after: string; placeholder: string }
   /** 插入纯文本片段（日期） */
   | { kind: 'text'; text: () => string }
-  /** 清理本文不可见字符（FR-2.4.25）：扫描 → 确认框 → 单事务替换（与顶栏按钮同一函数） */
+  /** 清理本文不可见字符（FR-2.4.25）：扫描 → 确认框 → 单事务替换（与工具栏橡皮刷同一函数） */
   | { kind: 'cleanInvisible' }
+  /** 打开快速引用面板（FR-2.9.12）：目录树（含草稿）选笔记插入 [[引用]]，同 Alt+I */
+  | { kind: 'insertRef' }
 
 export interface SlashCommandDef {
   /** 命令名（含 /），过滤与展示都用它 */
@@ -53,7 +55,8 @@ export const SLASH_COMMANDS: SlashCommandDef[] = [
   { label: '/链接', aliases: ['link'], detail: '插入链接（同工具栏 🔗）', action: { kind: 'snippet', before: '[', after: '](https://)', placeholder: '链接文字' } },
   { label: '/分割线', aliases: ['hr', 'divider'], detail: '插入水平分割线 ---', action: { kind: 'snippet', before: '\n---\n', after: '', placeholder: '' } },
   { label: '/日期', aliases: ['date'], detail: '插入今天日期（YYYY-MM-DD）', action: { kind: 'text', text: todayText } },
-  { label: '/清理字符', aliases: ['clean', 'invisible'], detail: '清理本文不可见字符（NBSP→空格、零宽→删除，先确认）', action: { kind: 'cleanInvisible' } }
+  { label: '/清理字符', aliases: ['clean', 'invisible'], detail: '清理本文不可见字符（NBSP→空格、零宽→删除，先确认）', action: { kind: 'cleanInvisible' } },
+  { label: '/引入', aliases: ['ref', 'insert'], detail: '打开引用面板：从目录树（含草稿）选笔记插入 [[引用]]（同 Alt+I）', action: { kind: 'insertRef' } }
 ]
 
 /**

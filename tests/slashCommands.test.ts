@@ -50,4 +50,12 @@ describe('斜杠命令过滤', () => {
     expect(filterSlashCommands('invisible').map((c) => c.label)).toEqual(['/清理字符'])
     expect(filterSlashCommands('清理').map((c) => c.label)).toEqual(['/清理字符'])
   })
+
+  it('/引入 在册（FR-2.9.12）：别名 ref / insert 可命中，动作为打开快速引用面板', () => {
+    const cmd = SLASH_COMMANDS.find((c) => c.label === '/引入')!
+    expect(cmd.action.kind).toBe('insertRef')
+    expect(filterSlashCommands('ref').map((c) => c.label)).toContain('/引入')
+    expect(filterSlashCommands('insert').map((c) => c.label)).toEqual(['/引入'])
+    expect(filterSlashCommands('引入').map((c) => c.label)).toEqual(['/引入'])
+  })
 })
