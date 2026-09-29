@@ -17,7 +17,7 @@
 | 决策点 | 结论 |
 | --- | --- |
 | **Esc** | **浮层优先、心流退出让位**：浮层类（浮层侧栏 / 悬浮预览 / 各弹窗 / `[[` 补全 / 查找面板）的 Esc 仍由应用级分级链先消费（行为不变）；无浮层且编辑器聚焦时 Esc 让位 vim 返回 normal；**退出心流改走 Alt+W / 顶栏咖啡杯**。焦点不在编辑器（悬浮预览 / 工具栏按钮等）或 vim 未开启时，Esc 行为完全不变。 |
-| **Ctrl 系** | **应用优先、vim 保留空闲键**：卸载 vim 的 `<C-f>`（翻页）、`<C-b>`（翻页）、`<C-e>`（下滚一行）、`<C-i>`（跳转前进）、`<C-n>`（补全下一项）、`<C-t>`（缩进标签）——对应应用的 Ctrl+F 查找 / Ctrl+B 加粗 / Ctrl+I 斜体 / Ctrl+E 编辑形态 / Ctrl+N 新建 / Ctrl+T 表格。vim 保留应用未占用的键：`<C-d>` / `<C-u>` 半页滚动、`<C-y>` 上滚一行、`<C-o>` 跳回与 insert 临时 normal、`<C-r>` 重做、`<C-v>` 块可视、`<C-w>` 删词（insert）、`<C-a>` / `<C-x>` 数字自增减（应用无菜单加速键，Ctrl+W 无占用）。Alt 系 vim 不绑定，无冲突。 |
+| **Ctrl 系** | **应用优先、vim 保留空闲键**：卸载 vim 的 `<C-f>`（翻页）、`<C-b>`（翻页）、`<C-e>`（下滚一行）、`<C-i>`（跳转前进）、`<C-n>`（补全下一项）、`<C-t>`（缩进标签）——对应应用的 Ctrl+F 查找 / Ctrl+B 加粗 / Ctrl+I 斜体 / Ctrl+E 编辑形态 / Ctrl+N 新建 / Ctrl+T 表格。vim 保留应用未占用的键：`<C-d>` / `<C-u>` 半页滚动、`<C-y>` 上滚一行、`<C-o>` 跳回与 insert 临时 normal、`<C-r>` 重做、`<C-v>` 块可视、`<C-w>` 删词（insert）、`<C-a>` / `<C-x>` 数字自增减（应用无菜单加速键，Ctrl+W 无占用）。Alt 系 vim 不绑定，无冲突。**2026-09-29 用户反馈**：`<C-v>` 与系统粘贴冲突（最初拍板遗漏）——待办 #13 待拍板修法，见 [index 待办清单](../index.md)。 |
 | **模式指示** | **工具栏右端小徽标**：等宽字体胶囊（NORMAL / INSERT / VISUAL / V-LINE / V-BLOCK），配色按模式区分（normal 中性 / insert accent 描边 / visual accent 底）；心流 / 专注（顶栏隐藏）下靠光标形状区分，不占状态区。 |
 | **相对行号** | **首发不做**，按真机反馈再议（行号槽自绘，后续加设置项改动可控）。 |
 | **Ctrl+[ 退出 insert**（2026-09-28 用户反馈补） | 标准 vim 的 Esc 等价键。包内 defaultKeymap 虽有 `<C-[>` → `<Esc>` 映射，但被 CM 基础装配（traceSetup 的 defaultKeymap）自带的 `{ key: "Mod-[", run: indentLess }` 在 keymap 层**先命中即停**，形同虚设。修法：vimCompartment 内随 vim() 挂 `Prec.high` 的 `Ctrl-[` 绑定，run 转发 `Vim.handleKey(cm, '<Esc>')`；非 vim 用户（compartment 为空）保持 indentLess 不变。 |
