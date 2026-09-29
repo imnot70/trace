@@ -391,6 +391,10 @@ const searchStore = useSearchStore()
 
 function onKeydown(e: KeyboardEvent): void {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    // CM keymap 的 Mod-s 已走 onEditorSave（emit save）并 preventDefault——事件冒泡到此处时
+    // defaultPrevented 为 true 则跳过，否则双触发两次「已保存」toast（2026-09-28 用户反馈）。
+    // 本分支兜底的是「焦点在编辑器外」的场景（CM 收不到按键）
+    if (e.defaultPrevented) return
     e.preventDefault()
     // 必须走 onEditorSave 的草稿分流（G4）：草稿态 Ctrl+S 是「转正」，不能落常规保存
     onEditorSave()
