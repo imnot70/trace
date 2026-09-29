@@ -5,6 +5,7 @@
 - 跨平台：Windows / macOS / Linux（Ubuntu、Debian 系为主）
 - 数据完全本地：笔记就是 `.md` 文件，没有私有格式，随时可以用其他编辑器打开
 - 开源协议：MIT ｜ 当前版本：[v0.15.0](CHANGELOG.md)
+- 完整功能列表：[FEATURES.md](FEATURES.md)（按功能域分表）
 
 ![技术栈](https://img.shields.io/badge/Electron-44-47848f) ![Vue](https://img.shields.io/badge/Vue-3-42b883) ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6)
 
