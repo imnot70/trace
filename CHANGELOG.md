@@ -2,6 +2,12 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 修复
+
+- **Vim 模式下 Ctrl+V 系统粘贴失效**（2026-09-29 用户反馈，index 待办 #13）：键位冲突拍板时把 `<C-v>`（块可视）划给 vim 保留，遗漏了粘贴语义——开启 Vim 后 normal / visual 模式按 Ctrl+V 进入块可视、系统粘贴失效（insert 模式因包内无该键条目本就穿透，不受影响）。修复：`<C-v>` 加入让渡清单卸载（`VIM_YIELDED_KEYS` 六键 → 七键），全模式穿透给系统粘贴（粘贴归一化 FR-2.4.25 照常生效）；块可视由包内原生 `<C-q>` 承接（Windows gvim 惯例，应用无 Ctrl+Q 占用，零改绑代码）。快捷键速查表 Vim 分组同步（块可视入口改 Ctrl+Q、「应用键位保留」补 Ctrl+V）；单测 +2（Ctrl+V 不再进块可视 / Ctrl+Q 进块可视，vimMode 16 项全过，全仓 508 项）。
+
 ## [0.15.0] - 2026-09-29
 
 ### 新功能

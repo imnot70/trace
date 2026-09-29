@@ -6,13 +6,17 @@
  * 已映射的键会被拦截并 preventDefault，不会穿透给后续 handler。因此「应用键位优先」
  * 不能靠扩展顺序或 Prec 实现，必须用 Vim.unmap 从其全局键位表显式卸载冲突键。
  *
- * 键位冲突策略（2026-09-28 用户拍板）：
+ * 键位冲突策略（2026-09-28 用户拍板；2026-09-29 修订：Ctrl+V 让回系统粘贴）：
  * - 应用优先：vim 的 <C-f> <C-b> <C-e> <C-i> <C-n> <C-t>（翻页 / 翻页 / 下滚一行 /
  *   跳转前进 / 补全下一项 / 缩进标签）与应用的 Ctrl+F 查找、Ctrl+B 加粗、Ctrl+I 斜体、
  *   Ctrl+E 编辑形态、Ctrl+N 新建、Ctrl+T 表格相撞——一律卸载，让给应用键位；
- * - vim 保留应用未占用的键：<C-d>/<C-u> 半页滚动、<C-y> 上滚一行、<C-o> 跳回与
- *   insert 临时 normal、<C-r> 重做、<C-v> 块可视、<C-w> 删词（insert）、
- *   <C-a>/<C-x> 数字自增减（应用无菜单加速键，Ctrl+W 无占用）；
+ * - <C-v> 块可视同样卸载（2026-09-29 用户反馈修订，待办 #13）：粘贴是全肌肉记忆操作，
+ *   vim 接管后 normal / visual 模式下 Ctrl+V 变块可视、系统粘贴失效（insert 模式因包内
+ *   无该键条目本就穿透，不受影响）。块可视由包内原生的 <C-q>（Windows gvim 惯例，
+ *   应用无 Ctrl+Q 占用）承接，无需额外改绑；
+ * - vim 保留其余应用未占用的键：<C-d>/<C-u> 半页滚动、<C-y> 上滚一行、<C-o> 跳回与
+ *   insert 临时 normal、<C-r> 重做、<C-w> 删词（insert）、<C-a>/<C-x> 数字自增减
+ *   （应用无菜单加速键，Ctrl+W 无占用）；
  * - Alt 系 vim 不绑定，无冲突；
  * - Esc：浮层类（浮层侧栏 / 悬浮预览 / 各弹窗 / 补全 / 查找面板）仍由应用级分级链先消费；
  *   无浮层且编辑器聚焦时让位 vim 返回 normal——退出心流改用 Alt+W / 顶栏咖啡杯
@@ -61,8 +65,17 @@ function annotateVimDispatch(view: EditorView): void {
   }
 }
 
-/** 让渡给应用的 vim 键（CM5 键名记法；卸载后穿透给应用层键位） */
-export const VIM_YIELDED_KEYS = ['<C-f>', '<C-b>', '<C-e>', '<C-i>', '<C-n>', '<C-t>'] as const
+/** 让渡给应用的 vim 键（CM5 键名记法；卸载后穿透给应用层键位）。
+ *  <C-v> 是 2026-09-29 修订（待办 #13）：让回系统粘贴；块可视走包内原生 <C-q>。 */
+export const VIM_YIELDED_KEYS = [
+  '<C-f>',
+  '<C-b>',
+  '<C-e>',
+  '<C-i>',
+  '<C-n>',
+  '<C-t>',
+  '<C-v>'
+] as const
 
 /** 卸载是否已执行过（unmap 作用于包内全局键位表，与编辑器实例无关，做一次即可） */
 let yieldedKeysRemoved = false
@@ -83,7 +96,7 @@ let verticalMotionsPatched = false
  *
  * 只以 context: normal / visual 映射（operatorPending 不映射）：dj/dw 等操作符仍走
  * 包内默认 motion——操作符区间按远端截断（删过整块）是合理的删除语义。
- * 可视模式的选区扩展（含 V 行选 / Ctrl+V 块选）由包内 evalInput → updateCmSelection
+ * 可视模式的选区扩展（含 V 行选 / Ctrl+Q 块选）由包内 evalInput → updateCmSelection
  * 既有机制自理，motion 只需返回落点。
  */
 const traceMoveByLines: MotionFn = (cm, head, motionArgs, vim) => {

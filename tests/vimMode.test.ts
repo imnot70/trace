@@ -30,8 +30,16 @@ describe('Vim 模式：Esc 让位判定（FR-2.4.23 拍板：浮层优先、心�
 })
 
 describe('Vim 模式：键位冲突卸载（应用优先）', () => {
-  it('让渡键清单恰为与应用相撞的六键（CM5 记法）', () => {
-    expect(VIM_YIELDED_KEYS).toEqual(['<C-f>', '<C-b>', '<C-e>', '<C-i>', '<C-n>', '<C-t>'])
+  it('让渡键清单：应用相撞六键 + 系统粘贴 Ctrl+V（2026-09-29 待办 #13 修订）', () => {
+    expect(VIM_YIELDED_KEYS).toEqual([
+      '<C-f>',
+      '<C-b>',
+      '<C-e>',
+      '<C-i>',
+      '<C-n>',
+      '<C-t>',
+      '<C-v>'
+    ])
   })
 
   it('构建扩展幂等且不抛错（返回 CM 扩展）', () => {
@@ -47,6 +55,35 @@ describe('Vim 模式：键位冲突卸载（应用优先）', () => {
     for (const key of VIM_YIELDED_KEYS) {
       expect(unmap(key)).toBeFalsy()
     }
+  })
+})
+
+describe('Vim 模式：Ctrl+V 让渡系统粘贴（2026-09-29 待办 #13）', () => {
+  function createView(): EditorView {
+    return new EditorView({
+      state: EditorState.create({ doc: 'line one\nline two', extensions: [buildVimExtension()] }),
+      parent: document.body
+    })
+  }
+
+  it('normal 模式下 Ctrl+V 不再被 vim 拦截进块可视（穿透给系统粘贴）', () => {
+    const view = createView()
+    const cm = getVimCM(view)!
+    expect(cm.state.vim).toBeTruthy()
+    Vim.handleKey(cm, '<C-v>', 'user')
+    expect(cm.state.vim!.visualMode).toBeFalsy()
+    expect(cm.state.vim!.visualBlock).toBeFalsy()
+    expect(cm.state.vim!.insertMode).toBeFalsy()
+    view.destroy()
+  })
+
+  it('块可视由包内原生 Ctrl+Q 承接（Windows gvim 惯例；应用无 Ctrl+Q 占用）', () => {
+    const view = createView()
+    const cm = getVimCM(view)!
+    Vim.handleKey(cm, '<C-q>', 'user')
+    expect(cm.state.vim!.visualMode).toBe(true)
+    expect(cm.state.vim!.visualBlock).toBe(true)
+    view.destroy()
   })
 })
 

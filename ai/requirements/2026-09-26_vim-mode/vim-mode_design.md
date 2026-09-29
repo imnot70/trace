@@ -17,7 +17,7 @@
 | 决策点 | 结论 |
 | --- | --- |
 | **Esc** | **浮层优先、心流退出让位**：浮层类（浮层侧栏 / 悬浮预览 / 各弹窗 / `[[` 补全 / 查找面板）的 Esc 仍由应用级分级链先消费（行为不变）；无浮层且编辑器聚焦时 Esc 让位 vim 返回 normal；**退出心流改走 Alt+W / 顶栏咖啡杯**。焦点不在编辑器（悬浮预览 / 工具栏按钮等）或 vim 未开启时，Esc 行为完全不变。 |
-| **Ctrl 系** | **应用优先、vim 保留空闲键**：卸载 vim 的 `<C-f>`（翻页）、`<C-b>`（翻页）、`<C-e>`（下滚一行）、`<C-i>`（跳转前进）、`<C-n>`（补全下一项）、`<C-t>`（缩进标签）——对应应用的 Ctrl+F 查找 / Ctrl+B 加粗 / Ctrl+I 斜体 / Ctrl+E 编辑形态 / Ctrl+N 新建 / Ctrl+T 表格。vim 保留应用未占用的键：`<C-d>` / `<C-u>` 半页滚动、`<C-y>` 上滚一行、`<C-o>` 跳回与 insert 临时 normal、`<C-r>` 重做、`<C-v>` 块可视、`<C-w>` 删词（insert）、`<C-a>` / `<C-x>` 数字自增减（应用无菜单加速键，Ctrl+W 无占用）。Alt 系 vim 不绑定，无冲突。**2026-09-29 用户反馈**：`<C-v>` 与系统粘贴冲突（最初拍板遗漏）——待办 #13 待拍板修法，见 [index 待办清单](../index.md)。 |
+| **Ctrl 系** | **应用优先、vim 保留空闲键**：卸载 vim 的 `<C-f>`（翻页）、`<C-b>`（翻页）、`<C-e>`（下滚一行）、`<C-i>`（跳转前进）、`<C-n>`（补全下一项）、`<C-t>`（缩进标签）——对应应用的 Ctrl+F 查找 / Ctrl+B 加粗 / Ctrl+I 斜体 / Ctrl+E 编辑形态 / Ctrl+N 新建 / Ctrl+T 表格。vim 保留应用未占用的键：`<C-d>` / `<C-u>` 半页滚动、`<C-y>` 上滚一行、`<C-o>` 跳回与 insert 临时 normal、`<C-r>` 重做、`<C-w>` 删词（insert）、`<C-a>` / `<C-x>` 数字自增减（应用无菜单加速键，Ctrl+W 无占用）。Alt 系 vim 不绑定，无冲突。**`<C-v>` 修订（2026-09-29 用户反馈 → 当日拍板销账，index 待办 #13）**：最初拍板把 `<C-v>` 块可视划给 vim，遗漏了「粘贴是全肌肉记忆操作」——normal / visual 模式下 Ctrl+V 变块可视、系统粘贴失效（insert 模式因包内 `commandMatches` 只匹配 `context: 'insert'` 条目、`<C-v>` 无该条目，本就穿透给系统粘贴，不受影响）。修订：`<C-v>` 加入 `VIM_YIELDED_KEYS` 卸载（让渡清单六键 → 七键），块可视由包内原生 `<C-q>`（同一条 `toggleVisualMode blockwise` 映射，Windows gvim 惯例）承接，应用无 Ctrl+Q 占用，零改绑代码。 |
 | **模式指示** | **工具栏右端小徽标**：等宽字体胶囊（NORMAL / INSERT / VISUAL / V-LINE / V-BLOCK），配色按模式区分（normal 中性 / insert accent 描边 / visual accent 底）；心流 / 专注（顶栏隐藏）下靠光标形状区分，不占状态区。 |
 | **相对行号** | **首发不做**，按真机反馈再议（行号槽自绘，后续加设置项改动可控）。 |
 | **Ctrl+[ 退出 insert**（2026-09-28 用户反馈补） | 标准 vim 的 Esc 等价键。包内 defaultKeymap 虽有 `<C-[>` → `<Esc>` 映射，但被 CM 基础装配（traceSetup 的 defaultKeymap）自带的 `{ key: "Mod-[", run: indentLess }` 在 keymap 层**先命中即停**，形同虚设。修法：vimCompartment 内随 vim() 挂 `Prec.high` 的 `Ctrl-[` 绑定，run 转发 `Vim.handleKey(cm, '<Esc>')`；非 vim 用户（compartment 为空）保持 indentLess 不变。 |
@@ -28,7 +28,7 @@
 
 ### 3.1 模块：`src/renderer/src/lib/vimMode.ts`（新）
 
-- `VIM_YIELDED_KEYS`：六个让渡键常量（CM5 记法 `<C-f>` 等），单测锚定；
+- `VIM_YIELDED_KEYS`：让渡键常量（CM5 记法 `<C-f>` 等；2026-09-29 起七键——应用相撞六键 + 系统粘贴 `<C-v>`，见第 9 节），单测锚定；
 - `buildVimExtension()`：模块级幂等执行 `removeYieldedKeys()`（循环 `Vim.unmap(key)` 直到无匹配）后返回 `vim()` 扩展——卸载作用于包内全局键位表，与编辑器实例无关，且**永久让渡**（开关关闭不恢复这些映射：它们本来就与应用键位相撞）；
 - `readVimMode(view)` / `formatVimModeLabel(mode)`：经 CM5 适配层 `getCM(view).state.vim.mode` 读当前模式（`vim-mode-change` 事件维护）；徽标文案大写化、子模式缩写；
 - `shouldYieldEscapeToVim(vimEnabled, editorFocused)`：Esc 让位纯函数（单测覆盖三态）。
@@ -163,3 +163,21 @@ if (app.flowMode) {
 单测 +4（`tests/vimMode.test.ts`）：移动事务带 select 注解（修复前为 null）/ 编辑事务自带包内 input 注解（既有行为锚定）/ 无注解 spec 按形状归类且已注解的不改写 / vim 操作之外透传；`tests/typewriter.test.ts` 的 `isAnchorEvent` 清单纳入两个注解值。全仓 454 项全绿。
 
 **泛化教训**（已登记 tech_cm6-editor）：CM6 生态里绕过输入管线的第三方 dispatch（如各编辑器适配层）不带 userEvent——凡按 userEvent 分流的扩展（打字机锚定 / 回车音效 / 将来任何类似机制）集成此类组件时必须显式补注解，不能假定事务自带来源标记。
+
+## 9. Ctrl+V 让回系统粘贴（2026-09-29 用户反馈，当日修订销账，index 待办 #13）
+
+### 9.1 现象与根因
+
+- **现象**（用户真机反馈，2026-09-29）：开启 Vim 后 Ctrl+V 变块可视、系统粘贴失效——粘贴是全肌肉记忆操作，影响日常体验。
+- **根因**：2026-09-28 键位冲突拍板时把 `<C-v>`（块可视）划给 vim 保留，遗漏了粘贴语义。包内 `defaultKeymap` 的 `<C-v>` 条目无 `context`（normal / visual / operatorPending 皆命中），normal 与 visual 模式下按 Ctrl+V 被 vim 拦截进块可视。**insert 模式不受影响**：包内 `commandMatches` 对 insert context 只匹配 `context: 'insert'` 的条目，`<C-v>` 无此条目 → 未命中不带 `preventDefault` → 穿透给浏览器默认粘贴（待办 #13 里「需真机核实 insert 行为」由此在源码层面直接定案，无需真机）。
+
+### 9.2 修法（候选①，按 `VIM_YIELDED_KEYS` 先例）
+
+- `<C-v>` 加入 `VIM_YIELDED_KEYS`（六键 → 七键），随既有 `removeYieldedKeys()` 循环 `Vim.unmap` 卸载——卸载后所有模式穿透给系统粘贴（CM 的 paste 事件管线照常走，粘贴归一化 FR-2.4.25 同样生效）；
+- **块可视零改绑**：包内本就原生映射 `<C-q>` → `toggleVisualMode blockwise`（Windows gvim 惯例），应用侧无 Ctrl+Q 占用（全仓 grep 确认），天然承接；候选②（仅 normal 卸载、insert 保留）不成立——insert 模式本无映射可保留；
+- 快捷键速查表同步：Vim 分组块可视入口改 `Ctrl+Q`（注明 Ctrl+V 让给系统粘贴），「应用键位保留」条目补充 Ctrl+V；PRD FR-2.4.23 拍板记录修订。
+
+### 9.3 验证（单测，`tests/vimMode.test.ts` 16 项全过）
+
+- 让渡键清单七键锚定；卸载后再次 unmap 无匹配（`<C-v>` 含在内）；
+- 新增行为断言：unmap 后 normal 模式 `Vim.handleKey(cm, '<C-v>')` 不再进块可视（visualMode / visualBlock / insertMode 均保持否）；`<C-q>` 进入块可视（visualMode + visualBlock 为真）。

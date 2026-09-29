@@ -50,13 +50,13 @@ export const SHORTCUTS: ShortcutItem[] = [
   { keys: 'Ctrl + Shift + H', desc: '光标跳到文件开头（Ctrl+Home 同义）', group: '编辑器' },
   { keys: 'Ctrl + Shift + E', desc: '光标跳到文件末尾（Ctrl+End 同义）', group: '编辑器' },
   { keys: 'Esc / Ctrl+[（Vim 开启时）', desc: '编辑器聚焦且无浮层时归 Vim（返回 normal，退出心流模式用 Alt+W 或顶栏按钮）；悬浮预览 / 浮层侧栏 / 各弹窗的 Esc 行为不变', group: '编辑器' },
-  { keys: 'Vim 模式键位', desc: '设置开启后 normal / insert / visual 全套生效（工具栏右端显示当前模式）；Ctrl+F/B/E/I/N/T 仍归应用——全部 Vim 键位见「快捷键」分类的 Vim 分组', group: '编辑器' },
+  { keys: 'Vim 模式键位', desc: '设置开启后 normal / insert / visual 全套生效（工具栏右端显示当前模式）；Ctrl+F/B/E/I/N/T 仍归应用，Ctrl+V 让给系统粘贴——全部 Vim 键位见「快捷键」分类的 Vim 分组', group: '编辑器' },
   { keys: 'Ctrl + Z / Ctrl + Shift + Z', desc: '撤销 / 重做', group: '编辑器' },
   // Vim 分组（FR-2.4.23）：vim 模式下支持的普通键位速查（不含 :ex 命令——包内 ex 解释器未开放）。
-  // 应用让渡的六个 Ctrl 键已在上面「Vim 模式键位」条目说明
+  // 应用让渡的六个 Ctrl 键与系统粘贴 Ctrl+V 已在上面「Vim 模式键位」条目说明
   { keys: 'i / a / o / O', desc: '进入插入模式（光标前 / 后 / 下方新行 / 上方新行）', group: 'Vim' },
   { keys: 'Esc / Ctrl+[', desc: '返回普通模式；可视模式下退出选择', group: 'Vim' },
-  { keys: 'v / V / Ctrl+V', desc: '可视模式（字符选择 / 行选择 / 块选择）', group: 'Vim' },
+  { keys: 'v / V / Ctrl+Q', desc: '可视模式（字符选择 / 行选择 / 块选择；块选择用 Ctrl+Q——Windows gvim 惯例，Ctrl+V 让给系统粘贴）', group: 'Vim' },
   { keys: 'h j k l / w b e', desc: '按字符移动 / 按词前后移动（词首 / 词尾）', group: 'Vim' },
   { keys: '0 / ^ / $ / gg / G', desc: '行首 / 首个非空白字符 / 行尾 / 文件开头 / 文件末尾', group: 'Vim' },
   { keys: '{ / }', desc: '跳到上一段 / 下一段', group: 'Vim' },
@@ -72,7 +72,7 @@ export const SHORTCUTS: ShortcutItem[] = [
   { keys: 'Ctrl+E / Ctrl+Y', desc: '向下 / 向上滚动一行', group: 'Vim' },
   { keys: 'Ctrl+O', desc: '跳回上一个光标位置；插入模式下临时返回普通模式执行一步操作', group: 'Vim' },
   { keys: 'Ctrl+A / Ctrl+X', desc: '光标处的数字加一 / 减一', group: 'Vim' },
-  { keys: '应用键位保留', desc: 'Ctrl+F 查找 / Ctrl+B 加粗 / Ctrl+I 斜体 / Ctrl+E 编辑形态 / Ctrl+N 新建 / Ctrl+T 表格仍归应用，Vim 不占用', group: 'Vim' }
+  { keys: '应用键位保留', desc: 'Ctrl+F 查找 / Ctrl+B 加粗 / Ctrl+I 斜体 / Ctrl+E 编辑形态 / Ctrl+N 新建 / Ctrl+T 表格仍归应用，Vim 不占用；Ctrl+V 让给系统粘贴（全模式可用）', group: 'Vim' }
 ]
 
 /** 按分组归类（设置页按组渲染） */
