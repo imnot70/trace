@@ -81,6 +81,25 @@ describe('GFM 任务列表', () => {
     const html = md.render('正文中的 [x] 不是任务项\n')
     expect(html).not.toContain('task-item-checkbox')
   })
+
+  it('NBSP 变体容忍（FR-2.4.24）：前导 / 分隔 / 括号内三类污染均渲染复选框', () => {
+    // 列表标记与 [ 之间混入 NBSP（此前整行失效）
+    const lead = md.render('- \u00a0[x] 污染任务\n')
+    expect(lead).toContain('task-item-checkbox')
+    expect(lead).toContain('data-checked="true"')
+    expect(lead).not.toContain('\u00a0') // 前导污染随正文切片移除
+    // ] 与正文之间混入 NBSP（markdown-it 旧 \s+ 本已能认，回归保护）
+    expect(md.render('- [x]\u00a0污染任务\n')).toContain('data-checked="true"')
+    // 中括号内 NBSP → 未勾选复选框（D3）
+    const inner = md.render('- [\u00a0] 污染任务\n')
+    expect(inner).toContain('task-item-checkbox')
+    expect(inner).not.toContain('data-checked')
+  })
+
+  it('容忍不放宽 ASCII 语义：行尾裸 [x] 与非行首 [x] 仍不渲染', () => {
+    expect(md.render('- [x]\n')).not.toContain('task-item-checkbox')
+    expect(md.render('- 文字 [x] 行中\n')).not.toContain('task-item-checkbox')
+  })
 })
 
 describe('标题 id 生成', () => {

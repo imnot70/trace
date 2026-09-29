@@ -9,6 +9,7 @@ import { syntaxTree } from '@codemirror/language'
 import type { SyntaxNode } from '@lezer/common'
 import { getFrontmatterTags } from '@shared/noteTags'
 import { resolveAssetUrl } from '../markdown'
+import { matchTaskMarker, type TaskMarkerMatch } from '../invisibleChars'
 import {
   BulletWidget,
   CheckboxWidget,
@@ -112,6 +113,20 @@ function isTaskItem(node: SyntaxNode): boolean {
     if (c.name === 'Task') return true
   }
   return false
+}
+
+/** 兜底任务识别（FR-2.4.24）：lezer 的 TaskParser 守卫只认 ASCII 空格（`/^\[[ xX]\][ \t]/`），
+ *  任务行混入 NBSP 等不可见字符时不产 Task / TaskMarker 节点——对列表标记后到行尾的
+ *  文本做容忍扫描（matchTaskMarker），命中则返回复选框应挂的源码位置。
+ *  有 Task 子节点的项不经此处（不会双渲染）；扫描从标记后锚定，正文中间的 `[x]` 不误判 */
+function scanFallbackTask(
+  doc: Text,
+  mark: SyntaxNode
+): { match: TaskMarkerMatch; bracketFrom: number } | null {
+  const line = doc.lineAt(mark.from)
+  const m = matchTaskMarker(doc.sliceString(mark.to, line.to))
+  if (!m) return null
+  return { match: m, bracketFrom: mark.to + m.start }
 }
 
 /** frontmatter 区间（文档以 --- 开头且有闭合行）；无闭合不装饰（容错） */
@@ -425,8 +440,20 @@ export function computeInlineDecorations(
                 if (isTaskItem(ref.node)) {
                   const to = doc.sliceString(mark.to, mark.to + 1) === ' ' ? mark.to + 1 : mark.to
                   pushReplace(mark.from, to)
-                } else if (!isOrdered) {
-                  pushReplace(mark.from, mark.to, { widget: new BulletWidget() })
+                } else {
+                  // 兜底（FR-2.4.24）：lezer 的 TaskParser 守卫只认 ASCII 空格，任务行混入
+                  // NBSP 等不可见字符时无 Task 节点——容忍扫描识别，标记到 `[` 之间的污染
+                  // 空白一并隐藏（否则复选框前残留空隙），复选框挂在真实 `[` 位置。
+                  // 与上方 Task 分支互斥，不会双渲染；未命中回落圆点 / 源编号
+                  const fallback = scanFallbackTask(doc, mark)
+                  if (fallback) {
+                    pushReplace(mark.from, fallback.bracketFrom)
+                    pushReplace(fallback.bracketFrom, fallback.bracketFrom + 3, {
+                      widget: new CheckboxWidget(fallback.match.checked, fallback.bracketFrom)
+                    })
+                  } else if (!isOrdered) {
+                    pushReplace(mark.from, mark.to, { widget: new BulletWidget() })
+                  }
                 }
               }
             }
