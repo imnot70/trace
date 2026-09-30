@@ -62,7 +62,8 @@ import { referenceInsertSpec } from '../lib/quickRef'
 import { filterSlashCommands, type SlashAction } from '../lib/slashCommands'
 import { invisiblePasteExtension, buildCleanInvisibleTransaction } from '../lib/invisibleEdits'
 import { collectDocInvisible } from '../lib/invisibleChars'
-import { treeHasWikiTarget } from '../lib/wikiTarget'
+import { treeHasWikiTarget, wikilinkSpanAt, wikilinkNameAt } from '../lib/wikiTarget'
+import { openWikilinkByName } from '../lib/wikilink'
 import { hasNoteRefDrag, readNoteRefDrag, consumeDragAltLatch, type NoteRefPayload } from '../lib/dragDrop'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { TreeNode } from '@shared/types'
@@ -956,6 +957,24 @@ function createView(initialDoc: string): EditorView {
             // ① 补全仍活动 → 整段替换并吸收自动闭合 ]]；② 补全已关 → 光标处插入完整引用；
             // ③ 目标是当前笔记自身 → 不插入（自引用无意义），仅收起预览
             if (props.previewTarget) {
+              // 光标在双链内（FR-2.4.27 复验反馈）：落引用会嵌进原引用产出失效嵌套——分流：
+              // ① 预览的就是当前双链的目标 → 落相同引用纯冗余，仅收起预览不插入；
+              // ② 预览的是别的笔记 → 插入点移到当前双链之后（追加而非嵌套，原引用不破坏）
+              if (!view) return true
+              const head0 = view.state.selection.main.head
+              const line0 = view.state.doc.lineAt(head0)
+              const span = wikilinkSpanAt(line0.text, head0 - line0.from)
+              if (span) {
+                const rel0 = props.previewTarget.path.replace(/\.md$/i, '')
+                const leaf0 = rel0.split('/').pop() ?? rel0
+                const sameTarget = [rel0, leaf0].some((c) => c.toLowerCase() === span.name.toLowerCase())
+                if (sameTarget) {
+                  useAppStore().closeFloatingPreview()
+                  view.focus()
+                  return true
+                }
+                view.dispatch({ selection: { anchor: line0.from + span.end } })
+              }
               // 跨库目标（FR-2.9.11）：不再直接产出断链引用，交外层走「确认框 → 复制进当前库 → 落引用」
               if (props.previewTarget.vault !== props.vault) {
                 // 草稿例外（FR-2.3.9 D7）：当前是草稿伪库时维持直接落引用文本——转正时再定归宿
@@ -979,6 +998,16 @@ function createView(initialDoc: string): EditorView {
               }
               useAppStore().closeFloatingPreview()
               view?.focus()
+              return true
+            }
+            // 光标在双链内部（FR-2.4.27）：Alt+Enter = 悬浮预览该笔记（断链提示 /
+            // 多候选消歧由 openWikilinkByName 统一处理，open 回调即预览回调）
+            if (!view) return true
+            const head = view.state.selection.main.head
+            const line = view.state.doc.lineAt(head)
+            const wlName = wikilinkNameAt(line.text, head - line.from)
+            if (wlName) {
+              void openWikilinkByName(props.vault, wlName, (t) => emit('preview-note', t))
               return true
             }
             return previewSelectedCompletion()
@@ -1073,6 +1102,7 @@ function buildLivePreview() {
     notePath: props.notePath,
     resolveName: (name: string) => treeHasWikiTarget(useTreeStore().trees[props.vault] ?? [], name),
     openNote: (target) => emit('open-note', target),
+    previewNote: (target) => emit('preview-note', target),
     openExternal: (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
   })
 }
@@ -1305,6 +1335,14 @@ function onDragover(e: DragEvent): void {
   e.preventDefault()
 }
 
+/** 双链 widget 的 Alt+Click 悬浮预览（FR-2.4.27）：widget 事件源发来目标名，
+ *  断链提示 / 多候选消歧走 openWikilinkByName 统一口径，open 回调即预览回调 */
+function onWikilinkPreview(e: Event): void {
+  const name = (e as CustomEvent<{ name: string }>).detail?.name
+  if (!name) return
+  void openWikilinkByName(props.vault, name, (t) => emit('preview-note', t))
+}
+
 function onDrop(e: DragEvent): void {
   // 笔记引用拖入（FR-2.9.10 P3）：定释放点后交外层走三路引入语义（含 Alt 修饰——
   // 插入后保留来源弹窗；修饰键取「事件状态 ∨ dragstart 锁存」，后者覆盖真机上
@@ -1413,5 +1451,6 @@ defineExpose({
     @paste="onPaste"
     @drop="onDrop"
     @dragover="onDragover"
+    @trace-wikilink-preview="onWikilinkPreview"
   ></div>
 </template>

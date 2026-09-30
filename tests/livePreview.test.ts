@@ -39,6 +39,7 @@ const cfg: LivePreviewConfig = {
   notePath: 'notes/a.md',
   resolveName: (name: string) => name === '存在',
   openNote: vi.fn(),
+  previewNote: vi.fn(),
   openExternal: vi.fn()
 }
 

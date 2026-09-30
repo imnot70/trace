@@ -18,6 +18,7 @@ import ConflictResolutionDialog from './components/ConflictResolutionDialog.vue'
 import DraftPromoteDialog from './components/DraftPromoteDialog.vue'
 import SearchDialog from './components/SearchDialog.vue'
 import NoteSwitcher from './components/NoteSwitcher.vue'
+import { buildWindowTitle } from './lib/windowTitle'
 import WelcomeView from './views/WelcomeView.vue'
 import EditorView from './views/EditorView.vue'
 import TrashView from './views/TrashView.vue'
@@ -365,6 +366,14 @@ onMounted(async () => {
     if (e.key === 'Control' && editor.mruActive) void editor.mruCommit()
   })
   window.addEventListener('blur', () => editor.mruCancel())
+  // 窗口标题跟随当前笔记（FR-2.10.7）：常规「笔记名 - Trace 笔迹」、心流「库名 / 笔记名」。
+  // Electron 自动把 document.title 同步为原生窗口标题（任务栏 / Alt+Tab 可见），无需 IPC
+  const syncWindowTitle = (): void => {
+    document.title = buildWindowTitle(editor.current, app.flowMode)
+  }
+  syncWindowTitle()
+  // deep：重命名是原地改 current 的字段（引用不变），浅 watch 感知不到
+  watch(() => [editor.current, app.flowMode] as const, syncWindowTitle, { deep: true })
   if (tree.vaults.length > 0) {
     await Promise.all(tree.vaults.map((v) => tree.refreshGitStatus(v.name)))
   }

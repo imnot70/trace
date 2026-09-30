@@ -39,6 +39,7 @@ export const SHORTCUTS: ShortcutItem[] = [
   { keys: 'Ctrl + Enter', desc: '在当前行下方插入一个空行，光标移到新行行首（补全打开时 = 接受补全）', group: '编辑器' },
   { keys: 'Ctrl + Shift + Enter', desc: '在当前行上方插入一个空行，光标移到新行行首', group: '编辑器' },
   { keys: 'Alt + ← / Alt + →', desc: '笔记历史后退 / 前进（恢复离开时的光标；新开笔记清空前进方向）——搜索 / 双链误点切走后一键回', group: '编辑器' },
+  { keys: 'Alt + 点击 / Alt + Enter', desc: '所见即所得中悬浮预览双链笔记（单击保留编辑；光标在双链内 Alt+Enter 同效，源码可用）', group: '编辑器' },
   { keys: 'Ctrl + Tab（按住）', desc: '最近打开面板：Tab / Shift+Tab 翻动，松开 Ctrl 跳转，Esc 取消', group: '编辑器' },
   { keys: 'Ctrl + E', desc: '切换源码 / 所见即所得编辑模式（编辑视图内）', group: '编辑器' },
   { keys: 'Ctrl + B', desc: '加粗选中文字（无选中时插入占位符）', group: '编辑器' },
