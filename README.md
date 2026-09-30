@@ -4,7 +4,7 @@
 
 - 跨平台：Windows / macOS / Linux（Ubuntu、Debian 系为主）
 - 数据完全本地：笔记就是 `.md` 文件，没有私有格式，随时可以用其他编辑器打开
-- 开源协议：MIT ｜ 当前版本：[v0.17.0](CHANGELOG.md)
+- 开源协议：MIT ｜ 当前版本：[v0.18.0](CHANGELOG.md)
 - 完整功能列表：[FEATURES.md](FEATURES.md)（按功能域分表）
 
 ![技术栈](https://img.shields.io/badge/Electron-44-47848f) ![Vue](https://img.shields.io/badge/Vue-3-42b883) ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6)
@@ -40,7 +40,7 @@
 - **标题层级**：`Ctrl+1` … `Ctrl+6` 设为对应级别标题、`Ctrl+0` 清除（同级再按一次取消）；工具栏「标题」下拉可点选。
 - **斜杠命令**：编辑器行首输入 `/` 呼出命令面板——`/表格` `/标题2` `/引用` `/代码块` `/任务列表` `/日期` 等，过滤选择即执行，行为与对应快捷键 / 工具栏按钮完全一致；支持英文别名（如 `/t` = 表格）。
 - **不可见字符治理**：从网页复制的文本常夹带「不换行空格（NBSP）」，会让任务行渲染不出复选框（GitHub 网页端同样不认）——Trace 对这类变体做了容忍（复选框照常渲染、可点击勾选），粘贴时自动归一（NBSP→空格、零宽字符删除，emoji 不受影响，有替换时提示）；存量笔记可点工具栏「公式块」右侧的橡皮刷按钮或 `/清理字符` 一键清理（列明处数、确认后写入、可撤销）。
-- **快速引用面板**：`Alt+I` 或 `/引入` 呼出——当前库目录树 + 草稿分组 + 名字过滤，键盘选择即插入 `[[引用]]`（不切走当前笔记）；跨库 / 草稿自动确认复制为库内正式笔记，引用不断链。心流模式下补全「记不清名字、按目录翻」的引用动线。
+- **快速引用面板**：`Alt+I` 或 `/引入` 呼出——目录树 + 草稿分组 + 名字过滤，键盘选择即插入 `[[引用]]`（不切走当前笔记）；顶部可切换浏览其他库（`Ctrl+←`/`→`），跨库 / 草稿自动确认复制为库内正式笔记，引用不断链。心流模式下补全「记不清名字、按目录翻」的引用动线。
 - **外部修改保护**：git 拉取或其他编辑器改动文件后自动感知——无冲突静默重载，有未保存改动时给出选择，绝不悄悄覆盖。
 
 ### 图片
@@ -98,9 +98,9 @@
 
 | 平台 | 文件 | 安装方式 |
 | --- | --- | --- |
-| Ubuntu / Debian | `linux-v0.17.0-x64.deb` | `sudo dpkg -i linux-v*.deb` 或 `sudo apt install ./linux-v*.deb` |
-| 其他 Linux | `linux-v0.17.0-x64.AppImage` | `chmod +x linux-v*.AppImage && ./linux-v*.AppImage`（需 FUSE，或 `--appimage-extract` 后运行） |
-| Windows | `win-v0.17.0-x64.exe` | 双击安装，可选择安装目录 |
+| Ubuntu / Debian | `linux-v0.18.0-x64.deb` | `sudo dpkg -i linux-v*.deb` 或 `sudo apt install ./linux-v*.deb` |
+| 其他 Linux | `linux-v0.18.0-x64.AppImage` | `chmod +x linux-v*.AppImage && ./linux-v*.AppImage`（需 FUSE，或 `--appimage-extract` 后运行） |
+| Windows | `win-v0.18.0-x64.exe` | 双击安装，可选择安装目录 |
 | macOS | 暂不提供安装包 | 请自行从源码构建（见下方说明） |
 
 > macOS 需要自行构建：安装 Node.js ≥ 20 与 git 后，执行下面的「从源码构建」，在 macOS 机器上运行 `npm run dist` 即可得到 `Trace-x.y.z.dmg`（首次构建前建议先执行 `xcode-select --install` 安装命令行工具）。
@@ -126,7 +126,7 @@ npm run dist         # 按当前平台打包安装程序
 npm run dist:deb     # 只打 Ubuntu/Debian deb 包
 ```
 
-产物输出在 `dist/` 目录，命名规范为「平台-v版本-架构.扩展名」（如 `linux-v0.17.0-x64.deb`、`win-v0.17.0-x64.exe`）。
+产物输出在 `dist/` 目录，命名规范为「平台-v版本-架构.扩展名」（如 `linux-v0.18.0-x64.deb`、`win-v0.18.0-x64.exe`）。
 
 > Windows / macOS 安装包需在对应平台上执行 `npm run dist`。macOS 没有预构建安装包，Mac 用户请通过本节自行构建 DMG。
 
