@@ -144,7 +144,7 @@ html.glass-on .sidebar-rail {
 
 /* 标题栏条占位：卡片画布整体下移（仅 Windows 渲染 .win-titlebar 元素） */
 html.platform-win .app-shell {
-  padding-top: calc(4px + env(titlebar-area-height, 36px));
+  padding-top: calc(6px + env(titlebar-area-height, 36px));
 }
 
 /* Windows WCO：系统三键绘制层永远在 DOM 之上，任何全窗口遮罩都盖不住它——
@@ -184,8 +184,8 @@ body {
 .app-shell {
   height: 100%;
   display: flex;
-  gap: 4px; /* 区域间隔 4px（2026-09-30 由 10px 收紧至 40%，用户对比其他软件后调整） */
-  padding: 4px; /* 画布到窗口边缘的边距同步收紧 */
+  gap: 6px; /* 区域间隔 6px（2026-09-30 由 10px 收紧，初版 40% 观感过紧、两轮调至 60%） */
+  padding: 6px; /* 画布到窗口边缘的边距同步收紧 */
   background: var(--bg-secondary);
   box-sizing: border-box;
   position: relative;
@@ -281,7 +281,7 @@ body {
 }
 
 /* 主区卡片流：编辑卡 + 分栏间隙 + 预览卡（或单张页面卡）。
-   间隙由 split-divider(4px) 提供，不再叠加 gap，保证与画布全局 4px 一致（2026-09-30 收紧至原 40%）*/
+   间隙由 split-divider(6px) 提供，不再叠加 gap，保证与画布全局 6px 一致（2026-09-30 由 10px 收紧）*/
 .main-cards {
   flex: 1;
   min-width: 0;
@@ -1030,7 +1030,7 @@ body {
 
 /* 分栏拖拽区：透明间隙，悬停时显示居中细条 */
 .split-divider {
-  width: 4px;
+  width: 6px;
   cursor: col-resize;
   background: transparent;
   flex-shrink: 0;
@@ -1040,7 +1040,7 @@ body {
 .split-divider::after {
   content: '';
   position: absolute;
-  left: 0;
+  left: 1px;
   top: 0;
   bottom: 0;
   width: 4px;
