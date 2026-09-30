@@ -27,13 +27,16 @@ export function treeHasWikiTarget(nodes: TreeNode[], name: string): boolean {
 }
 
 /**
- * 光标是否落在双链内部，命中返回引用目标名（FR-2.4.27：Alt+Enter 悬浮预览）。
+ * 光标是否落在双链内部，命中返回目标名与**行内起止偏移**（start 指向 `[[`、end 越过 `]]`）。
  * 与装饰层同一正则口径（`[[目标|显示名]]`，取 `|` 前为目标）；**严格内部**才算
  * （边界 = 落光标编辑入口，widget 已回落源码，此时按键应保持常规行为）。
  * @param lineText 光标所在行全文
  * @param offset   光标的行内偏移
  */
-export function wikilinkNameAt(lineText: string, offset: number): string | null {
+export function wikilinkSpanAt(
+  lineText: string,
+  offset: number
+): { name: string; start: number; end: number } | null {
   const re = /\[\[([^\][\n]+)\]\]/g
   let m: RegExpExecArray | null
   while ((m = re.exec(lineText))) {
@@ -41,8 +44,13 @@ export function wikilinkNameAt(lineText: string, offset: number): string | null 
       const inner = m[1]
       const pipe = inner.indexOf('|')
       const name = (pipe >= 0 ? inner.slice(0, pipe) : inner).trim()
-      return name || null
+      return name ? { name, start: m.index, end: m.index + m[0].length } : null
     }
   }
   return null
+}
+
+/** 光标处双链目标名（wikilinkSpanAt 的名字快捷式） */
+export function wikilinkNameAt(lineText: string, offset: number): string | null {
+  return wikilinkSpanAt(lineText, offset)?.name ?? null
 }

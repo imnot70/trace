@@ -24,7 +24,7 @@
 - **D1 单击语义分场景**（用户拍板）：初版按「所见即所得单击 = 预览」设计，实施前查证发现**不成立**——CM 对原子区（replace decoration）mousedown 从不设置 selection，「点击回落源码编辑」机制不存在（编辑靠键盘光标移入触发 occupied 回落，冷启动基线核实）。因此分栏预览单击预览无代价，所见即所得保留单击现状、预览走 `Alt+点击` / `Alt+Enter`。
 - **D2 跳转出口**：各场景 `Ctrl/Cmd+点击` 统一直接打开；预览卡「打开笔记」按钮兜底。
 - **D3 `Alt+Enter` 范围**：光标在双链**严格内部**（边界不触发——widget 回落源码后属常规编辑态）；悬浮预览开着时优先「落引用」（既有 previewTarget 语义在前）。
-- **D4 标题全模式跟随**（用户拍板，否决仅心流原案）：常规 `笔记名 - Trace 笔迹`；心流 `库名 / 笔记名`。
+- **D4 标题全模式跟随**（用户拍板，否决仅心流原案）；**格式修订（同日用户复核）**：常规初版「笔记名 - Trace 笔迹」与内容区面包屑相邻易误解（用户截图反馈，Ubuntu），去掉应用名后缀 → 常规纯笔记名、心流 `库名 / 笔记名` 不变。
 - **D5 实现走 `document.title`**：初版走 `win:setTitle` IPC，联调发现 CDP `targetInfo.title` 度量的是网页标题而非原生窗口标题（探针量错对象），而 **Electron 自动把 document.title 同步为原生窗口标题**——撤掉 IPC 三处接线，渲染端直接赋值，顺带获得 CDP 可验证性。
 - **D6 所见即所得 `Alt+点击` 走 widget 事件源**：livePreview 的 `domEventHandlers mousedown` 对原子 widget 的点击**不触发**（事件到达 document 但 CM 内部不派发给扩展 handler，探针证实）——改为 `WikilinkWidget.toDOM` 自挂 mousedown（Alt 单击时 `preventDefault + stopPropagation` 并冒泡自定义事件 `trace-wikilink-preview`），组件根节点接收。附带修复：clickHandler 的 `findTarget` 加 ±1 相邻容差（原子 widget 上 `posAtCoords` 返回区间外相邻位置，此前 Ctrl+点击渲染态链接经常不命中）。
 
@@ -46,3 +46,9 @@
 | S1–S2 | 源码光标在双链内 Alt+Enter = 预览；断链提示不开预览 | ✅ |
 
 单测 +7（`buildWindowTitle` 三态 / `wikilinkNameAt` 内部命中·严格边界·空目标），全仓 546 项绿。待真机复验后合并发版。
+
+## 复验修复（2026-09-30 用户复验反馈，当日修复）
+
+- **引用内 Alt+Enter 二段插入破坏原引用**：光标在 `[[...]]` 内预览后二段落引用会嵌进原引用（`[[随[[新]]笔]]` 型失效嵌套）。分流：预览目标 = 当前双链目标（主路径）→ 不插入仅收起预览；不同目标 → 插入点移到当前双链之后追加。实现：`wikilinkSpanAt` 纯函数（起止偏移）+ Alt-Enter previewTarget 分支前置分流；CDP 6 项全过（同目标零变化 / 不同目标追加无嵌套），单测 +2。
+- **窗口标题去应用名后缀**（用户截图反馈，澄清平台为 Ubuntu 非 macOS）：常规改纯笔记名。CDP 标题断言同步。
+- **冒烟稳定性**：所见即所得 wysiwyg 置位改循环 ensure（tech_verification 5 的既有教训再次生效——vite/渲染时序不可假定）；分栏开启改直接置 store（Alt+V 键路径时序不稳属既有功能，与本批无关）。
