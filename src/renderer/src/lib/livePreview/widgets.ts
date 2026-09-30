@@ -176,17 +176,31 @@ export class HrWidget extends WidgetType {
 export class WikilinkWidget extends WidgetType {
   constructor(
     readonly display: string,
-    readonly broken: boolean
+    readonly broken: boolean,
+    /** 引用目标名（FR-2.4.27：Alt+Click 悬浮预览的自定义事件载荷；display 可能是别名） */
+    readonly name = ''
   ) {
     super()
   }
   eq(other: WikilinkWidget): boolean {
-    return other.display === this.display && other.broken === this.broken
+    return other.display === this.display && other.broken === this.broken && other.name === this.name
   }
   toDOM(): HTMLElement {
     const a = document.createElement('span')
     a.className = this.broken ? 'lp-wikilink lp-wikilink-broken' : 'lp-wikilink'
     a.textContent = this.display
+    // Alt+Click = 悬浮预览（FR-2.4.27）：在事件源发出信号并阻断冒泡——CM 对原子区
+    // mousedown 的内置处理（落光标 → 回落源码）不经过我们的 domEventHandlers 分流，
+    // 在元素上拦截最可靠；单击（无 Alt）不拦，保持落光标回落编辑
+    a.addEventListener('mousedown', (e) => {
+      if (e.button !== 0 || !e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+      if (!this.name) return
+      e.preventDefault()
+      e.stopPropagation()
+      a.dispatchEvent(
+        new CustomEvent('trace-wikilink-preview', { bubbles: true, detail: { name: this.name } })
+      )
+    })
     return a
   }
 }

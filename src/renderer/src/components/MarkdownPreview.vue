@@ -11,6 +11,9 @@ const props = defineProps<{
   vault: string
   /** 当前笔记相对路径（用于解析相对图片路径） */
   notePath: string
+  /** 双链单击动作（FR-2.4.27）：preview = 单击悬浮预览、Ctrl/Cmd+点击打开（分栏预览——
+   *  不可编辑区，单击预览零代价）；open = 维持打开跳转（悬浮预览容器——内导航语义不变） */
+  linkAction?: 'open' | 'preview'
   fontSize: number
   /** 打字机留白（px，与编辑器 .cm-content 等量，2026-09-27）：两侧内容起点一致，
    *  行级同步在文档头部 / 尾部不再偏移；0 = 不加（未开打字机 / 补全预览等不参与同步的容器） */
@@ -21,6 +24,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   /** 库内笔记链接被点击（悬浮预览等容器负责关闭自身并打开笔记） */
   (e: 'open-note', target: { vault: string; path: string; name: string }): void
+  /** 双链单击请求悬浮预览（linkAction='preview' 时，FR-2.4.27） */
+  (e: 'preview-note', target: { vault: string; path: string; name: string }): void
 }>()
 
 // 外链新窗口打开
@@ -207,11 +212,15 @@ function onPreviewClick(e: MouseEvent): void {
       ElMessage.warning(`笔记不存在：${internal}`)
       return
     }
+    // FR-2.4.27：分栏预览（linkAction='preview'）单击 = 悬浮预览、Ctrl/Cmd+点击 = 打开；
+    // 悬浮预览容器（默认 open）维持原状——单击 = 预览内导航（顺藤摸瓜）
+    const jump = (e.ctrlKey || e.metaKey) || props.linkAction !== 'preview'
     if (anchor.hasAttribute('data-ambiguous')) {
-      void openAmbiguousPicker(anchor.getAttribute('data-wikilink') ?? internal)
+      void openAmbiguousPicker(anchor.getAttribute('data-wikilink') ?? internal, jump)
       return
     }
-    emit('open-note', { vault: props.vault, path: internal, name: noteName(internal) })
+    if (jump) emit('open-note', { vault: props.vault, path: internal, name: noteName(internal) })
+    else emit('preview-note', { vault: props.vault, path: internal, name: noteName(internal) })
     return
   }
   const href = anchor.getAttribute('href') ?? ''
@@ -238,8 +247,10 @@ function checkBrokenLinks(): void {
 }
 
 // ---------- 双链同名消歧：点击多候选链接时列出全部同名笔记供选择（共享逻辑见 lib/wikilink） ----------
-function openAmbiguousPicker(name: string): void {
-  void openWikilinkByName(props.vault, name, (target) => emit('open-note', target))
+function openAmbiguousPicker(name: string, jump: boolean): void {
+  const deliver = (target: { vault: string; path: string; name: string }): void =>
+    jump ? emit('open-note', target) : emit('preview-note', target)
+  void openWikilinkByName(props.vault, name, deliver)
 }
 
 watch(

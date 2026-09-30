@@ -31,6 +31,8 @@ export interface LivePreviewConfig {
   resolveName(name: string): boolean
   /** Ctrl+Click 打开库内笔记 */
   openNote(target: { vault: string; path: string; name: string }): void
+  /** Alt+Click 悬浮预览库内笔记（FR-2.4.27：单击保持落光标编辑入口，预览走 Alt 修饰） */
+  previewNote(target: { vault: string; path: string; name: string }): void
   /** Ctrl+Click 打开外部链接 */
   openExternal(url: string): void
 }
@@ -540,7 +542,7 @@ export function computeInlineDecorations(
   // ---- 双链 Widget（压过树上被误解析出的 Link 节点） ----
   for (const w of wikilinks) {
     if (occupied(state, w.from, w.to)) continue
-    pushReplace(w.from, w.to, { widget: new WikilinkWidget(w.display, !cfg.resolveName(w.name)) })
+    pushReplace(w.from, w.to, { widget: new WikilinkWidget(w.display, !cfg.resolveName(w.name), w.name) })
     targets.push({ from: w.from, to: w.to, kind: 'wikilink', name: w.name })
   }
 

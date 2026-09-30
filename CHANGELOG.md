@@ -2,6 +2,13 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 新功能
+
+- **双链悬浮预览**（FR-2.4.27，2026-09-30）：写作中点击引用 = 看一眼不打断——**分栏预览**单击双链 = 悬浮预览（可连续点、不切走），`Ctrl/Cmd+点击` = 直接打开；**所见即所得**单击维持落光标编辑，`Alt+点击` 渲染态双链 / `Alt+Enter`（光标在双链内部，源码通用）= 悬浮预览；多候选消歧按当前动作交付、断链维持提示、悬浮预览容器内单击维持预览内导航。附带修复：所见即所得对原子 widget 的修饰键点击不命中（`posAtCoords` 返回区间外相邻位置，`findTarget` 加 ±1 容差——此前 Ctrl+点击渲染态双链经常无效）。单测 +7；CDP 冒烟 13 项全过。设计见 [2026-09-30_preview-batch/](ai/requirements/2026-09-30_preview-batch/preview-batch.md)。
+- **窗口标题跟随当前笔记**（FR-2.10.7，2026-09-30）：常规 `笔记名 - Trace 笔迹`（任务栏 / Alt+Tab 直接可辨当前笔记），心流 `库名 / 笔记名`（顶栏隐藏后标题让给路径），无笔记恢复默认；走 `document.title`（Electron 自动同步原生窗口标题），随重命名即时更新。单测 +3。设计见 [2026-09-30_preview-batch/](ai/requirements/2026-09-30_preview-batch/preview-batch.md)。
+
 ## [0.16.0] - 2026-09-30
 
 ### 新功能

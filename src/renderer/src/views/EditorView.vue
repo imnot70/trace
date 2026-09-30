@@ -1154,10 +1154,12 @@ onBeforeUnmount(() => {
       :content="editor.content"
       :vault="vaultName"
       :note-path="editor.current.path"
+      link-action="preview"
       :font-size="app.settings.editorFontSize"
       :typewriter-pad-top="twPad.top"
       :typewriter-pad-bottom="twPad.bottom"
       @open-note="onPreviewOpenNote"
+      @preview-note="(t: { vault: string; path: string; name: string }) => app.requestNotePreview(t.vault, t.path, t.name)"
     />
   </div>
 

@@ -84,15 +84,23 @@ const lpAtomicPlugin = ViewPlugin.fromClass(
  *  库内相对 .md 链接应用内打开——与预览的链接行为对齐 */
 const clickHandler = EditorView.domEventHandlers({
   mousedown(event, view) {
-    if (event.button !== 0 || !(event.ctrlKey || event.metaKey)) return false
+    if (event.button !== 0) return false
+    // 单击保持默认（落光标 → 双链 widget 回落源码，点击编辑入口）；Ctrl/Cmd = 打开跳转、
+    // Alt = 悬浮预览（FR-2.4.27：预览让编辑，修饰键分流）
+    const altPreview = event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
+    if (!(event.ctrlKey || event.metaKey || altPreview)) return false
     const pos = view.posAtCoords({ x: event.clientX, y: event.clientY })
     if (pos == null) return false
-    const target = view.plugin(lpPlugin)?.findTarget(pos)
+    // 原子 widget（双链 / 链接渲染态）上点击时 posAtCoords 返回区间外相邻位置，
+    // 相邻 ±1 容差重试——否则修饰键点击渲染态链接经常不命中
+    const lp = view.plugin(lpPlugin)
+    const target = lp?.findTarget(pos) ?? (pos > 0 ? lp?.findTarget(pos - 1) : null) ?? lp?.findTarget(pos + 1)
     if (!target) return false
     const cfg = view.state.facet(livePreviewFacet)
     event.preventDefault()
     if (target.kind === 'wikilink') {
-      void openWikilinkByName(cfg.vault, target.name, cfg.openNote)
+      if (altPreview) void openWikilinkByName(cfg.vault, target.name, cfg.previewNote)
+      else void openWikilinkByName(cfg.vault, target.name, cfg.openNote)
     } else if (/^https?:/i.test(target.url)) {
       cfg.openExternal(target.url)
     } else if (/\.md$/i.test(target.url.split('#')[0])) {

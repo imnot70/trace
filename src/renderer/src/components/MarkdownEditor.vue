@@ -62,7 +62,8 @@ import { referenceInsertSpec } from '../lib/quickRef'
 import { filterSlashCommands, type SlashAction } from '../lib/slashCommands'
 import { invisiblePasteExtension, buildCleanInvisibleTransaction } from '../lib/invisibleEdits'
 import { collectDocInvisible } from '../lib/invisibleChars'
-import { treeHasWikiTarget } from '../lib/wikiTarget'
+import { treeHasWikiTarget, wikilinkNameAt } from '../lib/wikiTarget'
+import { openWikilinkByName } from '../lib/wikilink'
 import { hasNoteRefDrag, readNoteRefDrag, consumeDragAltLatch, type NoteRefPayload } from '../lib/dragDrop'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { TreeNode } from '@shared/types'
@@ -981,6 +982,16 @@ function createView(initialDoc: string): EditorView {
               view?.focus()
               return true
             }
+            // 光标在双链内部（FR-2.4.27）：Alt+Enter = 悬浮预览该笔记（断链提示 /
+            // 多候选消歧由 openWikilinkByName 统一处理，open 回调即预览回调）
+            if (!view) return true
+            const head = view.state.selection.main.head
+            const line = view.state.doc.lineAt(head)
+            const wlName = wikilinkNameAt(line.text, head - line.from)
+            if (wlName) {
+              void openWikilinkByName(props.vault, wlName, (t) => emit('preview-note', t))
+              return true
+            }
             return previewSelectedCompletion()
           }
         },
@@ -1073,6 +1084,7 @@ function buildLivePreview() {
     notePath: props.notePath,
     resolveName: (name: string) => treeHasWikiTarget(useTreeStore().trees[props.vault] ?? [], name),
     openNote: (target) => emit('open-note', target),
+    previewNote: (target) => emit('preview-note', target),
     openExternal: (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
   })
 }
@@ -1305,6 +1317,14 @@ function onDragover(e: DragEvent): void {
   e.preventDefault()
 }
 
+/** 双链 widget 的 Alt+Click 悬浮预览（FR-2.4.27）：widget 事件源发来目标名，
+ *  断链提示 / 多候选消歧走 openWikilinkByName 统一口径，open 回调即预览回调 */
+function onWikilinkPreview(e: Event): void {
+  const name = (e as CustomEvent<{ name: string }>).detail?.name
+  if (!name) return
+  void openWikilinkByName(props.vault, name, (t) => emit('preview-note', t))
+}
+
 function onDrop(e: DragEvent): void {
   // 笔记引用拖入（FR-2.9.10 P3）：定释放点后交外层走三路引入语义（含 Alt 修饰——
   // 插入后保留来源弹窗；修饰键取「事件状态 ∨ dragstart 锁存」，后者覆盖真机上
@@ -1413,5 +1433,6 @@ defineExpose({
     @paste="onPaste"
     @drop="onDrop"
     @dragover="onDragover"
+    @trace-wikilink-preview="onWikilinkPreview"
   ></div>
 </template>
