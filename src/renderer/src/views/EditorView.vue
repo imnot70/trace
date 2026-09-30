@@ -104,7 +104,9 @@ async function insertPreviewTarget(
       return false
     }
     insertRel = promoted.path.replace(/\.md$/i, '')
-    ElMessage.success(`已复制草稿「${target.name}」为正式笔记`)
+    ElMessage.success(
+      promoted.reused ? `已复用「${target.name}」的现有正式笔记` : `已复制草稿「${target.name}」为正式笔记`
+    )
   } else if (target.vault !== current.vault && current.vault !== SCRATCH_VAULT) {
     // 跨库「强制引用」= 把笔记复制进当前库的专用目录（双链只在库内解析，直接插引用
     // 必然断链）。目录 = 设置「跨库引用目录」/ 源库名（按来源库分子目录：同名来源文件

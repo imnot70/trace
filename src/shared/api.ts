@@ -184,7 +184,7 @@ export interface TraceApi {
   scratchCreate(): Promise<{ ok: boolean; name?: string; error?: string }>
   scratchDelete(name: string): Promise<{ ok: boolean; error?: string }>
   /** keepDraft=true（FR-2.9.12 引用草稿）= 复制模式：原草稿与其 assets 保留不删 */
-  scratchPromote(name: string, vault: string, dir: string, newName: string, keepDraft?: boolean): Promise<{ ok: boolean; path?: string; error?: string }>
+  scratchPromote(name: string, vault: string, dir: string, newName: string, keepDraft?: boolean): Promise<{ ok: boolean; path?: string; error?: string ; reused?: boolean }>
   listTags(): Promise<OpResult & { tags?: TagItem[] }>
   createTag(name: string, color: string): Promise<OpResult & { tag?: TagItem }>
   renameTag(id: string, name: string): Promise<OpResult>
