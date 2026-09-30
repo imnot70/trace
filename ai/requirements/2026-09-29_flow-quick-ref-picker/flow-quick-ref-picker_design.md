@@ -175,3 +175,9 @@ function insertReferenceAtPath(path: string): void {
 
 **预览态 Alt+Enter = 插入引用**（用户定案：让「插入引用」动作跨入口一致）：预览未开时 Alt+Enter 仍是预览（面板保持、跟随）；**预览开着再按 = 把当前选中笔记插入为引用**——与 `[[` 补全预览态的「再按落引用」（FR-2.9.10）、搜索弹窗的预览动线同一习惯。实现为 Alt+Enter 分支的一行分流：`app.floatingPreview ? insertCurrent() : previewCurrent()`（insert 走既有 onQuickRefInsert → 面板关闭 + 三路引入语义）。CDP 复验：预览态再按 Alt+Enter 后引用插入、预览与面板均关、心流保留。
 
+
+## 追加：跨库浏览（2026-09-30，index 待办 #14 完整形态落地）
+
+面板顶部新增库切换行（下拉 + `Ctrl+←` `→` 循环，页脚提示），浏览非当前库时显示「跨库引入将复制为当前库副本」提示；`targetOf` 落到当前浏览库，跨库引入自动走 `insertPreviewTarget` 确认复制管线（与拖曳 / 搜索插入一致）；草稿分组与库无关恒显示；重开面板重置为当前笔记所在库（落位 / 高亮仅当前库生效）；过滤态排除自身仅对当前库成立。CSS / 复验（CDP 8 项：切库浏览 / 跨库提示 / 确认框 / 副本落盘 / 循环切回）详见当日 commit。
+
+**顺带修正**：面板键盘让位守卫的选择器 `.el-message-box__wrapper` 在 Element Plus 2.x 不存在（实际结构 `.el-overlay.is-message-box`）——死选择器修正，避免确认框期间 Enter 重复插入。

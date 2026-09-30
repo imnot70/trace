@@ -15,6 +15,13 @@
     @opened="onOpened"
   >
     <div class="qr-container">
+      <div class="qr-vault-row">
+        <span class="qr-vault-label">库</span>
+        <el-select v-model="selectedVault" size="small" class="qr-vault-select" @change="switchVault">
+          <el-option v-for="v in realVaults" :key="v" :label="v === props.vault ? `${v}（当前）` : v" :value="v" />
+        </el-select>
+        <span v-if="selectedVault !== props.vault" class="qr-cross-hint">跨库引入将复制为当前库副本（确认后）</span>
+      </div>
       <el-input
         ref="inputRef"
         v-model="query"
@@ -57,6 +64,7 @@
         <span>Enter 引入</span>
         <span>Alt+Enter 预览</span>
         <span>→ / ← 展开 / 收起</span>
+        <span>Ctrl+← / → 切库</span>
         <span>Esc 关闭</span>
       </div>
     </div>
@@ -86,7 +94,7 @@ import { useAppStore } from '../stores/app'
 
 const props = defineProps<{
   visible: boolean
-  /** 当前笔记所在库（树数据源；草稿伪库时树区为空、仅草稿分组可用） */
+  /** 当前笔记所在库（默认选中；2026-09-30 起面板可切换浏览其他库——跨库引入自动走确认复制） */
   vault: string
   /** 当前笔记完整路径（无则不落位），如 `日记/2026-09-29.md` */
   currentPath: string
@@ -107,6 +115,10 @@ const app = useAppStore()
 
 const query = ref('')
 const inputRef = ref<{ focus: () => void } | null>(null)
+/** 当前浏览的库（FR-2.9.12 跨库扩展，2026-09-30 待办 #14）：默认 = 当前笔记所在库，
+ *  可切换浏览其他库（跨库引入自动走确认复制管线）。草稿分组与库无关，恒显示 */
+const selectedVault = ref(props.vault)
+const realVaults = computed(() => tree.vaults.map((v) => v.name))
 const listRef = ref<HTMLElement | null>(null)
 const hl = ref(-1)
 const treeLoading = ref(false)
@@ -119,7 +131,7 @@ interface RowItem extends PickerItem {
 }
 
 const currentRel = computed(() => props.currentPath.replace(/\.md$/i, ''))
-const treeNodes = computed<NoteTreeNode[]>(() => (tree.trees[props.vault] ?? []) as TreeNode[])
+const treeNodes = computed<NoteTreeNode[]>(() => (tree.trees[selectedVault.value] ?? []) as TreeNode[])
 
 /** 视图序列：过滤空 = 树形态（展开可见的目录 + 笔记 + 草稿分组）；非空 = 扁平命中列表 */
 const items = computed<RowItem[]>(() => {
@@ -144,7 +156,8 @@ const items = computed<RowItem[]>(() => {
     return rows
   }
   const q = query.value.trim()
-  const notes = flatNoteOptions(collectNotes(treeNodes.value), q, currentRel.value).map((o) => ({
+  const excludeRel = selectedVault.value === props.vault ? currentRel.value : ''
+  const notes = flatNoteOptions(collectNotes(treeNodes.value), q, excludeRel).map((o) => ({
     kind: 'note' as const,
     name: o.label,
     rel: o.notePath ?? o.label,
@@ -200,7 +213,9 @@ function targetOf(item: RowItem): { vault: string; path: string; name: string; r
   if (item.kind === 'draft') {
     return { vault: SCRATCH_VAULT, path: `${item.rel}.md`, name: item.name, rel: item.rel }
   }
-  return { vault: props.vault, path: `${item.rel}.md`, name: item.name, rel: item.rel }
+  // 跨库浏览（2026-09-30 待办 #14）：目标库 = 当前浏览的库；引入经 EditorView 的
+  // insertPreviewTarget——跨库目标自动弹「确认 → 复制进当前库」管线
+  return { vault: selectedVault.value, path: `${item.rel}.md`, name: item.name, rel: item.rel }
 }
 
 /** 拖曳插入引用（FR-2.9.10 P3）：笔记 / 草稿行可拖（目录 / 分组标题不可），
@@ -243,7 +258,7 @@ function previewCurrent(): void {
 function onKeydown(e: KeyboardEvent): void {
   if (!props.visible) return
   // Element Plus 下拉 / 消息框打开时让位（跨库确认框期间 Enter/方向键归它们）
-  if (document.querySelector('.el-message-box__wrapper')) return
+  if (document.querySelector('.el-overlay.is-message-box, .el-message-box')) return
   if ((e.target as HTMLElement | null)?.closest?.('.el-dropdown-menu, .el-popper')) return
   if (e.altKey && !e.ctrlKey && !e.metaKey) {
     if (e.key === 'Enter' && !e.repeat) {
@@ -253,6 +268,15 @@ function onKeydown(e: KeyboardEvent): void {
       if (app.floatingPreview) insertCurrent()
       else previewCurrent()
     }
+    return
+  }
+  // Ctrl+← / →：切换浏览的库（跨库扩展，2026-09-30 待办 #14）——循环切换，树按需加载
+  if (e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+    if (realVaults.value.length < 2) return
+    e.preventDefault()
+    const i = realVaults.value.indexOf(selectedVault.value)
+    const next = realVaults.value[(i + (e.key === 'ArrowRight' ? 1 : realVaults.value.length - 1)) % realVaults.value.length]
+    void switchVault(next)
     return
   }
   if (e.ctrlKey || e.metaKey || e.shiftKey) return
@@ -310,27 +334,48 @@ function followPreview(): void {
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
-/** 面板打开：重置过滤与高亮 → 确保树 / 草稿数据就绪 → 落位当前笔记（D5） */
+/** 切换浏览的库（下拉 / Ctrl+←/→ 共用）：重置展开态与高亮，树按需加载 */
+async function switchVault(vault: string): Promise<void> {
+  if (vault === selectedVault.value) return
+  selectedVault.value = vault
+  query.value = ''
+  expanded.value = new Set()
+  hl.value = -1
+  if (!tree.trees[vault]) {
+    treeLoading.value = true
+    try {
+      await tree.loadTree(vault)
+    } finally {
+      treeLoading.value = false
+    }
+  }
+  hl.value = items.value.findIndex((it) => selectable(it))
+}
+
+/** 面板打开：重置过滤与高亮 → 确保树 / 草稿数据就绪 → 落位当前笔记（D5）。
+ *  跨库扩展（2026-09-30 待办 #14）：浏览库重置为当前笔记所在库（草稿态 = 第一个真实库） */
 async function onOpen(): Promise<void> {
   query.value = ''
   hl.value = -1
   expanded.value = new Set()
   void draft.refresh()
-  if (!tree.trees[props.vault]) {
+  selectedVault.value =
+    props.vault === SCRATCH_VAULT ? realVaults.value[0] ?? props.vault : props.vault
+  if (!tree.trees[selectedVault.value]) {
     treeLoading.value = true
     try {
-      await tree.loadTree(props.vault)
+      await tree.loadTree(selectedVault.value)
     } finally {
       treeLoading.value = false
     }
   }
-  // 落位：展开当前笔记的祖先目录并高亮（仅正式笔记；草稿态高亮首行）
-  if (props.currentPath && props.vault !== SCRATCH_VAULT) {
+  // 落位：展开当前笔记的祖先目录并高亮（仅正式笔记且浏览的是当前库；草稿态高亮首行）
+  if (props.currentPath && selectedVault.value === props.vault && props.vault !== SCRATCH_VAULT) {
     const locate = locateNote(treeNodes.value, currentRel.value)
     if (locate) expanded.value = locate.expand
   }
   hl.value = items.value.findIndex((it) => selectable(it))
-  if (props.vault !== SCRATCH_VAULT) {
+  if (selectedVault.value === props.vault && props.vault !== SCRATCH_VAULT) {
     const at = items.value.findIndex((it) => it.kind === 'note' && it.rel === currentRel.value)
     if (at >= 0) hl.value = at
   }
@@ -357,6 +402,27 @@ function onRowClick(item: RowItem, i: number): void {
 </script>
 
 <style scoped>
+.qr-vault-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.qr-vault-label {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  flex: none;
+}
+.qr-vault-select {
+  width: 200px;
+  flex: none;
+}
+.qr-cross-hint {
+  font-size: 12px;
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .qr-container {
   display: flex;
   flex-direction: column;
