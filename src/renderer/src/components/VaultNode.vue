@@ -5,6 +5,7 @@ import type { TreeNode } from '@shared/types'
 import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
 import { useNoteActions } from '../composables/actions'
+import { beginNoteRefDrag } from '../lib/dragDrop'
 import TagPickerDialog from './TagPickerDialog.vue'
 import ShareGistDialog from './ShareGistDialog.vue'
 
@@ -51,6 +52,13 @@ function onRowClick(): void {
   } else {
     void actions.openNote(props.vault, props.node.path, props.node.name)
   }
+}
+
+/** 拖曳插入引用（FR-2.9.10 P3）：笔记行可拖（文件夹不可），载荷 path 含 .md。
+ *  遮罩让行 / 恢复由 beginNoteRefDrag 内部统一处理（document 级一次性 dragend） */
+function onRowDragStart(e: DragEvent): void {
+  if (isDir.value) return
+  beginNoteRefDrag(e, { vault: props.vault, path: props.node.path, name: props.node.name })
 }
 
 function handleMenuCommand(cmd: string): void {
@@ -115,7 +123,9 @@ const shareDialogVisible = ref(false)
       :class="{ active, located: tree.locateKey === `${vault}::${node.path}`, 'menu-hold': menuHold }"
       :data-locate="`${vault}::${node.path}`"
       :style="{ paddingLeft: `${40 + depth * 16}px` }"
+      :draggable="!isDir"
       @click="onRowClick"
+      @dragstart="onRowDragStart"
     >
       <span class="chevron" :class="{ open: isDir && expanded }">
         <el-icon v-if="isDir"><ArrowRight /></el-icon>

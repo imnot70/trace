@@ -21,6 +21,7 @@
     "src/main/**/*",
     "src/preload/**/*",
     "src/shared/**/*",
+    "src/renderer/src/env.d.ts",
     "tests/**/*"
   ]
 }

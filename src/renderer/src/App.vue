@@ -17,6 +17,7 @@ import GitAssociateDialog from './components/GitAssociateDialog.vue'
 import ConflictResolutionDialog from './components/ConflictResolutionDialog.vue'
 import DraftPromoteDialog from './components/DraftPromoteDialog.vue'
 import SearchDialog from './components/SearchDialog.vue'
+import NoteSwitcher from './components/NoteSwitcher.vue'
 import WelcomeView from './views/WelcomeView.vue'
 import EditorView from './views/EditorView.vue'
 import TrashView from './views/TrashView.vue'
@@ -142,6 +143,13 @@ function hasModalOpen(): boolean {
 /** Esc 捕获阶段入口：网格内的「返回上级 / 关闭网格」仍由 NoteGridView 自行处理（模式未命中时不消费）。
  *  应用级回退消费了按键就阻断下沉——否则事件到达 CM 键位会把补全面板一起关掉（FR-2.9.10 P1） */
 function onEscapeCapture(e: KeyboardEvent): void {
+  // MRU 快切面板按住中（FR-2.4.26 D6）：Esc = 取消跳转（面板关、停留原地），最高优先
+  if (e.key === 'Escape' && editor.mruActive) {
+    editor.mruCancel()
+    e.preventDefault()
+    e.stopPropagation()
+    return
+  }
   if (e.key === 'Escape' && onEscape()) {
     e.preventDefault()
     e.stopPropagation()
@@ -150,9 +158,33 @@ function onEscapeCapture(e: KeyboardEvent): void {
 
 function onGlobalKeydown(e: KeyboardEvent): void {
   // 长按自动重复（e.repeat）对开关 / 导航类按键只会造成来回翻转（Ctrl+, 按住 =
-  // 设置 ↔ 编辑器快速抖动），一律忽略，一次物理按下只处理一次
-  if (e.repeat) return
-  if (hasModalOpen()) return
+  // 设置 ↔ 编辑器快速抖动），一律忽略，一次物理按下只处理一次。例外：MRU 面板的
+  // Tab 连按要响应 repeat（按住 Tab 连续翻动，VS Code 同款手感）
+  if (e.repeat && !editor.mruActive) return
+  if (hasModalOpen()) {
+    // MRU 面板按住中弹出了系统对话框（跨库确认框等）：立即取消跳转，键归对话框
+    if (editor.mruActive) editor.mruCancel()
+    return
+  }
+
+  // MRU 快切面板按住中（FR-2.4.26 D6，Ctrl+Tab 弦）：Tab / Shift+Tab 翻动，其余放行
+  if (editor.mruActive) {
+    if (e.ctrlKey && e.key === 'Tab') {
+      e.preventDefault()
+      editor.mruMove(e.shiftKey ? -1 : 1)
+    }
+    return
+  }
+
+  // Ctrl+Tab 弦按下（FR-2.4.26 D6）：开启 MRU 快切面板（编辑视图内，≥2 篇历史）。
+  // 提交在 keyup（Ctrl 松开）——见 onGlobalKeyup
+  if (e.ctrlKey && !e.altKey && !e.metaKey && e.key === 'Tab') {
+    if (app.view.name === 'editor' && editor.current) {
+      e.preventDefault()
+      editor.mruBegin()
+    }
+    return
+  }
 
   // Alt 系：界面视图切换（与 Ctrl 系通用动作分层）。
   // 焦点在 CM 查找/替换面板内时整体让位（FR-2.9.11）：面板自带 Alt+C / Alt+R / Alt+W
@@ -200,6 +232,18 @@ function onGlobalKeydown(e: KeyboardEvent): void {
       // 再按关闭（el-dialog 模态不拦全局 keydown，焦点在面板输入框也照常到达）
       e.preventDefault()
       if (app.view.name === 'editor' && editor.current) app.toggleQuickRefPicker()
+    } else if (e.key === 'ArrowLeft') {
+      // 后退历史（FR-2.4.26 D5）：逐步退回之前打开的笔记（恢复离开时光标，见
+      // editor.cursorMap）——搜索 / 双链误点切走后一键回。
+      // 编辑器聚焦时 CM 键位层（Prec.high）已消费并 preventDefault，此处守卫防双跳
+      if (e.defaultPrevented) return
+      e.preventDefault()
+      if (app.view.name === 'editor' && editor.current) void editor.goBackNote()
+    } else if (e.key === 'ArrowRight') {
+      // 前进历史（FR-2.4.26 D5）：后退过再「回来」（Alt+← 的反方向），新开导航清空前进栈
+      if (e.defaultPrevented) return
+      e.preventDefault()
+      if (app.view.name === 'editor' && editor.current) void editor.goForwardNote()
     }
     return
   }
@@ -315,6 +359,12 @@ onMounted(async () => {
   // Esc 用捕获阶段：必须早于 Element Plus 对话框自身的 Esc 处理，否则等冒泡到窗口时
   // 对话框已经关闭、「有模态则让位」的判断失效（实测：关对话框的同一次按键把心流也退了）
   window.addEventListener('keydown', onEscapeCapture, true)
+  // MRU 快切面板的提交时机（FR-2.4.26 D6）：**Ctrl 松开**提交（Tab 要反复按，不能在
+  // Tab keyup 上提交）；窗口失焦时取消（keyup 可能丢失）
+  window.addEventListener('keyup', (e: KeyboardEvent) => {
+    if (e.key === 'Control' && editor.mruActive) void editor.mruCommit()
+  })
+  window.addEventListener('blur', () => editor.mruCancel())
   if (tree.vaults.length > 0) {
     await Promise.all(tree.vaults.map((v) => tree.refreshGitStatus(v.name)))
   }
@@ -421,6 +471,7 @@ onMounted(async () => {
     @open-note="handleOpenNoteFromSearch"
     @preview-note="(vault: string, path: string, title: string) => app.requestNotePreview(vault, path, title)"
   />
+  <NoteSwitcher />
   <DraftPromoteDialog />
 
   <!-- 批量导出进度（悬浮条，完成即消失） -->

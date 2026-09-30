@@ -1,5 +1,6 @@
 /** 双链打开的共享逻辑：预览点击与编辑器 Ctrl+Click 同一套
- *  （无候选提示断链、单候选直接打开、多候选弹层消歧） */
+ *  （无候选提示断链、单候选直接打开、多候选弹层消歧）。
+ *  断链判定的纯逻辑在 lib/wikiTarget.ts（零依赖，所见即所得装饰层注入用）。 */
 import { h } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 

@@ -62,6 +62,8 @@ import { referenceInsertSpec } from '../lib/quickRef'
 import { filterSlashCommands, type SlashAction } from '../lib/slashCommands'
 import { invisiblePasteExtension, buildCleanInvisibleTransaction } from '../lib/invisibleEdits'
 import { collectDocInvisible } from '../lib/invisibleChars'
+import { treeHasWikiTarget } from '../lib/wikiTarget'
+import { hasNoteRefDrag, readNoteRefDrag, consumeDragAltLatch, type NoteRefPayload } from '../lib/dragDrop'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { TreeNode } from '@shared/types'
 
@@ -91,6 +93,10 @@ const emit = defineEmits<{
   (e: 'preview-note', target: { vault: string; path: string; name: string }): void
   /** Alt+Enter 落跨库引用（FR-2.9.11）：交外层弹确认框 → 复制进当前库 → 插入引用 */
   (e: 'insert-cross-vault', target: { vault: string; path: string; name: string }): void
+  /** 拖曳插入引用（FR-2.9.10 P3）：笔记条目拖入编辑器释放，at = 释放点（null = 无法
+   *  解析回落光标）、modifiers = 释放时的修饰键（alt = 插入后保留来源弹窗）；
+   *  三路引入语义收敛在外层 insertPreviewTarget */
+  (e: 'drop-note-ref', target: { vault: string; path: string; name: string }, at: number | null, modifiers: { alt: boolean }): void
   /** 快速引入图片（FR-2.5.4）：Ctrl+Shift+I 交外层调系统文件选择器（需要 vault/path，外层有） */
   (e: 'pick-image'): void
 }>()
@@ -217,10 +223,12 @@ function insertReferenceFromCompletion(): boolean {
  * 光标前有未闭合 `[[` 时从 `[[` 起替换并吸收光标后紧邻 `]]`（与上方补全落引用同款
  * 实测收敛行为），否则光标处直接插入。区间计算抽 lib/quickRef.referenceInsertSpec
  * （纯函数可单测）；跨库 / 草稿路径在 EditorView 侧解析为库内路径后也走本函数。
+ * at = 拖曳释放点（FR-2.9.10 P3）：给定时在释放位置插入（两态判定同以该位置为基准），
+ * 缺省沿用当前光标。
  */
-function insertReferenceAtPath(path: string): void {
+function insertReferenceAtPath(path: string, at?: number): void {
   if (!view) return
-  const cursor = view.state.selection.main.head
+  const cursor = Math.max(0, Math.min(at ?? view.state.selection.main.head, view.state.doc.length))
   const line = view.state.doc.lineAt(cursor)
   const spec = referenceInsertSpec(
     line.text.slice(0, cursor - line.from),
@@ -900,6 +908,24 @@ function createView(initialDoc: string): EditorView {
           run: (target: EditorView) => smartVerticalMove(target, -1)
         },
         {
+          // 笔记历史后退 / 前进（FR-2.4.26 D5）。必须在 CM 键位层无条件消费——否则历史
+          // 栈走到头（goBackNote 静默返回）时按键漏进 defaultKeymap 的 Alt-Arrow 行边界
+          // 移动，光标上 / 下跳一行（2026-09-30 真机反馈；同 Ctrl+S 双 toast 的「CM 先于
+          // 窗口层处理」机制）。栈空吞键不动光标；vim 开启时不消费 Alt 前缀键，落回本绑定
+          key: 'Alt-ArrowLeft',
+          run: () => {
+            void editorStore.goBackNote()
+            return true
+          }
+        },
+        {
+          key: 'Alt-ArrowRight',
+          run: () => {
+            void editorStore.goForwardNote()
+            return true
+          }
+        },
+        {
           // 行插入快捷键（用户提出）：不论光标在行内什么位置，在上方 / 下方插入一个空行
           // 并移动到新行行首（典型场景：[[ 补全落成引用后光标在行中，直接换行写下一行）。
           // 补全打开时 Ctrl+Enter 让位给 completionKeymap（接受补全，Prec.highest）
@@ -1045,20 +1071,7 @@ function buildLivePreview() {
     enabled: props.wysiwyg ?? false,
     vault: props.vault,
     notePath: props.notePath,
-    resolveName: (name: string) => {
-      const tree = useTreeStore()
-      const nodes = tree.trees[props.vault] ?? []
-      const target = name.toLowerCase()
-      const match = (list: TreeNode[]): boolean =>
-        list.some((n) =>
-          n.kind === 'note'
-            ? n.name.toLowerCase() === `${target}.md` || n.name.toLowerCase() === target
-            : n.kind === 'dir' && n.children
-              ? match(n.children)
-              : false
-        )
-      return match(nodes)
-    },
+    resolveName: (name: string) => treeHasWikiTarget(useTreeStore().trees[props.vault] ?? [], name),
     openNote: (target) => emit('open-note', target),
     openExternal: (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
   })
@@ -1116,7 +1129,9 @@ function applyPendingTableInsert(): void {
 }
 
 /**
- * 应用「编辑位置」意图（FR-2.4.18）：打开笔记后把光标放到文首 / 文末，消费后清空意图。
+ * 应用「编辑位置」意图（FR-2.4.18 / FR-2.4.26）：打开笔记后落位，消费后清空意图。
+ * start / end 按设置落到文首 / 文末；remembered = 会话内有该笔记的光标存档
+ * （editor.cursorMap）——恢复上次编辑位置与滚动（任何方式切走再回来都在原地）。
  * 由两个时机调用，保证任何打开路径都生效：① 文档被整体替换时（props.modelValue watcher）；
  * ② 组件挂载时——首次打开笔记时 store 已置位、组件才随后挂载，只靠 watcher 会漏掉这一次
  */
@@ -1124,6 +1139,23 @@ function applyPendingPlacement(): void {
   const place = editorStore.pendingPlacement
   if (!place || !view) return
   editorStore.pendingPlacement = null
+  if (place === 'remembered') {
+    // D7：历史导航带条目级快照（pendingCursor）——恢复「那一次到访」的光标；
+    // 普通打开 / 重挂载查 cursorMap（最新一次离开的位置）
+    const cur = editorStore.current
+    const saved = editorStore.pendingCursor ?? (cur ? editorStore.cursorMap[`${cur.vault}::${cur.path}`] : undefined)
+    editorStore.pendingCursor = null
+    if (!saved) return
+    const clamp = (pos: number) => Math.min(Math.max(pos, 0), view!.state.doc.length)
+    view.dispatch({
+      selection: { anchor: clamp(saved.anchor), head: clamp(saved.head) },
+      effects: EditorView.scrollIntoView(clamp(saved.head), { y: 'center' })
+    })
+    requestAnimationFrame(() => {
+      if (view) view.scrollDOM.scrollTop = saved.scrollTop
+    })
+    return
+  }
   const pos = place === 'end' ? view.state.doc.length : 0
   view.dispatch({
     selection: { anchor: pos },
@@ -1138,15 +1170,23 @@ watch(
 
 onMounted(() => {
   view = createView(props.modelValue)
+  // 实时选区上报槽（FR-2.4.26）：store 切换笔记前经此存档离开笔记的光标
+  editorStore.captureCursor = () =>
+    view && editorStore.current
+      ? {
+          anchor: view.state.selection.main.anchor,
+          head: view.state.selection.main.head,
+          scrollTop: view.scrollDOM.scrollTop
+        }
+      : null
   if (editorStore.pendingPlacement) {
-    // 挂载前 store 可能已置下「编辑位置」意图（首次打开笔记：先 openNote 再挂载编辑器）
+    // 挂载前 store 可能已置下落位意图（首次打开笔记：先 openNote 再挂载编辑器）
     applyPendingPlacement()
   } else {
     // 设置页往返等场景：编辑视图被整体卸载又重挂载（App 的 v-if），恢复离开时的
     // 光标与滚动位置——新视图的光标默认落在文档开头，会丢位置（2026-09-27 用户反馈）
-    const saved = editorStore.savedCursor
-    const key = editorStore.current ? `${editorStore.current.vault}::${editorStore.current.path}` : ''
-    if (saved && saved.key === key && view) {
+    const saved = editorStore.current ? editorStore.cursorMap[`${editorStore.current.vault}::${editorStore.current.path}`] : undefined
+    if (saved && view) {
       view.dispatch({ selection: { anchor: saved.anchor, head: saved.head } })
       const targetScroll = saved.scrollTop
       requestAnimationFrame(() => {
@@ -1160,13 +1200,13 @@ onBeforeUnmount(() => {
   // 存档光标与滚动位置（供重挂载恢复，见 onMounted）
   if (view && editorStore.current) {
     const sel = view.state.selection.main
-    editorStore.savedCursor = {
-      key: `${editorStore.current.vault}::${editorStore.current.path}`,
+    editorStore.cursorMap[`${editorStore.current.vault}::${editorStore.current.path}`] = {
       anchor: sel.anchor,
       head: sel.head,
       scrollTop: view.scrollDOM.scrollTop
     }
   }
+  editorStore.captureCursor = null
   tablePrompt.cancel()
   editorStore.vimMode = null
   view?.destroy()
@@ -1256,7 +1296,28 @@ function onPaste(e: ClipboardEvent): void {
   }
 }
 
+/** 拖曳悬停：维持全量放行（外部文件 / 外部文本拖入的既有行为不回归），
+ *  笔记引用载荷（FR-2.9.10 P3）设 copy 效果，dropCursor 给出落点竖线 */
+function onDragover(e: DragEvent): void {
+  if (e.dataTransfer && hasNoteRefDrag(e.dataTransfer)) {
+    e.dataTransfer.dropEffect = 'copy'
+  }
+  e.preventDefault()
+}
+
 function onDrop(e: DragEvent): void {
+  // 笔记引用拖入（FR-2.9.10 P3）：定释放点后交外层走三路引入语义（含 Alt 修饰——
+  // 插入后保留来源弹窗；修饰键取「事件状态 ∨ dragstart 锁存」，后者覆盖真机上
+  // 各平台对拖拽会话中 Alt 交付不一的问题，约定手势为「按住 Alt 再拖」）。
+  // posAtCoords 对渲染块 widget 返回最近合法位置；解析失败（卡片 padding 等）回落光标
+  const payload: NoteRefPayload | null = readNoteRefDrag(e.dataTransfer)
+  if (payload) {
+    e.preventDefault()
+    const at = view ? view.posAtCoords({ x: e.clientX, y: e.clientY }) : null
+    const alt = e.altKey || consumeDragAltLatch()
+    emit('drop-note-ref', payload, at, { alt })
+    return
+  }
   if (e.dataTransfer?.files.length) {
     e.preventDefault()
     handleFiles(e.dataTransfer.files)
@@ -1351,6 +1412,6 @@ defineExpose({
     class="editor-pane"
     @paste="onPaste"
     @drop="onDrop"
-    @dragover.prevent
+    @dragover="onDragover"
   ></div>
 </template>

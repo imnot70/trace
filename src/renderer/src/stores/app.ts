@@ -120,6 +120,9 @@ export const useAppStore = defineStore('app', {
     modeToastTimer: null as ReturnType<typeof setTimeout> | null,
     /** 跨组件的悬浮预览请求（FR-2.9.10：搜索框 Alt+Enter → EditorView 消费）；null = 无待处理 */
     pendingNotePreview: null as { vault: string; path: string; name: string } | null,
+    /** 跨组件的插入引用请求（FR-2.9.10 ⑤：搜索框 Alt+Enter 二段语义 → EditorView 消费
+     *  正在预览的笔记落成引用）；无载荷——插入目标以 EditorView 的 completionPreview 为准 */
+    pendingNoteInsert: 0 as number,
     /** 快速引用面板（FR-2.9.12）：Alt+I / /引入 呼出，目录树（含草稿）选笔记插入 [[引用]]。
      *  挂 EditorView（引入管线强依赖编辑器上下文）；el-dialog 模态走 hasModalOpen 让位链 */
     quickRefPickerOpen: false,
@@ -246,6 +249,11 @@ export const useAppStore = defineStore('app', {
     /** 请求以悬浮预览查看一篇笔记（搜索框等外部组件发起，EditorView 消费后清空） */
     requestNotePreview(vault: string, path: string, name: string): void {
       this.pendingNotePreview = { vault, path, name }
+    },
+    /** 请求把正在预览的笔记落成引用（搜索框 Alt+Enter 二段语义发起，EditorView 消费；
+     *  自增计数——同一目标可重复请求，watch 必须每次都触发） */
+    requestNoteInsert(): void {
+      this.pendingNoteInsert++
     },
     /** 快速引用面板开关（FR-2.9.12）：Alt+I 切换 / 关闭后编辑器回焦由 EditorView 负责 */
     toggleQuickRefPicker(): void {

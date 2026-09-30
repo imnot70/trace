@@ -35,7 +35,9 @@
             class="qr-row"
             :class="{ 'qr-hl': i === hl, 'qr-header': item.kind === 'header', 'qr-dir': item.kind === 'dir' }"
             :style="{ paddingLeft: 10 + item.depth * 16 + 'px' }"
+            :draggable="item.kind === 'note' || item.kind === 'draft'"
             @click="onRowClick(item, i)"
+            @dragstart="onRowDragStart($event, item)"
           >
             <template v-if="item.kind === 'header'">
               <span class="qr-header-text">{{ item.name }}</span>
@@ -76,6 +78,7 @@ import { SCRATCH_VAULT } from '@shared/types'
 import { noteDisplayName } from '@shared/validate'
 import { collectNotes, flatNoteOptions, type NoteTreeNode } from '../lib/noteCompletion'
 import { filterDrafts, flattenVisibleTree, locateNote, type PickerItem } from '../lib/quickRef'
+import { beginNoteRefDrag } from '../lib/dragDrop'
 import { formatRelativeTime } from '../lib/relativeTime'
 import { useTreeStore } from '../stores/tree'
 import { useDraftStore } from '../stores/draft'
@@ -198,6 +201,16 @@ function targetOf(item: RowItem): { vault: string; path: string; name: string; r
     return { vault: SCRATCH_VAULT, path: `${item.rel}.md`, name: item.name, rel: item.rel }
   }
   return { vault: props.vault, path: `${item.rel}.md`, name: item.name, rel: item.rel }
+}
+
+/** 拖曳插入引用（FR-2.9.10 P3）：笔记 / 草稿行可拖（目录 / 分组标题不可），
+ *  载荷与「引入」emit 同源（targetOf）；from: 'dialog' = 插入成功后默认关闭面板
+ *  （Alt 拖入保留，与键盘 Enter 插入即关一致）。遮罩让行 / 弹窗隐藏 / 恢复由
+ *  beginNoteRefDrag 内部统一处理 */
+function onRowDragStart(e: DragEvent, item: RowItem): void {
+  if (item.kind === 'dir' || item.kind === 'header') return
+  const t = targetOf(item)
+  beginNoteRefDrag(e, { vault: t.vault, path: t.path, name: t.name, from: 'dialog' })
 }
 
 function toggleDir(rel: string): void {

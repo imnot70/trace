@@ -252,6 +252,25 @@ body {
   background: rgba(0, 0, 0, 0.08);
 }
 
+/* 拖曳插入引用（FR-2.9.10 P3）：拖曳期间模态遮罩 / 浮层 backdrop 放行落点，
+ * 由 lib/dragDrop.ts 在 dragstart 加类、dragend / drop 一次性恢复。
+ * 弹窗盒子必须保持可命中（pointer-events 还原）——拖曳源在遮罩内，Chromium 在
+ * dragstart 时会重新命中测试源元素，整层 none 会让拖曳立即被取消（2026-09-29
+ * 真机实测：搜索 / Alt+I 弹窗条目拖不动；侧栏 / 反向链接不在遮罩内故正常）。
+ * drag-hide：让行生效一拍后再把弹窗整体藏掉（延后是同步隐藏会取消拖曳，见上），
+ * 落点区域完全可见；松手（落下 / 取消）即恢复（dragend / drop 一次性监听） */
+.drag-yield {
+  pointer-events: none;
+}
+
+.drag-yield .el-dialog {
+  pointer-events: auto;
+}
+
+.drag-hide {
+  visibility: hidden;
+}
+
 /* 左侧栏卡片 */
 .sidebar-card {
   width: 272px;
