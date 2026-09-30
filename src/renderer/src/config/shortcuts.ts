@@ -38,6 +38,8 @@ export const SHORTCUTS: ShortcutItem[] = [
   { keys: 'Alt + I', desc: '打开 / 关闭快速引用面板：从当前库目录树（含草稿分组）选笔记插入 [[引用]]，不切换当前笔记；↑/↓ 移动、→/← 展开/收起、Enter 引入、Alt+Enter 预览（面板保持打开，↑/↓ 换目标预览自动跟随，预览开着再按 Alt+Enter = 插入该笔记引用，Esc 先关预览回面板）；/引入 同义（心流 / 专注可用）', group: '编辑器' },
   { keys: 'Ctrl + Enter', desc: '在当前行下方插入一个空行，光标移到新行行首（补全打开时 = 接受补全）', group: '编辑器' },
   { keys: 'Ctrl + Shift + Enter', desc: '在当前行上方插入一个空行，光标移到新行行首', group: '编辑器' },
+  { keys: 'Alt + ← / Alt + →', desc: '笔记历史后退 / 前进（恢复离开时的光标；新开笔记清空前进方向）——搜索 / 双链误点切走后一键回', group: '编辑器' },
+  { keys: 'Ctrl + Tab（按住）', desc: '最近打开面板：Tab / Shift+Tab 翻动，松开 Ctrl 跳转，Esc 取消', group: '编辑器' },
   { keys: 'Ctrl + E', desc: '切换源码 / 所见即所得编辑模式（编辑视图内）', group: '编辑器' },
   { keys: 'Ctrl + B', desc: '加粗选中文字（无选中时插入占位符）', group: '编辑器' },
   { keys: 'Ctrl + I', desc: '斜体', group: '编辑器' },

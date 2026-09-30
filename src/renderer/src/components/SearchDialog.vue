@@ -4,7 +4,7 @@
     title="全局搜索"
     width="52%"
     :close-on-click-modal="false"
-    :close-on-press-escape="true"
+    :close-on-press-escape="!app.floatingPreview"
     class="search-dialog"
     @update:model-value="(v: boolean) => !v && handleClose()"
     @close="handleClose"
@@ -14,6 +14,7 @@
       <div class="search-input-container">
         <div class="search-bar">
           <el-input
+            ref="searchInputRef"
             v-model="searchQuery"
             placeholder="搜索笔记..."
             clearable
@@ -103,8 +104,10 @@
             :key="`${result.vault}-${result.path}-${result.lineNumber}`"
             class="result-item"
             :class="{ active: idx === activeIndex }"
+            draggable="true"
             @mousemove="activeIndex = idx"
             @click="openResult(result)"
+            @dragstart="onResultDragStart($event, result)"
           >
             <div class="result-title-row">
               <span class="result-title">{{ result.title }}</span>
@@ -158,6 +161,7 @@ import { ElMessage, type DropdownInstance } from 'element-plus'
 import { Search, Loading, Folder, ArrowDown, PriceTag } from '@element-plus/icons-vue'
 import { SCRATCH_VAULT } from '@shared/types'
 import type { SearchTagInfo, SearchResultItem } from '@shared/types'
+import { beginNoteRefDrag } from '../lib/dragDrop'
 import { scratchVaultLabel } from '../stores/draft'
 import { useAppStore } from '../stores/app'
 
@@ -178,6 +182,7 @@ const emit = defineEmits<{
 
 const searchQuery = ref('')
 const searchResults = ref<SearchResultItem[]>([])
+const searchInputRef = ref<{ focus: () => void } | null>(null)
 const searchDurationMs = ref(0)
 const isSearching = ref(false)
 const isBuildingIndex = ref(false)
@@ -219,6 +224,16 @@ function onDialogKeydown(e: KeyboardEvent): void {
   // 下拉列表展开：↑/↓ / 空格 / Enter 全归菜单，应用级快捷键一并让位
   if (document.querySelector('.search-bar [aria-expanded="true"]')) return
   if ((e.target as HTMLElement | null)?.closest?.('.el-dropdown-menu, .el-popper')) return
+  // Esc 分级消费（与快速引用面板同款，FR-2.9.10 ③）：悬浮预览开着时 Esc 先关预览并
+  // 回焦搜索框（继续换结果预览 / Alt+Enter 插入），再按才由 el-dialog 内建关闭——
+  // 内建 close-on-press-escape 已随预览打开禁用（模板），两级不叠加
+  if (e.key === 'Escape' && !e.altKey && !e.ctrlKey && !e.metaKey && app.floatingPreview) {
+    e.preventDefault()
+    e.stopPropagation()
+    app.closeFloatingPreview()
+    void nextTick(() => searchInputRef.value?.focus())
+    return
+  }
   const target = e.target as HTMLElement | null
   const inInput = !!target?.closest?.('input, textarea')
   const onButton = !!target?.closest?.('button')
@@ -286,10 +301,18 @@ function onEnterKey(): void {
 }
 
 function onPreviewKey(): void {
+  // 两段语义（与快速引用面板 / [[ 补全预览态一致，FR-2.9.10）：预览未开 = 预览选中
+  // 结果（弹窗保持打开）；预览开着 = 把正在预览的笔记落成引用——经 app store 计数
+  // 意图交给 EditorView（目标以 completionPreview 为准，与悬浮预览「插入引用」同收口）
+  if (app.floatingPreview) {
+    app.requestNoteInsert()
+    return
+  }
   const target = searchResults.value[activeIndex.value] ?? searchResults.value[0]
   if (!target) return
   // 决策 D3（2026-09-27 二次变更，用户反馈）：预览后搜索框**保持打开**——↑/↓ 换结果
-  // 可连续 Alt+Enter 预览，动线不断；需要专注阅读预览时 Esc 收起搜索框（悬浮预览保留）
+  // 可连续 Alt+Enter 预览，动线不断；需要专注阅读预览时 Esc 收起预览（弹窗保留），
+  // 再按 Esc 才关弹窗（分级消费）
   emit('preview-note', target.vault, target.path, target.title)
 }
 
@@ -492,6 +515,13 @@ function highlightSnippet(snippet: string, keyword: string): string {
 function openResult(result: SearchResultItem) {
   emit('open-note', result.vault, result.path)
   emit('close')
+}
+
+/** 拖曳插入引用（FR-2.9.10 P3）：结果条目可拖（含草稿 / 跨库结果，语义由编辑器侧三路收敛）。
+ *  from: 'dialog' 让编辑器侧知道来源是弹窗——插入成功后默认关闭（Alt 拖入保留）。
+ *  遮罩让行 / 弹窗隐藏 / 恢复由 beginNoteRefDrag 内部统一处理 */
+function onResultDragStart(e: DragEvent, result: SearchResultItem): void {
+  beginNoteRefDrag(e, { vault: result.vault, path: result.path, name: result.title, from: 'dialog' })
 }
 
 async function buildIndex() {

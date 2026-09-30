@@ -16,6 +16,7 @@ import BacklinkPanel from '../components/BacklinkPanel.vue'
 import TablePromptHud from '../components/TablePromptHud.vue'
 import type { HeadingLevel } from '../lib/heading'
 import { anchorRatioFor, typewriterPadding } from '../lib/typewriter'
+import { preferNameInsert, restoreDropMasks, type NoteRefPayload } from '../lib/dragDrop'
 import { SCRATCH_VAULT } from '@shared/types'
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 
@@ -55,10 +56,18 @@ function onEditorSave(): void {
 /** 把正在预览 / 面板选中的笔记落成引用（FR-2.9.11 / FR-2.9.12）：库内目标直接插入；
  *  跨库目标先确认 → 复制到当前库（图片随迁 + 引用改写，重名自动加后缀）→ 插入指向
  *  副本的引用。编辑器内 Alt+Enter（经 insert-cross-vault 事件）、悬浮预览「插入引用」
- *  按钮、快速引用面板三条动线共用此函数 */
-async function insertPreviewTarget(target: { vault: string; path: string; name: string }): Promise<void> {
+ *  按钮、快速引用面板、拖曳释放（FR-2.9.10 P3）多条动线共用此函数。
+ *  opts.at = 拖曳释放点（缺省 = 当前光标）；拖曳插入时按 D2 口径消歧——目标叶子名在
+ *  当前库内唯一则插 `[[名字]]`，重名 / 查不到插 `[[完整路径]]`（草稿态不消歧：草稿
+ *  不进双链索引，转正时再定归宿）。
+ *  @returns 引用是否已插入（用户取消确认框 / 复制失败 / 无当前笔记 = false）——
+ *  「插入即关」的调用方（拖入释放 / 悬浮预览插入）据此决定是否关闭来源弹窗 */
+async function insertPreviewTarget(
+  target: { vault: string; path: string; name: string },
+  opts?: { at?: number | null }
+): Promise<boolean> {
   const current = editor.current
-  if (!current) return
+  if (!current) return false
 
   let insertRel = target.path.replace(/\.md$/i, '')
 
@@ -69,7 +78,7 @@ async function insertPreviewTarget(target: { vault: string; path: string; name: 
       if (!inserted) editorRef.value?.insertReferenceAtPath(insertRel)
       app.closeFloatingPreview()
       editorRef.value?.focus()
-      return
+      return true
     }
     // 正式笔记引用草稿（FR-2.9.12 D3）：确认后把草稿「复制」为当前库正式笔记
     // （keepDraft——原草稿保留，与跨库复制同语义），引用指向正式笔记。草稿不在
@@ -84,7 +93,7 @@ async function insertPreviewTarget(target: { vault: string; path: string; name: 
           { type: 'warning', confirmButtonText: '复制并引用', cancelButtonText: '取消' }
         )
       } catch {
-        return // 用户取消
+        return false // 用户取消
       } finally {
         confirmOverPreview.value = false
       }
@@ -92,7 +101,7 @@ async function insertPreviewTarget(target: { vault: string; path: string; name: 
     const promoted = await window.trace.scratchPromote(target.path, current.vault, draftCopyDir, target.name, true)
     if (!promoted.ok || !promoted.path) {
       ElMessage.error(promoted.error ?? '草稿复制失败')
-      return
+      return false
     }
     insertRel = promoted.path.replace(/\.md$/i, '')
     ElMessage.success(`已复制草稿「${target.name}」为正式笔记`)
@@ -113,7 +122,7 @@ async function insertPreviewTarget(target: { vault: string; path: string; name: 
           { type: 'warning', confirmButtonText: '复制并引用', cancelButtonText: '取消' }
         )
       } catch {
-        return // 用户取消：保留悬浮预览，继续阅读
+        return false // 用户取消：保留悬浮预览，继续阅读
       } finally {
         confirmOverPreview.value = false
       }
@@ -121,18 +130,54 @@ async function insertPreviewTarget(target: { vault: string; path: string; name: 
     const copied = await window.trace.crossVaultCopy(target.vault, target.path, current.vault, `${copyDir}/${target.vault}`)
     if (!copied.ok || !copied.path) {
       ElMessage.error(copied.error ?? '跨库复制失败')
-      return
+      return false
     }
     insertRel = copied.path.replace(/\.md$/i, '')
     ElMessage.success(copied.reused ? `已复用现有副本「${copied.name ?? target.name}」` : `已复制「${copied.name ?? target.name}」到「${copyDir}」目录`)
   }
 
   // 当前是草稿（FR-2.3.9 D7 例外）：不复制，直接落引用文本，转正时再定归宿。
-  // 补全活动态优先（括号语义由其处理）；面板 / 兜底走括号感知的按路径插入
-  const inserted = editorRef.value?.insertReferenceFromCompletion()
-  if (!inserted) editorRef.value?.insertReferenceAtPath(insertRel)
+  // 补全活动态优先（括号语义由其处理；拖曳时补全必然不活动，走按路径插入兜底）；
+  // 拖曳释放（at 存在）按 D2 口径消歧后插入
+  if (opts?.at != null && current.vault !== SCRATCH_VAULT) {
+    const leaf = insertRel.split('/').pop() ?? insertRel
+    const candidates = await window.trace
+      .resolveByNameCandidates(current.vault, leaf)
+      .then((r) => r.paths)
+      .catch(() => undefined)
+    const insertText = preferNameInsert(candidates) ? leaf : insertRel
+    editorRef.value?.insertReferenceAtPath(insertText, opts.at)
+  } else {
+    const inserted = editorRef.value?.insertReferenceFromCompletion()
+    if (!inserted) editorRef.value?.insertReferenceAtPath(insertRel, opts?.at ?? undefined)
+  }
   app.closeFloatingPreview()
   editorRef.value?.focus()
+  return true
+}
+
+/** 关闭插入类弹窗（搜索 / Alt+I 面板）——「插入即关」统一语义（FR-2.9.10 ⑤ D6）的
+ *  收口：拖入释放（来源弹窗且未按 Alt）与悬浮预览插入成功后调用；两个都关是无害的
+ *  （未打开的那个本来就是关着的） */
+function closeInsertDialogs(): void {
+  searchStore.closeSearch()
+  app.closeQuickRefPicker()
+}
+
+/** 拖曳插入引用（FR-2.9.10 P3）：编辑器释放笔记条目后经三路语义落引用。
+ *  插入即关（D6）：来源是弹窗（搜索 / Alt+I）且释放时未按 Alt → 插入成功后关闭
+ *  弹窗（单插主场景零负担；Alt 拖入 = 保留弹窗连续插入）；侧栏树 / 反向链接来源
+ *  不关（没有弹窗可关）。取消拖曳不产生 drop → 天然不关。
+ *  恢复拖曳类（drag-yield / drag-hide）放在 finally 与关闭决策**同一同步续体**执行：
+ *  drop 接住时已抑制 dragend 的自动恢复（否则弹窗先恢复一帧再被关，闪现——2026-09-30
+ *  真机反馈），这里恢复 + 关闭一次绘制直达终态 */
+async function onDropNoteRef(target: NoteRefPayload, at: number | null, modifiers?: { alt?: boolean }): Promise<void> {
+  try {
+    const ok = await insertPreviewTarget(target, { at })
+    if (ok && target.from === 'dialog' && !modifiers?.alt) closeInsertDialogs()
+  } finally {
+    restoreDropMasks()
+  }
 }
 
 /** 快速引用面板（FR-2.9.12）：引入（三路语义收敛在 insertPreviewTarget）与预览。
@@ -374,20 +419,24 @@ watch(
   }
 )
 
-/** 悬浮预览头部的「插入引用」按钮（FR-2.9.10）：把正在预览的笔记落成引用。
- *  目标是当前笔记自身时不插入（自引用无意义），仅收起预览；落引用逻辑统一走
- *  insertPreviewTarget（库内直插 / 跨库确认后复制，FR-2.9.11） */
-function insertFromPreview(): void {
+/** 悬浮预览头部的「插入引用」按钮（FR-2.9.10）与搜索框 Alt+Enter 二段插入的共用收口：
+ *  把正在预览的笔记落成引用。目标是当前笔记自身时不插入（自引用无意义），仅收起预览；
+ *  落引用逻辑统一走 insertPreviewTarget（库内直插 / 跨库确认后复制，FR-2.9.11）。
+ *  插入成功后关闭插入类弹窗（FR-2.9.10 ⑤ D6：搜索弹窗二段插入后不再滞留——单插
+ *  主场景零负担，连续插入用 Alt 拖入或重开搜索〔查询与结果保留〕） */
+async function insertFromPreview(): Promise<boolean> {
   const target = completionPreview.value
-  if (!target) return
+  if (!target) return false
   const rel = target.path.replace(/\.md$/i, '')
   const isSelf = editor.current?.vault === target.vault && editor.current?.path.replace(/\.md$/i, '') === rel
   if (isSelf) {
     app.closeFloatingPreview()
     editorRef.value?.focus()
-    return
+    return false
   }
-  void insertPreviewTarget(target)
+  const ok = await insertPreviewTarget(target)
+  if (ok) closeInsertDialogs()
+  return ok
 }
 
 /** 悬浮预览是否正在展示跨库笔记（FR-2.9.11）：红色萤光边框 + 「跨库文件」标签 */
@@ -403,6 +452,16 @@ watch(
     if (!req) return
     app.pendingNotePreview = null
     void onCompletionPreview(req)
+  }
+)
+
+/** 外部组件的插入引用请求（FR-2.9.10 ⑤：搜索框 Alt+Enter 二段语义）——把正在预览的
+ *  笔记落成引用，与悬浮预览「插入引用」按钮同一收口（insertFromPreview 自带
+ *  无预览 / 自引用守卫）；计数型意图，每次到达都消费 */
+watch(
+  () => app.pendingNoteInsert,
+  () => {
+    insertFromPreview()
   }
 )
 
@@ -1062,6 +1121,7 @@ onBeforeUnmount(() => {
         @save="onEditorSave"
         @preview-note="onCompletionPreview"
         @insert-cross-vault="(t: { vault: string; path: string; name: string }) => void insertPreviewTarget(t)"
+        @drop-note-ref="onDropNoteRef"
         @image="(name: string, b64: string) => onImage(name, b64)"
         @pick-image="pickAndInsertImages"
         @open-note="onPreviewOpenNote"

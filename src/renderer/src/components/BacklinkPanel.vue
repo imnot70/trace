@@ -21,7 +21,9 @@
             :key="`${item.vault}-${item.path}-${i}`"
             class="backlink-item"
             :title="item.path"
+            draggable="true"
             @click="openNote(item)"
+            @dragstart="onItemDragStart($event, item)"
           >
             <el-icon class="backlink-item-icon"><Document /></el-icon>
             <span class="backlink-item-title">{{ item.title }}</span>
@@ -46,6 +48,7 @@
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Close, Document, Link } from '@element-plus/icons-vue'
 import type { BacklinkRef, FsChangedPayload } from '@shared/types'
+import { beginNoteRefDrag } from '../lib/dragDrop'
 
 const props = defineProps<{
   visible: boolean
@@ -62,6 +65,12 @@ const emit = defineEmits<{
 const backlinks = ref<BacklinkRef[]>([])
 const open = ref(false)
 const rootRef = ref<HTMLElement | null>(null)
+
+/** 拖曳插入引用（FR-2.9.10 P3）：拖出条目 = 引用来源笔记（载荷 path 含 .md）。
+ *  面板收回条件是「点击外部」而非「hover 离开」，拖曳不误收，无需额外处理 */
+function onItemDragStart(e: DragEvent, item: BacklinkRef): void {
+  beginNoteRefDrag(e, { vault: item.vault, path: item.path, name: item.title })
+}
 
 /** 同一笔记引用当前笔记多次只显示一条 */
 const uniqueBacklinks = computed(() => {
