@@ -276,7 +276,9 @@ body {
    颜色走主题变量，深浅主题自动适配（玻璃模式半透明底上同样成立） */
 .sidebar-card,
 .editor-card,
-.preview-card {
+.preview-card,
+.page-card,
+.sidebar-rail {
   border: 1px solid var(--border-color);
 }
 
