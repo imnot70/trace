@@ -75,6 +75,14 @@ export interface TraceApi {
   /** 系统文件选择器批量引入图片（FR-2.5.4）：主进程弹原生对话框并复制进附件目录 */
   importImages(vault: string, notePath: string): Promise<ImportImagesResult>
 
+  // ---- 右键上下文菜单（FR-2.4.28）----
+  /** 剪贴板三连走 webContents 原生路径（右键粘贴经 DOM paste 事件，归一化 FR-2.4.25 自动生效） */
+  clipboardCut(): Promise<void>
+  clipboardCopy(): Promise<void>
+  clipboardPaste(): Promise<void>
+  /** 在系统文件管理器中定位附件文件（编辑器右键图片上下文） */
+  revealAttachment(vault: string, notePath: string, ref: string): Promise<OpResult>
+
   // ---- 收藏 / 常用 ----
   listFavorites(): Promise<OpResult & { items?: FavoriteItem[] }>
   addFavorite(vault: string, path: string, name: string): Promise<OpResult>

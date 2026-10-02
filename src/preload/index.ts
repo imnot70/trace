@@ -39,6 +39,11 @@ const api: TraceApi = {
   saveImage: (vault, notePath, fileName, base64) =>
     ipcRenderer.invoke('note:saveImage', vault, notePath, fileName, base64),
   importImages: (vault, notePath) => ipcRenderer.invoke('image:import', vault, notePath),
+  // 右键上下文菜单（FR-2.4.28）：剪贴板三连走 webContents 原生路径
+  clipboardCut: () => ipcRenderer.invoke('clipboard:cut'),
+  clipboardCopy: () => ipcRenderer.invoke('clipboard:copy'),
+  clipboardPaste: () => ipcRenderer.invoke('clipboard:paste'),
+  revealAttachment: (vault, notePath, ref) => ipcRenderer.invoke('attachment:reveal', vault, notePath, ref),
   scratchList: () => ipcRenderer.invoke('scratch:list'),
   scratchStatus: () => ipcRenderer.invoke('scratch:status'),
   scratchCreate: () => ipcRenderer.invoke('scratch:create'),

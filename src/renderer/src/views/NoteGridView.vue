@@ -6,6 +6,7 @@ import { useTreeStore } from '../stores/tree'
 import { useNoteActions } from '../composables/actions'
 import { collectNotes, exportNotesToHtml, exportNotesToPdf, exportMergePdf } from '../composables/exportPdf'
 import { useEditorStore } from '../stores/editor'
+import { useGitStore } from '../stores/git'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
 import TagPickerDialog from '../components/TagPickerDialog.vue'
 import ShareGistDialog from '../components/ShareGistDialog.vue'
@@ -13,6 +14,17 @@ import { formatRelativeTime } from '../lib/relativeTime'
 import { stripFrontmatter } from '@shared/noteTags'
 import { SCRATCH_VAULT } from '@shared/types'
 import { noteDisplayName } from '@shared/validate'
+import {
+  cardDirItems,
+  cardDraftItems,
+  cardNoteItems,
+  cardVaultItems,
+  defsToVM,
+  dirContextItems,
+  gridNoteItems,
+  noteContextItems,
+  vaultContextItems
+} from '../composables/menuItems'
 import { useDraftStore } from '../stores/draft'
 import type { TreeNode } from '@shared/types'
 
@@ -20,6 +32,7 @@ import type { TreeNode } from '@shared/types'
  *  库内容网格 = 文件夹卡片 + 笔记卡片，面包屑 / Esc 逐级回退，见 vault-grid-navigation-design.md） */
 const app = useAppStore()
 const tree = useTreeStore()
+const git = useGitStore()
 const actions = useNoteActions()
 const editor = useEditorStore()
 const draft = useDraftStore()
@@ -313,6 +326,45 @@ function onVaultMenuCommand(cmd: string, card: VaultCard): void {
   else if (cmd === 'exportPdf') actions.exportFolderPdf(card.name, '')
   else if (cmd === 'exportPdfMerge') void actions.exportFolderMergePdf(card.name, '')
   else if (cmd === 'exportHtml') actions.exportFolderHtml(card.name, '')
+  // 右键并集（FR-2.4.29 D7）：Git 三项原本在侧栏库菜单，右键补齐（git store 薄调用）
+  else if (cmd === 'sync') void git.sync(card.name)
+  else if (cmd === 'associate') void git.openAssociate(card.name)
+  else if (cmd === 'disconnect') void git.disconnect(card.name)
+}
+
+/** 卡片右键（FR-2.4.29）：并集菜单，动作全部落既有 handler（单一定义源） */
+function onVaultCardContextmenu(e: MouseEvent, card: VaultCard): void {
+  app.openContextMenu({
+    x: e.clientX,
+    y: e.clientY,
+    items: defsToVM(vaultContextItems(!!tree.gitStatuses[card.name]?.associated), (cmd) =>
+      onVaultMenuCommand(cmd, card)
+    )
+  })
+}
+
+function onFolderCardContextmenu(e: MouseEvent, node: TreeNode): void {
+  app.openContextMenu({
+    x: e.clientX,
+    y: e.clientY,
+    items: defsToVM(dirContextItems(), (cmd) => onFolderMenuCommand(cmd, node))
+  })
+}
+
+function onNoteCardContextmenu(e: MouseEvent, item: GridItem, section: 'vault' | 'recents' | 'favorites' | 'shared' | 'drafts'): void {
+  if (section === 'drafts') {
+    app.openContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      items: defsToVM(cardDraftItems, (cmd) => void onNoteMenuCommand(cmd, item))
+    })
+    return
+  }
+  app.openContextMenu({
+    x: e.clientX,
+    y: e.clientY,
+    items: defsToVM(noteContextItems(isFavorited(item)), (cmd) => void onNoteMenuCommand(cmd, item))
+  })
 }
 
 function onFolderMenuCommand(cmd: string, node: TreeNode): void {
@@ -422,6 +474,9 @@ async function onNoteMenuCommand(cmd: string, item: GridItem): Promise<void> {
     void actions.removeRecent(item.vault, item.path)
   } else if (cmd === 'locate') {
     void tree.revealNode(item.vault, item.path, 'note')
+  } else if (cmd === 'rename') {
+    // 右键并集（FR-2.4.29 D7）：卡片菜单原本无重命名，右键补齐（与树菜单同动作）
+    actions.renameNote(item.vault, item.path, item.name)
   }
 
   // 悬浮预览若正显示被移除的笔记，一并关闭
@@ -643,7 +698,7 @@ watch(section, () => {
               placement="bottom"
               :show-after="400"
             >
-              <div class="note-card vault-card" @dblclick="app.drillIn(card.name)">
+              <div class="note-card vault-card" @dblclick="app.drillIn(card.name)" @contextmenu.prevent="onVaultCardContextmenu($event, card)">
                 <div class="note-card-actions">
                   <el-dropdown trigger="click" @command="(cmd: string) => onVaultMenuCommand(cmd, card)" popper-class="dd-instant-hide">
                     <button class="row-btn" title="更多操作" @click.stop @dblclick.stop>
@@ -651,12 +706,16 @@ watch(section, () => {
                     </button>
                     <template #dropdown>
                       <el-dropdown-menu>
-                        <el-dropdown-item command="locate">在侧栏中定位</el-dropdown-item>
-                        <el-dropdown-item command="exportPdf" divided>导出 PDF…</el-dropdown-item>
-                        <el-dropdown-item command="exportPdfMerge" divided>导出合并 PDF…</el-dropdown-item>
-                        <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
-                        <el-dropdown-item command="rename">重命名</el-dropdown-item>
-                        <el-dropdown-item command="deleteVault" class="danger-item">删除笔记库</el-dropdown-item>
+                        <!-- 菜单定义走 composables/menuItems 单一来源（FR-2.4.29） -->
+                        <el-dropdown-item
+                          v-for="d in cardVaultItems()"
+                          :key="d.command"
+                          :command="d.command"
+                          :divided="d.divided"
+                          :class="{ 'danger-item': d.danger }"
+                        >
+{{ d.label }}
+</el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
                   </el-dropdown>
@@ -680,6 +739,7 @@ watch(section, () => {
                 v-if="node.kind === 'dir'"
                 class="note-card folder-card"
                 @dblclick="app.drillIn(`${vaultName}/${node.path}`)"
+                @contextmenu.prevent="onFolderCardContextmenu($event, node)"
               >
                 <div class="note-card-actions">
                   <el-dropdown trigger="click" @command="(cmd: string) => onFolderMenuCommand(cmd, node)" popper-class="dd-instant-hide">
@@ -688,15 +748,15 @@ watch(section, () => {
                     </button>
                     <template #dropdown>
                       <el-dropdown-menu>
-                        <el-dropdown-item command="newDir">新建文件夹</el-dropdown-item>
-                        <el-dropdown-item command="newNote">创建笔记</el-dropdown-item>
-                        <el-dropdown-item command="exportPdf" divided>导出 PDF…</el-dropdown-item>
-                        <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
-                        <el-dropdown-item command="exportPdfMerge" divided>导出合并 PDF…</el-dropdown-item>
-                        <el-dropdown-item command="locate" divided>在侧栏中定位</el-dropdown-item>
-                        <el-dropdown-item command="move">移动到…</el-dropdown-item>
-                        <el-dropdown-item command="rename">重命名</el-dropdown-item>
-                        <el-dropdown-item command="delete" class="danger-item">删除文件夹</el-dropdown-item>
+                        <el-dropdown-item
+                          v-for="d in cardDirItems()"
+                          :key="d.command"
+                          :command="d.command"
+                          :divided="d.divided"
+                          :class="{ 'danger-item': d.danger }"
+                        >
+{{ d.label }}
+</el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
                   </el-dropdown>
@@ -718,6 +778,7 @@ watch(section, () => {
                 @pointerdown="onCardPressStart({ vault: vaultName, path: node.path, name: node.name }, $event)"
                 @pointerup="onCardPressEnd"
                 @pointerleave="onCardPressEnd"
+                @contextmenu.prevent="onNoteCardContextmenu($event, { vault: vaultName, path: node.path, name: node.name }, 'vault')"
               >
                 <div class="note-card-actions">
                   <el-dropdown
@@ -728,17 +789,15 @@ watch(section, () => {
                     </button>
                     <template #dropdown>
                       <el-dropdown-menu>
-                        <el-dropdown-item command="exportPdf">导出 PDF…</el-dropdown-item>
-                        <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
-                        <el-dropdown-item command="share">分享…</el-dropdown-item>
-                        <el-dropdown-item command="move">移动到…</el-dropdown-item>
-                        <el-dropdown-item command="favorite">
-                          {{ isFavorited({ vault: vaultName, path: node.path, name: node.name }) ? '取消收藏' : '收藏笔记' }}
-                        </el-dropdown-item>
-                        <el-dropdown-item command="locate">在侧栏中定位</el-dropdown-item>
-                        <el-dropdown-item command="info" divided>信息</el-dropdown-item>
-                        <el-dropdown-item command="tag">标签</el-dropdown-item>
-                        <el-dropdown-item command="delete" divided class="danger-item">删除笔记</el-dropdown-item>
+                        <el-dropdown-item
+                          v-for="d in cardNoteItems(isFavorited({ vault: vaultName, path: node.path, name: node.name }))"
+                          :key="d.command"
+                          :command="d.command"
+                          :divided="d.divided"
+                          :class="{ 'danger-item': d.danger }"
+                        >
+{{ d.label }}
+</el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
                   </el-dropdown>
@@ -774,6 +833,7 @@ watch(section, () => {
           @pointerdown="onCardPressStart(item, $event)"
           @pointerup="onCardPressEnd"
           @pointerleave="onCardPressEnd"
+          @contextmenu.prevent="onNoteCardContextmenu($event, item, section as 'recents' | 'favorites' | 'shared' | 'drafts')"
         >
           <div class="note-card-actions">
             <el-dropdown trigger="click" @command="(cmd: string) => onNoteMenuCommand(cmd, item)" popper-class="dd-instant-hide">
@@ -782,26 +842,27 @@ watch(section, () => {
               </button>
               <template #dropdown>
                 <el-dropdown-menu v-if="section === 'drafts'">
-                  <el-dropdown-item command="promote">保存为笔记…</el-dropdown-item>
-                  <el-dropdown-item command="deleteDraft" divided class="danger-item">删除草稿</el-dropdown-item>
+                  <el-dropdown-item
+                    v-for="d in cardDraftItems"
+                    :key="d.command"
+                    :command="d.command"
+                    :divided="d.divided"
+                    :class="{ 'danger-item': d.danger }"
+                  >
+{{ d.label }}
+</el-dropdown-item>
                 </el-dropdown-menu>
                 <el-dropdown-menu v-else>
-                  <!-- 分享网格：卡片菜单顶部是分享管理快捷操作（FR-2.3.10） -->
-                  <template v-if="section === 'shared'">
-                    <el-dropdown-item command="copyGistLink">复制链接</el-dropdown-item>
-                    <el-dropdown-item command="openGistUrl">打开分享页</el-dropdown-item>
-                  </template>
-                  <el-dropdown-item command="favorite">
-                    {{ isFavorited(item) ? '取消收藏' : '收藏笔记' }}
-                  </el-dropdown-item>
-                  <el-dropdown-item v-if="section === 'recents'" command="removeRecent">移出常用</el-dropdown-item>
-                  <el-dropdown-item command="locate">在侧栏中定位</el-dropdown-item>
-                  <el-dropdown-item command="info" divided>信息</el-dropdown-item>
-                  <el-dropdown-item command="tag">标签</el-dropdown-item>
-                  <el-dropdown-item command="exportPdf" divided>导出 PDF…</el-dropdown-item>
-                  <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
-                  <el-dropdown-item command="share">{{ section === 'shared' ? '分享管理…' : '分享…' }}</el-dropdown-item>
-                  <el-dropdown-item command="delete" class="danger-item">删除笔记</el-dropdown-item>
+                  <!-- 菜单定义走 composables/menuItems 单一来源（FR-2.4.29） -->
+                  <el-dropdown-item
+                    v-for="d in gridNoteItems(section as 'recents' | 'favorites' | 'shared', isFavorited(item))"
+                    :key="d.command"
+                    :command="d.command"
+                    :divided="d.divided"
+                    :class="{ 'danger-item': d.danger }"
+                  >
+{{ d.label }}
+</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
