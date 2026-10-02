@@ -16,6 +16,7 @@ import {
   defaultKeymap,
   cursorDocEnd,
   cursorDocStart,
+  deleteLine,
   history,
   historyKeymap,
   redo,
@@ -65,6 +66,7 @@ import { collectDocInvisible } from '../lib/invisibleChars'
 import { treeHasWikiTarget, wikilinkSpanAt, wikilinkNameAt } from '../lib/wikiTarget'
 import { openWikilinkByName } from '../lib/wikilink'
 import { resolveEditorMenu, type EditorMenuItem, type MenuItemVM } from '../lib/contextMenu'
+import { blockDeleteRange, blockRangeAt } from '../lib/blockDelete'
 import { hasNoteRefDrag, readNoteRefDrag, consumeDragAltLatch, type NoteRefPayload } from '../lib/dragDrop'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { TreeNode } from '@shared/types'
@@ -1028,6 +1030,31 @@ function createView(initialDoc: string): EditorView {
             if (tablePrompt.active || !view) return false
             const line = view.state.doc.lineAt(view.state.selection.main.head)
             view.dispatch({ changes: { from: line.from, insert: '\n' }, selection: { anchor: line.from } })
+            return true
+          }
+        },
+        {
+          // 删除光标所在行（FR-2.4.30，用户提出）：VS Code 同款 Ctrl+Shift+K。
+          // Ctrl+Shift+K 非 vim 键位（Vim.unmap 六+一键不含它），无冲突
+          key: 'Ctrl-Shift-k',
+          run: (target: EditorView) => {
+            if (tablePrompt.active) return false
+            deleteLine(target)
+            return true
+          }
+        },
+        {
+          // 删除光标所在块级内容（FR-2.4.30，用户提出）：围栏代码块 / $$ 公式块 /
+          // HTML 块 / 表格 / frontmatter 整删（前后空行吞一个防双空行残留）。
+          // Alt 系 vim 不绑定，零冲突；不在块内返回 false（无动作，键让位）
+          key: 'Alt-d',
+          run: (target: EditorView) => {
+            if (tablePrompt.active) return false
+            const head = target.state.selection.main.head
+            const block = blockRangeAt(target.state, head)
+            if (!block) return false
+            const range = blockDeleteRange(target.state.doc, block)
+            target.dispatch({ changes: { from: range.from, to: range.to } })
             return true
           }
         },
