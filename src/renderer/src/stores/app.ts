@@ -126,6 +126,9 @@ export const useAppStore = defineStore('app', {
     /** 快速引用面板（FR-2.9.12）：Alt+I / /引入 呼出，目录树（含草稿）选笔记插入 [[引用]]。
      *  挂 EditorView（引入管线强依赖编辑器上下文）；el-dialog 模态走 hasModalOpen 让位链 */
     quickRefPickerOpen: false,
+    /** 右键上下文菜单（FR-2.4.28）：全局单例浮层；null = 关闭。items 由调用侧组装
+     *  （编辑器经 lib/contextMenu 声明式模型映射，表面菜单复用 ⋮ 定义），action 为闭包 */
+    contextMenu: null as { x: number; y: number; items: import('../lib/contextMenu').MenuItemVM[] } | null,
     /** 新版本检测（FR-2.10.6）：null = 本次会话尚未检查成功；available=true 时顶栏 / 设置展示入口 */
     updateInfo: null as import('@shared/updateCheck').UpdateCheckResult | null,
     updateChecking: false
@@ -264,6 +267,13 @@ export const useAppStore = defineStore('app', {
     },
     closeQuickRefPicker(): void {
       this.quickRefPickerOpen = false
+    },
+    /** 打开右键上下文菜单（FR-2.4.28）：新菜单顶替旧菜单（同一时间至多一个） */
+    openContextMenu(payload: { x: number; y: number; items: import('../lib/contextMenu').MenuItemVM[] }): void {
+      this.contextMenu = payload
+    },
+    closeContextMenu(): void {
+      this.contextMenu = null
     },
     /** 切换打字机模式（Alt+T，2026-09-28 统一三态）：关 → 高位 → 低位 循环，心流内外一致。
      *  心流内从会话态（进入时推导）出发循环，非心流从设置值出发；切换经 updateSettings

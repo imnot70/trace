@@ -5,6 +5,8 @@ import type { TreeNode } from '@shared/types'
 import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
 import { useNoteActions } from '../composables/actions'
+import { useAppStore } from '../stores/app'
+import { defsToVM, dirContextItems, noteContextItems, treeDirItems, treeNoteItems, treePlusItems } from '../composables/menuItems'
 import { beginNoteRefDrag } from '../lib/dragDrop'
 import TagPickerDialog from './TagPickerDialog.vue'
 import ShareGistDialog from './ShareGistDialog.vue'
@@ -102,7 +104,20 @@ function handleMenuCommand(cmd: string): void {
     tagDialogVisible.value = true
   } else if (cmd === 'share') {
     shareDialogVisible.value = true
+  } else if (cmd === 'newDir') {
+    // 右键并集（FR-2.4.29 D7）：树菜单原本无新建入口（由 ⋔ + 按钮承担），右键补齐
+    actions.createDir(props.vault, props.node.path)
+  } else if (cmd === 'newNote') {
+    actions.createNote(props.vault, props.node.path)
+  } else if (cmd === 'locate') {
+    tree.revealNode(props.vault, props.node.path, props.node.kind)
   }
+}
+
+/** 树行右键（FR-2.4.29）：并集菜单，动作全部落到既有 handleMenuCommand（单一定义源） */
+function onRowContextmenu(e: MouseEvent): void {
+  const defs = isDir.value ? dirContextItems() : noteContextItems(favorited.value)
+  useAppStore().openContextMenu({ x: e.clientX, y: e.clientY, items: defsToVM(defs, handleMenuCommand) })
 }
 
 function handlePlusCommand(cmd: string): void {
@@ -126,6 +141,7 @@ const shareDialogVisible = ref(false)
       :draggable="!isDir"
       @click="onRowClick"
       @dragstart="onRowDragStart"
+      @contextmenu.prevent="onRowContextmenu"
     >
       <span class="chevron" :class="{ open: isDir && expanded }">
         <el-icon v-if="isDir"><ArrowRight /></el-icon>
@@ -147,8 +163,11 @@ const shareDialogVisible = ref(false)
           </button>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="dir">新建文件夹</el-dropdown-item>
-              <el-dropdown-item command="note">创建笔记</el-dropdown-item>
+              <el-dropdown-item
+                v-for="d in treePlusItems"
+                :key="d.command"
+                :command="d.command"
+              >{{ d.label }}</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -158,33 +177,14 @@ const shareDialogVisible = ref(false)
           </button>
           <template #dropdown>
             <el-dropdown-menu>
-              <template v-if="isDir">
-                <el-dropdown-item command="exportPdf">导出 PDF…</el-dropdown-item>
-                <el-dropdown-item command="exportPdfMerge">导出合并 PDF…</el-dropdown-item>
-                <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
-                <el-dropdown-item command="move">移动到…</el-dropdown-item>
-                <el-dropdown-item command="rename">重命名</el-dropdown-item>
-                <el-dropdown-item command="delete" divided class="danger-item"
-                  >删除文件夹</el-dropdown-item
-                >
-              </template>
-              <template v-else>
-                <el-dropdown-item command="exportPdf">导出 PDF…</el-dropdown-item>
-                <el-dropdown-item command="exportPdfMerge">导出合并 PDF…</el-dropdown-item>
-                <el-dropdown-item command="exportHtml">导出 HTML…</el-dropdown-item>
-                <el-dropdown-item command="share">分享…</el-dropdown-item>
-                <el-dropdown-item command="move">移动到…</el-dropdown-item>
-                <el-dropdown-item command="rename">重命名</el-dropdown-item>
-                <el-dropdown-item v-if="favorited" command="unfavorite" divided
-                  >取消收藏</el-dropdown-item
-                >
-                <el-dropdown-item v-else command="favorite" divided>收藏笔记</el-dropdown-item>
-                <el-dropdown-item command="info" divided>信息</el-dropdown-item>
-                <el-dropdown-item command="tag">标签…</el-dropdown-item>
-                <el-dropdown-item command="delete" class="danger-item"
-                  >删除笔记</el-dropdown-item
-                >
-              </template>
+              <!-- 菜单定义走 composables/menuItems 单一来源（FR-2.4.29）：与右键菜单同源 -->
+              <el-dropdown-item
+                v-for="d in isDir ? treeDirItems() : treeNoteItems(favorited)"
+                :key="d.command"
+                :command="d.command"
+                :divided="d.divided"
+                :class="{ 'danger-item': d.danger }"
+              >{{ d.label }}</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>

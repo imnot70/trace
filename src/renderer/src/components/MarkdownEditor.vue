@@ -64,6 +64,7 @@ import { invisiblePasteExtension, buildCleanInvisibleTransaction } from '../lib/
 import { collectDocInvisible } from '../lib/invisibleChars'
 import { treeHasWikiTarget, wikilinkSpanAt, wikilinkNameAt } from '../lib/wikiTarget'
 import { openWikilinkByName } from '../lib/wikilink'
+import { resolveEditorMenu, type EditorMenuItem, type MenuItemVM } from '../lib/contextMenu'
 import { hasNoteRefDrag, readNoteRefDrag, consumeDragAltLatch, type NoteRefPayload } from '../lib/dragDrop'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { TreeNode } from '@shared/types'
@@ -420,6 +421,75 @@ async function cleanInvisibleChars(): Promise<void> {
   if (!tr) return
   view.dispatch(tr)
   ElMessage.success(`已清理 ${nbsp + zeroWidth} 处不可见字符`)
+}
+
+// ---------- 右键上下文菜单（FR-2.4.28）：声明式动作 → 真实实现 ----------
+/** 把 lib/contextMenu 的声明式动作项映射为可执行菜单项（action 闭包收口在此） */
+function editorMenuItemToVM(item: EditorMenuItem): MenuItemVM {
+  return {
+    label: item.label,
+    hint: item.hint,
+    divided: item.divided,
+    disabled: item.disabled,
+    action: () => runEditorMenuAction(item)
+  }
+}
+
+function runEditorMenuAction(item: EditorMenuItem): void {
+  if (!view) return
+  switch (item.action) {
+    case 'cut':
+    case 'copy':
+    case 'paste': {
+      // 菜单按钮点击会移走焦点——webContents 剪贴板作用于聚焦元素，先回焦编辑器
+      view.focus()
+      const api =
+        item.action === 'cut'
+          ? window.trace.clipboardCut
+          : item.action === 'copy'
+            ? window.trace.clipboardCopy
+            : window.trace.clipboardPaste
+      void api()
+      break
+    }
+    // 选区格式：insertSnippet 自带智能包裹（有选中包夹 / 无选中插占位符）
+    case 'bold':
+      insertSnippet('**', '**', '加粗文字')
+      break
+    case 'italic':
+      insertSnippet('*', '*', '斜体文字')
+      break
+    case 'strike':
+      insertSnippet('~~', '~~', '删除线')
+      break
+    case 'inlineCode':
+      insertSnippet('`', '`', 'code')
+      break
+    case 'wikify':
+      insertSnippet('[[', ']]', '')
+      break
+    case 'openExternal':
+      window.open(item.payload, '_blank', 'noopener,noreferrer')
+      break
+    case 'copyLink':
+    case 'copyImagePath':
+      void navigator.clipboard.writeText(item.payload ?? '')
+      ElMessage.success('已复制')
+      break
+    case 'copyRef':
+      void navigator.clipboard.writeText(`[[${item.payload ?? ''}]]`)
+      ElMessage.success('已复制')
+      break
+    case 'openNote':
+      // 名称解析 / 断链提示 / 多候选消歧与 Ctrl+点击 同一管线
+      if (item.payload) void openWikilinkByName(props.vault, item.payload, (t) => emit('open-note', t))
+      break
+    case 'revealImage':
+      void window.trace.revealAttachment(props.vault, props.notePath, item.payload ?? '').then((r) => {
+        if (!r.ok) ElMessage.error(r.error ?? '定位失败')
+      })
+      break
+  }
 }
 
 function traceCompletions(context: CompletionContext): CompletionResult | null {
@@ -887,6 +957,20 @@ function createView(initialDoc: string): EditorView {
         blur: () => {
           if (tablePrompt.active) tablePrompt.cancel()
           return false
+        },
+        // 右键上下文菜单（FR-2.4.28，D6）：右键点在选区内保留选区直接弹菜单；选区外
+        // 先把光标挪到指针处（桌面编辑器惯例），随后全部按 state 判定（规避
+        // posAtCoords 对原子 widget 返回区间外位置的坑——只取它做挪动，不做节点判定）
+        contextmenu: (event, target) => {
+          const coordsPos = target.posAtCoords({ x: event.clientX, y: event.clientY })
+          if (coordsPos == null) return false
+          const sel = target.state.selection.main
+          const pos = coordsPos >= sel.from && coordsPos <= sel.to ? sel.head : coordsPos
+          if (pos !== sel.head) target.dispatch({ selection: { anchor: pos } })
+          const items = resolveEditorMenu(target.state, pos).map(editorMenuItemToVM)
+          useAppStore().openContextMenu({ x: event.clientX, y: event.clientY, items })
+          event.preventDefault()
+          return true
         }
       }),
       // 粘贴归一化（FR-2.4.25）：网页粘贴夹带的 NBSP / 零宽字符在入库前归一（任务行

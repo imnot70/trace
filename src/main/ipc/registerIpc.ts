@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { app, BrowserWindow, dialog, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import type { IpcMainInvokeEvent } from 'electron'
 import { errMessage } from '../lib/errMessage'
 import { logger } from '../lib/logger'
 import { resolveWithin } from '../lib/paths'
@@ -213,6 +214,26 @@ export function registerIpc(deps: IpcDeps): void {
       ? deps.scratch.saveImage(fileName, base64)
       : deps.fsTree.saveImage(vault, notePath, fileName, base64, deps.settings.get().attachmentsDir)
   )
+  // ---------- 右键上下文菜单（FR-2.4.28） ----------
+  // 剪贴板三连走 webContents 原生路径（D2）：右键粘贴必须经 DOM paste 事件——
+  // FR-2.4.25 的不可见字符归一化挂在该事件上，渲染端直接 dispatch 文本会绕过它。
+  // 三者直挂 ipcMain（不经上方 handle 包装：无 ok/error 语义且需要 sender 定位窗口）
+  ipcMain.handle('clipboard:cut', (e: IpcMainInvokeEvent) => BrowserWindow.fromWebContents(e.sender)?.webContents.cut())
+  ipcMain.handle('clipboard:copy', (e: IpcMainInvokeEvent) => BrowserWindow.fromWebContents(e.sender)?.webContents.copy())
+  ipcMain.handle('clipboard:paste', (e: IpcMainInvokeEvent) => BrowserWindow.fromWebContents(e.sender)?.webContents.paste())
+  // 在附件目录中显示（编辑器右键图片上下文）：把笔记内相对引用解析为磁盘绝对路径后
+  // 定位到资源管理器；解析与越界守卫同 fsTree 管线（resolveWithin 抛错即失败）
+  handle('attachment:reveal', (vault: string, notePath: string, ref: string) => {
+    try {
+      if (vault === SCRATCH_VAULT) return { ok: false, error: '草稿图片暂不支持定位' }
+      const abs = resolveWithin(deps.vaults.vaultPath(vault), path.join(path.dirname(notePath), ref))
+      if (!fs.existsSync(abs)) return { ok: false, error: '文件不存在' }
+      shell.showItemInFolder(abs)
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
   // 快速引入图片（FR-2.5.4）：主进程弹系统文件选择器（多选）→ 复制进附件目录 → 返回引用列表；
   // 取消选择返回空列表不落盘。草稿伪库走 scratch 自有附件目录（与粘贴一致）
   handle('image:import', async (vault: string, notePath: string) => {

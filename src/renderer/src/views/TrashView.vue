@@ -3,14 +3,29 @@ import { onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useTrashStore } from '../stores/trash'
 import { useTreeStore } from '../stores/tree'
+import { useAppStore } from '../stores/app'
+import { defsToVM, trashEntryItems } from '../composables/menuItems'
 import type { TrashEntry } from '@shared/types'
 
 const trash = useTrashStore()
 const tree = useTreeStore()
+const app = useAppStore()
 
 onMounted(() => {
   void trash.load()
 })
+
+/** 条目右键（FR-2.4.29）：还原 / 彻底删除（操作按钮保留，右键为补充入口） */
+function onEntryContextmenu(e: MouseEvent, entry: TrashEntry): void {
+  app.openContextMenu({
+    x: e.clientX,
+    y: e.clientY,
+    items: defsToVM(trashEntryItems, (cmd) => {
+      if (cmd === 'restore') void restore(entry)
+      else if (cmd === 'purge') void purge(entry)
+    })
+  })
+}
 
 function kindLabel(entry: TrashEntry): string {
   if (entry.kind === 'vault') return '笔记库'
@@ -84,7 +99,7 @@ async function empty(): Promise<void> {
     </div>
 
     <div v-else class="trash-list">
-      <div v-for="entry in trash.entries" :key="entry.id" class="trash-card">
+      <div v-for="entry in trash.entries" :key="entry.id" class="trash-card" @contextmenu.prevent="onEntryContextmenu($event, entry)">
         <el-icon class="trash-icon">
           <Folder v-if="entry.kind !== 'note'" />
           <Document v-else />

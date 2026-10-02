@@ -12,6 +12,7 @@ import { useSearchStore } from '../stores/search'
 import type { VaultInfo, BacklinkRef } from '@shared/types'
 import { pickTagColor, TAG_PALETTE } from '@shared/tagPalette'
 import VaultNode from './VaultNode.vue'
+import { defsToVM, sidebarVaultItems, tagRowItems, vaultContextItems } from '../composables/menuItems'
 
 const app = useAppStore()
 const tree = useTreeStore()
@@ -206,6 +207,25 @@ function handleVaultCommand(cmd: string, vault: string): void {
   else if (cmd === 'delete') void actions.deleteVault(vault)
 }
 
+/** 库行右键（FR-2.4.29）：并集菜单，动作全部落 handleVaultCommand（单一定义源） */
+function onVaultRowContextmenu(e: MouseEvent, vault: string): void {
+  const associated = !!tree.gitStatuses[vault]?.associated
+  app.openContextMenu({
+    x: e.clientX,
+    y: e.clientY,
+    items: defsToVM(vaultContextItems(associated), (cmd) => handleVaultCommand(cmd, vault))
+  })
+}
+
+/** 标签行右键（FR-2.4.29）：与 ⋮ 菜单同一定义源 */
+function onTagRowContextmenu(e: MouseEvent, tag: { id: string; name: string; color: string }): void {
+  app.openContextMenu({
+    x: e.clientX,
+    y: e.clientY,
+    items: defsToVM(tagRowItems, (cmd) => void handleTagMenu(cmd, tag))
+  })
+}
+
 function handleVaultPlus(cmd: string, vault: string): void {
   if (cmd === 'dir') actions.createDir(vault, '')
   else if (cmd === 'note') actions.createNote(vault, '')
@@ -312,6 +332,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
             class="tag-row"
             :class="{ active: isGridOpen('tags', tag.id) }"
             @click="toggleGrid('tags', tag.id)"
+            @contextmenu.prevent="onTagRowContextmenu($event, tag)"
           >
             <span class="tag-dot" :style="{ background: tag.color }" />
             <span class="tag-name">{{ tag.name }}</span>
@@ -321,9 +342,16 @@ defineProps<{ vaults?: VaultInfo[] }>()
               </button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item command="rename">重命名</el-dropdown-item>
-                  <el-dropdown-item command="color">更换颜色</el-dropdown-item>
-                  <el-dropdown-item command="delete" divided class="danger-item">删除标签</el-dropdown-item>
+                  <!-- 菜单定义走 composables/menuItems 单一来源（FR-2.4.29） -->
+                  <el-dropdown-item
+                    v-for="d in tagRowItems"
+                    :key="d.command"
+                    :command="d.command"
+                    :divided="d.divided"
+                    :class="{ 'danger-item': d.danger }"
+                  >
+{{ d.label }}
+</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -391,6 +419,7 @@ defineProps<{ vaults?: VaultInfo[] }>()
               :class="{ 'menu-hold': openVaultMenu === vault.name, located: tree.locateKey === vault.name }"
               :data-locate="vault.name"
               @click="clickVaultRow(vault.name)"
+              @contextmenu.prevent="onVaultRowContextmenu($event, vault.name)"
             >
               <el-icon class="chevron" :class="{ open: tree.isVaultExpanded(vault.name) }">
                 <ArrowRight />
@@ -411,30 +440,14 @@ defineProps<{ vaults?: VaultInfo[] }>()
                   </button>
                   <template #dropdown>
                     <el-dropdown-menu>
+                      <!-- 菜单定义走 composables/menuItems 单一来源（FR-2.4.29） -->
                       <el-dropdown-item
-                        v-if="tree.gitStatuses[vault.name]?.associated"
-                        command="sync"
-                      >
-                        立即同步
-                      </el-dropdown-item>
-                      <el-dropdown-item command="associate">
-                        {{
-                          tree.gitStatuses[vault.name]?.associated
-                            ? '重新关联 Git 仓库'
-                            : '关联 Git 仓库'
-                        }}
-                      </el-dropdown-item>
-                      <el-dropdown-item
-                        v-if="tree.gitStatuses[vault.name]?.associated"
-                        command="disconnect"
-                        divided
-                      >
-                        解除关联
-                      </el-dropdown-item>
-                      <el-dropdown-item command="rename" divided>重命名</el-dropdown-item>
-                      <el-dropdown-item command="delete" class="danger-item"
-                        >删除笔记库</el-dropdown-item
-                      >
+                        v-for="d in sidebarVaultItems(!!tree.gitStatuses[vault.name]?.associated)"
+                        :key="d.command"
+                        :command="d.command"
+                        :divided="d.divided"
+                        :class="{ 'danger-item': d.danger }"
+                      >{{ d.label }}</el-dropdown-item>
                     </el-dropdown-menu>
                   </template>
                 </el-dropdown>

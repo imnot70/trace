@@ -17,6 +17,7 @@ import GitAssociateDialog from './components/GitAssociateDialog.vue'
 import ConflictResolutionDialog from './components/ConflictResolutionDialog.vue'
 import DraftPromoteDialog from './components/DraftPromoteDialog.vue'
 import SearchDialog from './components/SearchDialog.vue'
+import ContextMenu from './components/ContextMenu.vue'
 import NoteSwitcher from './components/NoteSwitcher.vue'
 import { buildWindowTitle } from './lib/windowTitle'
 import WelcomeView from './views/WelcomeView.vue'
@@ -480,6 +481,8 @@ onMounted(async () => {
     @open-note="handleOpenNoteFromSearch"
     @preview-note="(vault: string, path: string, title: string) => app.requestNotePreview(vault, path, title)"
   />
+  <!-- 右键上下文菜单（FR-2.4.28）：全局单例浮层，调用侧经 app.openContextMenu 组装 -->
+  <ContextMenu />
   <NoteSwitcher />
   <DraftPromoteDialog />
 
