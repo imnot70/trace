@@ -4,6 +4,7 @@
 import { EditorView, WidgetType } from '@codemirror/view'
 import katex from 'katex'
 import { md, sanitizeHtml } from '../markdown'
+import { getFrontmatterTags, setFrontmatterTags } from '@shared/noteTags'
 
 /** 简易 LRU：命中即提到队尾，超容量淘汰最旧（键为源文本，文档变更靠文本失配自然失效） */
 class LruCache<V> {
@@ -205,29 +206,115 @@ export class WikilinkWidget extends WidgetType {
   }
 }
 
-/** frontmatter 折叠摘要：一行展示标签等元数据，光标进入展开源码 */
+/** frontmatter 标签胶囊数据：颜色来自标签定义快照（LivePreviewConfig.tagColors），未登记标签无色 */
+export interface FrontmatterTagVM {
+  name: string
+  color?: string
+}
+
+/**
+ * frontmatter 折叠摘要（FR-2.6.17 胶囊化）：标签以彩色胶囊展示，可点 × 移除、
+ * 点「＋ 标签」呼出打标签弹窗（经冒泡自定义事件由 MarkdownEditor 承接）；
+ * 无标签时退回「N 行元数据」摘要。所有交互走事务写回缓冲区（自动保存落盘），
+ * 与复选框 widget 同一套 mousedown 竞态规避（等 click 会被光标定位展开源码抢走）。
+ */
 export class FrontmatterWidget extends WidgetType {
   constructor(
-    readonly summary: string,
-    readonly lineCount: number
+    readonly lineCount: number,
+    readonly tags: FrontmatterTagVM[]
   ) {
     super()
   }
   eq(other: FrontmatterWidget): boolean {
-    return other.summary === this.summary && other.lineCount === this.lineCount
+    if (other.lineCount !== this.lineCount || other.tags.length !== this.tags.length) return false
+    // 颜色也在比较内：改色后（配置重算 → 新实例）eq 失配才会重建 DOM
+    return this.tags.every((t, i) => other.tags[i].name === t.name && other.tags[i].color === t.color)
   }
-  toDOM(): HTMLElement {
+  toDOM(view: EditorView): HTMLElement {
     const div = document.createElement('div')
     div.className = 'lp-frontmatter'
     const tag = document.createElement('span')
     tag.className = 'lp-frontmatter-badge'
     tag.textContent = 'frontmatter'
     div.appendChild(tag)
-    const text = document.createElement('span')
-    text.textContent = this.summary || `${this.lineCount} 行元数据`
-    div.appendChild(text)
+    if (this.tags.length > 0) {
+      for (const t of this.tags) {
+        const pill = document.createElement('span')
+        pill.className = 'lp-frontmatter-capsule'
+        const dot = document.createElement('span')
+        dot.className = 'lp-frontmatter-capsule-dot'
+        if (t.color) dot.style.background = t.color
+        pill.appendChild(dot)
+        const name = document.createElement('span')
+        name.className = 'lp-frontmatter-capsule-name'
+        name.textContent = t.name
+        pill.appendChild(name)
+        const x = document.createElement('span')
+        x.className = 'lp-frontmatter-capsule-x'
+        x.textContent = '×'
+        x.title = '移除该标签'
+        x.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return
+          e.preventDefault()
+          e.stopPropagation()
+          removeFrontmatterTag(view, t.name)
+        })
+        pill.appendChild(x)
+        div.appendChild(pill)
+      }
+    } else {
+      const text = document.createElement('span')
+      text.textContent = `${this.lineCount} 行元数据`
+      div.appendChild(text)
+    }
+    const add = document.createElement('span')
+    add.className = 'lp-frontmatter-add'
+    add.textContent = '＋ 标签'
+    add.title = '添加标签'
+    add.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return
+      e.preventDefault()
+      e.stopPropagation()
+      // 冒泡到编辑器容器（MarkdownEditor 监听后打开打标签弹窗——widget 在 CM 管辖外无法直接挂 Vue 弹窗）
+      div.dispatchEvent(new CustomEvent('trace-frontmatter-add-tag', { bubbles: true }))
+    })
+    div.appendChild(add)
     return div
   }
+  // 事件完全由 widget 自己处理，CM 不要再做光标定位
+  ignoreEvent(): boolean {
+    return true
+  }
+}
+
+/**
+ * 事务写回 frontmatter tags：对整篇文本计算 tag 映射后的新内容，再按公共前 / 后缀
+ * 收敛成最小替换区间（光标与撤销粒度稳定，正文零触碰）。YAML 解析失败静默放弃
+ * （setFrontmatterTags 返回 null，与 TagPickerDialog 的缓冲区路径同一保护）。
+ */
+export function rewriteFrontmatterTags(view: EditorView, map: (names: string[]) => string[]): void {
+  const oldStr = view.state.doc.toString()
+  const updated = setFrontmatterTags(oldStr, map(getFrontmatterTags(oldStr)))
+  if (updated === null || updated === oldStr) return
+  const minLen = Math.min(oldStr.length, updated.length)
+  let start = 0
+  while (start < minLen && oldStr[start] === updated[start]) start++
+  let endOld = oldStr.length
+  let endNew = updated.length
+  while (endOld > start && endNew > start && oldStr[endOld - 1] === updated[endNew - 1]) {
+    endOld--
+    endNew--
+  }
+  view.dispatch({
+    changes: { from: start, to: endOld, insert: updated.slice(start, endNew) },
+    userEvent: 'input'
+  })
+}
+
+/** 移除 frontmatter 中的一个标签（大小写不敏感；FR-2.6.17 胶囊 ×） */
+export function removeFrontmatterTag(view: EditorView, name: string): void {
+  const lower = name.toLowerCase()
+  rewriteFrontmatterTags(view, (names) => names.filter((n) => n.toLowerCase() !== lower))
 }
 
 /** 块级源文本 → 净化渲染 HTML（表格/HTML 块共用，与预览同一管道），LRU 缓存 */

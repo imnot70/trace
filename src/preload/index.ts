@@ -125,6 +125,8 @@ const api: TraceApi = {
   removeTagFromNote: (vault, path, tagId) => ipcRenderer.invoke('tag:removeFromNote', vault, path, tagId),
   notesByTag: (tagId) => ipcRenderer.invoke('tag:byTag', tagId),
   notesByTags: (tagIds, match) => ipcRenderer.invoke('tag:byTags', tagIds, match),
+  tagStats: () => ipcRenderer.invoke('tag:stats'),
+  mergeTags: (sourceId, targetId) => ipcRenderer.invoke('tag:merge', sourceId, targetId),
 
   gistList: () => ipcRenderer.invoke('gist:list'),
   gistGet: (vault, path) => ipcRenderer.invoke('gist:get', vault, path),

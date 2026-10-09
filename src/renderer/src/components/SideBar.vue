@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, WarningFilled } from '@element-plus/icons-vue'
+import { Search, Sort, WarningFilled } from '@element-plus/icons-vue'
 import { useAppStore } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import { useDraftStore } from '../stores/draft'
@@ -13,6 +13,14 @@ import type { VaultInfo, BacklinkRef } from '@shared/types'
 import { pickTagColor, TAG_PALETTE } from '@shared/tagPalette'
 import VaultNode from './VaultNode.vue'
 import { defsToVM, sidebarVaultItems, tagRowItems, vaultContextItems } from '../composables/menuItems'
+import {
+  TAG_SORT_MODES,
+  loadTagSortMode,
+  saveTagSortMode,
+  sortTags,
+  tagStatIndex,
+  type TagSortMode
+} from '../composables/tagSort'
 
 const app = useAppStore()
 const tree = useTreeStore()
@@ -128,6 +136,27 @@ function isGridOpen(section: 'recents' | 'favorites' | 'drafts' | 'vaults' | 'ta
   return true
 }
 
+// ---------- 标签排序（FR-2.6.16，口径与打标签弹窗共用 composables/tagSort） ----------
+const tagSortMode = ref<TagSortMode>(loadTagSortMode())
+const tagStatMap = computed(() => tagStatIndex(tree.tagStats))
+const sortedTags = computed(() => sortTags(tree.tags, tagSortMode.value, tagStatMap.value))
+
+watch(
+  tagSortMode,
+  (mode) => {
+    saveTagSortMode(mode)
+    // 统计按需拉取：默认排序不需要全库扫描
+    if (mode !== 'default') void tree.loadTagStats()
+  },
+  { immediate: true }
+)
+
+/** 标签操作后的统一刷新：列表必刷；非默认排序时统计一并刷新（笔记数 / 最近使用会变） */
+async function refreshTagData(): Promise<void> {
+  await tree.loadTags()
+  if (tagSortMode.value !== 'default') await tree.loadTagStats()
+}
+
 async function createTag(): Promise<void> {
   const { value } = await ElMessageBox.prompt('标签名称', '新建标签', {
     confirmButtonText: '创建',
@@ -140,7 +169,7 @@ async function createTag(): Promise<void> {
   if (result.ok) {
     // 收起状态下区块标题的 + 按钮仍可点：新建后展开，否则新标签建完就「不见了」
     app.setTagSectionOpen(true)
-    await tree.loadTags()
+    await refreshTagData()
     ElMessage.success('标签已创建')
   } else {
     ElMessage.error(result.error ?? '创建失败')
@@ -157,11 +186,15 @@ async function handleTagMenu(cmd: string, tag: { id: string; name: string; color
       inputErrorMessage: '标签名不能为空'
     })
     const result = await window.trace.renameTag(tag.id, value.trim())
-    if (result.ok) await tree.loadTags()
+    if (result.ok) await refreshTagData()
     else ElMessage.error(result.error ?? '重命名失败')
   } else if (cmd === 'color') {
     // 打开选色弹窗（预设色板 + 自定义拾色器）
     colorDialog.value = { visible: true, id: tag.id, name: tag.name, color: tag.color }
+  } else if (cmd === 'merge') {
+    // 合并确认（FR-2.6.15）：弹窗内展示两侧笔记数，选目标标签后确认
+    if (tagSortMode.value !== 'default' || tree.tagStats.length === 0) await tree.loadTagStats()
+    mergeDialog.value = { visible: true, sourceId: tag.id, sourceName: tag.name, targetId: '' }
   } else if (cmd === 'delete') {
     await ElMessageBox.confirm(`确定删除标签「${tag.name}」？关联的笔记不会被删除。`, '删除标签', {
       confirmButtonText: '删除',
@@ -169,8 +202,55 @@ async function handleTagMenu(cmd: string, tag: { id: string; name: string; color
       type: 'warning'
     })
     await window.trace.deleteTag(tag.id)
-    await tree.loadTags()
+    await refreshTagData()
     ElMessage.success('标签已删除')
+  }
+}
+
+// ---------- 标签合并弹窗（FR-2.6.15） ----------
+const mergeDialog = ref<{ visible: boolean; sourceId: string; sourceName: string; targetId: string } | null>(null)
+
+/** 可选目标：除来源外的全部标签，按名称排序展示，选项里带笔记数（统计缺失时不显示数字） */
+const mergeTargetOptions = computed(() => {
+  const dlg = mergeDialog.value
+  if (!dlg) return []
+  return tree.tags
+    .filter((t) => t.id !== dlg.sourceId)
+    .map((t) => ({ id: t.id, name: t.name, count: tagStatMap.value.get(t.name.toLowerCase())?.count }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN'))
+})
+
+const mergeSourceCount = computed(() => {
+  const dlg = mergeDialog.value
+  if (!dlg) return 0
+  return tagStatMap.value.get(dlg.sourceName.toLowerCase())?.count ?? 0
+})
+
+/** el-dialog 关闭后 DOM 仍驻留：目标选择走 computed 兜底，避免关闭态 null 引用 */
+const mergeTargetId = computed<string>({
+  get: () => mergeDialog.value?.targetId ?? '',
+  set: (v) => {
+    if (mergeDialog.value) mergeDialog.value.targetId = v
+  }
+})
+
+async function confirmMerge(): Promise<void> {
+  const dlg = mergeDialog.value
+  if (!dlg || !dlg.targetId) return
+  const target = tree.tags.find((t) => t.id === dlg.targetId)
+  if (!target) return
+  const result = await window.trace.mergeTags(dlg.sourceId, dlg.targetId)
+  if (result.ok) {
+    mergeDialog.value = null
+    await refreshTagData()
+    // 正在按来源标签筛选的网格：合并后该标签已不存在，从筛选集合移除（清空则回欢迎页）
+    if (app.view.name === 'grid' && app.view.section === 'tags') {
+      const next = (app.view.tagIds ?? []).filter((id) => id !== dlg.sourceId)
+      app.view = next.length ? { name: 'grid', section: 'tags', tagIds: next } : { name: 'welcome' }
+    }
+    ElMessage.success(`已合并 ${result.notes ?? 0} 篇笔记到「${target.name}」`)
+  } else {
+    ElMessage.error(result.error ?? '合并失败')
   }
 }
 
@@ -323,11 +403,29 @@ defineProps<{ vaults?: VaultInfo[] }>()
           <button class="row-btn" title="新建标签" @click.stop="createTag()">
             <el-icon><Plus /></el-icon>
           </button>
+          <!-- 排序（FR-2.6.16）：默认 / 笔记数 / 最近使用，与打标签弹窗同一口径（composables/tagSort） -->
+          <el-dropdown
+            trigger="click"
+            popper-class="dd-instant-hide"
+            @command="(mode: string) => (tagSortMode = mode as TagSortMode)"
+          >
+            <button class="row-btn tag-sort-btn" :title="`排序：${TAG_SORT_MODES.find((m) => m.value === tagSortMode)?.label ?? ''}`" @click.stop>
+              <el-icon><Sort /></el-icon>
+            </button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item v-for="m in TAG_SORT_MODES" :key="m.value" :command="m.value">
+                  <span class="tag-sort-check">{{ tagSortMode === m.value ? '✓' : '' }}</span>
+                  {{ m.label }}
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
           <span v-if="tree.tags.length" class="side-section-count">{{ tree.tags.length }}</span>
         </div>
         <div v-if="tree.tags.length && app.tagSectionOpen" class="tag-list">
           <div
-            v-for="tag in tree.tags"
+            v-for="tag in sortedTags"
             :key="tag.id"
             class="tag-row"
             :class="{ active: isGridOpen('tags', tag.id) }"
@@ -336,6 +434,8 @@ defineProps<{ vaults?: VaultInfo[] }>()
           >
             <span class="tag-dot" :style="{ background: tag.color }" />
             <span class="tag-name">{{ tag.name }}</span>
+            <!-- 非默认排序时显示笔记数：让排序依据可见（统计缺失显示 0） -->
+            <span v-if="tagSortMode !== 'default'" class="tag-row-count">{{ tagStatMap.get(tag.name.toLowerCase())?.count ?? 0 }}</span>
             <el-dropdown trigger="click" @command="(cmd: string) => handleTagMenu(cmd, tag)" popper-class="dd-instant-hide">
               <button class="row-btn tag-menu-btn" title="更多操作" @click.stop>
                 <el-icon><MoreFilled /></el-icon>
@@ -518,6 +618,31 @@ defineProps<{ vaults?: VaultInfo[] }>()
       <template #footer>
         <el-button @click="colorDialog = null">取消</el-button>
         <el-button type="primary" @click="applyTagColor">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 标签合并弹窗（FR-2.6.15）：展示两侧笔记数，确认后批量改写 frontmatter 并删除来源标签 -->
+    <el-dialog
+      :model-value="!!mergeDialog?.visible"
+      :title="`合并标签 — ${mergeDialog?.sourceName ?? ''}`"
+      width="360px"
+      append-to-body
+      @update:model-value="mergeDialog = null"
+    >
+      <div class="merge-summary">
+        「{{ mergeDialog?.sourceName }}」（{{ mergeSourceCount }} 篇笔记）将并入目标标签；合并后来源标签删除，相关笔记的标签引用一并改写。
+      </div>
+      <el-select v-model="mergeTargetId" placeholder="选择目标标签" filterable class="merge-select">
+        <el-option
+          v-for="t in mergeTargetOptions"
+          :key="t.id"
+          :value="t.id"
+          :label="t.count === undefined ? t.name : `${t.name}（${t.count} 篇）`"
+        />
+      </el-select>
+      <template #footer>
+        <el-button @click="mergeDialog = null">取消</el-button>
+        <el-button type="primary" :disabled="!mergeTargetId" @click="confirmMerge">合并</el-button>
       </template>
     </el-dialog>
   </div>

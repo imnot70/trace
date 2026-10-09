@@ -94,6 +94,15 @@ export interface NoteTagEntry {
   tagId: string
 }
 
+/** 标签使用统计（FR-2.6.15 合并确认 / FR-2.6.16 排序）：name 为笔记中出现的原始写法（聚合大小写不敏感） */
+export interface TagStatInfo {
+  name: string
+  /** 携带该标签的笔记数（全库） */
+  count: number
+  /** 最近使用时间（携带该标签的笔记的最大 mtime，毫秒） */
+  lastUsed: number
+}
+
 /** 库内笔记的定位（库 + 相对路径） */
 export interface NoteRefEntry {
   vault: string

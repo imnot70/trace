@@ -24,6 +24,7 @@ import type {
   SearchResult,
   SyncResult,
   TagItem,
+  TagStatInfo,
   ThemePackage,
   TreeNode,
   ExportProgress,
@@ -204,6 +205,10 @@ export interface TraceApi {
   notesByTag(tagId: string): Promise<OpResult & { entries?: NoteTagEntry[] }>
   /** 多标签组合筛选（FR-2.6.13）：all = 满足全部（AND），any = 满足任一（OR） */
   notesByTags(tagIds: string[], match: 'all' | 'any'): Promise<OpResult & { entries?: NoteRefEntry[] }>
+  /** 标签使用统计（FR-2.6.15 / FR-2.6.16）：全库扫描一次，按标签名（大小写不敏感）聚合笔记数与最近使用时间 */
+  tagStats(): Promise<OpResult & { stats?: TagStatInfo[] }>
+  /** 标签合并（FR-2.6.15）：source 的全部笔记并入 target（frontmatter 批量改写）后删除 source 定义 */
+  mergeTags(sourceId: string, targetId: string): Promise<OpResult & { notes?: number }>
 
   // ---- 分享为 Gist（FR-2.3.10） ----
   /** 全部分享记录（侧栏「分享」管理入口，按更新时间倒序） */

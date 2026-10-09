@@ -700,6 +700,65 @@ describe('标签系统（frontmatter）', () => {
     expect(await tags.notesByTags([], 'all')).toEqual([])
   })
 
+  it('标签合并（FR-2.6.15）：改写 frontmatter 并删除来源定义，大小写变体一并归并', async () => {
+    const { vaults, fsTree, tags } = buildTags()
+    vaults.create('库')
+    fsTree.createNote('库', '', 'n1') // a + b → b + 目标
+    fsTree.createNote('库', '', 'n2') // 仅 A（大小写变体）→ 目标
+    fsTree.createNote('库', '', 'n3') // 仅 b，不涉合并，不应被改写
+    const a = tags.createTag('a', '#e74c3c').tag!
+    const b = tags.createTag('b', '#2ecc71').tag!
+    const target = tags.createTag('目标', '#3498db').tag!
+    await tags.addTagToNote('库', 'n1.md', a.id)
+    await tags.addTagToNote('库', 'n1.md', b.id)
+    // n2 直接手写大小写变体（外部工具写入场景）
+    fsTree.writeNote('库', 'n2.md', '---\ntags: [A]\n---\n\n正文', null)
+    await tags.addTagToNote('库', 'n3.md', b.id)
+    const beforeN3 = fsTree.readNote('库', 'n3.md')
+
+    const result = await tags.mergeTags(a.id, target.id)
+    expect(result.ok).toBe(true)
+    expect(result.notes).toBe(2)
+    const n1 = await tags.noteTags('库', 'n1.md')
+    expect(n1.map((t) => t.name).sort()).toEqual(['b', '目标'])
+    const n2 = await tags.noteTags('库', 'n2.md')
+    expect(n2.map((t) => t.name)).toEqual(['目标'])
+    // 来源定义已删除
+    expect(tags.listTags().some((t) => t.id === a.id)).toBe(false)
+    // 不涉及的笔记零触碰（内容未变）
+    const afterN3 = fsTree.readNote('库', 'n3.md')
+    expect(afterN3.ok && afterN3.content).toBe(beforeN3.ok ? beforeN3.content : '')
+  })
+
+  it('标签合并：同名（忽略大小写）或含未知 id 时拒绝', async () => {
+    const { tags } = buildTags()
+    const a = tags.createTag('工作', '#e74c3c').tag!
+    expect((await tags.mergeTags(a.id, a.id)).ok).toBe(false)
+    expect((await tags.mergeTags(a.id, 'ghost')).ok).toBe(false)
+    expect((await tags.mergeTags('ghost', a.id)).ok).toBe(false)
+  })
+
+  it('标签统计（FR-2.6.16）：大小写不敏感聚合计数，mtime 取最大值', async () => {
+    const { vaults, fsTree, tags } = buildTags()
+    vaults.create('库')
+    fsTree.createNote('库', '', 'n1')
+    fsTree.createNote('库', '', 'n2')
+    const a = tags.createTag('工作', '#e74c3c').tag!
+    await tags.addTagToNote('库', 'n1.md', a.id)
+    const n2Read = fsTree.readNote('库', 'n2.md')
+    if (n2Read.ok) fsTree.writeNote('库', 'n2.md', '---\ntags: [工作, 其他]\n---\n\n正文', null)
+
+    const stats = await tags.tagStats()
+    const work = stats.find((s) => s.name === '工作')
+    expect(work?.count).toBe(2)
+    expect(work && work.lastUsed > 0).toBe(true)
+    expect(stats.some((s) => s.name === '其他' && s.count === 1)).toBe(true)
+    // lastUsed 是携带标签的笔记 mtime 最大值
+    const n1Mtime = fsTree.noteMtime('库', 'n1.md')
+    const n2Mtime = fsTree.noteMtime('库', 'n2.md')
+    expect(work?.lastUsed).toBe(Math.max(n1Mtime, n2Mtime))
+  })
+
   it('旧版元数据关联迁移到 frontmatter 后清空', async () => {
     const { vaults, fsTree } = buildStack()
     vaults.create('库')

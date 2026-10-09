@@ -149,7 +149,8 @@ export function sidebarVaultItems(associated: boolean): MenuItemDef[] {
 export const tagRowItems: MenuItemDef[] = [
   { command: 'rename', label: '重命名' },
   { command: 'color', label: '更换颜色' },
-  { command: 'delete', label: '删除标签', divided: true, danger: true }
+  { command: 'merge', label: '合并到…', divided: true },
+  { command: 'delete', label: '删除标签', danger: true }
 ]
 
 // ================= 回收站（TrashView 条目） =================

@@ -483,6 +483,31 @@ body {
   white-space: nowrap;
 }
 
+/* 标签行笔记数（FR-2.6.16 非默认排序时显示，让排序依据可见） */
+.tag-row-count {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+/* 排序下拉勾选列：固定宽度保证选项文字左对齐 */
+.tag-sort-check {
+  display: inline-block;
+  width: 14px;
+}
+
+/* 标签合并弹窗（FR-2.6.15） */
+.merge-summary {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.merge-select {
+  width: 100%;
+}
+
 .tag-menu-btn {
   opacity: 0;
   transition: opacity 0.15s;

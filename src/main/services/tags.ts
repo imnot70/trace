@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
 import { JsonStore } from '../lib/jsonStore'
-import type { TagItem, NoteTagEntry, TreeNode } from '@shared/types'
+import type { TagItem, TagStatInfo, NoteTagEntry, TreeNode } from '@shared/types'
 import { getFrontmatterTags, setFrontmatterTags } from '@shared/noteTags'
 import { pickTagColor } from '@shared/tagPalette'
 import type { FsTreeService } from './fsTree'
@@ -141,6 +141,62 @@ export class TagsService {
       if (ok) result.push({ vault, path })
     }
     return result
+  }
+
+  /**
+   * 标签使用统计（FR-2.6.15 / FR-2.6.16）：全库扫描一次，按标签名（大小写不敏感）聚合
+   * 笔记数与最近使用时间（笔记 mtime 的最大值）。未登记定义的 frontmatter 标签同样计入
+   * （与筛选口径一致：它们在网格中可见）；名称取首次出现的原始写法。
+   */
+  async tagStats(): Promise<TagStatInfo[]> {
+    const agg = new Map<string, TagStatInfo>()
+    for await (const { vault, path, content } of this.walkNotes()) {
+      const mtime = this.fsTree.noteMtime(vault, path)
+      for (const raw of getFrontmatterTags(content)) {
+        const key = raw.toLowerCase()
+        const cur = agg.get(key)
+        if (!cur) agg.set(key, { name: raw, count: 1, lastUsed: mtime })
+        else {
+          cur.count++
+          if (mtime > cur.lastUsed) {
+            cur.lastUsed = mtime
+            cur.name = raw
+          }
+        }
+      }
+    }
+    return [...agg.values()]
+  }
+
+  /**
+   * 标签合并（FR-2.6.15）：source 的全部笔记并入 target——逐篇把 frontmatter 里的
+   * source 名（大小写不敏感）移除，没有 target 名时补上；随后删除 source 定义。
+   * 与删除 / 重命名同一写回管线（hash 防覆盖，YAML 解析失败的保护在 writeNoteTags 内）。
+   */
+  async mergeTags(sourceId: string, targetId: string): Promise<{ ok: boolean; notes?: number; error?: string }> {
+    const tags = this.store.get().tags
+    const source = tags.find((t) => t.id === sourceId)
+    const target = tags.find((t) => t.id === targetId)
+    if (!source || !target) return { ok: false, error: '标签不存在' }
+    if (source.id === target.id || source.name.toLowerCase() === target.name.toLowerCase()) {
+      return { ok: false, error: '不能合并到自身' }
+    }
+    const srcLower = source.name.toLowerCase()
+    const dstLower = target.name.toLowerCase()
+    let notes = 0
+    for await (const { vault, path, content } of this.walkNotes()) {
+      const names = getFrontmatterTags(content)
+      if (!names.some((n) => n.toLowerCase() === srcLower)) continue
+      const removed = names.filter((n) => n.toLowerCase() !== srcLower)
+      // 已含 target（任意大小写写法）则只移除 source；否则补上定义的规范写法
+      const next = removed.some((n) => n.toLowerCase() === dstLower) ? removed : [...removed, target.name]
+      const write = await this.writeNoteTags(vault, path, () => next)
+      if (write.ok) notes++
+    }
+    this.store.update((d) => {
+      d.tags = d.tags.filter((t) => t.id !== sourceId)
+    })
+    return { ok: true, notes }
   }
 
   // ---------- 旧版元数据迁移 ----------

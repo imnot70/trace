@@ -229,6 +229,15 @@ export class FsTreeService {
     }
   }
 
+  /** 笔记的最后修改时间（毫秒；文件不存在 / 不可访问时返回 0）。标签统计的全库批量场景用（FR-2.6.16） */
+  noteMtime(vault: string, relPath: string): number {
+    try {
+      return fs.statSync(resolveWithin(this.getVaultPath(vault), relPath)).mtimeMs
+    } catch {
+      return 0
+    }
+  }
+
   /**
    * 写入笔记。expectedHash 为渲染进程最后读到的磁盘内容 hash，
    * 不一致说明文件已被外部修改，拒绝覆盖以防丢失数据。
