@@ -58,6 +58,10 @@ export interface TraceApi {
   createVault(name: string, description?: string): Promise<OpResult>
   renameVault(oldName: string, newName: string): Promise<OpResult>
   deleteVault(name: string): Promise<OpResult>
+  /** 打开已有目录为外部笔记库（FR-2.1.4）：仅注册不搬目录；返回 Git 关联态（clone 的仓库自带 origin 即已关联） */
+  openVaultExternal(dir: string): Promise<OpResult & { name?: string; git?: GitStatus }>
+  /** 系统目录选择对话框（取消返回 null） */
+  pickDirectory(title?: string): Promise<string | null>
 
   // ---- 目录 / 笔记 ----
   listTree(vault: string): Promise<OpResult & { nodes?: TreeNode[] }>

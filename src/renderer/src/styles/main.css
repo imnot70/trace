@@ -1251,6 +1251,17 @@ body {
   display: inline-flex;
 }
 
+/* 外部笔记库标记（FR-2.1.4）：提示删除行为与工作区库不同（仅解除注册不删文件） */
+.external-badge {
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 4px;
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
+  flex-shrink: 0;
+}
+
 /* 下拉菜单中的删除操作：红色警示 */
 .el-dropdown-menu__item.danger-item {
   color: var(--danger);

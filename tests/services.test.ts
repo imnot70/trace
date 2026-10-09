@@ -62,7 +62,12 @@ function buildStack() {
   workspace.initDefault()
   let trashCap = 0 // 0 = 不限
   const trash = new TrashService(() => workspace.getRoot(), () => trashCap)
-  const vaults = new VaultService(() => workspace.getRoot(), trash)
+  const vaults = new VaultService(
+    () => workspace.getRoot(),
+    trash,
+    // 外部笔记库注册表（FR-2.1.4）：与主进程同构，落在临时目录
+    new JsonStore(path.join(tmp, 'open-vaults.json'), { vaults: [] })
+  )
   const fsTree = new FsTreeService((v) => vaults.vaultPath(v), trash)
   const favorites = new FavoritesService(new JsonStore(path.join(tmp, 'fav.json'), { items: [] }))
   const recents = new RecentsService(new JsonStore(path.join(tmp, 'rec.json'), { items: [] }))
@@ -107,6 +112,85 @@ describe('笔记库管理', () => {
     // 删除 → 回收站
     expect(vaults.delete('工作笔记').ok).toBe(true)
     expect(vaults.list()).toEqual([])
+    expect(fs.existsSync(path.join(workspace.getRoot()!, '.trash', 'items'))).toBe(true)
+  })
+})
+
+describe('外部笔记库（FR-2.1.4 打开已有笔记库）', () => {
+  /** 在临时目录构造一个「clone 到本地」样子的仓库目录（含 .git 标记与一篇笔记） */
+  function makeCloneDir(name: string): string {
+    const dir = path.join(tmp, 'outside', name)
+    fs.mkdirSync(path.join(dir, '.git'), { recursive: true })
+    fs.writeFileSync(path.join(dir, 'hello.md'), '# 来自 GitHub 的笔记\n')
+    return dir
+  }
+
+  it('打开：注册 + list 合并 external 标记 + vaultPath 指向注册目录（读笔记走外部路径）', () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('工作区库')
+    const dir = makeCloneDir('cloned-repo')
+    const result = vaults.openExternal(dir)
+    expect(result.ok).toBe(true)
+    expect(result.name).toBe('cloned-repo')
+
+    const ext = vaults.list().find((v) => v.name === 'cloned-repo')
+    expect(ext?.external).toBe(true)
+    expect(ext?.path).toBe(path.resolve(dir))
+    expect(vaults.list().find((v) => v.name === '工作区库')?.external).toBeUndefined()
+    expect(vaults.isExternal('cloned-repo')).toBe(true)
+    expect(vaults.isExternal('工作区库')).toBe(false)
+
+    // vaultPath 分流：外部库返回注册的绝对路径，下游 fsTree 按其读文件
+    expect(vaults.vaultPath('cloned-repo')).toBe(path.resolve(dir))
+    const read = fsTree.readNote('cloned-repo', 'hello.md')
+    expect(read.ok && read.content).toContain('来自 GitHub')
+
+    // 与工作区库统一按名称读写 / 创建笔记
+    expect(fsTree.createNote('cloned-repo', '', 'new').ok).toBe(true)
+    expect(fs.existsSync(path.join(dir, 'new.md'))).toBe(true)
+  })
+
+  it('幂等与拒绝：同目录重复打开返回同名；与现有库重名 / 目录不存在 / 目录名非法拒绝', () => {
+    const { vaults } = buildStack()
+    vaults.create('cloned-repo') // 工作区内已有同名库
+    const dir = makeCloneDir('cloned-repo')
+    expect(vaults.openExternal(dir).error).toMatch(/同名/)
+
+    const other = makeCloneDir('other-repo')
+    expect(vaults.openExternal(other)).toMatchObject({ ok: true, name: 'other-repo' })
+    expect(vaults.openExternal(other)).toMatchObject({ ok: true, name: 'other-repo' }) // 幂等
+    expect(vaults.openExternal(path.join(tmp, 'outside', '不存在'))).toMatchObject({ ok: false })
+    // 非法目录名（Windows 保留名）
+    const con = makeCloneDir('con')
+    expect(vaults.openExternal(con).error).toMatch(/命名规则/)
+    // 注：外部库之间的大小写变体重名在 Windows 大小写不敏感文件系统上物理不可构造
+    // （mkdir 落回原目录走幂等分支）；exists() 为大小写不敏感比较，Linux 场景逻辑已覆盖
+  })
+
+  it('rename 外部库：只改注册显示名，磁盘目录名不变；工作区库行为不变', () => {
+    const { vaults } = buildStack()
+    const dir = makeCloneDir('cloned-repo')
+    vaults.openExternal(dir)
+    expect(vaults.rename('cloned-repo', '我的笔记').ok).toBe(true)
+    expect(fs.existsSync(dir)).toBe(true) // 目录原样
+    expect(fs.existsSync(path.join(tmp, 'outside', '我的笔记'))).toBe(false)
+    expect(vaults.list().map((v) => v.name)).toContain('我的笔记')
+    expect(vaults.vaultPath('我的笔记')).toBe(path.resolve(dir))
+  })
+
+  it('delete 外部库 = 仅解除注册（文件保留）；工作区库照旧进回收站', () => {
+    const { vaults, workspace } = buildStack()
+    const dir = makeCloneDir('cloned-repo')
+    vaults.openExternal(dir)
+    expect(vaults.delete('cloned-repo').ok).toBe(true)
+    expect(vaults.list().some((v) => v.name === 'cloned-repo')).toBe(false)
+    expect(fs.existsSync(path.join(dir, 'hello.md'))).toBe(true) // 文件原样
+    // 解除后可重新打开
+    expect(vaults.openExternal(dir)).toMatchObject({ ok: true, name: 'cloned-repo' })
+
+    // 工作区库不受影响：仍走回收站
+    vaults.create('工作区库')
+    expect(vaults.delete('工作区库').ok).toBe(true)
     expect(fs.existsSync(path.join(workspace.getRoot()!, '.trash', 'items'))).toBe(true)
   })
 })

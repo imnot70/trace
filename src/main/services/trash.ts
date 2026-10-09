@@ -65,7 +65,7 @@ export class TrashService {
       const name = opts.kind === 'note' ? noteDisplayName(baseName) : baseName
       const itemDir = path.join(root, '.trash', 'items', id)
       fs.mkdirSync(itemDir, { recursive: true })
-      fs.renameSync(sourceAbs, path.join(itemDir, baseName))
+      movePath(sourceAbs, path.join(itemDir, baseName))
       const entry: TrashEntry = {
         id,
         name,
@@ -106,7 +106,7 @@ export class TrashService {
         const { dir, ext, name } = path.parse(targetAbs)
         targetAbs = path.join(dir, `${name}（已恢复）${ext}`)
       }
-      fs.renameSync(itemAbs, targetAbs)
+      movePath(itemAbs, targetAbs)
       if (entry.kind === 'vault') {
         // 恢复后的库如果改了名字，同步修正条目里的库名
         entry.vault = path.basename(targetAbs)
@@ -202,5 +202,18 @@ export class TrashService {
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) }
     }
+  }
+}
+
+/** 跨盘移动回退（FR-2.1.4 外部笔记库）：回收站的移入 / 还原走 fs.rename，跨盘（外部库在
+ *  另一磁盘）会抛 EXDEV——回退为「复制 + 删除」。目录与文件统一处理 */
+export function movePath(from: string, to: string): void {
+  try {
+    fs.renameSync(from, to)
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code
+    if (code !== 'EXDEV') throw e
+    fs.cpSync(from, to, { recursive: true })
+    fs.rmSync(from, { recursive: true, force: true })
   }
 }
