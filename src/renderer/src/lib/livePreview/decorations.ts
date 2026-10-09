@@ -135,7 +135,8 @@ function scanFallbackTask(
 }
 
 /** frontmatter 区间（文档以 --- 开头且有闭合行）；无闭合不装饰（容错） */
-function frontmatterRange(doc: Text): (SimpleRange & { text: string; lines: number }) | null {
+/** 导出供 blockDelete（FR-2.4.30）复用：frontmatter / 公式块的行级范围识别 */
+export function frontmatterRange(doc: Text): (SimpleRange & { text: string; lines: number }) | null {
   if (doc.lines < 2) return null
   const first = doc.line(1)
   if (first.text.trimEnd() !== '---') return null
@@ -156,7 +157,7 @@ interface BlockMathRange extends SimpleRange {
  *  行内公式由装饰阶段逐行正则处理，此处只收整块区间。
  *  列表项内的 $$ 行（`- $$` / `2. $$`）先剥掉一层列表标记再识别，否则起始 $$ 漏判、
  *  闭合 $$ 被误认成起始，会把两个公式之间的全部内容错配成一个「公式」 */
-function scanBlocks(doc: Text): BlockMathRange[] {
+export function scanBlocks(doc: Text): BlockMathRange[] {
   const mathRanges: BlockMathRange[] = []
   let openMathLine = 0
   let fenceFrom = -1

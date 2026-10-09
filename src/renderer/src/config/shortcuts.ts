@@ -35,6 +35,8 @@ export const SHORTCUTS: ShortcutItem[] = [
   { keys: 'Alt + Enter（[[ 补全时）', desc: '悬浮预览选中的笔记（不插入、不切走）；悬浮预览打开时再按 = 插入该笔记的引用', group: '编辑器' },
   { keys: 'Alt + T', desc: '打字机模式：关 → 高位 → 低位 三态循环（图标角标 ↑ 高位 / ↓ 低位，心流内外一致）', group: '编辑器' },
   { keys: 'Alt + M', desc: '开关 Vim 编辑模式（Alt+V 已被「显示/隐藏预览区」占用；顶栏 V 按钮同义，激活时高亮）', group: '编辑器' },
+  { keys: 'Ctrl + Shift + K', desc: '删除光标所在行', group: '编辑器' },
+  { keys: 'Alt + D', desc: '删除光标所在的块级内容：围栏代码块 / $ 公式块 / HTML 块 / 表格 / frontmatter 整块删除（前后空行自动吞并，不在块内无动作）', group: '编辑器' },
   { keys: 'Alt + I', desc: '打开 / 关闭快速引用面板：从目录树（含草稿分组）选笔记插入 [[引用]]，不切走当前笔记；顶部可切换浏览的库（Ctrl+←/→ 循环），跨库引入自动确认复制；↑/↓ 移动、→/← 展开/收起、Enter 引入、Alt+Enter 预览（预览开着再按 = 插入，Esc 先关预览回面板）；/引入 同义（心流 / 专注可用）', group: '编辑器' },
   { keys: 'Ctrl + Enter', desc: '在当前行下方插入一个空行，光标移到新行行首（补全打开时 = 接受补全）', group: '编辑器' },
   { keys: 'Ctrl + Shift + Enter', desc: '在当前行上方插入一个空行，光标移到新行行首', group: '编辑器' },
