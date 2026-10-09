@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { nextTick } from 'vue'
 import { useAppStore } from './app'
-import type { GitStatus, GistShare, TagItem, TreeNode, VaultInfo } from '@shared/types'
+import type { GitStatus, GistShare, TagItem, TagStatInfo, TreeNode, VaultInfo } from '@shared/types'
 
 /** 侧栏数据：笔记库列表、库内目录树、git 状态、收藏与常用 */
 export const useTreeStore = defineStore('tree', {
@@ -17,6 +17,8 @@ export const useTreeStore = defineStore('tree', {
     favorites: [] as { id: string; vault: string; path: string; name: string; addedAt: string }[],
     recents: [] as { vault: string; path: string; name: string; openedAt: string }[],
     tags: [] as TagItem[],
+    /** 标签使用统计（FR-2.6.15 合并确认 / FR-2.6.16 排序）：按需加载，非排序模式不拉取 */
+    tagStats: [] as TagStatInfo[],
     /** 已分享的笔记（gist 分享记录，按更新时间倒序——侧栏「分享」入口与分享网格共用） */
     shared: [] as GistShare[],
     /** 定位目标行（`${vault}::${path}` 或库级 `${vault}`），短暂高亮后自动清除 */
@@ -74,6 +76,11 @@ export const useTreeStore = defineStore('tree', {
     async loadTags(): Promise<void> {
       const result = await window.trace.listTags()
       if (result.ok && result.tags) this.tags = result.tags
+    },
+    /** 标签使用统计（FR-2.6.16）：全库扫描一次，标签操作 / 排序模式切换后重拉保持新鲜 */
+    async loadTagStats(): Promise<void> {
+      const result = await window.trace.tagStats()
+      if (result.ok && result.stats) this.tagStats = result.stats
     },
     async loadShared(): Promise<void> {
       const result = await window.trace.gistList()

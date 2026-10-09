@@ -1,6 +1,6 @@
 # 标签功能优化（FR-2.6.12–2.6.17）
 
-> 2026-09-26 立项（用户提案池 [#1 / #2](../../suggest/feature-proposals.md) 迁入）。**一期（FR-2.6.12–14）已实施并随 v0.11.0 发布（2026-09-27，分支 `feat/proposal-batch`）**：内联新建与过滤输入框落在 `TagPickerDialog.vue`；多标签筛选 = 侧栏多选（`SideBar.vue`）+ 网格头部「满足任一 / 满足全部」切换（`NoteGridView.vue`，口径 localStorage 记忆）+ 主进程 `notesByTags` 组合查询；自动配色 = `shared/tagPalette.ts` 按名称哈希取色（侧栏「+」/ 内联新建 / 未登记标签自动注册三处统一）。二期（FR-2.6.15–17）仍为可选待排期。
+> 2026-09-26 立项（用户提案池 [#1 / #2](../../suggest/feature-proposals.md) 迁入）。**一期（FR-2.6.12–14）已实施并随 v0.11.0 发布（2026-09-27，分支 `feat/proposal-batch`）**：内联新建与过滤输入框落在 `TagPickerDialog.vue`；多标签筛选 = 侧栏多选（`SideBar.vue`）+ 网格头部「满足任一 / 满足全部」切换（`NoteGridView.vue`，口径 localStorage 记忆）+ 主进程 `notesByTags` 组合查询；自动配色 = `shared/tagPalette.ts` 按名称哈希取色（侧栏「+」/ 内联新建 / 未登记标签自动注册三处统一）。**二期（FR-2.6.15–17）已实施并经用户真机验证通过**（2026-10-09 实施 + 当日验证，分支 `feat/tag-enhance-2` 已合并 main，随 [未发布] 待发版），设计与实施记录见 [tag-enhance_design.md](tag-enhance_design.md)。
 
 ## 需求背景
 

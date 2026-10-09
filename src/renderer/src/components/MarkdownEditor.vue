@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Compartment, EditorState, Prec, Transaction, type Extension } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import {
@@ -63,7 +63,8 @@ import { filterSlashCommands, type SlashAction } from '../lib/slashCommands'
 import { invisiblePasteExtension, buildCleanInvisibleTransaction } from '../lib/invisibleEdits'
 import { collectDocInvisible } from '../lib/invisibleChars'
 import { treeHasWikiTarget, wikilinkSpanAt, wikilinkNameAt } from '../lib/wikiTarget'
-import { openWikilinkByName } from '../lib/wikilink'
+import { noteDisplayName, openWikilinkByName } from '../lib/wikilink'
+import TagPickerDialog from './TagPickerDialog.vue'
 import { resolveEditorMenu, type EditorMenuItem, type MenuItemVM } from '../lib/contextMenu'
 import { hasNoteRefDrag, readNoteRefDrag, consumeDragAltLatch, type NoteRefPayload } from '../lib/dragDrop'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -1180,19 +1181,23 @@ function attachVimModeListener(target?: EditorView): void {
 /** 组装所见即所得扩展：结构（含 StateField）必须常驻挂载——Compartment 不允许增删
  *  StateField，只能重配 Facet 值，故以 enabled 开关门控（开关即重配，无重建） */
 function buildLivePreview() {
+  const tree = useTreeStore()
   return livePreview({
     enabled: props.wysiwyg ?? false,
     vault: props.vault,
     notePath: props.notePath,
-    resolveName: (name: string) => treeHasWikiTarget(useTreeStore().trees[props.vault] ?? [], name),
+    resolveName: (name: string) => treeHasWikiTarget(tree.trees[props.vault] ?? [], name),
     openNote: (target) => emit('open-note', target),
     previewNote: (target) => emit('preview-note', target),
-    openExternal: (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
+    openExternal: (url: string) => window.open(url, '_blank', 'noopener,noreferrer'),
+    // frontmatter 标签胶囊的配色快照（FR-2.6.17）：小写名 → 定义色；未登记标签无色回退
+    tagColors: Object.fromEntries(tree.tags.map((t) => [t.name.toLowerCase(), t.color]))
   })
 }
 
 watch(
-  () => [props.wysiwyg, props.vault, props.notePath] as const,
+  // tree.tags 入列（FR-2.6.17）：标签定义增删 / 改色后重配，胶囊配色与列表随之刷新
+  () => [props.wysiwyg, props.vault, props.notePath, useTreeStore().tags] as const,
   () => {
     if (!view) return
     view.dispatch({ effects: livePreviewCompartment.reconfigure(buildLivePreview()) })
@@ -1427,6 +1432,20 @@ function onWikilinkPreview(e: Event): void {
   void openWikilinkByName(props.vault, name, (t) => emit('preview-note', t))
 }
 
+// ---------- frontmatter 标签胶囊（FR-2.6.17） ----------
+/** 「＋ 标签」胶囊：打开打标签弹窗管理当前笔记（增删与内联新建都在弹窗内完成，
+ *  写入走编辑器缓冲区路径——弹窗的 isNoteOpen 分支，自动保存落盘） */
+const frontmatterTagPicker = ref(false)
+const currentNoteRef = computed(() => ({
+  vault: props.vault,
+  path: props.notePath,
+  name: noteDisplayName(props.notePath)
+}))
+
+function onFrontmatterAddTag(): void {
+  frontmatterTagPicker.value = true
+}
+
 function onDrop(e: DragEvent): void {
   // 笔记引用拖入（FR-2.9.10 P3）：定释放点后交外层走三路引入语义（含 Alt 修饰——
   // 插入后保留来源弹窗；修饰键取「事件状态 ∨ dragstart 锁存」，后者覆盖真机上
@@ -1536,5 +1555,15 @@ defineExpose({
     @drop="onDrop"
     @dragover="onDragover"
     @trace-wikilink-preview="onWikilinkPreview"
-  ></div>
+    @trace-frontmatter-add-tag="onFrontmatterAddTag"
+  >
+    <!-- frontmatter 胶囊「＋ 标签」入口（FR-2.6.17）：编辑中笔记走缓冲区写入分支；
+         changed 后刷新标签定义快照（内联新建的标签胶囊需要拿到配色） -->
+    <TagPickerDialog
+      :visible="frontmatterTagPicker"
+      :note="currentNoteRef"
+      @update:visible="frontmatterTagPicker = $event"
+      @changed="void useTreeStore().loadTags()"
+    />
+  </div>
 </template>

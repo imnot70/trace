@@ -277,14 +277,25 @@ describe('所见即所得装饰：公式与块级渲染', () => {
     expect(math[0].tex).toBe('x^2')
   })
 
-  it('frontmatter：折叠为 FrontmatterWidget 并提取标签；无闭合时保持源码', () => {
+  it('frontmatter：折叠为 FrontmatterWidget 并提取标签胶囊；无闭合时保持源码', () => {
     const doc = '---\ntags: [工作, 随笔]\n---\n\n# 正文'
     const state = mkState(doc, doc.length)
     const fm = widgetsOf(state, computeBlockDecorations(state, cfg).decorations).find(
       (w) => w instanceof FrontmatterWidget
     ) as FrontmatterWidget
     expect(fm).toBeTruthy()
-    expect(fm.summary).toContain('工作')
+    expect(fm.tags.map((t) => t.name)).toEqual(['工作', '随笔'])
+
+    // 配色快照（FR-2.6.17）：小写名映射到定义色，未登记标签无色回退
+    const colored = computeBlockDecorations(
+      state,
+      { ...cfg, tagColors: { 工作: '#e74c3c' } }
+    )
+    const fm2 = widgetsOf(state, colored.decorations).find(
+      (w) => w instanceof FrontmatterWidget
+    ) as FrontmatterWidget
+    expect(fm2.tags[0]).toEqual({ name: '工作', color: '#e74c3c' })
+    expect(fm2.tags[1]).toEqual({ name: '随笔', color: undefined })
 
     const brokenDoc = '---\ntags: [x]\n\n# 无闭合'
     const broken = mkState(brokenDoc, brokenDoc.length)

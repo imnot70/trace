@@ -35,6 +35,9 @@ export interface LivePreviewConfig {
   previewNote(target: { vault: string; path: string; name: string }): void
   /** Ctrl+Click 打开外部链接 */
   openExternal(url: string): void
+  /** 标签颜色快照（FR-2.6.17 frontmatter 胶囊）：小写标签名 → 颜色；由 MarkdownEditor 从
+   *  标签定义构建，定义变化经 Compartment 重配进入此处（改色后胶囊随之刷新） */
+  tagColors?: Record<string, string>
 }
 
 // Facet 用 combine 取单值：一个视图只挂一份 livePreview 配置
@@ -275,11 +278,13 @@ export function computeBlockDecorations(
     blocks.push({ from: lineFrom, to: lineTo })
   }
 
-  // ---- frontmatter：折叠为一行摘要 ----
+  // ---- frontmatter：折叠为标签胶囊行（FR-2.6.17，可点选增删；无标签退回行数摘要） ----
   const fm = frontmatterRange(doc)
   if (fm && !occupied(state, fm.from, fm.to)) {
-    const tags = getFrontmatterTags(doc.sliceString(0, fm.to))
-    pushBlock(0, fm.to, new FrontmatterWidget(tags.length ? `标签：${tags.join('、')}` : '', fm.lines))
+    const names = getFrontmatterTags(doc.sliceString(0, fm.to))
+    const colors = cfg.tagColors ?? {}
+    const tagVMs = names.map((name) => ({ name, color: colors[name.toLowerCase()] }))
+    pushBlock(0, fm.to, new FrontmatterWidget(fm.lines, tagVMs))
   }
 
   // ---- 块级公式（与 frontmatter 互斥） ----

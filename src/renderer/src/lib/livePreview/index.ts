@@ -186,6 +186,58 @@ const lpTheme = EditorView.theme({
     borderRadius: '4px',
     backgroundColor: 'var(--accent-soft)',
     color: 'var(--text-secondary)'
+  },
+  // 标签胶囊（FR-2.6.17）：× 默认弱化，悬浮胶囊时显现；颜色圆点 inline style 注入
+  '.lp-frontmatter-capsule': {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '5px',
+    padding: '1px 8px',
+    borderRadius: '10px',
+    backgroundColor: 'var(--bg-secondary)',
+    border: '1px solid var(--border-color)',
+    fontSize: '0.9em',
+    color: 'var(--text-primary)',
+    lineHeight: '1.5'
+  },
+  '.lp-frontmatter-capsule-dot': {
+    width: '7px',
+    height: '7px',
+    borderRadius: '50%',
+    flexShrink: '0',
+    backgroundColor: 'var(--text-tertiary)'
+  },
+  '.lp-frontmatter-capsule-name': {
+    maxWidth: '160px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
+  },
+  '.lp-frontmatter-capsule-x': {
+    color: 'var(--text-tertiary)',
+    cursor: 'pointer',
+    fontSize: '1.05em',
+    lineHeight: '1',
+    opacity: '0',
+    transition: 'opacity 0.12s'
+  },
+  '.lp-frontmatter-capsule:hover .lp-frontmatter-capsule-x': {
+    opacity: '1'
+  },
+  '.lp-frontmatter-capsule-x:hover': {
+    color: 'var(--danger)'
+  },
+  '.lp-frontmatter-add': {
+    cursor: 'pointer',
+    fontSize: '0.85em',
+    color: 'var(--text-tertiary)',
+    padding: '1px 6px',
+    borderRadius: '10px',
+    border: '1px dashed var(--border-color)'
+  },
+  '.lp-frontmatter-add:hover': {
+    color: 'var(--accent)',
+    borderColor: 'var(--accent)'
   }
 })
 

@@ -1,9 +1,18 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Sort } from '@element-plus/icons-vue'
 import { useEditorStore } from '../stores/editor'
 import { getFrontmatterTags, setFrontmatterTags } from '@shared/noteTags'
 import { pickTagColor } from '@shared/tagPalette'
+import {
+  TAG_SORT_MODES,
+  loadTagSortMode,
+  saveTagSortMode,
+  sortTags,
+  tagStatIndex,
+  type TagSortMode
+} from '../composables/tagSort'
 
 /**
  * 笔记标签选择弹窗（侧栏树与网格卡片共用）。
@@ -55,16 +64,33 @@ watch(
       color: t.color,
       checked: checkedIds.has(t.id)
     }))
+    // 非默认排序时补拉统计（弹窗每次打开重建，localStorage 里的模式可能在侧栏被改过）
+    if (tagSortMode.value !== 'default') void loadStats()
   },
   { immediate: true } // 侧栏树以 v-if 按需挂载，挂载时 visible 已为 true，必须立即执行
 )
 
-/** 过滤后的标签（按名称包含匹配，大小写不敏感；CM 模糊过滤对中文不可靠的教训同样适用于此处，用朴素 includes） */
+/** 过滤后的标签（按名称包含匹配，大小写不敏感；CM 模糊过滤对中文不可靠的教训同样适用于此处，用朴素 includes）。
+ *  排序（FR-2.6.16）与侧栏同一口径：默认序 / 笔记数 / 最近使用，模式写回同一 localStorage 键 */
+const tagSortMode = ref<TagSortMode>(loadTagSortMode())
+const statMap = ref(new Map<string, import('@shared/types').TagStatInfo>())
+
 const filteredTags = computed(() => {
   const q = filter.value.trim().toLowerCase()
-  if (!q) return tags.value
-  return tags.value.filter((t) => t.name.toLowerCase().includes(q))
+  const matched = q ? tags.value.filter((t) => t.name.toLowerCase().includes(q)) : tags.value
+  return sortTags(matched, tagSortMode.value, statMap.value)
 })
+
+watch(tagSortMode, (mode) => {
+  saveTagSortMode(mode)
+  if (mode !== 'default' && statMap.value.size === 0) void loadStats()
+})
+
+/** 统计按需拉取：仅非默认排序时做全库扫描 */
+async function loadStats(): Promise<void> {
+  const result = await window.trace.tagStats()
+  if (result.ok && result.stats) statMap.value = tagStatIndex(result.stats)
+}
 
 /** 内联新建行：输入非空且没有与输入完全同名（忽略大小写）的标签时出现 */
 const canCreate = computed(() => {
@@ -139,12 +165,31 @@ async function createInline(): Promise<void> {
     destroy-on-close
     @update:model-value="emit('update:visible', $event)"
   >
-    <el-input
-      v-model="filter"
-      placeholder="筛选标签，无匹配可直接新建…"
-      clearable
-      class="tag-dialog-filter"
-    />
+    <div class="tag-dialog-toolbar">
+      <el-input
+        v-model="filter"
+        placeholder="筛选标签，无匹配可直接新建…"
+        clearable
+        class="tag-dialog-filter"
+      />
+      <el-dropdown
+        trigger="click"
+        popper-class="dd-instant-hide"
+        @command="(mode: string) => (tagSortMode = mode as TagSortMode)"
+      >
+        <button class="tag-dialog-sort" title="排序方式">
+          <el-icon><Sort /></el-icon>
+        </button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item v-for="m in TAG_SORT_MODES" :key="m.value" :command="m.value">
+              <span class="tag-dialog-sort-check">{{ tagSortMode === m.value ? '✓' : '' }}</span>
+              {{ m.label }}
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+    </div>
     <div v-if="tags.length === 0 && !canCreate" class="tag-dialog-empty">暂无标签，直接在上方输入名称即可新建</div>
     <div v-else-if="filteredTags.length === 0 && !canCreate" class="tag-dialog-empty">没有匹配的标签</div>
     <div v-else class="tag-dialog-content">
@@ -173,6 +218,43 @@ async function createInline(): Promise<void> {
 
 .tag-dialog-filter {
   margin-bottom: 8px;
+}
+
+/* 筛选输入 + 排序下拉（FR-2.6.16，口径与侧栏共用 composables/tagSort） */
+.tag-dialog-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.tag-dialog-toolbar .tag-dialog-filter {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.tag-dialog-sort {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.tag-dialog-sort:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.tag-dialog-sort-check {
+  display: inline-block;
+  width: 14px;
 }
 
 .tag-dialog-empty {

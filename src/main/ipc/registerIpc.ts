@@ -337,6 +337,8 @@ export function registerIpc(deps: IpcDeps): void {
     ok: true,
     entries: await deps.tags.notesByTags(tagIds, match)
   }))
+  handle('tag:stats', async () => ({ ok: true, stats: await deps.tags.tagStats() }))
+  handle('tag:merge', async (sourceId: string, targetId: string) => deps.tags.mergeTags(sourceId, targetId))
 
   // ---------- 回收站 ----------
   handle('trash:list', () => ({ ok: true, entries: deps.trash.list() }))
