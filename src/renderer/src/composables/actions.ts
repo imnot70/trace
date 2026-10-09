@@ -35,6 +35,9 @@ export function useNoteActions() {
         const result = await window.trace.openVaultExternal(dir)
         if (result.ok) {
           await tree.loadVaults()
+          // 刷新 git 状态表：侧栏徽标与库 ⋮ 菜单（关联 / 同步分流）读 gitStatuses——
+          // 新注册的库此前从未入表，不刷会一直显示「关联 Git 仓库」的未关联态（真机反馈）
+          if (result.name) await tree.refreshGitStatus(result.name)
           const name = result.name ?? ''
           if (result.git?.associated) {
             ElMessage.success(`已打开笔记库「${name}」，检测到远程仓库 ${result.git.repoFullName ?? ''}，可直接同步`)

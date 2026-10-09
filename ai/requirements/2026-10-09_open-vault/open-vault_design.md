@@ -35,3 +35,12 @@
 - CDP 隔离实例冒烟 10/10：真实 `git init + remote origin` 造 clone 样目录 → `openVaultExternal`（注册名 = 目录名、`git.associated=true`、remoteUrl 精确）→ 侧栏 external 标记与文件树列笔记 → 打开编辑落盘（磁盘真值）→ `searchBuildIndex(true)` 后搜索命中外部库 → 删除解除注册库消失、磁盘保留、重开恢复。
 - Windows 单测注意：外部库之间的大小写变体重名在大小写不敏感文件系统上物理不可构造（mkdir 落回原目录走幂等分支），逻辑由 `exists()` 的大小写不敏感比较覆盖。
 - 真机验证待用户确认（焦点：真实 GitHub clone（https + PAT）的同步链路、跨盘目录的回收站回退、U 盘等可移动介质拔插后外部库的报错表现）。
+
+## 5. 真机反馈修复（2026-10-09，commit 51cbb05）
+
+用户真机验证反馈两项，当日修复：
+
+1. **⋮ 菜单漂移到视口左上角**：根因 = `.side-row-actions` 自 v0.1.0 起默认 `display: none`（hover / active 才显示），而 EP dropdown 的菜单 teleport 到 body——菜单打开后鼠标移向菜单、行失去 hover → 按钮组 `display: none` 脱离布局 → popper 失去参考锚点整体跳 (0,0)。库行 / 树行模板上挂了多年的 `menu-hold` class（注释明言「菜单打开期间保持按钮组可见，防止 popper 失去锚点闪现」）**CSS 规则从未存在**——补 `.side-row.menu-hold / .tree-row.menu-hold .side-row-actions { display: inline-flex }`。标签行无此问题（tag-menu-btn 用 opacity 隐藏，元素保持在布局中）。
+2. **外部库不显示已关联**（菜单仍是「关联 Git 仓库」、无 git 徽标）：主进程识别正常（openExternal 返回 `git.associated`），缺口在渲染端——openAction 成功后只 `loadVaults`，**没把 git 状态写入 `tree.gitStatuses`**（徽标与菜单分流的数据源），新注册的库从未入表恒为未关联态。修复：openAction 补 `tree.refreshGitStatus(result.name)`。
+
+**验证方式（运行中实例不可扰）**：用户 dev 实例（CDP 9222）正在真机验证，不启动第二实例（`TRACE_TEST_USERDATA` 固定路径会共享 userData + 缓存锁冲突 crash，见 [tech_verification 教训 16](../../tech/tech_verification.md)）——对其做**纯只读 CDP 断言**证实两根因（`gitStatuses[note_repo]` MISSING / `.side-row-actions` 计算样式 display:none），修复后 `menuHoldCssExists=true` 佐证 vite HMR 已把 CSS 修复热更进运行中实例。待用户重启实例复验两项。
