@@ -262,7 +262,12 @@ app.whenReady().then(() => {
   })
 
   const trash = new TrashService(() => workspace.getRoot())
-  const vaults = new VaultService(() => workspace.getRoot(), trash)
+  const vaults = new VaultService(
+    () => workspace.getRoot(),
+    trash,
+    // 外部笔记库注册表（FR-2.1.4 打开已有笔记库）：名称 → 工作区外目录的映射
+    new JsonStore(path.join(userData, 'open-vaults.json'), { vaults: [] })
+  )
   const vaultMeta = new VaultMetaService(
     new JsonStore(path.join(userData, 'vault-meta.json'), { descs: {} })
   )
@@ -419,6 +424,8 @@ app.whenReady().then(() => {
     }
   )
   watcher.start()
+  // 已注册的外部笔记库挂附加监听（FR-2.1.4）
+  watcher.setExternalVaults(vaults.externalVaults())
 
   exportPdf = new ExportService(() => mainWindow)
 

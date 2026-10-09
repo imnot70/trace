@@ -25,3 +25,4 @@
 - **现状**：三百余项单测 + 主/渲染双 typecheck 覆盖全部主进程服务与渲染 lib 层（强项）；**CM6 集成层（视图/组件）零测试**——而近年所有 P0 回归（键位 preventDefault、行号几何、打字机锚定）都出在这层；每次验证靠手搓 CDP 探针，交接记录中两次被探针自身缺陷误导。`playwright-core` 已在 devDependencies 闲置未用。
 - **建议**：正式搭 Playwright for Electron 冒烟，先覆盖三条最易回归链路：① 心流进入 + 打字机锚定（三种打字机配置 × 进出心流）；② `[[` 补全 + Alt+Enter 预览 + 普通 Enter 插入；③ 预览初始位置与双向同步。把「发版前手测清单」逐步固化为脚本。
 - gitService 集成测试在 Windows 的超时问题有既定口径（`--testTimeout=90000`），见 [tech_electron-platform](tech_electron-platform.md)。
+16. **`TRACE_TEST_USERDATA=1` 的隔离路径是固定值（`%TEMP%/trace-test-userdata`），不防多实例并行**：同一机器上有第二个 dev 实例（如用户正在真机验证）时，两个实例共享同一「隔离」userData——数据互见（注册表 / 设置互通）且 Electron 磁盘缓存锁冲突会让后启动者直接退出（exit 0，无报错栈，极易误判）。开发机验证前先探测 CDP 端口归属（`GET /json` 看页面标题），或换用不同 `TRACE_CDP` 端口；确认端口连的是谁的实例再跑任何有副作用的脚本——用户实例绝不可执行写操作。另：dev 实例的 vite HMR 会让**磁盘上的 CSS 修复即时生效**于运行中的用户实例（JS 组合函数模块通常触发整页 reload）——只读断言根因后，可借 HMR 让用户免重启验证样式类修复。（[open-vault 真机反馈修复](../requirements/2026-10-09_open-vault/open-vault_design.md)）

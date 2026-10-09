@@ -525,7 +525,8 @@ defineProps<{ vaults?: VaultInfo[] }>()
                 <ArrowRight />
               </el-icon>
               <el-icon class="node-icon"><Folder /></el-icon>
-              <span class="row-name">{{ vault.name }}</span>
+              <span class="row-name" :title="vault.external ? '外部笔记库：删除仅解除注册，不删除磁盘文件' : undefined">{{ vault.name }}</span>
+              <span v-if="vault.external" class="external-badge">外部</span>
               <el-icon v-if="tree.gitStatuses[vault.name]?.associated" class="git-badge">
                 <Connection />
               </el-icon>

@@ -29,6 +29,24 @@ export function useNoteActions() {
       kind: 'vault',
       placeholder: '按主题命名，例如：工作笔记',
       withDescription: true,
+      // 打开已有笔记库（FR-2.1.4）：同一弹窗的标签页——选择 clone 到本地的仓库目录就地注册
+      withOpenTab: true,
+      openAction: async (dir) => {
+        const result = await window.trace.openVaultExternal(dir)
+        if (result.ok) {
+          await tree.loadVaults()
+          // 刷新 git 状态表：侧栏徽标与库 ⋮ 菜单（关联 / 同步分流）读 gitStatuses——
+          // 新注册的库此前从未入表，不刷会一直显示「关联 Git 仓库」的未关联态（真机反馈）
+          if (result.name) await tree.refreshGitStatus(result.name)
+          const name = result.name ?? ''
+          if (result.git?.associated) {
+            ElMessage.success(`已打开笔记库「${name}」，检测到远程仓库 ${result.git.repoFullName ?? ''}，可直接同步`)
+          } else {
+            ElMessage.success(`已打开笔记库「${name}」（未检测到远程仓库，可通过库菜单关联）`)
+          }
+        }
+        return result
+      },
       action: async (name, description) => {
         const result = await window.trace.createVault(name, description)
         if (result.ok) await tree.loadVaults()
@@ -38,8 +56,10 @@ export function useNoteActions() {
   }
 
   function renameVault(oldName: string): void {
+    // 外部库（FR-2.1.4）：重命名只改 Trace 内的显示名，磁盘目录名不动
+    const isExternal = tree.vaults.find((v) => v.name === oldName)?.external ?? false
     dialog.open({
-      title: '重命名笔记库',
+      title: isExternal ? '重命名笔记库（仅修改显示名，不改动磁盘目录）' : '重命名笔记库',
       kind: 'vault',
       initialValue: oldName,
       action: async (name) => {
@@ -59,12 +79,22 @@ export function useNoteActions() {
   }
 
   async function deleteVault(name: string): Promise<void> {
+    // 外部笔记库（FR-2.1.4）：删除 = 仅解除注册，磁盘目录（用户的 clone）原样保留
+    const isExternal = tree.vaults.find((v) => v.name === name)?.external ?? false
     try {
-      await ElMessageBox.confirm(
-        `确定删除笔记库「${name}」吗？库中的全部内容将一并移入回收站。`,
-        '删除笔记库',
-        { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消', confirmButtonClass: 'el-button--danger' }
-      )
+      if (isExternal) {
+        await ElMessageBox.confirm(
+          `确定从 Trace 移除笔记库「${name}」吗？仅解除登记，磁盘上的目录与文件不会被删除。`,
+          '移除笔记库',
+          { type: 'warning', confirmButtonText: '移除', cancelButtonText: '取消' }
+        )
+      } else {
+        await ElMessageBox.confirm(
+          `确定删除笔记库「${name}」吗？库中的全部内容将一并移入回收站。`,
+          '删除笔记库',
+          { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消', confirmButtonClass: 'el-button--danger' }
+        )
+      }
     } catch {
       return
     }
@@ -77,8 +107,11 @@ export function useNoteActions() {
       await tree.loadVaults()
       await tree.loadFavorites()
       await tree.loadRecents()
-      void trash.load() // 回收站计数
-      ElMessage.success('已移入回收站')
+      if (isExternal) ElMessage.success('已移除（磁盘文件未受影响）')
+      else {
+        void trash.load() // 回收站计数
+        ElMessage.success('已移入回收站')
+      }
     } else {
       ElMessage.error(result.error ?? '删除失败')
     }

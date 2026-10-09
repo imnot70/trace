@@ -9,6 +9,8 @@ import { logger } from '../lib/logger'
  */
 export class WatcherService {
   private watcher: FSWatcher | null = null
+  /** 外部笔记库的附加监听（FR-2.1.4）：注册名 → (监听器, 目录) */
+  private externalWatchers = new Map<string, { watcher: FSWatcher; dir: string }>()
   private suspendDepth = 0
   private pending = new Map<string, Set<string>>()
   private timer: NodeJS.Timeout | null = null
@@ -40,23 +42,13 @@ export class WatcherService {
       }
     })
     const onChange = (p: string): void => {
-      if (this.suspendDepth > 0) {
-        this.droppedWhileSuspended = true
-        return
-      }
       const r = this.getRoot()
       if (!r) return
       const rel = path.relative(r, p)
       if (!rel || rel === '.trash' || rel.startsWith(`.trash${path.sep}`)) return
       const vault = rel.split(path.sep)[0]
       const rest = rel.split(path.sep).slice(1).join('/')
-      let set = this.pending.get(vault)
-      if (!set) {
-        set = new Set()
-        this.pending.set(vault, set)
-      }
-      if (rest) set.add(rest)
-      this.schedule()
+      this.enqueue(vault, rest)
     }
     this.watcher
       .on('add', onChange)
@@ -66,6 +58,75 @@ export class WatcherService {
       .on('unlinkDir', onChange)
       .on('error', (e: unknown) => logger.warn('文件监听错误', e))
     logger.info('文件监听已启动', root)
+    // 外部笔记库重建附加监听（start / restart 后注册表可能已变化）
+    this.rebuildExternal()
+  }
+
+  /**
+   * 设置外部笔记库的附加监听（FR-2.1.4）：外部目录在工作区根之外，工作区单一 watcher
+   * 覆盖不到——每个外部库一个独立 chokidar 实例，事件以注册名归队（与工作区同一防抖 /
+   * 挂起管线）。注册表变化（打开 / 移除）后重新调用，增量增删监听器。
+   */
+  setExternalVaults(vaults: { name: string; dir: string }[]): void {
+    const wanted = new Map(vaults.map((v) => [v.name, v.dir]))
+    // 移除不再注册的
+    for (const [name, entry] of this.externalWatchers) {
+      if (!wanted.has(name)) {
+        void entry.watcher.close()
+        this.externalWatchers.delete(name)
+      }
+    }
+    // 新增 / 目录变化的
+    for (const [name, dir] of wanted) {
+      const cur = this.externalWatchers.get(name)
+      if (cur && cur.dir === dir) continue
+      if (cur) void cur.watcher.close()
+      this.externalWatchers.set(name, { watcher: this.watchExternal(name, dir), dir })
+    }
+  }
+
+  private watchExternal(name: string, dir: string): FSWatcher {
+    const w = watch(dir, {
+      ignoreInitial: true,
+      depth: 10,
+      ignored: (p: string) => p !== dir && path.basename(p) === '.git'
+    })
+    const onChange = (p: string): void => {
+      const rel = path.relative(dir, p)
+      if (!rel) return
+      this.enqueue(name, rel.split(path.sep).join('/'))
+    }
+    w.on('add', onChange)
+      .on('change', onChange)
+      .on('unlink', onChange)
+      .on('addDir', onChange)
+      .on('unlinkDir', onChange)
+      .on('error', (e: unknown) => logger.warn(`外部笔记库监听错误（${name}）`, e))
+    logger.info(`外部笔记库监听已启动：${name} → ${dir}`)
+    return w
+  }
+
+  /** 外部监听随 start 重建：以最近一次 setExternalVaults 的注册为准 */
+  private rebuildExternal(): void {
+    for (const [name, entry] of this.externalWatchers) {
+      void entry.watcher.close()
+      this.externalWatchers.set(name, { watcher: this.watchExternal(name, entry.dir), dir: entry.dir })
+    }
+  }
+
+  /** 事件入队（工作区与外部库共用同一防抖 / 挂起管线） */
+  private enqueue(vault: string, rest: string): void {
+    if (this.suspendDepth > 0) {
+      this.droppedWhileSuspended = true
+      return
+    }
+    let set = this.pending.get(vault)
+    if (!set) {
+      set = new Set()
+      this.pending.set(vault, set)
+    }
+    if (rest) set.add(rest)
+    this.schedule()
   }
 
   /** git 操作等批量变更期间挂起事件（挂起期间的事件直接丢弃） */
@@ -96,6 +157,8 @@ export class WatcherService {
     this.droppedWhileSuspended = false
     void this.watcher?.close()
     this.watcher = null
+    for (const [, entry] of this.externalWatchers) void entry.watcher.close()
+    // 不清 externalWatchers 的注册映射：close 后 start（restart）会按 rebuildExternal 重建
   }
 
   /** 发出当前积攒的一批变更（防抖尾沿或 max-wait 到期时触发） */

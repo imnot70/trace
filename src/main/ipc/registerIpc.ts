@@ -131,6 +131,8 @@ export function registerIpc(deps: IpcDeps): void {
       deps.recents.onVaultRename(oldName, newName)
       deps.gistShares.onVaultRename(oldName, newName)
       deps.vaultMeta.rename(oldName, newName)
+      // 外部库改名 = 注册名变化：刷新外部监听的归属键
+      deps.watcher.setExternalVaults(deps.vaults.externalVaults())
     }
     return result
   })
@@ -141,8 +143,31 @@ export function registerIpc(deps: IpcDeps): void {
       deps.recents.onDelete(name, '', 'vault')
       deps.gistShares.onDelete(name, '', 'vault')
       deps.vaultMeta.remove(name)
+      // 外部库删除 = 解除注册：同步外部监听（工作区库不受影响）
+      deps.watcher.setExternalVaults(deps.vaults.externalVaults())
     }
     return result
+  })
+
+  // ---------- 外部笔记库（FR-2.1.4 打开已有笔记库） ----------
+  /** 系统目录选择对话框（打开已有笔记库用） */
+  handle('dialog:pickDirectory', async (title: string) => {
+    const win = deps.getWindow()
+    if (!win) return null
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      title: title || '选择笔记库目录',
+      properties: ['openDirectory']
+    })
+    return canceled ? null : filePaths[0]
+  })
+  /** 打开已有目录为外部笔记库：注册 + 刷新外部监听 + 返回 Git 关联态（clone 的仓库
+   *  自带 origin remote，associated 即 true，同步时注入 PAT 可直接使用） */
+  handle('vault:openExternal', async (dir: string) => {
+    const result = deps.vaults.openExternal(dir)
+    if (!result.ok || !result.name) return result
+    deps.watcher.setExternalVaults(deps.vaults.externalVaults())
+    const git = await deps.git.status(deps.vaults.vaultPath(result.name))
+    return { ok: true, name: result.name, git }
   })
 
   // ---------- 目录 / 笔记 ----------

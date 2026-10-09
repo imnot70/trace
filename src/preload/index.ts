@@ -23,6 +23,8 @@ const api: TraceApi = {
   createVault: (name, description) => ipcRenderer.invoke('vault:create', name, description),
   renameVault: (oldName, newName) => ipcRenderer.invoke('vault:rename', oldName, newName),
   deleteVault: (name) => ipcRenderer.invoke('vault:delete', name),
+  openVaultExternal: (dir) => ipcRenderer.invoke('vault:openExternal', dir),
+  pickDirectory: (title) => ipcRenderer.invoke('dialog:pickDirectory', title),
 
   listTree: (vault) => ipcRenderer.invoke('tree:list', vault),
   createDir: (vault, parentPath, name) => ipcRenderer.invoke('dir:create', vault, parentPath, name),

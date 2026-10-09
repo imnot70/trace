@@ -584,7 +584,12 @@ body {
 .side-row:hover .side-row-actions,
 .side-row.active .side-row-actions,
 .tree-row:hover .side-row-actions,
-.tree-row.active .side-row-actions {
+.tree-row.active .side-row-actions,
+/* 菜单打开期间保持按钮组布局（menu-hold）：菜单 teleport 到 body 后鼠标离开行、
+   hover 丢失——display:none 会让 EP popper 失去参考锚点整体跳到视口左上角（真机实测）。
+   该 class 在库行 / 树行模板上挂了多年，样式规则此前缺失（2026-10-09 外部库高频操作暴露） */
+.side-row.menu-hold .side-row-actions,
+.tree-row.menu-hold .side-row-actions {
   display: inline-flex;
 }
 
@@ -1249,6 +1254,17 @@ body {
 .git-badge {
   color: var(--accent);
   display: inline-flex;
+}
+
+/* 外部笔记库标记（FR-2.1.4）：提示删除行为与工作区库不同（仅解除注册不删文件） */
+.external-badge {
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 4px;
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
+  flex-shrink: 0;
 }
 
 /* 下拉菜单中的删除操作：红色警示 */

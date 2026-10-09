@@ -45,6 +45,9 @@ export interface VaultInfo {
   git: GitStatus | null
   /** 库描述（可选，应用级元数据，存 userData 不进库目录） */
   description?: string
+  /** 外部笔记库（FR-2.1.4 打开已有笔记库）：注册在工作区之外的目录（如 GitHub clone 的仓库），
+   *  重命名只改显示名不搬目录、删除只解除注册不删文件 */
+  external?: boolean
 }
 
 export interface TrashEntry {
