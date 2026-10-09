@@ -5,6 +5,7 @@ import MarkdownIt from 'markdown-it'
 import DOMPurify from 'dompurify'
 import texmath from 'markdown-it-texmath'
 import katex from 'katex'
+import { getFrontmatterTags } from '@shared/noteTags'
 import { matchTaskMarker } from './invisibleChars'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -248,6 +249,28 @@ export function resolveRelRef(notePath: string, ref: string): string {
     else stack.push(seg)
   }
   return stack.join('/')
+}
+
+/**
+ * frontmatter 标签胶囊条（FR-2.6.17 扩展，2026-10-09 用户需求）：预览 / 悬浮预览头部
+ * 以只读胶囊展示 frontmatter 的 tags（与所见即所得折叠行同视觉，无 × / ＋ 交互）。
+ * 生成**可信 HTML**（名称与色值均经转义），调用方在 DOMPurify 净化之后拼接到产物最前；
+ * data-source-line="0" 使胶囊条进入行级滚动同步索引（映射源第 1 行，较空白掩码更准）。
+ * 无 frontmatter / 无 tags（含 YAML 非法——读取返回空）时返回 ''，保持既有空白掩码行为。
+ */
+export function frontmatterCapsuleHtml(content: string, colorOf: (name: string) => string | undefined): string {
+  const names = getFrontmatterTags(content)
+  if (names.length === 0) return ''
+  const pills = names
+    .map((name) => {
+      const color = colorOf(name)
+      const dot = color
+        ? `<span class="md-fm-dot" style="background:${escapeHtml(color)}"></span>`
+        : '<span class="md-fm-dot"></span>'
+      return `<span class="md-fm-capsule">${dot}<span class="md-fm-name">${escapeHtml(name)}</span></span>`
+    })
+    .join('')
+  return `<div class="md-frontmatter-tags" data-source-line="0"><span class="md-fm-badge">frontmatter</span>${pills}</div>`
 }
 
 /** 相对路径图片/资源引用改写为 trace-vault:// 协议地址（协议链接、绝对路径、锚点返回 null） */

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { md, resolveAssetUrl, resolveRelRef, sanitizeHtml } from '../lib/markdown'
+import { frontmatterCapsuleHtml, md, resolveAssetUrl, resolveRelRef, sanitizeHtml } from '../lib/markdown'
 import { noteDisplayName, openWikilinkByName } from '../lib/wikilink'
 import { maskFrontmatter } from '@shared/noteTags'
+import { useTreeStore } from '../stores/tree'
 
 const props = defineProps<{
   content: string
@@ -27,6 +28,9 @@ const emit = defineEmits<{
   /** 双链单击请求悬浮预览（linkAction='preview' 时，FR-2.4.27） */
   (e: 'preview-note', target: { vault: string; path: string; name: string }): void
 }>()
+
+// 标签定义（frontmatter 胶囊条配色来源，FR-2.6.17 扩展）
+const tree = useTreeStore()
 
 // 外链新窗口打开
 const defaultLink =
@@ -128,7 +132,13 @@ const html = computed(() => {
     // 管道顺序：掩码 frontmatter（保留行号映射，行级滚动同步不错位）→ markdown-it 渲染（含 KaTeX/高亮）
     // → DOMPurify 白名单净化（sanitizeHtml，与导出 HTML / 编辑器所见即所得共用）→ 相对链接/图片改写
     const sanitized = sanitizeHtml(md.render(maskFrontmatter(props.content ?? '')))
-    return rewriteImages(rewriteInternalLinks(sanitized))
+    // frontmatter 标签胶囊条（FR-2.6.17 扩展，只读）：净化后前置自身生成的可信 HTML；
+    // 颜色查标签定义（tree.tags 响应式——改色后 computed 重算，胶囊即时刷新），
+    // 未登记标签灰色回退；data-source-line=0 进行级同步索引
+    const capsule = frontmatterCapsuleHtml(props.content ?? '', (name) =>
+      tree.tags.find((t) => t.name.toLowerCase() === name.toLowerCase())?.color
+    )
+    return capsule + rewriteImages(rewriteInternalLinks(sanitized))
   } catch {
     return `<p style="color:var(--danger)">渲染出错，请检查 Markdown 语法</p>`
   }

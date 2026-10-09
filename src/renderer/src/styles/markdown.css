@@ -91,6 +91,56 @@
   cursor: not-allowed;
 }
 
+/* frontmatter 标签胶囊条（FR-2.6.17 扩展，只读）：预览 / 悬浮预览头部与所见即所得
+   折叠行同视觉（无 × / ＋ 交互）；颜色圆点由行内 style 注入（标签定义色，未登记灰） */
+.markdown-body .md-frontmatter-tags {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 10px;
+  margin: 0 0 12px 0;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  font-size: 0.88em;
+  color: var(--text-tertiary);
+}
+
+.markdown-body .md-fm-badge {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--text-secondary);
+  font-size: 0.9em;
+}
+
+.markdown-body .md-fm-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.markdown-body .md-fm-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-tertiary);
+}
+
+.markdown-body .md-fm-name {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .markdown-body img {
   max-width: 100%;
   border-radius: 6px;

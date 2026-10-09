@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { md, sanitizeHtml, slugify } from '../src/renderer/src/lib/markdown'
+import { frontmatterCapsuleHtml, md, sanitizeHtml, slugify } from '../src/renderer/src/lib/markdown'
 
 describe('markdown 渲染管道：源码行号注入（data-source-line）', () => {
   it('顶层块携带正确的 0 基行号', () => {
@@ -182,5 +182,36 @@ describe('列表项内公式（texmath 块规则守卫 + 行内降级）', () =>
   it('纯公式段落（多公式各占一行）保持块级展示', () => {
     const html = md.render('$$a$$\n$$b$$')
     expect((html.match(/katex-display/g) ?? []).length).toBe(2)
+  })
+})
+
+describe('frontmatter 标签胶囊条（FR-2.6.17 扩展：预览 / 悬浮预览只读渲染）', () => {
+  const colorOf = (name: string) => (name === '工作' ? '#e74c3c' : undefined)
+
+  it('有 tags 时生成胶囊条：badge + 胶囊 + 配色 + 行号 0', () => {
+    const html = frontmatterCapsuleHtml('---\ntags: [工作, 随笔]\n---\n\n# 正文', colorOf)
+    expect(html).toContain('class="md-frontmatter-tags"')
+    expect(html).toContain('data-source-line="0"')
+    expect(html).toContain('>frontmatter</span>')
+    expect(html).toContain('>工作</span>')
+    expect(html).toContain('>随笔</span>')
+    expect(html).toContain('background:#e74c3c') // 已登记标签注入定义色
+    // 未登记标签无色（灰色回退由 CSS 兜底）
+    const pills = html.match(/md-fm-capsule/g) ?? []
+    expect(pills.length).toBe(2)
+  })
+
+  it('无 frontmatter / 无 tags / YAML 非法时返回空（保持空白掩码现状）', () => {
+    expect(frontmatterCapsuleHtml('# 无 frontmatter', colorOf)).toBe('')
+    expect(frontmatterCapsuleHtml('---\ntitle: x\n---\n\n正文', colorOf)).toBe('')
+    expect(frontmatterCapsuleHtml('---\ntags: [工作\n---\n\n正文', colorOf)).toBe('') // YAML 非法
+  })
+
+  it('名称与色值经 HTML 转义（防注入）', () => {
+    const html = frontmatterCapsuleHtml('---\ntags: ["<script>alert(1)</script>"]\n---\n\n正文', () => '"><img src=x>')
+    expect(html).not.toContain('<script>')
+    expect(html).not.toContain('"><img')
+    expect(html).toContain('&lt;script&gt;')
+    expect(html).toContain('&quot;&gt;&lt;img')
   })
 })

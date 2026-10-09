@@ -47,3 +47,11 @@
 - **CDP 隔离实例冒烟 10/10 过**（`TRACE_CDP=9222 TRACE_TEST_USERDATA=1`）：建库 / 建笔记 / 建标签定义 → 开笔记写 frontmatter → 开所见即所得 → 胶囊渲染 2 枚、文字与首胶囊配色（rgb 231,76,60 = #e74c3c）正确 → × 移除「随笔」缓冲区与磁盘双重断言（`tags:\n  - 工作`）、剩余胶囊 1 枚 → 「＋ 标签」呼出「管理标签」弹窗 → 侧栏排序按钮存在、按笔记数模式行显计数 `[1, 0]`（随笔已移除后为 0，符合预期）。
 - **验证手法教训**：CDP 合成鼠标（`Input.dispatchMouseEvent`，命中测试正确落在 `.cm-content`）与合成方向键都**不驱动 CM 光标**（与 2026-09-26「原始字符按键不稳定」同类）；可靠手法 = `.cm-content.focus()` + `Selection.collapseToEnd()`（经 selectionchange 被 CM 采纳）。另：frontmatter 折叠 widget 只在光标不相交 frontmatter 区间时渲染（`occupied` 回落源码语义），脚本断言前必须先把光标挪到正文——真实用户交互天然满足。
 - 真机验证：**2026-10-09 用户确认通过**（合并 / 排序 / 胶囊交互均无异常），当日合并 main，随 [未发布] 待发版。
+
+## 7. 追加：预览 / 悬浮预览的胶囊条（2026-10-09 用户反馈，当日实施）
+
+- **需求**：所见即所得 / 心流的 frontmatter 已折叠为胶囊，但分栏预览与悬浮预览仍完全隐藏 frontmatter——两容器正文顶部以**只读胶囊条**同视觉呈现（无 × / ＋ 交互）。
+- **实现**：`lib/markdown.ts` 新增纯函数 `frontmatterCapsuleHtml(content, colorOf)`——生成可信 HTML（名称与色值经 `escapeHtml`），tags 为空（含 YAML 非法）返回空串保持空白掩码现状；`MarkdownPreview.vue` 在 DOMPurify 净化**之后**前置拼接（不受净化规则影响），颜色查 `tree.tags`（响应式，改色 computed 重算即时刷新）；分栏预览 / 悬浮预览 / 网格卡片预览共用该组件，一处生效。样式在 `markdown.css`（`.md-frontmatter-tags` 系，全部走主题变量）。
+- **行号同步**：行级掩码原样保留（行数与位置不动，正文 `data-source-line` 不变）；胶囊条带 `data-source-line="0"` 进入同步索引——头部区域映射从「失义空白」变为「精确命中源第 1 行」。
+- **边界**：导出 PDF / HTML 走独立管道（`stripFrontmatter` 剥 frontmatter），不受影响。
+- **验证**：单测 +3（胶囊条生成与配色 / 空态与 YAML 非法回退 / 名称与色值转义防注入）全仓 569 绿；CDP 冒烟 7 项全过（分栏胶囊渲染与 rgb 断言 / 行号 0 / 只读无 × ＋ / 改色即时刷新 rgb(46,204,113) / 悬浮预览 / 无 frontmatter 不回归——注意已关闭悬浮预览的驻留 DOM 以 visibility 隐藏、offsetParent 判定失效，断言按 `.preview-pane` 作用域查）。
