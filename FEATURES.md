@@ -1,6 +1,6 @@
 # Trace 笔迹 · 功能列表
 
-> 适用于 **v0.19.0**。功能的详细用法见 [README](README.md) 与应用内「设置 → 快捷键」速查表；功能的需求背景与实施状态见 `ai/requirements/index.md`。
+> 适用于 **v0.20.0**。功能的详细用法见 [README](README.md) 与应用内「设置 → 快捷键」速查表；功能的需求背景与实施状态见 `ai/requirements/index.md`。
 >
 > 定位：本地优先的 Markdown 笔记桌面应用（Windows / Linux 安装包，macOS 源码构建）——笔记为纯 `.md` 文件、无私有格式，每个笔记库是一个独立 git 仓库，经 GitHub 在多台设备间同步。
 
