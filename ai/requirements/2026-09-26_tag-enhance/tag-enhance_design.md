@@ -46,4 +46,4 @@
 - `npm run typecheck`（主 / 渲染双端）与 `npm run lint` 全绿。
 - **CDP 隔离实例冒烟 10/10 过**（`TRACE_CDP=9222 TRACE_TEST_USERDATA=1`）：建库 / 建笔记 / 建标签定义 → 开笔记写 frontmatter → 开所见即所得 → 胶囊渲染 2 枚、文字与首胶囊配色（rgb 231,76,60 = #e74c3c）正确 → × 移除「随笔」缓冲区与磁盘双重断言（`tags:\n  - 工作`）、剩余胶囊 1 枚 → 「＋ 标签」呼出「管理标签」弹窗 → 侧栏排序按钮存在、按笔记数模式行显计数 `[1, 0]`（随笔已移除后为 0，符合预期）。
 - **验证手法教训**：CDP 合成鼠标（`Input.dispatchMouseEvent`，命中测试正确落在 `.cm-content`）与合成方向键都**不驱动 CM 光标**（与 2026-09-26「原始字符按键不稳定」同类）；可靠手法 = `.cm-content.focus()` + `Selection.collapseToEnd()`（经 selectionchange 被 CM 采纳）。另：frontmatter 折叠 widget 只在光标不相交 frontmatter 区间时渲染（`occupied` 回落源码语义），脚本断言前必须先把光标挪到正文——真实用户交互天然满足。
-- 真机验证待用户确认后随版发布（焦点：合并大库的耗时体感、胶囊交互手感、排序稳定性）。
+- 真机验证：**2026-10-09 用户确认通过**（合并 / 排序 / 胶囊交互均无异常），当日合并 main，随 [未发布] 待发版。
