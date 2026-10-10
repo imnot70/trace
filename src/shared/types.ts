@@ -82,6 +82,14 @@ export interface RecentItem {
 export interface NoteInfo {
   birthtime: string
   mtime: string
+  /** 文件字节大小（FR-2.6.6 扩展） */
+  size: number
+  /** 总行数：按 \n 计，整文件含 frontmatter，与编辑器行号同口径 */
+  lines: number
+  /** 非空白字符数（客观口径：不含空格 / 换行 / 制表；不做词数口径的「写作字数」） */
+  chars: number
+  /** 磁盘绝对路径（供「复制路径」） */
+  absPath: string
 }
 
 export interface TagItem {

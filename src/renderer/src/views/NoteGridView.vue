@@ -10,6 +10,7 @@ import { useGitStore } from '../stores/git'
 import MarkdownPreview from '../components/MarkdownPreview.vue'
 import TagPickerDialog from '../components/TagPickerDialog.vue'
 import ShareGistDialog from '../components/ShareGistDialog.vue'
+import NoteInfoDialog from '../components/NoteInfoDialog.vue'
 import { formatRelativeTime } from '../lib/relativeTime'
 import { stripFrontmatter } from '@shared/noteTags'
 import { SCRATCH_VAULT } from '@shared/types'
@@ -308,6 +309,10 @@ function openTagDialog(item: GridItem): void {
 const shareDialogVisible = ref(false)
 const shareDialogNote = ref<GridItem | null>(null)
 
+// ---------- 信息弹窗（FR-2.6.6 扩展）：与标签 / 分享同款按需渲染 ----------
+const infoDialogVisible = ref(false)
+const infoDialogNote = ref<GridItem | null>(null)
+
 function dirOf(path: string): string {
   const parts = path.split('/')
   parts.pop()
@@ -436,15 +441,8 @@ async function onNoteMenuCommand(cmd: string, item: GridItem): Promise<void> {
     return
   }
   if (cmd === 'info') {
-    const result = await window.trace.noteGetInfo(item.vault, item.path)
-    if (result.ok && result.info) {
-      const created = new Date(result.info.birthtime).toLocaleString('zh-CN')
-      const modified = new Date(result.info.mtime).toLocaleString('zh-CN')
-      await ElMessageBox.alert(`创建时间：${created}\n最后修改：${modified}`, `${item.name} 信息`, {
-        confirmButtonText: '确定',
-        customStyle: { whiteSpace: 'pre-wrap' }
-      })
-    }
+    infoDialogNote.value = item
+    infoDialogVisible.value = true
     return
   }
   if (cmd === 'tag') {
@@ -924,6 +922,9 @@ watch(section, () => {
       :note="shareDialogNote"
       @changed="void tree.loadShared()"
     />
+
+    <!-- 信息弹窗（FR-2.6.6 扩展）：分组信息卡，与侧栏树行共用 NoteInfoDialog -->
+    <NoteInfoDialog v-model:visible="infoDialogVisible" :note="infoDialogNote" />
   </div>
 </template>
 

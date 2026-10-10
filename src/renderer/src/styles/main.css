@@ -540,6 +540,11 @@ body {
   align-items: center;
   gap: 6px;
   padding: 5px 8px 5px 24px;
+  /* 行高守恒：hover / active / menu-hold 时行尾浮现 22px 的 .side-row-actions，
+     行高若由内容决定（文本行约 20px），悬浮行会比静态行高 ~2px，鼠标扫过时
+     各行依次膨胀 / 回缩、整列推挤跳动（2026-10-10 用户反馈）。
+     min-height 按按钮组 22px + 上下 padding 10px 预留，任何状态行高一致 */
+  min-height: 32px;
   border-radius: 6px;
   cursor: pointer;
   color: var(--text-primary);
@@ -1213,6 +1218,9 @@ body {
   align-items: center;
   gap: 5px;
   padding: 4px 8px 4px 16px;
+  /* 行高守恒：同 .side-row——hover / active / menu-hold 时行尾 22px 操作按钮组入场，
+     min-height 预留其高度（22px 按钮组 + 上下 padding 8px），悬浮行不再增高推挤下方行 */
+  min-height: 30px;
   border-radius: 6px;
   cursor: pointer;
   color: var(--text-primary);

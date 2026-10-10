@@ -12,7 +12,7 @@ import {
   relDepth
 } from '@shared/validate'
 import { resolveWithin, toRelPath, relReference } from '../lib/paths'
-import type { TreeNode } from '@shared/types'
+import type { NoteInfo, TreeNode } from '@shared/types'
 import type { TrashService } from './trash'
 
 /** 内容 hash：用于外部修改检测 */
@@ -219,11 +219,24 @@ export class FsTreeService {
   /**
    * 获取笔记的创建时间和最后修改时间。
    */
-  noteGetInfo(vault: string, relPath: string): { ok: boolean; info?: { birthtime: string; mtime: string }; error?: string } {
+  noteGetInfo(vault: string, relPath: string): { ok: boolean; info?: NoteInfo; error?: string } {
     try {
       const abs = resolveWithin(this.getVaultPath(vault), relPath)
       const stat = fs.statSync(abs)
-      return { ok: true, info: { birthtime: stat.birthtime.toISOString(), mtime: stat.mtime.toISOString() } }
+      // 行数 / 字符数为客观统计（整文件含 frontmatter，口径见 NoteInfo 注释）；
+      // 笔记均为小文件，同步读与既有服务风格一致
+      const content = fs.readFileSync(abs, 'utf8')
+      return {
+        ok: true,
+        info: {
+          birthtime: stat.birthtime.toISOString(),
+          mtime: stat.mtime.toISOString(),
+          size: stat.size,
+          lines: content.split('\n').length,
+          chars: content.replace(/\s/g, '').length,
+          absPath: abs
+        }
+      }
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) }
     }
