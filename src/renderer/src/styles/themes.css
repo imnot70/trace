@@ -2,9 +2,19 @@
 
 :root {
   --el-color-primary: var(--accent);
+  /* EP 主色梯度（FR-2.9.13 P1）：hover / active / 浅底等 state 用 light-N 混白、dark-2 按压混黑
+     ——未定义时 EP 落出厂蓝梯度，悬浮态会跳出靛蓝色系 */
+  --el-color-primary-dark-2: color-mix(in srgb, var(--accent) 80%, #1c1a17);
+  --el-color-primary-light-3: color-mix(in srgb, var(--accent) 70%, #ffffff);
+  --el-color-primary-light-5: color-mix(in srgb, var(--accent) 50%, #ffffff);
+  --el-color-primary-light-7: color-mix(in srgb, var(--accent) 30%, #ffffff);
+  --el-color-primary-light-8: color-mix(in srgb, var(--accent) 20%, #ffffff);
+  --el-color-primary-light-9: color-mix(in srgb, var(--accent) 10%, #ffffff);
   --el-border-color: var(--border-color);
   --el-border-color-light: var(--border-color);
   --el-border-color-lighter: var(--border-color);
+  /* 悬停描边单独一档（输入框 hover 可见性；卡片 hairline 太淡） */
+  --el-border-color-hover: var(--text-tertiary);
   --el-fill-color-light: var(--bg-hover);
   --el-fill-color-blank: var(--bg-primary);
   --el-bg-color: var(--bg-primary);
@@ -17,6 +27,15 @@
   --el-font-family: var(--font-ui);
   /* EP 控件圆角对齐应用圆角三档中的控件档（FR-2.9.13 P0） */
   --el-border-radius-base: var(--radius-ctl);
+  /* 输入框描边比卡片 hairline 强一档（交互控件需要可见边界；次要按钮描边同此） */
+  --el-input-border-color: rgba(28, 25, 18, 0.18);
+  /* EP 阴影 token 对齐应用阴影体系（popper / select 浮层用 box-shadow-light） */
+  --el-box-shadow: 0 12px 32px 4px rgba(30, 26, 18, 0.1), 0 8px 20px rgba(30, 26, 18, 0.1);
+  --el-box-shadow-light: 0 4px 14px rgba(30, 26, 18, 0.14);
+  --el-box-shadow-lighter: 0 1px 4px rgba(30, 26, 18, 0.08);
+  /* 弹层动效对齐应用动效 token（FR-2.9.13 P1） */
+  --el-transition-duration: var(--motion-base);
+  --el-transition-duration-fast: var(--motion-fast);
 }
 
 html {
@@ -25,9 +44,19 @@ html {
     color 0.2s ease;
 }
 
-/* 深色模式下弹层背景 */
+/* 深色模式下弹层背景与主色梯度（light-N 转为向暗底混合，EP 深色口径） */
 html.dark {
   --el-color-primary: var(--accent);
+  --el-color-primary-dark-2: color-mix(in srgb, var(--accent) 80%, #0a0a0c);
+  --el-color-primary-light-3: color-mix(in srgb, var(--accent) 70%, #141416);
+  --el-color-primary-light-5: color-mix(in srgb, var(--accent) 50%, #141416);
+  --el-color-primary-light-7: color-mix(in srgb, var(--accent) 30%, #141416);
+  --el-color-primary-light-8: color-mix(in srgb, var(--accent) 20%, #141416);
+  --el-color-primary-light-9: color-mix(in srgb, var(--accent) 12%, #141416);
+  --el-input-border-color: rgba(255, 255, 255, 0.16);
+  --el-box-shadow: 0 12px 32px 4px rgba(0, 0, 0, 0.4), 0 8px 20px rgba(0, 0, 0, 0.4);
+  --el-box-shadow-light: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --el-box-shadow-lighter: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 /* el-tabs 样式微调（设置页） */

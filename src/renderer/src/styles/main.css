@@ -569,21 +569,6 @@ svg.lucide {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
 }
 
-/* 深色下浮层与近黑背景明度接近，仅靠阴影分不出边界（2026-10-10 用户反馈）：
-   弹层卡片补 hairline 提亮描边 + 更深投影；浅色维持原样 */
-html.dark .settings-dialog,
-html.dark .el-dialog,
-html.dark .el-message-box {
-  border-color: rgba(255, 255, 255, 0.13);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 24px 64px rgba(0, 0, 0, 0.55);
-}
-html.dark .el-popper.is-light {
-  border-color: rgba(255, 255, 255, 0.13);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
-}
-
 .side-row .chevron,
 .tree-row .chevron {
   transition: transform var(--motion-base) var(--motion-ease);

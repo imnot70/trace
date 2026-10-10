@@ -12,6 +12,8 @@ import 'misans/lib/Normal/MiSans-Medium.min.css'
 import 'misans/lib/Normal/MiSans-Demibold.min.css'
 import './styles/main.css'
 import './styles/themes.css'
+// EP 组件适配层（FR-2.9.13 P1）：出厂形态 → 应用设计语言的组件级精修
+import './styles/ep.css'
 import './styles/markdown.css'
 import App from './App.vue'
 

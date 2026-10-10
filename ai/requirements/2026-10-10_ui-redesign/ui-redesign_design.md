@@ -63,9 +63,18 @@
 - 体积预算：CJK 全量每字重 3–10MB，预计合计 +15–30MB（安装包现 ~145MB，含内置 Git +15.7% 先例）；实测增量记录进 CHANGELOG（验收 #6）；
 - CM 编辑器内容字体与正文栈同步（编辑器 theme 的 content font-family 一并替换），保证所见即所得与预览字形一致。
 
-## 4. Element Plus 适配层（P1）
+## 4. Element Plus 适配层（P1，已实施 2026-10-10）
 
-- `themes.css` 现有 `--el-*` 映射（主色 / 边框 / 填充 / 背景 / 文字）保留并扩充：
+**实施记录**：变量层扩充落 `themes.css`（组件级精修落新文件 `src/renderer/src/styles/ep.css`，`main.ts` 在 themes.css 后导入）：
+
+- **主色梯度**（关键缺口）：此前仅映射 `--el-color-primary`，EP 的 hover / active / 浅底 state 引用 `--el-color-primary-light-3/5/7/8/9` 与 `dark-2`，未定义时落 EP 出厂蓝梯度——悬浮态会跳出靛蓝色系。现用 `color-mix` 从 `--accent` 现算全套（浅色混白 / 深色向 `#141416` 混暗，EP 深色口径），换 accent 即全局跟随；
+- **描边体系**：`--el-border-color-hover` → `--text-tertiary`；新增 `--el-input-border-color`（浅 18% 黑 / 深 16% 白，比卡片 hairline 强一档——交互控件需要可见边界），`.el-button` 描边跟随之；
+- **阴影**：`--el-box-shadow / -light / -lighter` 对齐应用阴影体系（popper / select 浮层消费 `-light`）；
+- **动效**：`--el-transition-duration(-fast)` → `--motion-base / --motion-fast`；
+- **组件精修**（ep.css）：按钮按下 `scale(0.98)`（C 琉摘选）；`.el-dialog` 圆角 `--radius-pop`（经 `--el-dialog-border-radius`）、`.el-message-box` 同；下拉菜单 / 选择器条目圆角 `--radius-ctl` + 菜单内边距 5px；`el-message` 胶囊化（999px）；notification 圆角 `--radius-card`；深色浮层边界规则自 main.css 迁入（见 §5 前序修正）。
+- CDP 验证：`--el-color-primary-light-3` 计算值 `color-mix(in srgb, #4f5bd5 70%, #ffffff)` ✓；按钮描边 / 阴影 token 计算值 ✓；下拉条目形态待真机确认。
+
+原设计条目（保留备查）：themes.css 现有 `--el-*` 映射（主色 / 边框 / 填充 / 背景 / 文字）保留并扩充：
   - `--el-border-radius-base` → `var(--radius-ctl)`；`--el-font-family` → `var(--font-ui)`；
   - 弹层动效：EP transition duration 变量对齐 `--motion-base / --motion-ease`，dialog / message-box 入场补 scale 0.98→1（覆盖 EP 默认 fade-only）；
 - **逐组件精修**（新增全局段落或 `styles/ep.scss`）：dialog（头部留白 / 圆角 `--radius-pop` / 阴影）、button（主按钮实底 accent、次按钮中性、按下 `scale(0.98)` 摘选自 C 琉）、input / select（无边框填充式或极淡描边，实施时二选一定稿）、dropdown / popper（圆角、阴影、menu-hold 语义不动）、message / notification；
