@@ -1264,7 +1264,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   position: relative; /* 反向链接悬浮入口的定位锚 */
   background: var(--bg-primary);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   overflow: hidden;
   /* 编辑区至少 480px（约 40 字/行），窗口再窄也不压缩到无法编辑 */
   min-width: 480px;
@@ -1319,7 +1319,7 @@ onBeforeUnmount(() => {
   /* 预览区至少 280px，保留最小可读宽度 */
   min-width: 280px;
   height: 100%;
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   overflow: hidden;
   background: var(--bg-primary);
 }

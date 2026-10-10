@@ -52,7 +52,7 @@ const SCREEN_CSS = `
   @media (prefers-color-scheme: dark) {
     body { background: #17191e; color: #d7dae0; }
     article { background: #1e2127; box-shadow: 0 2px 12px rgba(0,0,0,0.4); }
-    a { color: #7aa7e8; }
+    a { color: #7e89f2; }
     pre { background: #26292f; border-color: #33373e; }
     :not(pre) > code { background: #26292f; }
     th { background: #26292f; }
@@ -62,7 +62,7 @@ const SCREEN_CSS = `
   h1 { font-size: 1.7em; border-bottom: 1px solid #e4e7ec; padding-bottom: 0.3em; }
   h2 { font-size: 1.4em; border-bottom: 1px solid #eef0f3; padding-bottom: 0.2em; }
   p { margin: 0.7em 0; }
-  a { color: #4078d3; }
+  a { color: #4f5bd5; }
   img { max-width: 100%; border-radius: 6px; }
   pre { background: #f4f5f7; border: 1px solid #e4e7ec; border-radius: 8px; padding: 12px 16px; overflow-x: auto; font-size: 13px; }
   code { font-family: 'JetBrains Mono', Consolas, monospace; font-size: 0.9em; }

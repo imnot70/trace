@@ -745,8 +745,8 @@ async function resetGitSource(): Promise<void> {
                 @click="app.updateSettings({ themePreset: 'default' })"
               >
                 <div class="preset-swatches">
-                  <span class="swatch" style="background: #ffffff; border: 1px solid #e4e7ec" />
-                  <span class="swatch" style="background: #4078d3" />
+                  <span class="swatch" style="background: #ffffff; border: 1px solid rgba(28, 25, 18, 0.14)" />
+                  <span class="swatch" style="background: #4f5bd5" />
                   <span class="swatch" style="background: #d34850" />
                 </div>
                 <span class="preset-name">Trace</span>

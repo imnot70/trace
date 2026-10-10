@@ -14,8 +14,9 @@
   --el-text-color-regular: var(--text-primary);
   --el-text-color-secondary: var(--text-secondary);
   --el-text-color-placeholder: var(--text-tertiary);
-  --el-font-family:
-    'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', system-ui, -apple-system, sans-serif;
+  --el-font-family: var(--font-ui);
+  /* EP 控件圆角对齐应用圆角三档中的控件档（FR-2.9.13 P0） */
+  --el-border-radius-base: var(--radius-ctl);
 }
 
 html {
