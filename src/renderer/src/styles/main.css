@@ -413,6 +413,17 @@ svg.lucide {
   padding: 4px 8px;
 }
 
+/* 分组标签（FR-2.9.13 P2 侧栏分组标签化）：小号弱化组标题，纯视觉分组——
+   各区块标题行仍是入口，点击行为不变 */
+.grp-label {
+  padding: 12px 16px 4px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+  user-select: none;
+}
+
 /* 侧栏分组分隔线：快捷入口区（常用/收藏/标签/断链引用/回收站）与笔记库区之间 */
 .side-divider {
   height: 1px;
@@ -424,12 +435,13 @@ svg.lucide {
 .side-section-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  border-radius: 6px;
+  gap: 7px;
+  min-height: 30px;
+  padding: 4px 8px;
+  border-radius: var(--radius-ctl);
   cursor: pointer;
-  color: var(--text-secondary);
-  font-weight: 600;
+  color: var(--text-primary);
+  font-weight: 500;
   font-size: 13px;
 }
 
@@ -439,7 +451,7 @@ svg.lucide {
 
 .side-section-header.active {
   background: var(--bg-active);
-  color: var(--text-primary);
+  color: var(--accent);
 }
 
 .side-section-header .el-icon {
@@ -473,6 +485,11 @@ svg.lucide {
 .side-section-header > .el-icon:not(.chevron) {
   width: 18px;
   justify-content: center;
+  color: var(--text-secondary);
+}
+
+.side-section-header.active > .el-icon:not(.chevron) {
+  color: var(--accent);
 }
 
 /* 区块标题右侧数量角标（常用 / 收藏列表移入主区域后在此显示数量） */
@@ -481,7 +498,7 @@ svg.lucide {
   font-size: 11px;
   color: var(--text-tertiary);
   background: var(--bg-tertiary);
-  border-radius: 8px;
+  border-radius: 999px;
   padding: 0 6px;
   min-width: 18px;
   text-align: center;
@@ -742,7 +759,7 @@ svg.lucide {
   font-size: 11px;
   color: var(--text-tertiary);
   background: var(--bg-tertiary);
-  border-radius: 8px;
+  border-radius: 999px;
   padding: 1px 8px;
 }
 
@@ -759,14 +776,21 @@ svg.lucide {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  color: var(--text-tertiary);
+  gap: 14px;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
+/* 空状态统一（FR-2.9.13 P2）：图标坐进弱化色圆底，文案升一档形成层级 */
 .grid-empty-icon {
-  font-size: 36px;
-  opacity: 0.5;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  font-size: 24px;
 }
 
 /* ========== 欢迎页 ========== */
@@ -846,7 +870,7 @@ svg.lucide {
   font-size: 12px;
   text-decoration: none;
   border: 1px solid var(--accent-soft);
-  border-radius: 10px;
+  border-radius: 999px;
   padding: 1px 8px;
   flex-shrink: 0;
 }

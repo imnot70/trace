@@ -60,7 +60,7 @@ async function commitTo(index: number): Promise<void> {
   max-width: 80vw;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: var(--radius-card);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
   overflow: hidden;
 }

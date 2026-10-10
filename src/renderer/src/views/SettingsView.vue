@@ -1621,7 +1621,7 @@ async function resetGitSource(): Promise<void> {
   display: inline-block;
   margin-left: 8px;
   padding: 1px 8px;
-  border-radius: 10px;
+  border-radius: 999px;
   font-size: 12px;
   background: var(--bg-tertiary, var(--bg-secondary));
   color: var(--text-secondary);
@@ -1747,7 +1747,7 @@ async function resetGitSource(): Promise<void> {
   text-align: left;
   padding: 7px 12px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-ctl);
   background: transparent;
   color: var(--text-secondary);
   font-size: 13px;

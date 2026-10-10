@@ -143,7 +143,7 @@ async function empty(): Promise<void> {
   padding: 12px 14px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   transition:
     border-color 0.18s ease,
     box-shadow 0.18s ease;

@@ -516,7 +516,7 @@ onMounted(async () => {
   padding: 8px 14px;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
   color: var(--text-primary);
   font-size: 13px;

@@ -432,7 +432,7 @@ function onRowClick(item: RowItem, i: number): void {
   height: 320px;
   overflow-y: auto;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   padding: 4px 0;
   background: var(--bg-secondary);
 }

@@ -80,7 +80,11 @@
 - **逐组件精修**（新增全局段落或 `styles/ep.scss`）：dialog（头部留白 / 圆角 `--radius-pop` / 阴影）、button（主按钮实底 accent、次按钮中性、按下 `scale(0.98)` 摘选自 C 琉）、input / select（无边框填充式或极淡描边，实施时二选一定稿）、dropdown / popper（圆角、阴影、menu-hold 语义不动）、message / notification；
 - ⚠️ 约束不变：`el-tooltip` 只包非交互元素；「点击后移除锚点」的操作延迟 ≥300ms（menu-hold）——适配层只动皮肤，不动这些交互语义。
 
-## 5. 主题系统方案 a 实现（FR-2.9.15）
+## 5. 主题系统方案 a 实现（FR-2.9.15，P2 已实施 2026-10-10）
+
+**实施记录**：白名单 +2 已落 `themePackage.ts`（注释同步「白名单为预设变量集的超集」）；单测 +2（纸面变量合法保存 / 旧格式向后兼容，`tests/themePackage.test.ts`，共 21 项全绿）；`guides/theme-import.md` 变量表 19→21 并补内容面说明；高对比度预设补纸面极值（`--content-bg` 纯白/`#0a0a0a`、`--doc-ink` 纯黑/白）；warm / cool 经运行时核查**无需重调**（预设 19 变量全量自含，且 P1 的 EP 主色梯度随 accent 自动联动）——「重调」项按原判断收敛为「核查」。变量消费（`.doc` 与 CM 内容层）随 FR-2.9.14 于 P3。
+
+原设计条目（保留备查）：
 
 | 改动点 | 文件 | 内容 |
 | --- | --- | --- |
@@ -104,7 +108,11 @@
 - **悬浮预览 / 搜索预览**：同为 `.markdown-body` 容器，随纸面染色——预期行为（内容面即纸），验收时观感确认；
 - **玻璃模式**（`html.glass-on`）：卡片半透明叠加逻辑（`color-mix` 82%）在新画布 / 纸面上重验可读性；WCO / `no-bottom-radius` 平台规避行为不变（验收 #1）。
 
-## 7. 结构层要点（P2）
+## 7. 结构层要点（P2，已实施 2026-10-10）
+
+**实施记录**：侧栏分组标签化 = 最低风险实现——模板仅插入一个 `.grp-label` 组标签（「快捷入口」，条件与分隔线同口径），各区块标题行经 CSS 重皮为行式入口（`--radius-ctl` 圆角、weight 500、t1 文字、t2 图标、active 靛蓝浅底 + 靛蓝图标文字），**全部点击行为 / 折叠 / ＋ 与排序控件 / menu-hold 机制零改动**；空状态统一 = `.grid-empty-icon` 圆底化（56px 圆、tertiary 底）+ 文案升 t2；**审计结果**：硬编码边框色全仓清零（P0 token 化已覆盖）；圆角归一——浮层面板（BacklinkPanel / NoteSwitcher / QuickRefPicker / GitAssociateDialog / ContextMenu / TablePromptHud / export-progress / 悬浮预览 / 心流提示）→ `--radius-card`，设置导航项 → `--radius-ctl`，计数角标 / 胶囊入口 → 999px；徽章小件（vim-badge / trash-kind / swatch）保留字面值（决策：微小组件圆角不构成风格噪音）；markdown.css 2 处留给 P3 内容面重做时统一。
+
+原设计条目（保留备查）：
 
 - **侧栏分组标签化**：`SideBar.vue` 模板调整（区块标题行 → 分组标签 + 行），点击行为 / 折叠 / `menu-hold` / 行高守恒（`min-height`，2026-10-10 跳动修复）语义全部保留；
 - **去描边清单**：`main.css` 卡片 / 页头 / 页脚 / 设置块 + 组件 scoped 样式（grep `border: 1px solid var(--border-color)` 审计，逐处决定「调淡保留 / 改阴影 / 删除」）；

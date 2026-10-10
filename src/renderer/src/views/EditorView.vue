@@ -1348,7 +1348,7 @@ onBeforeUnmount(() => {
   right: 20px;
   bottom: 20px;
   width: min(45vw, 720px);
-  border-radius: 10px;
+  border-radius: var(--radius-card);
   background: var(--bg-primary);
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.18),
@@ -1446,7 +1446,7 @@ onBeforeUnmount(() => {
   transform: translate(-50%, -50%);
   z-index: 3000;
   padding: 18px 38px;
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   background: var(--success-bg);
   color: var(--success-text);
   font-size: 28px;

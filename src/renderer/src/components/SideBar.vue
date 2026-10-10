@@ -344,6 +344,9 @@ defineProps<{ vaults?: VaultInfo[] }>()
     </div>
 
     <div class="sidebar-scroll">
+      <!-- 分组标签（FR-2.9.13 P2）：小号弱化组标题，纯视觉分组——下方各区块标题行仍是入口、
+           点击行为与原有区块标题完全一致。条件与分隔线同口径（上方全部隐藏时不显示） -->
+      <div v-if="hasQuickSections" class="grp-label">快捷入口</div>
       <!-- 常用：点击标题在主区域打开卡片网格（可在设置 → 通用 → 侧栏菜单中隐藏） -->
       <div class="side-section" v-if="app.settings.sidebarMenus.recents">
         <div

@@ -165,7 +165,7 @@ async function confirmAssociate(): Promise<void> {
   max-height: 260px;
   overflow-y: auto;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
 }
 
 .repo-item {

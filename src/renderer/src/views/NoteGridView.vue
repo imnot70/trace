@@ -1025,7 +1025,7 @@ watch(section, () => {
   padding: 12px 14px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   cursor: pointer;
   transition:
     transform 0.18s ease,
@@ -1232,7 +1232,7 @@ watch(section, () => {
   right: 20px;
   bottom: 20px;
   width: min(45vw, 720px);
-  border-radius: 10px;
+  border-radius: var(--radius-card);
   background: var(--bg-primary);
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.18),

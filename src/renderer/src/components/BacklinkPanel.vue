@@ -221,7 +221,7 @@ function openNote(item: BacklinkRef) {
   font-size: 11px;
   line-height: 16px;
   padding: 0 6px;
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--bg-hover);
   color: var(--text-tertiary);
 }
@@ -243,7 +243,7 @@ function openNote(item: BacklinkRef) {
   flex-direction: column;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: var(--radius-card);
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.18),
     0 2px 10px rgba(0, 0, 0, 0.1);
@@ -270,7 +270,7 @@ function openNote(item: BacklinkRef) {
   color: var(--text-tertiary);
   background: var(--bg-hover);
   padding: 0 6px;
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   line-height: 16px;
 }
 

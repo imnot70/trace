@@ -1,6 +1,7 @@
 import type { ThemePackage } from '@shared/types'
 
-/** 主题可覆盖的 CSS 变量白名单（与 presets.ts 中的变量集保持一致） */
+/** 主题可覆盖的 CSS 变量白名单（FR-2.9.15 方案 a：19 → 21，新增内容面纸色 / 正文墨色；
+ *  presets.ts 内置预设未含纸面两变量——预设可选覆盖，白名单为预设变量集的超集） */
 export const THEME_VARIABLE_WHITELIST: readonly string[] = [
   '--bg-primary',
   '--bg-secondary',
@@ -14,6 +15,8 @@ export const THEME_VARIABLE_WHITELIST: readonly string[] = [
   '--accent',
   '--accent-soft',
   '--danger',
+  '--content-bg',
+  '--doc-ink',
   '--code-bg',
   '--hljs-base',
   '--hljs-comment',

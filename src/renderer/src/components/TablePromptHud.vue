@@ -39,7 +39,7 @@ const style = computed(() => ({
   min-width: 222px;
   padding: 8px 10px;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: var(--bg-primary);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
   font-size: 12px;

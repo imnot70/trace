@@ -111,6 +111,9 @@ export const THEME_PRESETS: ThemePreset[] = [
       '--accent': '#0066cc',
       '--accent-soft': 'rgba(0, 102, 204, 0.12)',
       '--danger': '#cc0000',
+      // 内容面走极值纯白 / 纯黑（不用内置米黄纸——高对比度用户要的是极值对比）
+      '--content-bg': '#ffffff',
+      '--doc-ink': '#000000',
       '--code-bg': '#f0f0f0',
       '--hljs-base': '#000000',
       '--hljs-comment': '#666666',
@@ -132,6 +135,8 @@ export const THEME_PRESETS: ThemePreset[] = [
       '--accent': '#3399ff',
       '--accent-soft': 'rgba(51, 153, 255, 0.2)',
       '--danger': '#ff4444',
+      '--content-bg': '#0a0a0a',
+      '--doc-ink': '#ffffff',
       '--code-bg': '#141414',
       '--hljs-base': '#ffffff',
       '--hljs-comment': '#888888',
