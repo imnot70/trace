@@ -136,7 +136,7 @@ html.no-bottom-radius #app {
   border-radius: 0;
 }
 
-/* 玻璃模式：卡片背景半透明透出 backgroundMaterial 材质，文字层保持不透明 */
+/* 玻璃模式：卡片背景半透明透出 backgroundMaterial 材质，文字层保持不透明（可读性不降级） */
 html.glass-on .sidebar-card,
 html.glass-on .editor-card,
 html.glass-on .preview-card,
@@ -165,7 +165,7 @@ html.glass-on .sidebar-rail {
 
 .win-titlebar-title {
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
 /* 标题栏条占位：卡片画布整体下移（仅 Windows 渲染 .win-titlebar 元素） */
@@ -187,9 +187,18 @@ html.platform-win .floating-preview {
   top: calc(20px + env(titlebar-area-height, 0px));
 }
 
-/* 玻璃模式：卡片背景半透明透出材质，文字层保持不透明（可读性不降级） */
+/* 玻璃模式：卡片背景半透明透出材质，文字层保持不透明（可读性不降级）。
+   ⚠️ 画布叠加色必须给标题条「挖洞」：backgroundMaterial 开启后 WCO 按钮区的 overlay color
+   被 DWM 忽略、按钮区直接透材质（Electron/DWM 已知行为）——若 app-shell 的 55% 画布色
+   铺满标题条后方，标题条（叠色）与三键区（纯材质）就会色差，深浅 Mica/Acrylic 均明显
+   （2026-10-10 用户反馈）。改为「标题条高度以上透明、以下再叠加」，标题条与按钮区同露
+   材质即天然一致；非玻璃模式（window-opaque）app-shell 为实色画布，无此问题不走此规则 */
 html.glass-on .app-shell {
-  background: color-mix(in srgb, var(--bg-secondary) 55%, transparent);
+  background: linear-gradient(
+    to bottom,
+    transparent 0 env(titlebar-area-height, 36px),
+    color-mix(in srgb, var(--bg-secondary) 55%, transparent) env(titlebar-area-height, 36px)
+  );
 }
 
 body {

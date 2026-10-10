@@ -2,7 +2,9 @@ import type { BrowserWindow } from 'electron'
 import type { AppSettings } from '@shared/types'
 import { logger } from '../lib/logger'
 
-/** WCO 标题栏按钮区配色（随应用深浅主题；底色与应用顶区画布 --bg-secondary 一致，换肤须同步） */
+/** WCO 标题栏按钮区配色（随应用深浅主题；底色与应用顶区画布 --bg-secondary 一致，换肤须同步）。
+ *  ⚠️ 仅在未开启 backgroundMaterial 时生效：材质开启后 DWM 忽略 caption color、按钮区直接
+ *  透材质（此时由渲染端 `html.glass-on .app-shell` 的标题条挖洞规则保证两侧一致） */
 const OVERLAY_THEME = {
   dark: { color: '#121214', symbolColor: '#c9c8c4' },
   light: { color: '#f2f1ed', symbolColor: '#6b6963' }
