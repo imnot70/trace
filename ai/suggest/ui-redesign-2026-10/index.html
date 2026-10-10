@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trace · UI 重设计视觉稿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ================= 页面底座（评审页自身，不参与方案对比） ================= */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  min-height: 100vh;
+  background: #101216;
+  color: #e8eaee;
+  font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  padding-bottom: 70px;
+}
+.bar {
+  position: sticky; top: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 14px 30px;
+  background: rgba(14, 16, 20, .82);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255, 255, 255, .07);
+}
+.bar-title { font-size: 15px; font-weight: 700; letter-spacing: .01em; }
+.bar-sub { font-size: 12px; color: #828793; margin-top: 3px; }
+.bar-r { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.seg {
+  display: inline-flex; gap: 2px; padding: 3px;
+  background: rgba(255, 255, 255, .07);
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 999px;
+}
+.seg button {
+  border: 0; background: transparent; cursor: pointer;
+  color: #b6bac4; font: 500 13px/1 'Noto Sans SC', sans-serif;
+  padding: 7px 14px; border-radius: 999px;
+  transition: background .15s, color .15s;
+}
+.seg button:hover { color: #fff; }
+.seg button.on { background: rgba(255, 255, 255, .16); color: #fff; font-weight: 600; }
+.chk { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: #b6bac4; cursor: pointer; user-select: none; }
+.chk input { accent-color: #7e89f2; width: 15px; height: 15px; cursor: pointer; }
+.tgl {
+  border: 1px solid rgba(255, 255, 255, .12); background: transparent; cursor: pointer;
+  color: #d6d9e0; font: 500 13px 'Noto Sans SC', sans-serif;
+  padding: 7px 14px; border-radius: 999px;
+}
+.tgl:hover { background: rgba(255, 255, 255, .08); }
+.caption { max-width: 1720px; margin: 20px auto 2px; padding: 0 30px; }
+.caption b { font-size: 14px; color: #f2f3f6; margin-right: 10px; }
+.caption span { font-size: 13px; line-height: 1.7; color: #9298a5; }
+
+/* ================= 舞台与窗口 ================= */
+.stages {
+  display: grid; grid-template-columns: 1fr; gap: 36px;
+  max-width: 1760px; margin: 0 auto; padding: 16px 30px 0;
+}
+.stages.cmp { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.stage { position: relative; min-width: 0; }
+.stage-tag {
+  display: table; margin: 0 auto 12px;
+  font-size: 12px; font-weight: 600; color: #c9cdd6;
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .1);
+  padding: 5px 14px; border-radius: 999px;
+}
+.wall {
+  position: absolute; inset: -14px -2px 0; border-radius: 18px; z-index: 0;
+  background:
+    radial-gradient(560px 380px at 18% 20%, rgba(122, 162, 255, .48), transparent 70%),
+    radial-gradient(480px 340px at 82% 24%, rgba(183, 140, 255, .42), transparent 70%),
+    radial-gradient(580px 420px at 52% 90%, rgba(95, 212, 196, .38), transparent 70%),
+    linear-gradient(150deg, #f1ede6, #e2dfd8);
+}
+body[data-theme='dark'] .wall {
+  background:
+    radial-gradient(560px 380px at 18% 20%, rgba(92, 122, 255, .34), transparent 70%),
+    radial-gradient(480px 340px at 82% 24%, rgba(150, 100, 255, .28), transparent 70%),
+    radial-gradient(580px 420px at 52% 90%, rgba(58, 180, 158, .24), transparent 70%),
+    linear-gradient(150deg, #16151b, #0e0d12);
+}
+.window {
+  position: relative; z-index: 1;
+  width: 100%; max-width: 1220px; height: 748px; margin: 0 auto;
+  border-radius: 14px; overflow: hidden;
+  display: flex; flex-direction: column;
+  box-shadow: 0 34px 90px -22px rgba(0, 0, 0, .5), 0 0 0 1px rgba(0, 0, 0, .07);
+}
+.stages.cmp .window { height: 700px; }
+
+/* ================= 方案 token 层（新方案默认值 · 浅色） ================= */
+.mock {
+  flex: 1; display: flex; flex-direction: column; min-height: 0;
+  font-family: var(--font-ui);
+  /* —— chrome（新方案默认 = A 墨 / 组合共用） —— */
+  --font-ui: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --canvas: #f2f1ed;
+  --card: #ffffff;
+  --edge: rgba(28, 25, 18, .07);
+  --t1: #211f1c; --t2: #6c6a63; --t3: #a19e96;
+  --accent: #4f5bd5; --accent-soft: rgba(79, 91, 213, .10);
+  --hover: rgba(28, 25, 18, .05); --activebg: rgba(79, 91, 213, .11);
+  --rc: 12px; --rk: 7px;
+  --shadow: 0 1px 2px rgba(30, 26, 18, .04), 0 8px 28px rgba(30, 26, 18, .07);
+  --logo-bg: linear-gradient(160deg, #6a74e8, #4f5bd5);
+  --reveal: radial-gradient(140px 44px at 32% 50%, rgba(255, 255, 255, .9), transparent);
+  /* —— 内容面（新方案默认 = 墨的纸白） —— */
+  --content-bg: #ffffff;
+  --doc-ink: #26241f; --doc-fs: 15.5px; --doc-lh: 1.8;
+  --font-head: var(--font-ui); --head-w: 700;
+  --code-bg: #f5f4f0; --ci-bg: #f0efe9;
+  --tbl-strong: rgba(28, 25, 18, .30); --tbl-line: var(--edge); --th-bg: transparent;
+  --bq-bar: rgba(79, 91, 213, .45); --bq-bg: rgba(79, 91, 213, .05);
+  --chip-bg: rgba(79, 91, 213, .07);
+  --pre-edge: transparent;
+  --mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+}
+/* —— 深色（新方案默认） —— */
+body[data-theme='dark'] .mock {
+  --canvas: #121214; --card: #1b1b1f; --edge: rgba(255, 255, 255, .07);
+  --t1: #eae9e6; --t2: #a5a39d; --t3: #6e6c66;
+  --accent: #7e89f2; --accent-soft: rgba(126, 137, 242, .16);
+  --hover: rgba(255, 255, 255, .05); --activebg: rgba(126, 137, 242, .16);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 10px 30px rgba(0, 0, 0, .35);
+  --logo-bg: linear-gradient(160deg, #7e89f2, #5b64d8);
+  --content-bg: #1b1b1f; --doc-ink: #dedcd6;
+  --code-bg: #232329; --ci-bg: #2b2b32;
+  --tbl-strong: rgba(255, 255, 255, .24);
+  --bq-bar: rgba(126, 137, 242, .5); --bq-bg: rgba(126, 137, 242, .07);
+  --chip-bg: rgba(126, 137, 242, .1);
+}
+
+/* —— 现状基线（忠实复刻当前应用观感） —— */
+.mock[data-scheme='current'] {
+  --font-ui: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
+  --canvas: #f5f6f8; --card: #ffffff; --edge: #e4e7ec;
+  --t1: #24292f; --t2: #57606a; --t3: #8b949e;
+  --accent: #4078d3; --accent-soft: rgba(64, 120, 211, .12);
+  --hover: rgba(31, 56, 88, .06); --activebg: rgba(64, 120, 211, .12);
+  --rc: 8px; --rk: 6px; --shadow: none;
+  --logo-bg: linear-gradient(135deg, #4078d3, #7a5cd0);
+  --content-bg: #ffffff; --doc-ink: #24292f; --doc-fs: 15px; --doc-lh: 1.75;
+  --head-w: 600;
+  --code-bg: #f0f2f5; --ci-bg: #eff1f4;
+  --tbl-strong: #d0d4da; --tbl-line: #e4e7ec; --th-bg: #f0f1f4;
+  --bq-bar: #e4e7ec; --bq-bg: transparent;
+  --chip-bg: #f0f1f4;
+  --pre-edge: #e4e7ec;
+}
+body[data-theme='dark'] .mock[data-scheme='current'] {
+  --canvas: #17191e; --card: #1e2127; --edge: #33373e;
+  --t1: #d7dae0; --t2: #9aa0aa; --t3: #6b7280;
+  --accent: #548ce0; --accent-soft: rgba(84, 140, 224, .2);
+  --hover: rgba(255, 255, 255, .06); --activebg: rgba(84, 140, 224, .2);
+  --code-bg: #26292f; --ci-bg: #2d3138; --th-bg: #26292f;
+  --tbl-strong: #4a4f57; --tbl-line: #33373e; --pre-edge: #33373e;
+  --chip-bg: #26292f; --bq-bar: #33373e;
+}
+
+/* —— B 纸：chrome 也转暖，内容面 = 暖纸 + 衬线标题 —— */
+.mock[data-scheme='paper'] {
+  --canvas: #efece4; --card: #faf8f3; --edge: rgba(66, 56, 36, .09);
+  --t1: #2e2921; --t2: #71695b; --t3: #a59c8b;
+  --accent: #a2683a; --accent-soft: rgba(162, 104, 58, .12);
+  --hover: rgba(66, 56, 36, .05); --activebg: rgba(162, 104, 58, .11);
+  --shadow: 0 1px 2px rgba(66, 50, 26, .05), 0 8px 28px rgba(66, 50, 26, .07);
+  --logo-bg: linear-gradient(160deg, #b67c46, #9c5f33);
+  /* 纸面底色与心流「米黄纸」同源（--flow-paper-cream），讲同一个故事 */
+  --content-bg: #f8f3e6; --doc-ink: #43392b; --doc-fs: 16px; --doc-lh: 1.85;
+  --font-head: 'Noto Serif SC', 'Source Han Serif SC', serif;
+  --code-bg: #f0e9d8; --ci-bg: #f0e9d8;
+  --tbl-strong: rgba(66, 56, 36, .32);
+  --bq-bar: rgba(162, 104, 58, .55); --bq-bg: rgba(162, 104, 58, .06);
+  --chip-bg: rgba(162, 104, 58, .08);
+}
+body[data-theme='dark'] .mock[data-scheme='paper'] {
+  --canvas: #171512; --card: #201d18; --edge: rgba(235, 222, 196, .08);
+  --t1: #e8e2d6; --t2: #aba395; --t3: #7a7365;
+  --accent: #d2a06b; --accent-soft: rgba(210, 160, 107, .14);
+  --hover: rgba(255, 255, 255, .05); --activebg: rgba(210, 160, 107, .14);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 10px 30px rgba(0, 0, 0, .35);
+  --logo-bg: linear-gradient(160deg, #d2a06b, #a2683a);
+  --content-bg: #2a271f; --doc-ink: #d9d1c1;
+  --code-bg: #322c21; --ci-bg: #322c21;
+  --tbl-strong: rgba(235, 222, 196, .26);
+  --bq-bar: rgba(210, 160, 107, .5); --bq-bg: rgba(210, 160, 107, .07);
+  --chip-bg: rgba(210, 160, 107, .1);
+}
+/* —— A+B 组合 = 墨的 chrome + 纸的内容面（accent 统一靛蓝） —— */
+.mock[data-scheme='combo'] {
+  --content-bg: #f8f3e6; --doc-ink: #43392b; --doc-fs: 16px; --doc-lh: 1.85;
+  --font-head: 'Noto Serif SC', 'Source Han Serif SC', serif;
+  --code-bg: #f0e9d8; --ci-bg: #f0e9d8;
+  --tbl-strong: rgba(66, 56, 36, .32);
+  --bq-bar: rgba(79, 91, 213, .45); --bq-bg: rgba(79, 91, 213, .05);
+  --chip-bg: rgba(79, 91, 213, .07);
+}
+body[data-theme='dark'] .mock[data-scheme='combo'] {
+  --content-bg: #2a271f; --doc-ink: #d9d2c2;
+  --code-bg: #322c21; --ci-bg: #322c21;
+  --tbl-strong: rgba(235, 222, 196, .26);
+  --bq-bar: rgba(126, 137, 242, .5); --bq-bg: rgba(126, 137, 242, .07);
+  --chip-bg: rgba(126, 137, 242, .1);
+}
+
+/* —— C 琉：亚克力卡片叠壁纸（模拟 backgroundMaterial） —— */
+.mock[data-scheme='glass'] {
+  --canvas: rgba(250, 250, 255, .28);
+  --card: rgba(255, 255, 255, .48);
+  --edge: rgba(255, 255, 255, .62);
+  --t1: #232433; --t2: #5a5d6e; --t3: #8d90a0;
+  --accent: #2e6be6; --accent-soft: rgba(46, 107, 230, .12);
+  --hover: rgba(35, 36, 51, .06); --activebg: rgba(46, 107, 230, .13);
+  --rc: 16px; --rk: 8px;
+  --shadow: 0 1px 2px rgba(31, 30, 60, .06), 0 10px 34px rgba(31, 30, 60, .12);
+  --logo-bg: linear-gradient(160deg, #4d84f0, #2e6be6);
+  --content-bg: transparent; --doc-ink: #26272f; --doc-fs: 15.5px; --doc-lh: 1.8;
+  --code-bg: rgba(35, 36, 51, .07); --ci-bg: rgba(35, 36, 51, .08);
+  --tbl-strong: rgba(35, 36, 51, .32);
+  --bq-bar: rgba(46, 107, 230, .5); --bq-bg: rgba(46, 107, 230, .06);
+  --chip-bg: rgba(46, 107, 230, .08);
+}
+body[data-theme='dark'] .mock[data-scheme='glass'] {
+  --canvas: rgba(16, 16, 24, .42);
+  --card: rgba(28, 28, 40, .52);
+  --edge: rgba(255, 255, 255, .12);
+  --t1: #ececf2; --t2: #abadc0; --t3: #767a8e;
+  --accent: #6e97f2; --accent-soft: rgba(110, 151, 242, .16);
+  --hover: rgba(255, 255, 255, .06); --activebg: rgba(110, 151, 242, .17);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 12px 36px rgba(0, 0, 0, .38);
+  --logo-bg: linear-gradient(160deg, #6e97f2, #3d6ae0);
+  --doc-ink: #e4e4ea;
+  --code-bg: rgba(255, 255, 255, .06); --ci-bg: rgba(255, 255, 255, .08);
+  --tbl-strong: rgba(255, 255, 255, .28);
+}
+.mock[data-scheme='glass'] .card,
+.mock[data-scheme='glass'] .titlebar { backdrop-filter: blur(26px) saturate(160%); }
+.mock[data-scheme='glass'] .shell { gap: 8px; padding: 8px; }
+/* 现状基线：真实应用无树状参考线 */
+.mock[data-scheme='current'] .tree { border-left-color: transparent; }
+
+/* ================= 结构层 ================= */
+.titlebar {
+  flex: none; height: 38px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px 0 18px;
+  background: var(--canvas);
+  font-size: 12px; color: var(--t3); user-select: none;
+}
+.win-btns { display: flex; align-items: center; gap: 16px; color: var(--t3); }
+.win-btns svg { width: 12px; height: 12px; display: block; }
+.shell {
+  flex: 1; min-height: 0;
+  display: flex; gap: 6px; padding: 6px;
+  background: var(--canvas);
+}
+.card {
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: var(--rc);
+  box-shadow: var(--shadow);
+}
+
+/* —— 侧栏 —— */
+.sb { width: 262px; flex: none; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.sb-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 10px; }
+.logo {
+  width: 28px; height: 28px; border-radius: 8px;
+  display: grid; place-items: center;
+  color: #fff; font-weight: 800; font-size: 14px;
+  background: var(--logo-bg);
+}
+.sb-title { font-size: 15px; font-weight: 700; letter-spacing: .01em; color: var(--t1); }
+.sb-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 8px 8px; }
+.grp {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 8px 5px;
+  font-size: 11px; font-weight: 650; letter-spacing: .08em; color: var(--t3);
+}
+.grp .cnt { font-weight: 500; letter-spacing: 0; }
+.sec-label {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 8px; border-radius: var(--rk);
+  color: var(--t2); font-size: 13px; font-weight: 600;
+}
+.sec-label:hover { background: var(--hover); }
+.sec-label svg { width: 15px; height: 15px; }
+.sec-label .chev { width: 12px; height: 12px; color: var(--t3); }
+.row {
+  display: flex; align-items: center; gap: 9px;
+  min-height: 30px; padding: 0 8px;
+  border-radius: var(--rk);
+  color: var(--t1); font-size: 13px;
+  position: relative;
+}
+.row:hover { background: var(--hover); }
+.row > svg { width: 15px; height: 15px; color: var(--t2); flex: none; }
+.row .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .cnt { font-size: 11px; color: var(--t3); font-variant-numeric: tabular-nums; }
+.row.on { background: var(--activebg); color: var(--accent); font-weight: 500; }
+.row.on > svg { color: var(--accent); }
+.row.reveal::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background: var(--reveal); pointer-events: none;
+}
+.row.reveal { color: var(--accent); }
+.row.reveal > svg { color: var(--accent); }
+.badge {
+  flex: none; font-size: 10px; line-height: 1;
+  padding: 3px 5px; border-radius: 4px;
+  color: var(--t3); background: var(--hover);
+}
+.div { height: 1px; background: var(--edge); margin: 9px 12px; }
+.tag-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.tree { margin-left: 13px; padding-left: 9px; border-left: 1px solid var(--edge); }
+.tree .row { min-height: 28px; }
+.tree .row > svg { width: 14px; height: 14px; }
+.sb-foot {
+  flex: none; display: flex; align-items: center; gap: 4px;
+  padding: 9px 12px; border-top: 1px solid var(--edge);
+}
+.icobtn {
+  width: 28px; height: 28px; flex: none;
+  display: grid; place-items: center;
+  border: 0; background: transparent; cursor: pointer;
+  color: var(--t2); border-radius: var(--rk);
+}
+.icobtn:hover { background: var(--hover); color: var(--t1); }
+.icobtn svg { width: 16px; height: 16px; }
+.icobtn.on { color: var(--accent); background: var(--accent-soft); }
+.sync {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--t3);
+  padding: 3px 9px; border-radius: 999px; background: var(--hover);
+}
+.sync svg { width: 13px; height: 13px; }
+
+/* —— 编辑器 —— */
+.ed { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.ed-top {
+  flex: none; height: 46px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 12px 0 16px;
+  border-bottom: 1px solid var(--edge);
+}
+.crumbs { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--t3); overflow: hidden; white-space: nowrap; }
+.crumbs .cur { color: var(--t1); font-weight: 600; }
+.dirty { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; }
+.mode-chip {
+  display: inline-flex; align-items: center; gap: 5px; flex: none;
+  font-size: 12px; font-weight: 500; color: var(--accent);
+  background: var(--accent-soft);
+  padding: 4px 11px; border-radius: 999px;
+}
+.mode-chip svg { width: 12px; height: 12px; }
+.ed-tools {
+  flex: none; height: 40px;
+  display: flex; align-items: center; gap: 2px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--edge);
+  color: var(--t2);
+}
+.tool {
+  min-width: 28px; height: 28px; padding: 0 6px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+  border: 0; background: transparent; cursor: pointer;
+  color: var(--t2); border-radius: var(--rk);
+  font: 600 12px var(--font-ui);
+}
+.tool:hover { background: var(--hover); color: var(--t1); }
+.tool.on { color: var(--accent); background: var(--accent-soft); }
+.tool svg { width: 15px; height: 15px; }
+.tool.txt { font-size: 12.5px; }
+.sep { width: 1px; height: 16px; background: var(--edge); margin: 0 6px; flex: none; }
+.ed-body {
+  flex: 1; min-height: 0; overflow-y: auto;
+  background: var(--content-bg);
+}
+/* 滚动条：现状常驻灰条 vs 新方案细 overlay、悬停浮现 */
+.mock ::-webkit-scrollbar { width: 8px; height: 8px; }
+.mock ::-webkit-scrollbar-thumb { background: var(--edge); border-radius: 4px; }
+.mock ::-webkit-scrollbar-track { background: transparent; }
+.mock:not([data-scheme='current']) ::-webkit-scrollbar { width: 6px; }
+.mock:not([data-scheme='current']) ::-webkit-scrollbar-thumb { background: transparent; }
+.mock:not([data-scheme='current']) :hover::-webkit-scrollbar-thumb { background: var(--edge); }
+
+/* ================= 内容排版 ================= */
+.doc {
+  max-width: 700px; margin: 0 auto;
+  padding: 34px 44px 64px;
+  font-size: var(--doc-fs); line-height: var(--doc-lh);
+  color: var(--doc-ink);
+}
+.doc .tags { display: flex; gap: 8px; margin-bottom: 18px; }
+.doc .chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--t2);
+  background: var(--chip-bg); border: 1px solid var(--edge);
+  padding: 2px 10px; border-radius: 999px;
+}
+.mock:not([data-scheme='current']) .doc .chip { border-color: transparent; }
+.doc .chip i { width: 7px; height: 7px; border-radius: 50%; }
+.doc h1 {
+  font-family: var(--font-head); font-weight: var(--head-w);
+  font-size: 1.7em; line-height: 1.35; letter-spacing: .005em;
+  margin: .1em 0 .55em;
+}
+.mock[data-scheme='paper'] .doc h1, .mock[data-scheme='combo'] .doc h1 { font-weight: 900; }
+.doc h2 {
+  font-family: var(--font-head); font-weight: var(--head-w);
+  font-size: 1.28em; line-height: 1.4;
+  margin: 1.7em 0 .55em;
+}
+/* 现状专属：GitHub 式标题下划线 */
+.mock[data-scheme='current'] .doc h1,
+.mock[data-scheme='current'] .doc h2 {
+  border-bottom: 1px solid var(--edge); padding-bottom: .28em;
+}
+.doc p { margin: .65em 0; }
+.doc a { color: var(--accent); text-decoration: none; }
+.doc a:hover { text-decoration: underline; }
+.doc .wl { color: var(--accent); }
+.doc .wl small { color: var(--t3); font-weight: 400; }
+.doc strong { font-weight: 650; }
+.doc code {
+  font-family: var(--mono); font-size: .84em;
+  background: var(--ci-bg); color: var(--doc-ink);
+  padding: .14em .42em; border-radius: 5px; font-weight: 500;
+}
+.doc pre {
+  background: var(--code-bg);
+  border: 1px solid var(--pre-edge);
+  border-radius: 12px; padding: 15px 18px;
+  overflow-x: auto; margin: 1em 0;
+  font: 400 12.8px/1.75 var(--mono);
+}
+.mock:not([data-scheme='current']) .doc pre { border-color: transparent; }
+.doc pre .c { color: #9b988f; font-style: italic; }
+.doc pre .s { color: #3f8f5b; }
+.doc pre .k { color: #8d4fdd; }
+.doc pre .p { color: #b0641a; }
+.doc pre .f { color: #3567c9; }
+body[data-theme='dark'] .doc pre .c { color: #7e7c74; }
+body[data-theme='dark'] .doc pre .s { color: #93c784; }
+body[data-theme='dark'] .doc pre .k { color: #c99bf2; }
+body[data-theme='dark'] .doc pre .p { color: #dba26b; }
+body[data-theme='dark'] .doc pre .f { color: #7ba7f0; }
+.doc ul.tasks { list-style: none; padding: 0; margin: .7em 0; }
+.doc ul.tasks li { display: flex; align-items: flex-start; gap: 11px; margin: 9px 0; }
+.doc ul.tasks .cb {
+  flex: none; width: 17px; height: 17px; margin-top: 4px;
+  border: 1.5px solid var(--t3); border-radius: 4px;
+  display: grid; place-items: center;
+}
+.doc ul.tasks .cb svg { width: 11px; height: 11px; color: var(--accent); display: none; }
+.doc ul.tasks .cb.done { border-color: var(--accent); }
+.doc ul.tasks .cb.done svg { display: block; }
+.mock:not([data-scheme='current']) .doc ul.tasks .cb.done { background: var(--accent); border-color: var(--accent); }
+.mock:not([data-scheme='current']) .doc ul.tasks .cb.done svg { color: #fff; }
+.doc .tbl { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: .93em; }
+.doc .tbl th { text-align: left; font-weight: 650; padding: 9px 13px; border-bottom: 1.5px solid var(--tbl-strong); background: var(--th-bg); }
+.doc .tbl td { padding: 9px 13px; border-bottom: 1px solid var(--tbl-line); color: inherit; }
+.doc .tbl tr:last-child td { border-bottom: none; }
+/* 现状专属：全网格线表格 */
+.mock[data-scheme='current'] .doc .tbl th,
+.mock[data-scheme='current'] .doc .tbl td { border: 1px solid var(--tbl-line); }
+.doc .bq {
+  margin: 1em 0; padding: 11px 17px;
+  border-left: 3px solid var(--bq-bar);
+  background: var(--bq-bg);
+  border-radius: 0 10px 10px 0;
+  color: var(--t2);
+}
+.mock[data-scheme='current'] .doc .bq { border-radius: 0; }
+.doc .mut { color: var(--t3); font-size: .9em; }
+</style>
+</head>
+<body data-theme="light">
+
+<!-- ============ 图标库（Lucide 风格 1.7px 圆头线稿） ============ -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <defs>
+    <g id="i-clock"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.4v4.8l3.1 1.9"/></g>
+    <g id="i-star"><path d="M12 3.6l2.5 5.1 5.6.8-4 4 .9 5.6-5-2.7-5 2.7.9-5.6-4-4 5.6-.8z"/></g>
+    <g id="i-tag"><path d="M20.6 13.3l-7.3 7.3a1.9 1.9 0 0 1-2.7 0L3.2 13.2V3.2h10l7.4 7.4a1.9 1.9 0 0 1 0 2.7z"/><circle cx="8" cy="8" r="1.4"/></g>
+    <g id="i-link"><path d="M9.9 14.1a4.2 4.2 0 0 0 6.3.4l2.6-2.6a4.2 4.2 0 1 0-6-6L11.5 7.2"/><path d="M14.1 9.9a4.2 4.2 0 0 0-6.3-.4l-2.6 2.6a4.2 4.2 0 1 0 6 6l1.3-1.3"/></g>
+    <g id="i-trash"><path d="M4.5 7h15"/><path d="M9.5 7V5.2A1.2 1.2 0 0 1 10.7 4h2.6a1.2 1.2 0 0 1 1.2 1.2V7"/><path d="M6.2 7l.9 12.1a1.5 1.5 0 0 0 1.5 1.4h6.8a1.5 1.5 0 0 0 1.5-1.4L17.8 7"/><path d="M10 11v5.5M14 11v5.5"/></g>
+    <g id="i-chev-d"><path d="M7 10l5 5 5-5"/></g>
+    <g id="i-chev-r"><path d="M10 7l5 5-5 5"/></g>
+    <g id="i-folder"><path d="M3.5 7.2A1.7 1.7 0 0 1 5.2 5.5h4l2 2h7.6a1.7 1.7 0 0 1 1.7 1.7v7.6a1.7 1.7 0 0 1-1.7 1.7H5.2a1.7 1.7 0 0 1-1.7-1.7z"/></g>
+    <g id="i-file"><path d="M6 3.5h7.5l4.5 4.5v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-15.5a1 1 0 0 1 1-1z"/><path d="M13.5 3.5V8H18"/><path d="M8.7 13h6.6M8.7 16.5h6.6"/></g>
+    <g id="i-vaults"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><circle cx="12" cy="12" r="3.4"/><path d="M12 8.6v1.2M12 14.2v1.2M8.6 12h1.2M14.2 12h1.2"/></g>
+    <g id="i-cloud"><path d="M7 17.5h9.2a3.6 3.6 0 0 0 .7-7.1A5.2 5.2 0 0 0 6.8 9.3a3.9 3.9 0 0 0 .2 8.2z"/><path d="M9.6 12.9l1.8 1.8 3.3-3.5"/></g>
+    <g id="i-dots"><circle cx="5.5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="18.5" cy="12" r="1.5" fill="currentColor" stroke="none"/></g>
+    <g id="i-eye"><path d="M2.8 12s3.3-6 9.2-6 9.2 6 9.2 6-3.3 6-9.2 6-9.2-6-9.2-6z"/><circle cx="12" cy="12" r="2.8"/></g>
+    <g id="i-code"><path d="M8.5 8l-4 4 4 4M15.5 8l4 4-4 4"/></g>
+    <g id="i-table"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M3.5 10.2h17M10 10.2V19"/></g>
+    <g id="i-list"><path d="M9.5 6.5h10M9.5 12h10M9.5 17.5h10"/><path d="M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01" stroke-linecap="round" stroke-width="2.4"/></g>
+    <g id="i-task"><path d="M4 6l1.7 1.7L9 4.4M4 12.5l1.7 1.7L9 10.9M12.5 6.5h7.5M12.5 13h7.5M12.5 19.5h7.5" transform="translate(0 -1.2)"/></g>
+    <g id="i-quote"><path d="M5 6.5h4.6v4.4c0 3.2-1.5 5.3-4.6 6.4l-.9-1.7c1.9-.8 2.9-2 3.1-3.6H5zM13.4 6.5H18v4.4c0 3.2-1.5 5.3-4.6 6.4l-.9-1.7c1.9-.8 2.9-2 3.1-3.6h-2.2z" fill="currentColor" stroke="none"/></g>
+    <g id="i-bold"><path d="M7.5 5h5a3.4 3.4 0 0 1 0 6.8h-5zM7.5 11.8h6a3.6 3.6 0 0 1 0 7.2h-6z"/></g>
+    <g id="i-italic"><path d="M18.5 5h-7M12.5 19h-7M15 5l-6 14"/></g>
+    <g id="i-strike"><path d="M5 12h14M16 7.2C15.2 5.8 13.8 5 12 5c-2.4 0-4 1.2-4 3 0 1.4.8 2.4 2.4 3M8 16.6c.8 1.5 2.2 2.4 4 2.4 2.4 0 4-1.2 4-3 0-1.3-.7-2.3-2.2-2.9"/></g>
+    <g id="i-coffee"><path d="M5 9.5h11V15a4.5 4.5 0 0 1-4.5 4.5h-2A4.5 4.5 0 0 1 5 15z"/><path d="M16 10.5h1.6a2.6 2.6 0 0 1 0 5.2H16"/><path d="M8.3 3.8v2.4M12.7 3.8v2.4"/></g>
+    <g id="i-zen"><circle cx="12" cy="12" r="8.4"/><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/></g>
+    <g id="i-set"><path d="M4 7.3h7.6M17.4 7.3H20M4 16.7h2.6M12.4 16.7H20"/><circle cx="14.5" cy="7.3" r="2.3"/><circle cx="9.5" cy="16.7" r="2.3"/></g>
+    <g id="i-check"><path d="M5 12.5l4.5 4.5L19 7.5"/></g>
+    <g id="i-min"><path d="M6 12h12"/></g>
+    <g id="i-max"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/></g>
+    <g id="i-x"><path d="M7 7l10 10M17 7L7 17"/></g>
+  </defs>
+</svg>
+
+<header class="bar">
+  <div>
+    <div class="bar-title">Trace · UI 重设计视觉稿</div>
+    <div class="bar-sub">静态方向评审稿 · 非像素级终稿 · ai/suggest/ui-redesign-2026-10</div>
+  </div>
+  <div class="bar-r">
+    <div class="seg" id="seg"></div>
+    <label class="chk"><input type="checkbox" id="cmp" checked> 并排对比现状</label>
+    <button class="tgl" id="theme">☾ 深色</button>
+  </div>
+</header>
+<div class="caption"><b id="capName"></b><span id="capText"></span></div>
+<main class="stages" id="stages"></main>
+
+<script>
+'use strict';
+const SCHEMES = {
+  current: { label: '现状', tag: '现状基线（对照）',
+    cap: '忠实复刻当前观感：2014–2017 GitHub 系配色 · 全描边卡片 · 微软雅黑 · 标题下划线与全网格线表格 · 常驻滚动条。' },
+  ink: { label: 'A 墨', tag: '方案 A · 墨 · 精修中性',
+    cap: '暖中性色 + 明度分区替代描边 · 单一靛蓝只做交互色 · 圆角/阴影/滚动条 token 归一 · 字体栈换新（以思源黑体示意 MiSans）· 分组标签化侧栏。' },
+  paper: { label: 'B 纸', tag: '方案 B · 纸 · 内容优先',
+    cap: 'chrome 转暖，内容区 = 暖纸面（与心流纸面同叙事）· 衬线标题 + 16px/1.85 排版 · 横线式表格 · 琥珀交互色。' },
+  glass: { label: 'C 琉', tag: '方案 C · 琉 · 原生玻璃',
+    cap: '亚克力卡片叠壁纸（模拟 Windows backgroundMaterial）· 16px 大圆角 · 胶囊控件 · 光标跟随高光（静态示意）· 系统原生气质。' },
+  combo: { label: 'A+B 推荐', tag: '方案 A+B · 推荐',
+    cap: 'A 的中性 chrome 骨架 + B 的纸感内容面：chrome 冷静克制、内容温暖，靛蓝交互色贯穿 —— 推荐落地组合。' }
+};
+const state = { scheme: 'combo', compare: true, theme: 'light' };
+const qp = new URLSearchParams(location.search);
+if (SCHEMES[qp.get('scheme')]) state.scheme = qp.get('scheme');
+if (qp.get('theme') === 'dark') state.theme = 'dark';
+if (qp.get('compare') === '0') state.compare = false;
+
+const I = (id, cls) => `<svg class="${cls || ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#${id}"/></svg>`;
+
+/* ---------- 侧栏 ---------- */
+function sidebarHTML(scheme) {
+  const cur = scheme === 'current';
+  const grp = (t, c) => `<div class="grp"><span>${t}</span>${c ? `<span class="cnt">${c}</span>` : ''}</div>`;
+  const head = (icon, t, c) =>
+    `<div class="sec-label">${I('i-chev-d', 'chev')}${I(icon)}<span>${t}</span><span class="cnt" style="margin-left:auto">${c}</span></div>`;
+  const qrow = (icon, t, c, cls) => `<div class="row ${cls || ''}">${I(icon)}<span class="nm">${t}</span><span class="cnt">${c}</span></div>`;
+  const frow = (icon, t, cls, extra) => `<div class="row ${cls || ''}">${I(icon)}<span class="nm">${t}</span>${extra || ''}</div>`;
+
+  /* 标签行：现状 = 区块标题下缩进（与现应用一致）；新方案 = 组标签下的行 */
+  const tagRows = (pad) =>
+    [['#7e89f2', '心流模式', 24], ['#3d8a6b', '产品', 17], ['#c47a53', '待办', 8]]
+      .map(([c, n, k]) => `<div class="row" style="padding-left:${pad}px"><span class="tag-dot" style="background:${c}"></span><span class="nm">${n}</span><span class="cnt">${k}</span></div>`)
+      .join('');
+
+  /* 快捷入口区：现状用「图标+标题行」，新方案用分组标签 + 行 */
+  const quick = cur
+    ? head('i-clock', '常用', 12) + head('i-star', '收藏', 5) + head('i-tag', '标签', 9) + tagRows(24) + head('i-link', '断链引用', 2) + head('i-trash', '回收站', 3)
+    : grp('快捷入口')
+      + qrow('i-clock', '常用', 12) + qrow('i-star', '收藏', 5, scheme === 'glass' ? 'reveal' : '') + qrow('i-link', '断链引用', 2) + qrow('i-trash', '回收站', 3)
+      + grp('标签', 9) + tagRows(8);
+
+  /* 笔记库区 */
+  const vaults = (cur ? head('i-vaults', '笔记库', 2) : grp('笔记库', 2))
+    + frow('i-vaults', '我的笔记', '', `<span class="sync">${I('i-cloud')}已同步</span>`)
+    + `<div class="tree">
+        ${frow('i-chev-d', '项目')}
+        ${frow('i-file', '心流模式设计纪要', 'on', '<span class="cnt">编辑中</span>')}
+        ${frow('i-file', '周会记录 10-08')}
+        ${frow('i-chev-r', '阅读')}
+      </div>`
+    + frow('i-file', '收件箱')
+    + '<div style="height:8px"></div>'
+    + frow('i-vaults', '工作文档', '', '<span class="badge">外部</span>');
+
+  return `<aside class="card sb">
+    <div class="sb-head"><div class="logo">T</div><div class="sb-title">Trace 笔迹</div></div>
+    <div class="sb-scroll">
+      ${quick}
+      <div class="div"></div>
+      ${vaults}
+    </div>
+    <div class="sb-foot">
+      <button class="icobtn">${I('i-zen')}</button>
+      <button class="icobtn on">${I('i-coffee')}</button>
+      <button class="icobtn">${I('i-set')}</button>
+      <span class="sync">${I('i-cloud')}已同步</span>
+    </div>
+  </aside>`;
+}
+
+/* ---------- 编辑器 ---------- */
+function editorHTML() {
+  const tool = (inner, cls) => `<button class="tool ${cls || ''}">${inner}</button>`;
+  return `<main class="card ed">
+    <div class="ed-top">
+      <div class="crumbs">
+        <span>我的笔记</span><span>/</span><span>项目</span><span>/</span>
+        <span class="cur">心流模式设计纪要</span><span class="dirty"></span>
+      </div>
+      <span class="mode-chip">${I('i-check')}所见即所得</span>
+      <button class="icobtn">${I('i-eye')}</button>
+      <button class="icobtn">${I('i-dots')}</button>
+    </div>
+    <div class="ed-tools">
+      ${tool('H1', 'txt on')}${tool('H2', 'txt')}
+      <span class="sep"></span>
+      ${tool(I('i-bold'))}${tool(I('i-italic'))}${tool(I('i-strike'))}
+      <span class="sep"></span>
+      ${tool(I('i-list'))}${tool(I('i-task'))}${tool(I('i-quote'))}
+      <span class="sep"></span>
+      ${tool(I('i-code'))}${tool(I('i-table'))}
+      <span class="sep"></span>
+      ${tool(I('i-zen'))}${tool(I('i-coffee'), 'on')}
+    </div>
+    <div class="ed-body">${docHTML()}</div>
+  </main>`;
+}
+
+/* ---------- 正文 ---------- */
+function docHTML() {
+  return `<article class="doc">
+    <div class="tags">
+      <span class="chip"><i style="background:#7e89f2"></i>心流模式</span>
+      <span class="chip"><i style="background:#3d8a6b"></i>产品</span>
+    </div>
+    <h1>心流模式：三周使用复盘</h1>
+    <p>上线三周，共进入心流 <strong>37 次</strong>，累计写作 21.4 小时。整体结论：<span class="wl">打字机锚定<small>（[[编辑位置]]）</small></span>和纸面模式已经稳定，剩下的是打磨项。本篇记录数据、待决策项与下一步，配合 <code>--flow-measure</code> 栏宽变量一起看。</p>
+    <h2>数据观察</h2>
+    <ul class="tasks">
+      <li><span class="cb done">${I('i-check')}</span><span>打字机锚点漂移：三处触发路径补全后未再复现</span></li>
+      <li><span class="cb done">${I('i-check')}</span><span>纸面纹理接缝：改整面涂色后交界分界消除</span></li>
+      <li><span class="cb"></span><span>中文组词折行跳动：维持已知局限，不动</span></li>
+      <li><span class="cb"></span><span>回车音效音量曲线：等素材选型</span></li>
+    </ul>
+    <h2>待决策项</h2>
+    <table class="tbl">
+      <thead><tr><th>议题</th><th>倾向</th><th>阻塞点</th></tr></thead>
+      <tbody>
+        <tr><td>栏宽默认值</td><td>42em</td><td>窄窗口真机验证</td></tr>
+        <tr><td>纸面纹理颗粒</td><td>再细一档</td><td>性能预算</td></tr>
+        <tr><td>回车音效</td><td>换 softer sample</td><td>素材选型</td></tr>
+      </tbody>
+    </table>
+    <blockquote class="bq">「写作的时候我不想看见软件，只想看见字。」—— 用户访谈 #7</blockquote>
+    <h2>下一步</h2>
+    <p>先把栏宽提示做成可拖拽的手柄，再看要不要把<span class="wl">快速引用面板<small>（[[FR-2.9.12]]）</small></span>接进心流模式。<span class="mut">更新于 10-09 · 1,240 字</span></p>
+    <pre><code><span class="c">/* 写作栏宽：两侧内边距收拢内容列 */</span>
+<span class="f">.editor-card</span>.flow-mode <span class="f">.cm-scroller</span> {
+  <span class="p">padding-inline</span>: <span class="k">max</span>(<span class="s">0px</span>, <span class="k">calc</span>((<span class="s">100%</span> - <span class="k">var</span>(<span class="p">--flow-measure</span>, <span class="s">42em</span>)) / <span class="s">2</span>));
+}</code></pre>
+  </article>`;
+}
+
+/* ---------- 舞台渲染 ---------- */
+function stageHTML(scheme) {
+  return `<section class="stage">
+    <div class="wall"></div>
+    <div class="window">
+      <div class="mock" data-scheme="${scheme}">
+        <div class="titlebar">
+          <span>Trace 笔迹</span>
+          <span class="win-btns">${I('i-min')}${I('i-max')}${I('i-x')}</span>
+        </div>
+        <div class="shell">
+          ${sidebarHTML(scheme)}
+          ${editorHTML()}
+        </div>
+      </div>
+    </div>
+  </section>`;
+}
+
+function render() {
+  document.body.dataset.theme = state.theme;
+  document.getElementById('theme').textContent = state.theme === 'dark' ? '☀ 浅色' : '☾ 深色';
+  const seg = document.getElementById('seg');
+  seg.innerHTML = '';
+  for (const [id, s] of Object.entries(SCHEMES)) {
+    const b = document.createElement('button');
+    b.textContent = s.label;
+    b.className = id === state.scheme ? 'on' : '';
+    b.onclick = () => { state.scheme = id; render(); };
+    seg.appendChild(b);
+  }
+  const s = SCHEMES[state.scheme];
+  document.getElementById('capName').textContent = s.tag;
+  document.getElementById('capText').textContent = s.cap;
+  const box = document.getElementById('stages');
+  box.className = 'stages' + (state.compare && state.scheme !== 'current' ? ' cmp' : '');
+  let html = '';
+  if (state.compare && state.scheme !== 'current') {
+    html += stageHTML('current');
+    html += stageHTML(state.scheme);
+  } else {
+    html += stageHTML(state.scheme);
+  }
+  box.innerHTML = html;
+  document.querySelectorAll('.chk input')[0].checked = state.compare;
+}
+document.getElementById('cmp').onchange = (e) => { state.compare = e.target.checked; render(); };
+document.getElementById('theme').onclick = () => { state.theme = state.theme === 'dark' ? 'light' : 'dark'; render(); };
+render();
+</script>
+</body>
+</html>
