@@ -813,7 +813,7 @@ async function resetGitSource(): Promise<void> {
             <span class="setting-label">窗口不透明度</span>
             <el-slider
               :model-value="app.settings.windowOpacity"
-              :min="50"
+              :min="75"
               :max="100"
               :step="5"
               style="flex: 1; margin-right: 16px"
@@ -824,7 +824,7 @@ async function resetGitSource(): Promise<void> {
             </span>
           </div>
           <p class="settings-desc" style="margin: 0 0 0 102px">
-            最低 50%，保证界面可读
+            最低 75%，保证界面可读
           </p>
         </div>
           </template>
@@ -1678,7 +1678,7 @@ async function resetGitSource(): Promise<void> {
   flex-direction: column;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.25);
   overflow: hidden;
 }

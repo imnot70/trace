@@ -2,10 +2,10 @@ import type { BrowserWindow } from 'electron'
 import type { AppSettings } from '@shared/types'
 import { logger } from '../lib/logger'
 
-/** WCO 标题栏按钮区配色（随应用深浅主题；底色与应用顶区 bg-secondary 一致） */
+/** WCO 标题栏按钮区配色（随应用深浅主题；底色与应用顶区画布 --bg-secondary 一致，换肤须同步） */
 const OVERLAY_THEME = {
-  dark: { color: '#17191e', symbolColor: '#c8ccd4' },
-  light: { color: '#f5f6f8', symbolColor: '#5f6368' }
+  dark: { color: '#121214', symbolColor: '#c9c8c4' },
+  light: { color: '#f2f1ed', symbolColor: '#6b6963' }
 } as const
 
 /** 按设置计算 WCO 配色（createWindow 初始化与主题切换共用；systemDark 由调用方传 nativeTheme.shouldUseDarkColors） */
@@ -49,9 +49,11 @@ export function applyWindowGlassEffect(window: BrowserWindow, settings: AppSetti
   const { windowGlassEffect, windowOpacity } = settings
   const platform = process.platform
 
-  // 应用透明度（毛玻璃材质建议透明度 100%，半透明下材质不可见）
-  if (windowOpacity < 100) {
-    window.setOpacity(windowOpacity / 100)
+  // 应用透明度（毛玻璃材质建议透明度 100%，半透明下材质不可见）。
+  // 下限收敛为 75%（2026-10-10 用户反馈 50% 几乎不可见；旧存量值 50 在此一并收敛）
+  const opacity = Math.min(100, Math.max(75, windowOpacity))
+  if (opacity < 100) {
+    window.setOpacity(opacity / 100)
   } else {
     window.setOpacity(1.0)
   }
