@@ -158,7 +158,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, type Ref } from 'vue'
 import { ElMessage, type DropdownInstance } from 'element-plus'
-import { Search, Loading, Folder, ArrowDown, PriceTag } from '@element-plus/icons-vue'
+import {
+  Search,
+  Folder,
+  ChevronDown as ArrowDown,
+  Tag as PriceTag,
+  LoaderCircle as Loading
+} from 'lucide-vue-next'
 import { SCRATCH_VAULT } from '@shared/types'
 import type { SearchTagInfo, SearchResultItem } from '@shared/types'
 import { beginNoteRefDrag } from '../lib/dragDrop'

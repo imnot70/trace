@@ -200,6 +200,14 @@ body {
   background: transparent;
 }
 
+/* Lucide 图标（FR-2.9.13 图标批次）：以字号驱动尺寸等价 EP 字体图标——
+   svg 自带宽高 24 属性，此处用 CSS 覆写为 1em，跟随所在上下文 font-size；
+   描边色走 currentColor 天然继承；线宽用默认 2（24 视箱下渲染约 1.2px，与现代细线一致） */
+svg.lucide {
+  width: 1em;
+  height: 1em;
+}
+
 /* ========== 全局布局：灰色画布上的圆角卡片 ========== */
 .app-shell {
   height: 100%;

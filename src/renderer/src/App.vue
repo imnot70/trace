@@ -19,6 +19,15 @@ import DraftPromoteDialog from './components/DraftPromoteDialog.vue'
 import SearchDialog from './components/SearchDialog.vue'
 import ContextMenu from './components/ContextMenu.vue'
 import NoteSwitcher from './components/NoteSwitcher.vue'
+import {
+  Clock,
+  Star,
+  Trash2 as Delete,
+  Library as Collection,
+  PanelLeftOpen as Expand,
+  PanelLeftClose as Fold,
+  LoaderCircle as Loading
+} from 'lucide-vue-next'
 import { buildWindowTitle } from './lib/windowTitle'
 import WelcomeView from './views/WelcomeView.vue'
 import EditorView from './views/EditorView.vue'

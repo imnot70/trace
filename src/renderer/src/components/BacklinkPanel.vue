@@ -46,7 +46,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import { Close, Document, Link } from '@element-plus/icons-vue'
+import { X as Close, FileText as Document, Link } from 'lucide-vue-next'
 import type { BacklinkRef, FsChangedPayload } from '@shared/types'
 import { beginNoteRefDrag } from '../lib/dragDrop'
 

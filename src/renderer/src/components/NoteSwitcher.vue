@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { Document } from '@element-plus/icons-vue'
+import { FileText as Document } from 'lucide-vue-next'
 import type { OpenNote } from '../stores/editor'
 import { useEditorStore } from '../stores/editor'
 

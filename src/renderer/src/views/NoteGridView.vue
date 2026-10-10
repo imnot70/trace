@@ -1,6 +1,20 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  ChevronLeft as ArrowLeft,
+  Library as Collection,
+  Folder,
+  Clock,
+  Star,
+  SquarePen as EditPen,
+  Share2 as Share,
+  LayoutGrid as Grid,
+  List,
+  X as Close,
+  Ellipsis as MoreFilled,
+  FileText as Document
+} from 'lucide-vue-next'
 import { useAppStore, type GridSection } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import { useNoteActions } from '../composables/actions'

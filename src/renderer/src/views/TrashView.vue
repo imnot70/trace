@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Trash2 as Delete, Folder, FileText as Document } from 'lucide-vue-next'
 import { useTrashStore } from '../stores/trash'
 import { useTreeStore } from '../stores/tree'
 import { useAppStore } from '../stores/app'

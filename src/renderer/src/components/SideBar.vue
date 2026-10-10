@@ -1,7 +1,24 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Sort, WarningFilled } from '@element-plus/icons-vue'
+import {
+  Search,
+  Clock,
+  SquarePen as EditPen,
+  Star,
+  Share2 as Share,
+  ChevronDown as ArrowDown,
+  Plus,
+  ArrowUpDown as Sort,
+  Ellipsis as MoreFilled,
+  CircleAlert as WarningFilled,
+  Trash2 as Delete,
+  ChevronRight as ArrowRight,
+  Folder,
+  GitBranch as Connection,
+  Settings as Setting,
+  PanelLeftClose as Fold
+} from 'lucide-vue-next'
 import { useAppStore } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import { useDraftStore } from '../stores/draft'

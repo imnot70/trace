@@ -1,5 +1,22 @@
 <script setup lang="ts">
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  Crosshair as Aim,
+  PanelLeftOpen as Expand,
+  PanelLeftClose as Fold,
+  WandSparkles as MagicStick,
+  Coffee,
+  Maximize as FullScreen,
+  RotateCcw as RefreshLeft,
+  RotateCw as RefreshRight,
+  Link,
+  Image as Picture,
+  Table as Grid,
+  Paintbrush as Brush,
+  FilePlus as DocumentAdd,
+  Magnet,
+  X as Close
+} from 'lucide-vue-next'
 import { useAppStore } from '../stores/app'
 import { useEditorStore } from '../stores/editor'
 import { useTreeStore } from '../stores/tree'

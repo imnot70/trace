@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { LoaderCircle as Loading, Library as Collection } from 'lucide-vue-next'
 import { useGitStore } from '../stores/git'
 import { useAppStore } from '../stores/app'
 import { useRemoteRepos } from '../stores/trash'

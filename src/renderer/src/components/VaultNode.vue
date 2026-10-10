@@ -1,5 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import {
+  ChevronRight as ArrowRight,
+  Folder,
+  FileText as Document,
+  Plus,
+  Ellipsis as MoreFilled
+} from 'lucide-vue-next'
 import type { TreeNode } from '@shared/types'
 import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { X as Close, User, Plus } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app'
 import { useGitStore } from '../stores/git'
 import { resetGitAvailabilityCache } from '../stores/git'
