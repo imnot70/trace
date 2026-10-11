@@ -186,6 +186,8 @@ export interface AppSettings {
   showBacklinks: boolean
   /** 默认编辑模式：source 源码模式 / wysiwyg 所见即所得（Live Preview，FR-W1） */
   defaultEditMode: 'source' | 'wysiwyg'
+  /** 衬线标题：文档 h1–h3 用衬线字体（LXGW 文楷，FR-2.9.14；默认开，D5——衬线是强口味给出口） */
+  serifHeadings: boolean
   /** 编辑位置：打开笔记后光标落在文首（start）还是文末（end），默认文首（FR-2.4.18） */
   editPosition: 'start' | 'end'
   /** 表格插入默认行数（含表头；Ctrl+T 浮层直接确认时插入该尺寸，1–50，FR-2.4.20 扩展） */

@@ -18,7 +18,7 @@
   --danger: #d34850;
   --success-bg: rgba(144, 238, 144, 0.6);
   --success-text: #2f7d33;
-  /* 内容区纸面（FR-2.9.14，P3 批次消费；主题包白名单变量，方案 a） */
+  /* 内容区纸面（FR-2.9.14，P3 已消费：.markdown-body / CM 编辑器根；主题包白名单变量，方案 a） */
   --content-bg: #f8f3e6;
   --doc-ink: #43392b;
   /* 设计 token：圆角三档 / 动效 / 卡片阴影 / 字体栈（主题包白名单外，深浅共用） */
@@ -33,7 +33,9 @@
   --font-ui:
     'MiSans', 'HarmonyOS Sans SC', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC',
     system-ui, sans-serif;
-  /* 衬线标题（FR-2.9.14，P3 批次消费；LXGW 文楷 P3 打包，先落系统回退链） */
+  /* 衬线标题（FR-2.9.14，P3 已消费：预览与所见即所得 h1–h3）：LXGW 文楷已随应用打包
+     （lxgw-wenkai-webfont npm 子集 woff2，main.ts 引入 Regular / Bold 两字重）；
+     「衬线标题」开关关闭时 html.serif-headings-off 把本变量改指向 --font-ui */
   --font-head: 'LXGW WenKai', 'Noto Serif SC', 'Source Han Serif SC', serif;
   /* 心流写作底色色板（柔和浅色，随用户在设置中选择） */
   --flow-paper-cream: #f8f3e6;
@@ -54,7 +56,9 @@
   --merge-theirs-solid: #dcf0d4;
   --merge-marker-solid: #f6d7da;
   --success-line: #85b56a;
-  --code-bg: #f5f4f0;
+  /* 代码块底（FR-2.9.14 P3 换纸面调）：比内容纸面深一档的暖色，去描边后承担代码块分区；
+     内联 code 与 pre 共用（视觉稿 A+B 组合口径） */
+  --code-bg: #f0e9d8;
   --hljs-base: #383a42;
   --hljs-comment: #a0a1a7;
   --hljs-keyword: #a626a4;
@@ -76,7 +80,7 @@ html.dark {
   --accent: #7e89f2;
   --accent-soft: rgba(126, 137, 242, 0.16);
   --danger: #e06c75;
-  /* 内容区纸面（FR-2.9.14，P3 批次消费）：暖黑暗纸 */
+  /* 内容区纸面（FR-2.9.14，P3 已消费）：暖黑暗纸 */
   --content-bg: #2a271f;
   --doc-ink: #d9d1c1;
   /* 卡片阴影深色版：纯黑环境光（暖黑阴影在近黑卡面上不可见） */
@@ -100,7 +104,8 @@ html.dark {
   --merge-theirs-solid: #2e3b2b;
   --merge-marker-solid: #472f33;
   --success-line: #85b56a;
-  --code-bg: #232329;
+  /* 代码块底：纸面调的暗色版（比内容纸面 #2a271f 再深半档） */
+  --code-bg: #322c21;
   --hljs-base: #c8ccd4;
   --hljs-comment: #7f848e;
   --hljs-keyword: #c678dd;
@@ -130,6 +135,12 @@ html.window-opaque #app {
   border-radius: 0;
 }
 
+/* 衬线标题开关（FR-2.9.14，默认开）：关闭时把 --font-head 改指向 UI 字体栈——预览与
+   所见即所得的标题统一消费 --font-head，开关只换这一个变量的指向，无特判选择器 */
+html.serif-headings-off {
+  --font-head: var(--font-ui);
+}
+
 /* Linux 平台（含透明窗口时）一律禁用底部圆角：浅色壁纸下圆角缺口仍会残留
    系统合成器的方形直角轮廓（深色壁纸正常，应用侧无法彻底消除），见 AGENTS.md 已知局限 */
 html.no-bottom-radius #app {
@@ -144,6 +155,13 @@ html.glass-on .page-card,
 html.glass-on .floating-preview,
 html.glass-on .sidebar-rail {
   background: color-mix(in srgb, var(--bg-primary) 82%, transparent);
+}
+
+/* 玻璃模式下的内容纸面（FR-2.9.14）：与卡片同一口径半透明化，材质透出纸面
+   （选择器特异性压过 CM 主题注入的 .cm-editor / .cm-gutters 实底） */
+html.glass-on .markdown-body,
+html.glass-on .cm-editor {
+  background: color-mix(in srgb, var(--content-bg) 82%, transparent);
 }
 
 /* ========== Windows WCO 标题栏条（custom-titlebar 设计 §3.2） ========== */
@@ -1169,10 +1187,11 @@ svg.lucide {
   background: var(--border-color);
 }
 
+/* 底色不在此声明：与 .markdown-body 是同一元素（MarkdownPreview 根），纸面 --content-bg
+   由 markdown.css 侧给出，避免同特异性双声明靠导入顺序取胜 */
 .preview-pane {
   height: 100%;
   overflow-y: auto;
-  background: var(--bg-primary);
 }
 
 .external-banner {

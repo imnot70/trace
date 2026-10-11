@@ -43,6 +43,7 @@ function buildStack() {
     sidebarMenus: { recents: true, favorites: true, shared: true, tags: true, unresolved: true, trash: true },
     showBacklinks: true,
     defaultEditMode: 'source',
+    serifHeadings: true,
     editPosition: 'start',
     typewriterMode: 'off',
     flowLineWidth: 'medium',

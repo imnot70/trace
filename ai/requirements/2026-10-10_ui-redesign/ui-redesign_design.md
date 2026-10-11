@@ -1,6 +1,6 @@
 # UI 现代化改造（A+B 组合）技术设计
 
-> 立项：2026-10-10 ｜ 状态：**P0 已实施（待真机验证），P1–P3 待排期** ｜ 需求见 [ui-redesign.md](ui-redesign.md)（FR-2.9.13 / FR-2.9.14 / FR-2.9.15）
+> 立项：2026-10-10 ｜ 状态：**P0–P3 四批已全部实施（待真机验证）** ｜ 需求见 [ui-redesign.md](ui-redesign.md)（FR-2.9.13 / FR-2.9.14 / FR-2.9.15）
 > 视觉基准：[../../suggest/ui-redesign-2026-10/index.html](../../suggest/ui-redesign-2026-10/index.html)。§2.1 变量表已随 P0 定稿落地（2026-10-10），定稿值即表中所载。
 
 ## 1. 总体结构：三层改造
@@ -99,6 +99,10 @@
 **兼容语义**：老主题包 JSON（19 变量）导入照常通过（白名单只增不改）；其未覆盖的 `--content-bg` 落内置纸面值——若主题包主色调与暖纸冲突（如冷蓝主题 + 米黄正文），属部分覆盖的既有「可能不协调」范畴（theme-import 指南注意事项既有提示），验收矩阵中用样张确认下限。
 
 ## 6. 内容面与 CM6 约束（P3，风险最集中的一批）
+
+**实施记录**（2026-10-11，待真机验证）：**纸面消费**——`traceTheme` 的 `.cm-editor` 根（`--content-bg` 底 + `--doc-ink` 墨色）与 `.markdown-body`（`markdown.css`）同批换装；`.cm-gutters` 改透明透出纸面（心流既有规则本就透明，日常态同口径；玻璃模式下随卡片透材质，`html.glass-on .markdown-body / .cm-editor` 补 82% 半透明口径）；`.preview-pane` 与 `.markdown-body` 同元素，删除其重复背景声明（避免同特异性双声明靠导入顺序取胜）。**排版重做两套同批**：`markdown.css` 与 `lib/livePreview/index.ts` 的 `lpTheme` 一次改完——h1–h3 衬线（`--font-head`，700）去下边框、行高两侧行高 1.85、表格横线式（线色 `color-mix(--doc-ink)` 现算，主题包换墨色即跟随；表格 / HTML 块 widget 自带 `markdown-body` 类自动继承）、引用条 accent 45% 条 + 5% 底（CM 侧逐行涂底不做圆角）、代码块去描边圆角归 `--radius-card`；`--code-bg` 默认值换纸面调（浅 `#f0e9d8` / 深 `#322c21`）。**widget 重置补 background: transparent**（`.lp-math-block` / `.lp-block` / `.lp-hr`）——纸面底不归零则心流换纸色时 widget 糊默认纸色。**衬线标题**：`lxgw-wenkai-webfont` npm 包（与 misans 同作者同机制，unicode-range 子集），导入 Regular / Bold 两字重，构建产物实测 **+9.2MB**（194 个 woff2）；设置 `serifHeadings`（默认开）经 `html.serif-headings-off` 把 `--font-head` 改指向 `--font-ui`，标题侧零特判；「文档标题」在现有 UI 中无独立元素（题名仅存于面包屑 / 窗口标题，属 chrome），衬线仅落 h1–h3。**内容字体同步**（§3）：`.cm-scroller` 等宽栈 → `--font-ui`、行高 1.7 → 1.85，所见即所得与预览字形 / 行距一致；编辑器默认字号 15 → 16（`DEFAULT_SETTINGS` 两处），`.markdown-body` 字号回退 15px → inherit（widget 跟随正文字号）。**导出边界核查**：`exportPdf.ts` 的 PRINT_CSS / SCREEN_CSS 自包含硬编码（白底印刷 / 阅读排版），不引用应用样式与 `--content-bg`，零改动。**验证**：单测 585 绿、typecheck / lint 过；CDP 隔离实例断言——纸面 / 墨色 / 行号槽透明 / MiSans 内容字体 / 29.6px 行高 / h1 楷体 27.2px 无下边框 / accent 引用条 / 横线表格（th 1.5px、td 无竖线）/ pre 无描边 12px 圆角 / 衬线开关挂类即切换，深浅两态全过；**行号对齐**三个滚动位置 28 对零漂移（注意：断言脚本配对时须跳过行号槽首的隐藏测量元素 `height:0; visibility:hidden`，否则整体错位一位误报全漂移）。遗留真机项：心流 + 打字机 + 纸面组合观感（静默重排口径）与玻璃模式可读性（验收 #3/#1）。
+
+原设计条目（保留备查）：
 
 - **两套同步**：`markdown.css`（预览 `.markdown-body`）与 CM 编辑器主题（`.cm-content` 侧的标题 / 表格 / 引用 / 代码装饰样式）必须同批改——历史上「复选框被作用域挡住」即两套不同步的教训（markdown.css 注释）；
 - **块级 widget 几何铁律**（AGENTS 2026-09-24 教训）：排版数值改动（行高 1.85、表格内边距加大、代码块行高）落在**盒内 padding**，禁止裸 margin 做块间距；改完跑 live-preview-render-fix 的行号对齐断言口径（公式块 / 表格 / HTML 块后行号零漂移）；

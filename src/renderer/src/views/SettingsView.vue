@@ -796,6 +796,14 @@ async function resetGitSource(): Promise<void> {
             </div>
           </div>
           <div class="setting-row">
+            <span class="setting-label">衬线标题</span>
+            <el-switch
+              :model-value="app.settings.serifHeadings"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ serifHeadings: Boolean(v) })"
+            />
+            <span class="settings-desc" style="margin: 0">文档 h1–h3 使用衬线字体（LXGW 文楷）</span>
+          </div>
+          <div class="setting-row">
             <span class="setting-label">窗口效果</span>
             <el-select
               :model-value="app.settings.windowGlassEffect"

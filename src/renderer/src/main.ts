@@ -10,6 +10,10 @@ import 'katex/dist/katex.min.css'
 import 'misans/lib/Normal/MiSans-Regular.min.css'
 import 'misans/lib/Normal/MiSans-Medium.min.css'
 import 'misans/lib/Normal/MiSans-Demibold.min.css'
+// LXGW 文楷（FR-2.9.14 P3）：衬线标题字体（OFL），与 misans 同为 unicode-range 子集 woff2
+// 走 npm 依赖不入库；仅标题层消费（--font-head），Regular / Bold 两字重（标题层级靠字号即可）
+import 'lxgw-wenkai-webfont/lxgwwenkai-regular.css'
+import 'lxgw-wenkai-webfont/lxgwwenkai-bold.css'
 import './styles/main.css'
 import './styles/themes.css'
 // EP 组件适配层（FR-2.9.13 P1）：出厂形态 → 应用设计语言的组件级精修

@@ -343,6 +343,8 @@ function syncWindowClasses(): void {
   el.classList.toggle('platform-win', isWindows)
   el.classList.toggle('window-opaque', !isWindowTransparent())
   el.classList.toggle('glass-on', isWinGlass())
+  // 衬线标题开关（FR-2.9.14）：关闭时经变量改指向回退 UI 字体栈，标题侧只消费 --font-head
+  el.classList.toggle('serif-headings-off', !app.settings.serifHeadings)
 }
 
 onMounted(async () => {
@@ -353,9 +355,9 @@ onMounted(async () => {
   // 窗口视觉形态类（macOS/Linux 透明玻璃路径见 createWindow 注释；Windows 走 WCO 玻璃，
   // 亦不碰 transparent: true——v0.4.4 回归教训，见 AGENTS.md 已知局限）
   syncWindowClasses()
-  // 设置里切换玻璃效果 / 主题时同步类（无需重载窗口）
+  // 设置里切换玻璃效果 / 主题 / 衬线标题时同步类（无需重载窗口）
   watch(
-    () => [app.settings.windowGlassEffect, app.settings.theme],
+    () => [app.settings.windowGlassEffect, app.settings.theme, app.settings.serifHeadings],
     () => syncWindowClasses()
   )
   // Linux 浅色壁纸下底部圆角缺口仍会露出系统合成器的方形轮廓（深色壁纸正常，疑似系统侧
