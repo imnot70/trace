@@ -2,6 +2,12 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 其他
+
+- **插件权限记录拆出独立文件**（技术债 2026-09-25 收口，分支 `fix/plugin-permissions-store`）：权限确认记录原随 settings.json 存放（`pluginPermissionsConfirmed` 字段），但它本质是「应用管理的授予状态」而非用户设置——与设置写入白名单纪律、schemaVersion 迁移互相耦合，且**重置设置会连带清掉权限记录**（全部插件重新弹确认）。现拆独立 `plugin-permissions.json`（自有 JsonStore 实例，version 1），`pluginHost` 启停 / 卸载三处读写改为专用存储；首次启动一次性迁移（settings.json 发现旧键即搬入新文件并删除，先写后删幂等——中断则下次启动重复搬迁同值，无副作用）。**对插件系统零破坏**：权限确认交互（needsConfirmation 弹窗、manifest 变更重确认、能力网关过滤）完全不变，渲染端零消费、IPC 面不变；唯一行为变化 = 重置设置不再清权限记录（改善）。单测 +3（迁移：旧键搬移 / 幂等 / 新装不落盘），全仓 590 项（gitService 8 项按 90s Windows 口径全绿）。
+
 ## [0.21.0] - 2026-10-12
 
 ### 新功能

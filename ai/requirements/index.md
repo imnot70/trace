@@ -310,7 +310,7 @@
 - ~~`settings:set` 无白名单合并~~：已按设置 schema 键集合过滤，未知键不落盘。
 - ~~git 同步无按库互斥~~：已按库串行排队（后到者等前一轮完成），新增并发单测。
 - ~~watcher 通知链两处缺口~~：挂起期补偿改为重建双链 + 搜索索引并重发 `fs:changed`；防抖加 2s max-wait 兜底。
-- ~~JSON 持久化地基薄~~：JsonStore 已加 `schemaVersion` + `migrate` 钩子、深合并、损坏 `.bak` 备份与 fsync；插件权限记录拆分出 settings.json 一项留待后续（低优先级）。
+- ~~JSON 持久化地基薄~~：JsonStore 已加 `schemaVersion` + `migrate` 钩子、深合并、损坏 `.bak` 备份与 fsync；~~插件权限记录拆分出 settings.json 一项留待后续（低优先级）~~（2026-10-12 销账：已拆独立 `plugin-permissions.json`，启动一次性迁移，重置设置不再清权限记录，见 [未发布]）。
 
 **待打磨 / 待验证**（2026-09-24 记录）：
 
