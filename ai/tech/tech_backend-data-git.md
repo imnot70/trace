@@ -10,7 +10,7 @@
 
 ## 数据持久化
 
-4. **JsonStore 是所有应用元数据的底座，必须版本化**：`schemaVersion` + `migrate()` 钩子 + 深合并（浅合并 `{...defaults, ...parsed}` 会在升级时丢嵌套默认键，`sidebarMenus` 已踩此雷区）+ 损坏时留 `.bak` + fsync。散落的 ad-hoc 迁移要收进去——趁数据文件还少赶紧做，越晚越难写（v0.8.5 已落地地基）。
+4. **JsonStore 是所有应用元数据的底座，必须版本化**：`schemaVersion` + `migrate()` 钩子 + 深合并（浅合并 `{...defaults, ...parsed}` 会在升级时丢嵌套默认键，`sidebarMenus` 已踩此雷区）+ 损坏时留 `.bak` + fsync。散落的 ad-hoc 迁移要收进去——趁数据文件还少赶紧做，越晚越难写（v0.8.5 已落地地基）。**「应用管理的状态」不要混进 settings.json**：插件权限确认记录原随设置存放，与 `settings:set` 白名单、设置重置互相耦合（重置会连带丢权限记录），2026-10-12 已拆独立 `plugin-permissions.json`（`createPermissionsStore` 构造时一次性迁出旧键，先写后删幂等）——新增持久化数据时按「用户设置 / 应用状态」分文件归类。
 5. **枚举类设置删除旧值时要「迁移三件套」**：启动时持久化迁移（旧音色 `wood/metal/ratchet` → `retro` 的案例）+ 运行时播放兜底（`default` 分支承接过期值）+ 类型联合收窄——否则出现选择器空白 + 静默无声。（[flow-mode 设计 10.8](../requirements/2026-09-23_flow-mode/flow-mode_design.md)）
 
 ## 索引与监听

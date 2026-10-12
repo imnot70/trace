@@ -159,8 +159,6 @@ export interface AppSettings {
   enablePlugins: boolean
   /** 插件 id -> 是否启用 */
   pluginEnabled: Record<string, boolean>
-  /** 插件 id -> 已确认的权限集合（manifest 权限集合变化后需重新确认；确认记录按插件 id 存应用数据目录） */
-  pluginPermissionsConfirmed?: Record<string, string[]>
   /** Git 来源偏好：null = 未选择（首次触发时检测并弹窗），'system' = 使用系统 Git，'bundled' = 使用内置 Git */
   gitSource: 'system' | 'bundled' | null
   /** 窗口玻璃效果：auto 根据平台自动选择，none 关闭，mica Windows 11 Mica，acrylic Windows Acrylic，vibrancy macOS 毛玻璃 */

@@ -14,6 +14,7 @@ import type { PluginManifest } from './pluginManifest'
 import { isValidManifest } from './pluginManifest'
 import { dispatchCapabilityCall, type GatewayServices } from './pluginGateway'
 import { stagePluginZip, installStaged, exportPluginZip, type StagedPlugin } from './pluginPackage'
+import type { PluginPermissionRecords } from './pluginPermissions'
 import type { PluginStorageService } from './pluginStorage'
 import type { HostToPlugin, PluginToHost, PluginEventName } from '../plugin-runtime/protocol'
 import {
@@ -36,6 +37,8 @@ export interface PluginHostDeps {
   /** 内置示例插件目录（首启复制用） */
   sampleDir: string | null
   settings: JsonStore<AppSettings>
+  /** 插件权限确认记录（独立 plugin-permissions.json，经 createPermissionsStore 迁移构造） */
+  permissions: JsonStore<PluginPermissionRecords>
   /** bridge 脚本绝对路径（out/main/bridge.js） */
   bridgePath: string
   spawnRuntime: RuntimeSpawner
@@ -223,7 +226,7 @@ export class PluginHost {
   }
 
   private confirmedPermissions(id: string): string[] {
-    return this.settings.get().pluginPermissionsConfirmed?.[id] ?? []
+    return this.deps.permissions.get()[id] ?? []
   }
 
   private isPermissionConfirmed(id: string, declared: string[]): boolean {
@@ -256,13 +259,15 @@ export class PluginHost {
     return { ok: true }
   }
 
-  /** 记录权限确认并启用（确认集合 = 当前 manifest 声明） */
+  /** 记录权限确认并启用（确认集合 = 当前 manifest 声明）；先记权限后置启用——中断也不出现「已启用却未记录」 */
   confirmEnable(id: string): { ok: boolean; error?: string } {
     const manifest = this.readManifest(id)
     if (!manifest) return { ok: false, error: `插件清单无效：${id}` }
     const declared = manifestPermissions(manifest)
+    this.deps.permissions.update((records) => {
+      records[id] = declared
+    })
     this.settings.update((s) => {
-      s.pluginPermissionsConfirmed = { ...(s.pluginPermissionsConfirmed ?? {}), [id]: declared }
       s.pluginEnabled[id] = true
     })
     this.activate(id)
@@ -640,7 +645,9 @@ export class PluginHost {
   private clearPluginMeta(id: string): void {
     this.settings.update((s) => {
       delete s.pluginEnabled[id]
-      if (s.pluginPermissionsConfirmed) delete s.pluginPermissionsConfirmed[id]
+    })
+    this.deps.permissions.update((records) => {
+      delete records[id]
     })
   }
 

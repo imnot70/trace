@@ -25,6 +25,7 @@ export { PluginHost, type RuntimeHandle, type RuntimeSpawner, type PluginHostDep
 export { spawnUtilityRuntime } from './pluginRuntime'
 export { dispatchCapabilityCall, type GatewayServices } from './pluginGateway'
 export { PluginStorageService, type PluginStorageBackend } from './pluginStorage'
+export { createPermissionsStore, type PluginPermissionRecords } from './pluginPermissions'
 export { MarketService, compareVersions, type MarketHttpClient, type MarketIndex } from './marketService'
 export { createMarketHttpClient } from './marketHttp'
 export { checkForUpdate } from './updateCheck'

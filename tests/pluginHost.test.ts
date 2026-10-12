@@ -4,6 +4,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginHost, type RuntimeHandle, type RuntimeSpawner } from '../src/main/services/pluginHost'
 import type { PluginStorageService } from '../src/main/services/pluginStorage'
+import type { PluginPermissionRecords } from '../src/main/services/pluginPermissions'
 import { exportPluginZip } from '../src/main/services/pluginPackage'
 import type { GatewayServices } from '../src/main/services/pluginGateway'
 import { JsonStore } from '../src/main/lib/jsonStore'
@@ -18,6 +19,7 @@ import type { HostToPlugin, PluginToHost } from '../src/main/plugin-runtime/prot
 
 let tmp: string
 let settings: JsonStore<AppSettings>
+let permissions: JsonStore<PluginPermissionRecords>
 let notifications: string[]
 const logs: string[] = []
 
@@ -199,6 +201,7 @@ function makeHost(): {
     pluginsDir: path.join(tmp, 'plugins'),
     sampleDir: null,
     settings,
+    permissions,
     bridgePath: '/bridge.js',
     spawnRuntime: spawner,
     gateway,
@@ -253,6 +256,7 @@ async function flush(times = 60): Promise<void> {
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'trace-plugin2-'))
+  permissions = new JsonStore<PluginPermissionRecords>(path.join(tmp, 'plugin-permissions.json'), {})
   settings = new JsonStore<AppSettings>(path.join(tmp, 'settings.json'), {
     workspaceRoot: tmp,
     theme: 'system',
@@ -270,7 +274,6 @@ beforeEach(() => {
     autoSyncIntervalMin: 5,
     enablePlugins: false,
     pluginEnabled: {},
-    pluginPermissionsConfirmed: {},
     gitSource: null,
     windowGlassEffect: 'auto',
     windowOpacity: 100,
@@ -571,7 +574,7 @@ describe('PluginHost v2 · M2 卸载与导入', () => {
     expect(runtimes[0].killed).toBe(true)
     expect(clearedStorages).toEqual(['sample'])
     expect(settings.get().pluginEnabled['sample']).toBeUndefined()
-    expect(settings.get().pluginPermissionsConfirmed?.['sample']).toBeUndefined()
+    expect(permissions.get()['sample']).toBeUndefined()
     expect(host.discover()).toHaveLength(0)
   })
 

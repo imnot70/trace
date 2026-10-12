@@ -20,6 +20,7 @@ import {
   PluginHost,
   spawnUtilityRuntime,
   PluginStorageService,
+  createPermissionsStore,
   MarketService,
   createMarketHttpClient,
   AutoSyncService,
@@ -184,7 +185,6 @@ app.whenReady().then(() => {
     autoSyncIntervalMin: 5,
     enablePlugins: false,
     pluginEnabled: {},
-    pluginPermissionsConfirmed: {},
     gitSource: null,
     windowGlassEffect: 'auto',
     windowOpacity: 100,
@@ -334,12 +334,15 @@ app.whenReady().then(() => {
 
   // 插件宿主 v2：每个插件一个 utilityProcess，能力调用经网关按 manifest 权限过滤。
   // 注意声明顺序：watcher 的变更回调要向插件广播 vault:changed，plugins 需先于 watcher 创建
+  // 权限确认记录独立文件（技术债 2026-09-25 收口）：构造时一次性迁出 settings.json 旧键
+  const permissionsStore = createPermissionsStore(settingsStore, path.join(userData, 'plugin-permissions.json'))
   const plugins = new PluginHost({
     pluginsDir: path.join(userData, 'plugins'),
     sampleDir: app.isPackaged
       ? path.join(process.resourcesPath, 'sample-plugin')
       : path.join(app.getAppPath(), 'resources', 'sample-plugin'),
     settings: settingsStore,
+    permissions: permissionsStore,
     // bridge.js 与主进程同目录构建（out/main/bridge.js），dev 与打包后路径一致
     bridgePath: path.join(__dirname, 'bridge.js'),
     spawnRuntime: spawnUtilityRuntime,
