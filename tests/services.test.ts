@@ -861,6 +861,103 @@ describe('标签系统（frontmatter）', () => {
     expect(await tags.noteTags('库', 'n.md')).toEqual([expect.objectContaining({ name: '旧标签' })])
     expect(store.get().noteTags).toHaveLength(0)
   })
+
+  it('正文 #标签进统计并自动注册定义（并集口径，FR-2.6.18）', async () => {
+    const { vaults, fsTree, tags } = buildTags()
+    vaults.create('库')
+    fsTree.createNote('库', '', 'n')
+    const tag = tags.createTag('重要', '#3498db').tag!
+    await tags.addTagToNote('库', 'n.md', tag.id)
+    const read = fsTree.readNote('库', 'n.md')
+    if (read.ok) fsTree.writeNote('库', 'n.md', read.content + '\n正文提到 #旅行 与 #旅行\n', read.hash)
+
+    const stats = await tags.tagStats()
+    expect(stats.find((s) => s.name === '重要')?.count).toBe(1)
+    expect(stats.find((s) => s.name === '旅行')?.count).toBe(1) // 篇内重复只计一篇
+    // 正文标签自动注册定义 → 侧栏可见
+    expect(tags.listTags().some((t) => t.name === '旅行')).toBe(true)
+  })
+
+  it('筛选并集：正文标签命中 AND / OR 组合', async () => {
+    const { vaults, fsTree, tags } = buildTags()
+    vaults.create('库')
+    fsTree.createNote('库', '', 'n1')
+    fsTree.createNote('库', '', 'n2')
+    const a = tags.createTag('工作', '#e74c3c').tag!
+    const b = tags.createTag('旅行', '#2ecc71').tag!
+    await tags.addTagToNote('库', 'n1.md', a.id)
+    const read = fsTree.readNote('库', 'n2.md')
+    if (read.ok) fsTree.writeNote('库', 'n2.md', '正文 #旅行\n', read.hash)
+
+    expect((await tags.notesByTags([a.id, b.id], 'any')).map((r) => r.path)).toEqual(['n1.md', 'n2.md'])
+    expect((await tags.notesByTags([a.id, b.id], 'all')).map((r) => r.path)).toEqual([])
+    expect((await tags.notesByTag(b.id)).map((r) => r.path)).toEqual(['n2.md'])
+
+    // 同篇 frontmatter 与正文都有同一标签 → 去重后仍命中一次
+    const read2 = fsTree.readNote('库', 'n1.md')
+    if (read2.ok) fsTree.writeNote('库', 'n1.md', read2.content + '\n#工作\n', read2.hash)
+    expect((await tags.notesByTag(a.id)).map((r) => r.path)).toEqual(['n1.md'])
+  })
+
+  it('改名 / 删除 / 合并扫写正文（防旧名僵尸复活）', async () => {
+    const { vaults, fsTree, tags } = buildTags()
+    vaults.create('库')
+    fsTree.createNote('库', '', 'n')
+    const read = fsTree.readNote('库', 'n.md')
+    if (read.ok) fsTree.writeNote('库', 'n.md', '---\ntags: [旧名]\n---\n\n正文 #旧名 与 `#旧名` 代码\n', read.hash)
+    const tag = tags.createTag('旧名', '#e74c3c').tag!
+
+    // 改名：frontmatter 与正文同步改写，行内码不动
+    await tags.renameTag(tag.id, '新名')
+    let after = fsTree.readNote('库', 'n.md')
+    expect(after.ok && after.content).toContain('tags:')
+    expect(after.ok && after.content).toContain('- 新名')
+    expect(after.ok && after.content).toContain('#新名')
+    expect(after.ok && after.content).toContain('`#旧名`')
+    expect(await tags.tagStats()).toEqual([expect.objectContaining({ name: '新名' })]) // 无旧名复活
+
+    // 删除：正文 #新名 一并移除
+    const renamed = tags.listTags().find((t) => t.name === '新名')!
+    await tags.deleteTag(renamed.id)
+    after = fsTree.readNote('库', 'n.md')
+    expect(after.ok && after.content).not.toContain('#新名')
+    expect(await tags.tagStats()).toEqual([])
+  })
+
+  it('合并：正文 #源名 改写为 #目标名', async () => {
+    const { vaults, fsTree, tags } = buildTags()
+    vaults.create('库')
+    fsTree.createNote('库', '', 'n')
+    const read = fsTree.readNote('库', 'n.md')
+    if (read.ok) fsTree.writeNote('库', 'n.md', '正文 #碎片\n', read.hash)
+    const source = tags.createTag('碎片', '#e74c3c').tag!
+    const target = tags.createTag('归档', '#2ecc71').tag!
+
+    const r = await tags.mergeTags(source.id, target.id)
+    expect(r.ok).toBe(true)
+    expect(r.notes).toBe(1)
+    const after = fsTree.readNote('库', 'n.md')
+    expect(after.ok && after.content).toContain('#归档')
+    expect(after.ok && after.content).not.toContain('#碎片')
+    expect(tags.listTags().some((t) => t.name === '碎片')).toBe(false)
+    expect(await tags.tagStats()).toEqual([expect.objectContaining({ name: '归档' })])
+  })
+
+  it('单个库目录不可读时跳过该库，聚合不整体挂掉（2026-10-12 冒烟发现）', async () => {
+    const { vaults, fsTree } = buildStack()
+    vaults.create('好库')
+    fsTree.createNote('好库', '', 'n')
+    fsTree.writeNote('好库', 'n.md', '---\ntags: [工作]\n---\n正文 #旅行\n', null)
+    // 注册表里存在指向已删除目录的陈旧库（外部库被移除 / U 盘拔出同场景）
+    const tags = new TagsService(
+      new JsonStore(path.join(tmp, 'tags.json'), { tags: [], noteTags: [] }),
+      fsTree,
+      () => ['好库', '已消失的库']
+    )
+    const stats = await tags.tagStats()
+    expect(stats.map((s) => s.name).sort()).toEqual(['旅行', '工作'].sort())
+    expect((await tags.notesByTags([], 'any')).length).toBe(0)
+  })
 })
 
 describe('回收站容量上限', () => {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { frontmatterCapsuleHtml, md, resolveAssetUrl, resolveRelRef, sanitizeHtml } from '../lib/markdown'
+import { frontmatterCapsuleHtml, md, resolveAssetUrl, resolveRelRef, rewriteInlineTagColors, sanitizeHtml } from '../lib/markdown'
+import { jumpToTagFilter } from '../lib/tagFilter'
 import { noteDisplayName, openWikilinkByName } from '../lib/wikilink'
 import { maskFrontmatter } from '@shared/noteTags'
 import { useTreeStore } from '../stores/tree'
@@ -131,14 +132,16 @@ const html = computed(() => {
   try {
     // 管道顺序：掩码 frontmatter（保留行号映射，行级滚动同步不错位）→ markdown-it 渲染（含 KaTeX/高亮）
     // → DOMPurify 白名单净化（sanitizeHtml，与导出 HTML / 编辑器所见即所得共用）→ 相对链接/图片改写
+    const colorOf = (name: string): string | undefined =>
+      tree.tags.find((t) => t.name.toLowerCase() === name.toLowerCase())?.color
     const sanitized = sanitizeHtml(md.render(maskFrontmatter(props.content ?? '')))
     // frontmatter 标签胶囊条（FR-2.6.17 扩展，只读）：净化后前置自身生成的可信 HTML；
     // 颜色查标签定义（tree.tags 响应式——改色后 computed 重算，胶囊即时刷新），
     // 未登记标签灰色回退；data-source-line=0 进行级同步索引
-    const capsule = frontmatterCapsuleHtml(props.content ?? '', (name) =>
-      tree.tags.find((t) => t.name.toLowerCase() === name.toLowerCase())?.color
-    )
-    return capsule + rewriteImages(rewriteInternalLinks(sanitized))
+    const capsule = frontmatterCapsuleHtml(props.content ?? '', colorOf)
+    // 正文内联 #标签着色（FR-2.6.18）：净化后的可信替换，同查定义色
+    const colored = rewriteInlineTagColors(sanitized, colorOf)
+    return capsule + rewriteImages(rewriteInternalLinks(colored))
   } catch {
     return `<p style="color:var(--danger)">渲染出错，请检查 Markdown 语法</p>`
   }
@@ -205,6 +208,14 @@ defineExpose({ syncToLine, lineAtScrollTop, scrollElement: rootRef })
 // ---------- 链接点击：统一委托，外部走系统浏览器，库内笔记走应用内打开 ----------
 
 function onPreviewClick(e: MouseEvent): void {
+  // 正文内联 #标签（FR-2.6.18）：单击跳标签筛选（置于 <a> 判断之前——胶囊更具体）
+  const tagEl = (e.target as HTMLElement).closest?.('.md-inline-tag')
+  if (tagEl) {
+    e.preventDefault()
+    const name = (tagEl.getAttribute('data-tag') ?? tagEl.textContent?.replace(/^#/, '') ?? '').trim()
+    if (name) void jumpToTagFilter(name)
+    return
+  }
   const anchor = (e.target as HTMLElement).closest?.('a')
   if (!anchor) return
   e.preventDefault()

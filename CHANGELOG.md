@@ -4,6 +4,10 @@
 
 ## [未发布]
 
+### 新功能
+
+- **正文内联 `#标签`（只读识别，FR-2.6.18，分支 `feat/inline-body-tags`，2026-10-12 立项当日实施）**：正文 `#标签` 语法进入标签体系——**双源决策经用户拍板取「只读识别」**（正文是用、frontmatter 是管，双真源不做）：识别规则（Unicode 字母数字下划线连字符 1–64 字符；排除 frontmatter / 围栏代码 / 行内码 / `C#5` / `##标题` / HTML 实体 / URL 片段等前缀，正则单一定义源 `shared/noteTags.ts`）；**渲染**：预览 / 悬浮预览胶囊样式（定义色，`--tag-c` 变量）单击跳筛选，所见即所得 mark 装饰高亮（不改 DOM 结构，组词安全）Ctrl/Cmd+单击跳筛选；**聚合并集口径**：侧栏计数 / AND·OR 组合筛选 / 搜索标签维度 = frontmatter ∪ 正文（篇内去重），正文标签聚合时自动注册定义（自动配色，侧栏可见可管理）；**改名 / 合并 / 删除全库扫写正文**（防旧名经自动注册僵尸复活，正文扫写挂在既有改写管线同一趟）；**管理入口不变**（打标签弹窗与 frontmatter 胶囊仍只读写 frontmatter）。附带修复两项（冒烟发现）：`TagsService.collectNoteRefs` 对不可读库（外部库被移除 / U 盘拔出）逐库跳过——此前一个陈旧库注册项会让标签统计整体挂掉；按名跳标签筛选对「定义已在主进程注册而渲染端快照滞后」自恢复（刷新重查，不再放弃导航）。单测 +28 全仓 613 项（gitService 6 项按 90s Windows 口径全绿）；CDP 冒烟 10 项全过（聚合 / 注册 / 搜索 / 装饰 / 胶囊 / 跳转 / 着色全链路）；IME 组词与观感留真机验证（待办 #23）。需求与设计见 [2026-10-12_inline-body-tags/](ai/requirements/2026-10-12_inline-body-tags/inline-body-tags.md)。
+
 ### 其他
 
 - **插件权限记录拆出独立文件**（技术债 2026-09-25 收口，分支 `fix/plugin-permissions-store`）：权限确认记录原随 settings.json 存放（`pluginPermissionsConfirmed` 字段），但它本质是「应用管理的授予状态」而非用户设置——与设置写入白名单纪律、schemaVersion 迁移互相耦合，且**重置设置会连带清掉权限记录**（全部插件重新弹确认）。现拆独立 `plugin-permissions.json`（自有 JsonStore 实例，version 1），`pluginHost` 启停 / 卸载三处读写改为专用存储；首次启动一次性迁移（settings.json 发现旧键即搬入新文件并删除，先写后删幂等——中断则下次启动重复搬迁同值，无副作用）。**对插件系统零破坏**：权限确认交互（needsConfirmation 弹窗、manifest 变更重确认、能力网关过滤）完全不变，渲染端零消费、IPC 面不变；唯一行为变化 = 重置设置不再清权限记录（改善）。单测 +3（迁移：旧键搬移 / 幂等 / 新装不落盘），全仓 590 项（gitService 8 项按 90s Windows 口径全绿）。

@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { logger } from '../lib/logger'
-import { getFrontmatterTags, maskFrontmatter } from '@shared/noteTags'
+import { getNoteTags, maskFrontmatter } from '@shared/noteTags'
 import type { SearchTagInfo, SearchResult, SearchResultItem } from '@shared/types'
 
 /** 搜索索引项 */
@@ -12,7 +12,7 @@ interface SearchIndexItem {
   /** 正文（frontmatter 已掩码为等宽空白：行号与源文件对齐不变，但关键词不会再命中 frontmatter 行——
    *  结构化标签检索见 tags 字段，FR-2.9.11） */
   content: string
-  /** frontmatter 的 tags 键（结构化标签，供标签维度过滤与 listTags 聚合） */
+  /** 结构化标签（FR-2.9.11 / FR-2.6.18 并集口径）：frontmatter tags ∪ 正文 #标签，供标签维度过滤与 listTags 聚合 */
   tags: string[]
   lastModified: number
 }
@@ -84,7 +84,7 @@ export class SearchService {
           path: relativePath,
           title,
           content: maskFrontmatter(content),
-          tags: getFrontmatterTags(content),
+          tags: getNoteTags(content),
           lastModified: stat.mtimeMs
         })
 
@@ -357,7 +357,7 @@ export class SearchService {
         path: filePath,
         title,
         content: maskFrontmatter(content),
-        tags: getFrontmatterTags(content),
+        tags: getNoteTags(content),
         lastModified: stat.mtimeMs
       })
     } catch (e) {

@@ -40,7 +40,8 @@ const cfg: LivePreviewConfig = {
   resolveName: (name: string) => name === '存在',
   openNote: vi.fn(),
   previewNote: vi.fn(),
-  openExternal: vi.fn()
+  openExternal: vi.fn(),
+  filterByTag: vi.fn()
 }
 
 function collect(state: EditorState, set: DecorationSet): Collected[] {
@@ -350,6 +351,31 @@ describe('所见即所得装饰：双链与链接', () => {
     const marks = collect(state, r.decorations)
     expect(marks.some((c) => String(c.spec.class ?? '') === 'lp-link')).toBe(true)
     expect(r.targets.some((t) => t.kind === 'link' && (t as { url: string }).url === 'https://example.com')).toBe(true)
+  })
+})
+
+describe('正文 #标签装饰（FR-2.6.18：mark 高亮 + 点击目标）', () => {
+  const cfgWithColors: LivePreviewConfig = { ...cfg, tagColors: { 旅行: '#e74c3c' } }
+
+  it('正文 #标签：mark 装饰 + kind=tag 点击目标 + 定义色注入', () => {
+    const doc = '去了 #旅行 与 #未登记'
+    const state = mkState(doc, doc.length)
+    const r = computeInlineDecorations(state, allRanges(state), cfgWithColors)
+    const marks = collect(state, r.decorations).filter((c) => String(c.spec.class ?? '') === 'lp-inline-tag')
+    expect(marks).toHaveLength(2)
+    const colored = marks.find((c) => doc.slice(c.from, c.to) === '#旅行')
+    expect(String((colored?.spec.attributes as Record<string, string> | undefined)?.style ?? '')).toContain('#e74c3c')
+    const tags = r.targets.filter((t) => t.kind === 'tag') as { from: number; to: number; name: string }[]
+    expect(tags.map((t) => t.name)).toEqual(['旅行', '未登记'])
+  })
+
+  it('排除：行内码 / frontmatter / ATX 标题 / C#5', () => {
+    const doc = '---\ntags: [旅行]\n---\n\n`#旅行` 学 C#5\n\n# 这是标题\n\n正文 #旅行'
+    const state = mkState(doc, doc.length)
+    const r = computeInlineDecorations(state, allRanges(state), cfgWithColors)
+    const marks = collect(state, r.decorations).filter((c) => String(c.spec.class ?? '') === 'lp-inline-tag')
+    expect(marks).toHaveLength(1) // 只有末行正文那一个
+    expect(doc.slice(marks[0].from, marks[0].to)).toBe('#旅行')
   })
 })
 

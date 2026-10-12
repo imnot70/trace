@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { frontmatterCapsuleHtml, md, sanitizeHtml, slugify } from '../src/renderer/src/lib/markdown'
+import { frontmatterCapsuleHtml, md, rewriteInlineTagColors, sanitizeHtml, slugify } from '../src/renderer/src/lib/markdown'
 
 describe('markdown 渲染管道：源码行号注入（data-source-line）', () => {
   it('顶层块携带正确的 0 基行号', () => {
@@ -213,5 +213,47 @@ describe('frontmatter 标签胶囊条（FR-2.6.17 扩展：预览 / 悬浮预览
     expect(html).not.toContain('"><img')
     expect(html).toContain('&lt;script&gt;')
     expect(html).toContain('&quot;&gt;&lt;img')
+  })
+})
+
+describe('正文内联 #标签渲染（FR-2.6.18）', () => {
+  it('正文 #标签 渲染为胶囊 span（含 data-tag）', () => {
+    const html = md.render('今天去了 #旅行 很开心\n')
+    expect(html).toContain('<span class="md-inline-tag" data-tag="旅行">#旅行</span>')
+  })
+
+  it('净化后胶囊保留（span / class / data-tag 在 DOMPurify 白名单内）', () => {
+    const html = sanitizeHtml(md.render('内容 #标签 结束\n'))
+    expect(html).toContain('md-inline-tag')
+    expect(html).toContain('data-tag="标签"')
+  })
+
+  it('排除：行内码 / 代码块 / ATX 标题 / C# / URL 片段 / 词中#', () => {
+    expect(md.render('代码 `#不行` 与 #行')).not.toContain('data-tag="不行"')
+    expect(md.render('```js\n#不行\n```\n')).not.toContain('data-tag="不行"')
+    expect(md.render('# 这是标题')).not.toContain('md-inline-tag')
+    expect(md.render('学 C#5 编程')).not.toContain('md-inline-tag')
+    expect(md.render('见 https://x.com/#anchor 说明')).not.toContain('md-inline-tag')
+    expect(md.render('词中 abc#def 不算')).not.toContain('md-inline-tag')
+  })
+
+  it('行首无空格 #标题 按标签识别（非 ATX）', () => {
+    expect(md.render('#标题在行首')).toContain('data-tag="标题在行首"')
+  })
+
+  it('着色替换：rewriteInlineTagColors 注入定义色，未登记不加', () => {
+    const html = md.render('A #已登记 与 #未登记\n')
+    const colored = rewriteInlineTagColors(html, (name) => (name === '已登记' ? '#e74c3c' : undefined))
+    expect(colored).toContain('style="--tag-c:#e74c3c"')
+    expect(colored).not.toContain('data-tag="未登记" style') // 未登记保持原样
+    // 色值经转义（防注入）
+    const evil = rewriteInlineTagColors(md.render('A #名字\n'), () => '"><img src=x>')
+    expect(evil).not.toContain('"><img')
+  })
+
+  it('转义 \# 渲染为字面 #：按渲染后文本口径识别为标签', () => {
+    // `\#` 经 escape 规则产出字面 '#'，渲染结果与未转义一致 → 识别口径看渲染后文本
+    const html = md.render('abc \#tag 后文')
+    expect(html).toContain('data-tag="tag"')
   })
 })

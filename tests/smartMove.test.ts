@@ -65,7 +65,8 @@ describe('所见即所得垂直移动：无渲染块时等价放行（验收标�
       resolveName: () => false,
       openNote: () => undefined,
   previewNote: () => undefined,
-      openExternal: () => undefined
+      openExternal: () => undefined,
+      filterByTag: () => undefined
     }
     // 只挂 facet + 块级 StateField（smartVerticalMove 的全部依赖）；不引装配层 index.ts——
     // tests/** 在主进程 tsconfig（无 DOM lib / window 增强）下编译，其依赖链（../wikilink）不测试安全
