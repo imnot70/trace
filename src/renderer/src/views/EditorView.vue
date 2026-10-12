@@ -1,5 +1,22 @@
 <script setup lang="ts">
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  Crosshair as Aim,
+  PanelLeftOpen as Expand,
+  PanelLeftClose as Fold,
+  WandSparkles as MagicStick,
+  Coffee,
+  Maximize as FullScreen,
+  RotateCcw as RefreshLeft,
+  RotateCw as RefreshRight,
+  Link,
+  Image as Picture,
+  Table as Grid,
+  Paintbrush as Brush,
+  FilePlus as DocumentAdd,
+  Magnet,
+  X as Close
+} from 'lucide-vue-next'
 import { useAppStore } from '../stores/app'
 import { useEditorStore } from '../stores/editor'
 import { useTreeStore } from '../stores/tree'
@@ -1264,7 +1281,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   position: relative; /* 反向链接悬浮入口的定位锚 */
   background: var(--bg-primary);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   overflow: hidden;
   /* 编辑区至少 480px（约 40 字/行），窗口再窄也不压缩到无法编辑 */
   min-width: 480px;
@@ -1319,7 +1336,7 @@ onBeforeUnmount(() => {
   /* 预览区至少 280px，保留最小可读宽度 */
   min-width: 280px;
   height: 100%;
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   overflow: hidden;
   background: var(--bg-primary);
 }
@@ -1331,7 +1348,7 @@ onBeforeUnmount(() => {
   right: 20px;
   bottom: 20px;
   width: min(45vw, 720px);
-  border-radius: 10px;
+  border-radius: var(--radius-card);
   background: var(--bg-primary);
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.18),
@@ -1429,7 +1446,7 @@ onBeforeUnmount(() => {
   transform: translate(-50%, -50%);
   z-index: 3000;
   padding: 18px 38px;
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   background: var(--success-bg);
   color: var(--success-text);
   font-size: 28px;

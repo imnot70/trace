@@ -67,4 +67,18 @@ describe('validateThemePackage', () => {
     expect(validateThemePackage({ ...valid, light: { '--accent': '' } }).error).toContain('值非法')
     expect(validateThemePackage({ ...valid, light: { '--accent': '#'.repeat(65) } }).error).toContain('值非法')
   })
+
+  it('纸面变量可保存（FR-2.9.15 方案 a：白名单 19→21）', () => {
+    const r = validateThemePackage({
+      ...valid,
+      light: { '--content-bg': '#f8f3e6', '--doc-ink': '#43392b' }
+    })
+    expect(r.ok).toBe(true)
+    expect(r.theme?.light).toEqual({ '--content-bg': '#f8f3e6', '--doc-ink': '#43392b' })
+  })
+
+  it('旧格式主题包（不含纸面变量）不受白名单扩充影响（向后兼容）', () => {
+    // valid 夹具即旧格式（仅 --accent）：其余用例已证明其通过，此处显式断言兼容语义
+    expect(validateThemePackage(valid).ok).toBe(true)
+  })
 })

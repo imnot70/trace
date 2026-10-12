@@ -112,18 +112,30 @@ const clickHandler = EditorView.domEventHandlers({
 })
 
 // 视觉对齐 markdown.css（预览同款语言，颜色全部走 CSS 变量）
+// ⚠️ 与 markdown.css 是同一套内容排版的两半（FR-2.9.14）：标题 / 引用 / 代码的样式改动
+// 必须两处同批——历史上「只改预览一套」导致所见即所得与预览漂移
 const lpTheme = EditorView.theme({
   '.cm-line.lp-heading': {
     fontWeight: '600',
     lineHeight: '1.4'
   },
-  '.cm-line.lp-h1': { fontSize: '1.7em', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.1em' },
-  '.cm-line.lp-h2': { fontSize: '1.4em', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.08em' },
-  '.cm-line.lp-h3': { fontSize: '1.2em' },
+  // 衬线标题 h1–h3（FR-2.9.14，与 markdown.css 同批）：去 GitHub 式下边框，h1 补 1.35 行高
+  '.cm-line.lp-h1': {
+    fontSize: '1.7em',
+    fontFamily: 'var(--font-head)',
+    fontWeight: '700',
+    lineHeight: '1.35',
+    letterSpacing: '0.005em'
+  },
+  '.cm-line.lp-h2': { fontSize: '1.4em', fontFamily: 'var(--font-head)', fontWeight: '700' },
+  '.cm-line.lp-h3': { fontSize: '1.2em', fontFamily: 'var(--font-head)', fontWeight: '700' },
   '.cm-line.lp-h4, .cm-line.lp-h5, .cm-line.lp-h6': { fontSize: '1.1em' },
+  // 引用条（FR-2.9.14）：accent 弱化条 + 极淡 accent 底，与预览 blockquote 同源；
+  // CM 按行涂色（连续引用行的底无缝相接），不做右圆角（逐行圆角会锯齿）
   '.cm-line.lp-quote': {
-    borderLeft: '3px solid var(--border-color)',
+    borderLeft: '3px solid color-mix(in srgb, var(--accent) 45%, transparent)',
     paddingLeft: '10px',
+    backgroundColor: 'color-mix(in srgb, var(--accent) 5%, transparent)',
     color: 'var(--text-secondary)'
   },
   '.cm-line.lp-fence': {
@@ -152,22 +164,38 @@ const lpTheme = EditorView.theme({
   // 间距数值与修正前保持一致：公式 0.5em、表格 / HTML 块 0.4em（内层首尾外边距清零，避免叠加）。
   // white-space：编辑器内容区是 break-spaces（源码要保留空白），而 widget 里是渲染产物——
   // 渲染 HTML 标签之间的换行 / 空白会被当成真实换行与空格（多出空行、把容器撑高），故还原为 normal。
-  // padding / max-width 必须显式归零：widget 带 markdown-body 类是为了排版，但该类还带卡片级
-  // padding: 20px 28px 48px 与 max-width: 860px（预览卡片的留白与限宽），照搬到 widget 上会
-  // 让水平线上下不对称（实测 20/48）、表格被限宽
+  // padding / max-width / background 必须显式归零：widget 带 markdown-body 类是为了排版，
+  // 但该类还带卡片级 padding: 20px 28px 48px、max-width: 860px 与纸面底色 --content-bg
+  // （预览卡片的留白 / 限宽 / 纸面），照搬到 widget 上会让水平线上下不对称（实测 20/48）、
+  // 表格被限宽；底色不归零则心流换纸色时表格 / 公式块会糊一块默认纸色
   '.lp-math-block': {
     margin: '0',
     padding: '0.5em 0',
     maxWidth: 'none',
+    background: 'transparent',
     display: 'flow-root',
     whiteSpace: 'normal',
     textAlign: 'center',
     overflowX: 'auto'
   },
-  '.lp-block': { margin: '0', padding: '0.4em 0', maxWidth: 'none', display: 'flow-root', whiteSpace: 'normal' },
+  '.lp-block': {
+    margin: '0',
+    padding: '0.4em 0',
+    maxWidth: 'none',
+    background: 'transparent',
+    display: 'flow-root',
+    whiteSpace: 'normal'
+  },
   '.lp-block > :first-child': { marginTop: '0' },
   '.lp-block > :last-child': { marginBottom: '0' },
-  '.lp-hr': { margin: '0', padding: '0', maxWidth: 'none', display: 'flow-root', whiteSpace: 'normal' },
+  '.lp-hr': {
+    margin: '0',
+    padding: '0',
+    maxWidth: 'none',
+    background: 'transparent',
+    display: 'flow-root',
+    whiteSpace: 'normal'
+  },
   '.lp-bullet': { color: 'var(--text-secondary)', userSelect: 'none' },
   '.lp-frontmatter': {
     display: 'inline-flex',

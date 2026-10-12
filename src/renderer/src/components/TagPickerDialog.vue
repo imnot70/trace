@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Sort } from '@element-plus/icons-vue'
+import { ArrowUpDown as Sort } from 'lucide-vue-next'
 import { useEditorStore } from '../stores/editor'
 import { getFrontmatterTags, setFrontmatterTags } from '@shared/noteTags'
 import { pickTagColor } from '@shared/tagPalette'

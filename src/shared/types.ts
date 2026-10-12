@@ -165,7 +165,7 @@ export interface AppSettings {
   gitSource: 'system' | 'bundled' | null
   /** 窗口玻璃效果：auto 根据平台自动选择，none 关闭，mica Windows 11 Mica，acrylic Windows Acrylic，vibrancy macOS 毛玻璃 */
   windowGlassEffect: 'auto' | 'none' | 'mica' | 'acrylic' | 'vibrancy'
-  /** 窗口不透明度 50-100，50 半透明，100 完全不透明（下限 50 保证界面可读） */
+  /** 窗口不透明度 75-100，75 半透明，100 完全不透明（下限 75 保证界面可读；2026-10-10 由 50 收敛，存量 50 在应用时收敛为 75） */
   windowOpacity: number
   /** 侧栏菜单分区显示开关（「笔记库」分区始终显示，不在开关之列） */
   sidebarMenus: {
@@ -186,6 +186,8 @@ export interface AppSettings {
   showBacklinks: boolean
   /** 默认编辑模式：source 源码模式 / wysiwyg 所见即所得（Live Preview，FR-W1） */
   defaultEditMode: 'source' | 'wysiwyg'
+  /** 衬线标题：文档 h1–h3 用衬线字体（LXGW 文楷，FR-2.9.14；默认开，D5——衬线是强口味给出口） */
+  serifHeadings: boolean
   /** 编辑位置：打开笔记后光标落在文首（start）还是文末（end），默认文首（FR-2.4.18） */
   editPosition: 'start' | 'end'
   /** 表格插入默认行数（含表头；Ctrl+T 浮层直接确认时插入该尺寸，1–50，FR-2.4.20 扩展） */

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { CopyDocument } from '@element-plus/icons-vue'
+import { Copy as CopyDocument } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import type { GitStatus, NoteInfo, TagItem } from '@shared/types'

@@ -19,6 +19,15 @@ import DraftPromoteDialog from './components/DraftPromoteDialog.vue'
 import SearchDialog from './components/SearchDialog.vue'
 import ContextMenu from './components/ContextMenu.vue'
 import NoteSwitcher from './components/NoteSwitcher.vue'
+import {
+  Clock,
+  Star,
+  Trash2 as Delete,
+  Library as Collection,
+  PanelLeftOpen as Expand,
+  PanelLeftClose as Fold,
+  LoaderCircle as Loading
+} from 'lucide-vue-next'
 import { buildWindowTitle } from './lib/windowTitle'
 import WelcomeView from './views/WelcomeView.vue'
 import EditorView from './views/EditorView.vue'
@@ -334,6 +343,8 @@ function syncWindowClasses(): void {
   el.classList.toggle('platform-win', isWindows)
   el.classList.toggle('window-opaque', !isWindowTransparent())
   el.classList.toggle('glass-on', isWinGlass())
+  // 衬线标题开关（FR-2.9.14）：关闭时经变量改指向回退 UI 字体栈，标题侧只消费 --font-head
+  el.classList.toggle('serif-headings-off', !app.settings.serifHeadings)
 }
 
 onMounted(async () => {
@@ -344,9 +355,9 @@ onMounted(async () => {
   // 窗口视觉形态类（macOS/Linux 透明玻璃路径见 createWindow 注释；Windows 走 WCO 玻璃，
   // 亦不碰 transparent: true——v0.4.4 回归教训，见 AGENTS.md 已知局限）
   syncWindowClasses()
-  // 设置里切换玻璃效果 / 主题时同步类（无需重载窗口）
+  // 设置里切换玻璃效果 / 主题 / 衬线标题时同步类（无需重载窗口）
   watch(
-    () => [app.settings.windowGlassEffect, app.settings.theme],
+    () => [app.settings.windowGlassEffect, app.settings.theme, app.settings.serifHeadings],
     () => syncWindowClasses()
   )
   // Linux 浅色壁纸下底部圆角缺口仍会露出系统合成器的方形轮廓（深色壁纸正常，疑似系统侧
@@ -507,7 +518,7 @@ onMounted(async () => {
   padding: 8px 14px;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
   color: var(--text-primary);
   font-size: 13px;

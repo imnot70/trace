@@ -1,19 +1,42 @@
 /* ========== 主题变量 ========== */
+/* UI 现代化改造 P0 token 批次（FR-2.9.13，2026-10-10）：
+   暖中性色 + 明度分区替代描边盒子；accent 换靛蓝只做交互色；新增圆角 / 动效 / 阴影 / 字体 token。
+   设计文档与变量定稿表：ai/requirements/2026-10-10_ui-redesign/ui-redesign_design.md §2。
+   描边机制保留、默认值调淡——主题包与高对比度预设经 --border-color 即恢复强描边（FR-2.9.15 D4）。 */
 :root {
   --bg-primary: #ffffff;
-  --bg-secondary: #f5f6f8;
-  --bg-tertiary: #eceef1;
-  --bg-hover: rgba(31, 56, 88, 0.06);
-  --bg-active: rgba(64, 120, 211, 0.12);
-  --text-primary: #24292f;
-  --text-secondary: #57606a;
-  --text-tertiary: #8b949e;
-  --border-color: #e4e7ec;
-  --accent: #4078d3;
-  --accent-soft: rgba(64, 120, 211, 0.12);
+  --bg-secondary: #f2f1ed;
+  --bg-tertiary: #e9e7e1;
+  --bg-hover: rgba(28, 25, 18, 0.05);
+  --bg-active: rgba(79, 91, 213, 0.11);
+  --text-primary: #211f1c;
+  --text-secondary: #6c6a63;
+  --text-tertiary: #a19e96;
+  --border-color: rgba(28, 25, 18, 0.08);
+  --accent: #4f5bd5;
+  --accent-soft: rgba(79, 91, 213, 0.1);
   --danger: #d34850;
   --success-bg: rgba(144, 238, 144, 0.6);
   --success-text: #2f7d33;
+  /* 内容区纸面（FR-2.9.14，P3 已消费：.markdown-body / CM 编辑器根；主题包白名单变量，方案 a） */
+  --content-bg: #f8f3e6;
+  --doc-ink: #43392b;
+  /* 设计 token：圆角三档 / 动效 / 卡片阴影 / 字体栈（主题包白名单外，深浅共用） */
+  --radius-ctl: 7px;
+  --radius-card: 12px;
+  --radius-pop: 16px;
+  --motion-fast: 120ms;
+  --motion-base: 160ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+  --shadow-card: 0 1px 2px rgba(30, 26, 18, 0.04), 0 8px 28px rgba(30, 26, 18, 0.07);
+  /* MiSans 已随应用打包（misans npm 子集 woff2，main.ts 引入）；HarmonyOS Sans SC 等为系统回退 */
+  --font-ui:
+    'MiSans', 'HarmonyOS Sans SC', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC',
+    system-ui, sans-serif;
+  /* 衬线标题（FR-2.9.14，P3 已消费：预览与所见即所得 h1–h3）：LXGW 文楷已随应用打包
+     （lxgw-wenkai-webfont npm 子集 woff2，main.ts 引入 Regular / Bold 两字重）；
+     「衬线标题」开关关闭时 html.serif-headings-off 把本变量改指向 --font-ui */
+  --font-head: 'LXGW WenKai', 'Noto Serif SC', 'Source Han Serif SC', serif;
   /* 心流写作底色色板（柔和浅色，随用户在设置中选择） */
   --flow-paper-cream: #f8f3e6;
   /* 纸面模式的表格线 / 当前行高亮 / 表头底（暖棕半透明，在米黄纸面上清晰可辨——
@@ -25,36 +48,43 @@
   --flow-paper-blue: #e9f0f8;
   --flow-paper-pink: #f9eef1;
   --flow-paper-gray: #f1f2f4;
-  /* 冲突合并视图行着色（行背景半透明层 + 图例实色版） */
-  --merge-ours: rgba(64, 120, 211, 0.1);
+  /* 冲突合并视图行着色（行背景半透明层 + 图例实色版；ours 跟随新 accent 靛蓝） */
+  --merge-ours: rgba(79, 91, 213, 0.1);
   --merge-theirs: rgba(103, 194, 58, 0.12);
   --merge-marker: rgba(211, 72, 80, 0.12);
-  --merge-ours-solid: #dbe7f7;
+  --merge-ours-solid: #dfe3f8;
   --merge-theirs-solid: #dcf0d4;
   --merge-marker-solid: #f6d7da;
   --success-line: #85b56a;
-  --code-bg: #f0f2f5;
+  /* 代码块底（FR-2.9.14 P3 换纸面调）：比内容纸面深一档的暖色，去描边后承担代码块分区；
+     内联 code 与 pre 共用（视觉稿 A+B 组合口径） */
+  --code-bg: #f0e9d8;
   --hljs-base: #383a42;
   --hljs-comment: #a0a1a7;
   --hljs-keyword: #a626a4;
   --hljs-string: #50a14f;
   --hljs-number: #b76b01;
-  --hljs-title: #4078d3;
+  --hljs-title: #4f5bd5;
 }
 
 html.dark {
-  --bg-primary: #1e2127;
-  --bg-secondary: #17191e;
-  --bg-tertiary: #26292f;
-  --bg-hover: rgba(255, 255, 255, 0.06);
-  --bg-active: rgba(84, 140, 224, 0.2);
-  --text-primary: #d7dae0;
-  --text-secondary: #9aa0aa;
-  --text-tertiary: #6b7280;
-  --border-color: #33373e;
-  --accent: #548ce0;
-  --accent-soft: rgba(84, 140, 224, 0.18);
+  --bg-primary: #1b1b1f;
+  --bg-secondary: #121214;
+  --bg-tertiary: #232329;
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --bg-active: rgba(126, 137, 242, 0.16);
+  --text-primary: #eae9e6;
+  --text-secondary: #a5a39d;
+  --text-tertiary: #6e6c66;
+  --border-color: rgba(255, 255, 255, 0.09);
+  --accent: #7e89f2;
+  --accent-soft: rgba(126, 137, 242, 0.16);
   --danger: #e06c75;
+  /* 内容区纸面（FR-2.9.14，P3 已消费）：暖黑暗纸 */
+  --content-bg: #2a271f;
+  --doc-ink: #d9d1c1;
+  /* 卡片阴影深色版：纯黑环境光（暖黑阴影在近黑卡面上不可见） */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 30px rgba(0, 0, 0, 0.35);
   /* 提示浮层的浅绿底色本身是亮色，与底色同系的中深绿文字在两种主题下都可读，两套取同值 */
   --success-bg: rgba(144, 238, 144, 0.6);
   --success-text: #2f7d33;
@@ -67,14 +97,15 @@ html.dark {
   --flow-paper-blue: #222a33;
   --flow-paper-pink: #2f262a;
   --flow-paper-gray: #26282d;
-  --merge-ours: rgba(84, 140, 224, 0.16);
+  --merge-ours: rgba(126, 137, 242, 0.16);
   --merge-theirs: rgba(103, 194, 58, 0.14);
   --merge-marker: rgba(224, 108, 117, 0.16);
-  --merge-ours-solid: #2c3a4d;
+  --merge-ours-solid: #2e3654;
   --merge-theirs-solid: #2e3b2b;
   --merge-marker-solid: #472f33;
   --success-line: #85b56a;
-  --code-bg: #26292f;
+  /* 代码块底：纸面调的暗色版（比内容纸面 #2a271f 再深半档） */
+  --code-bg: #322c21;
   --hljs-base: #c8ccd4;
   --hljs-comment: #7f848e;
   --hljs-keyword: #c678dd;
@@ -104,13 +135,19 @@ html.window-opaque #app {
   border-radius: 0;
 }
 
+/* 衬线标题开关（FR-2.9.14，默认开）：关闭时把 --font-head 改指向 UI 字体栈——预览与
+   所见即所得的标题统一消费 --font-head，开关只换这一个变量的指向，无特判选择器 */
+html.serif-headings-off {
+  --font-head: var(--font-ui);
+}
+
 /* Linux 平台（含透明窗口时）一律禁用底部圆角：浅色壁纸下圆角缺口仍会残留
    系统合成器的方形直角轮廓（深色壁纸正常，应用侧无法彻底消除），见 AGENTS.md 已知局限 */
 html.no-bottom-radius #app {
   border-radius: 0;
 }
 
-/* 玻璃模式：卡片背景半透明透出 backgroundMaterial 材质，文字层保持不透明 */
+/* 玻璃模式：卡片背景半透明透出 backgroundMaterial 材质，文字层保持不透明（可读性不降级） */
 html.glass-on .sidebar-card,
 html.glass-on .editor-card,
 html.glass-on .preview-card,
@@ -118,6 +155,13 @@ html.glass-on .page-card,
 html.glass-on .floating-preview,
 html.glass-on .sidebar-rail {
   background: color-mix(in srgb, var(--bg-primary) 82%, transparent);
+}
+
+/* 玻璃模式下的内容纸面（FR-2.9.14）：与卡片同一口径半透明化，材质透出纸面
+   （选择器特异性压过 CM 主题注入的 .cm-editor / .cm-gutters 实底） */
+html.glass-on .markdown-body,
+html.glass-on .cm-editor {
+  background: color-mix(in srgb, var(--content-bg) 82%, transparent);
 }
 
 /* ========== Windows WCO 标题栏条（custom-titlebar 设计 §3.2） ========== */
@@ -139,7 +183,7 @@ html.glass-on .sidebar-rail {
 
 .win-titlebar-title {
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
 /* 标题栏条占位：卡片画布整体下移（仅 Windows 渲染 .win-titlebar 元素） */
@@ -161,23 +205,34 @@ html.platform-win .floating-preview {
   top: calc(20px + env(titlebar-area-height, 0px));
 }
 
-/* 玻璃模式：卡片背景半透明透出材质，文字层保持不透明（可读性不降级） */
+/* 玻璃模式：卡片背景半透明透出材质，文字层保持不透明（可读性不降级）。
+   ⚠️ 画布叠加色必须给标题条「挖洞」：backgroundMaterial 开启后 WCO 按钮区的 overlay color
+   被 DWM 忽略、按钮区直接透材质（Electron/DWM 已知行为）——若 app-shell 的 55% 画布色
+   铺满标题条后方，标题条（叠色）与三键区（纯材质）就会色差，深浅 Mica/Acrylic 均明显
+   （2026-10-10 用户反馈）。改为「标题条高度以上透明、以下再叠加」，标题条与按钮区同露
+   材质即天然一致；非玻璃模式（window-opaque）app-shell 为实色画布，无此问题不走此规则 */
 html.glass-on .app-shell {
-  background: color-mix(in srgb, var(--bg-secondary) 55%, transparent);
+  background: linear-gradient(
+    to bottom,
+    transparent 0 env(titlebar-area-height, 36px),
+    color-mix(in srgb, var(--bg-secondary) 55%, transparent) env(titlebar-area-height, 36px)
+  );
 }
 
 body {
-  font-family:
-    'PingFang SC',
-    'Microsoft YaHei',
-    'Noto Sans CJK SC',
-    system-ui,
-    -apple-system,
-    sans-serif;
+  font-family: var(--font-ui);
   font-size: 14px;
   color: var(--text-primary);
   /* 透明背景：让 #app 的底部圆角外区域透出窗口外（玻璃效果/桌面） */
   background: transparent;
+}
+
+/* Lucide 图标（FR-2.9.13 图标批次）：以字号驱动尺寸等价 EP 字体图标——
+   svg 自带宽高 24 属性，此处用 CSS 覆写为 1em，跟随所在上下文 font-size；
+   描边色走 currentColor 天然继承；线宽用默认 2（24 视箱下渲染约 1.2px，与现代细线一致） */
+svg.lucide {
+  width: 1em;
+  height: 1em;
 }
 
 /* ========== 全局布局：灰色画布上的圆角卡片 ========== */
@@ -203,7 +258,7 @@ body {
   gap: 6px;
   padding: 10px 0;
   background: var(--bg-primary);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
 }
 
 .rail-btn {
@@ -272,20 +327,21 @@ body {
 }
 
 /* 左侧栏卡片 */
-/* 主区域卡片描边（2026-09-30 临时 UI 调优）：间隔收紧后分界偏淡，描边增强区域辨识；
-   颜色走主题变量，深浅主题自动适配（玻璃模式半透明底上同样成立） */
+/* 主区域卡片：描边降为辅助（--border-color 已调淡），区隔主力 = 画布明度差 + 卡片阴影；
+   圆角归一 --radius-card（12px） */
 .sidebar-card,
 .editor-card,
 .preview-card,
 .page-card,
 .sidebar-rail {
   border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-card);
 }
 
 .sidebar-card {
   width: 272px;
   flex-shrink: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   overflow: hidden;
   background: var(--bg-primary);
 }
@@ -304,21 +360,25 @@ body {
   min-width: 500px;
   display: flex;
   flex-direction: column;
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   overflow: hidden;
   background: var(--bg-primary);
 }
 
-/* 滚动条 */
+/* 滚动条：overlay 化（FR-2.9.13 P0）——细条平时隐形，指针进入所在滚动区时浮现
+   （:hover 沿祖先链命中最内层滚动容器，其余区域的滚动条不受影响）；拖动中保持可见 */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color);
+  background: transparent;
   border-radius: 4px;
 }
-::-webkit-scrollbar-thumb:hover {
+*:hover::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-tertiary) 55%, transparent);
+}
+*:hover::-webkit-scrollbar-thumb:hover {
   background: var(--text-tertiary);
 }
 ::-webkit-scrollbar-track {
@@ -344,8 +404,9 @@ body {
 .sidebar-logo {
   width: 26px;
   height: 26px;
-  border-radius: 7px;
-  background: linear-gradient(135deg, var(--accent), #7a5cd0);
+  border-radius: var(--radius-ctl);
+  /* 扁平色块字标（FR-2.9.13 P0）：去 135° 蓝紫渐变 */
+  background: var(--accent);
   color: #fff;
   display: flex;
   align-items: center;
@@ -370,6 +431,17 @@ body {
   padding: 4px 8px;
 }
 
+/* 分组标签（FR-2.9.13 P2 侧栏分组标签化）：小号弱化组标题，纯视觉分组——
+   各区块标题行仍是入口，点击行为不变 */
+.grp-label {
+  padding: 12px 16px 4px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+  user-select: none;
+}
+
 /* 侧栏分组分隔线：快捷入口区（常用/收藏/标签/断链引用/回收站）与笔记库区之间 */
 .side-divider {
   height: 1px;
@@ -381,12 +453,13 @@ body {
 .side-section-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  border-radius: 6px;
+  gap: 7px;
+  min-height: 30px;
+  padding: 4px 8px;
+  border-radius: var(--radius-ctl);
   cursor: pointer;
-  color: var(--text-secondary);
-  font-weight: 600;
+  color: var(--text-primary);
+  font-weight: 500;
   font-size: 13px;
 }
 
@@ -396,11 +469,11 @@ body {
 
 .side-section-header.active {
   background: var(--bg-active);
-  color: var(--text-primary);
+  color: var(--accent);
 }
 
 .side-section-header .el-icon {
-  transition: transform 0.2s ease;
+  transition: transform var(--motion-base) var(--motion-ease);
 }
 
 .side-section-header.collapsed .chevron {
@@ -416,7 +489,9 @@ body {
   height: 18px;
   border-radius: 4px;
   color: var(--text-tertiary);
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
 }
 
 .chevron-hit:hover {
@@ -428,6 +503,11 @@ body {
 .side-section-header > .el-icon:not(.chevron) {
   width: 18px;
   justify-content: center;
+  color: var(--text-secondary);
+}
+
+.side-section-header.active > .el-icon:not(.chevron) {
+  color: var(--accent);
 }
 
 /* 区块标题右侧数量角标（常用 / 收藏列表移入主区域后在此显示数量） */
@@ -436,7 +516,7 @@ body {
   font-size: 11px;
   color: var(--text-tertiary);
   background: var(--bg-tertiary);
-  border-radius: 8px;
+  border-radius: 999px;
   padding: 0 6px;
   min-width: 18px;
   text-align: center;
@@ -510,23 +590,23 @@ body {
 
 .tag-menu-btn {
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity var(--motion-fast) var(--motion-ease);
 }
 
 .tag-row:hover .tag-menu-btn {
   opacity: 1;
 }
 
-/* 全局悬浮提示：圆角与阴影贴合应用卡片风格（6px 圆角 + 柔和投影） */
+/* 全局悬浮提示：圆角与阴影贴合应用卡片风格（柔和投影） */
 .el-popper.is-dark,
 .el-popper.is-light {
-  border-radius: 6px;
+  border-radius: var(--radius-ctl);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
 }
 
 .side-row .chevron,
 .tree-row .chevron {
-  transition: transform 0.2s ease;
+  transition: transform var(--motion-base) var(--motion-ease);
   color: var(--text-tertiary);
 }
 
@@ -697,7 +777,7 @@ body {
   font-size: 11px;
   color: var(--text-tertiary);
   background: var(--bg-tertiary);
-  border-radius: 8px;
+  border-radius: 999px;
   padding: 1px 8px;
 }
 
@@ -714,14 +794,21 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  color: var(--text-tertiary);
+  gap: 14px;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
+/* 空状态统一（FR-2.9.13 P2）：图标坐进弱化色圆底，文案升一档形成层级 */
 .grid-empty-icon {
-  font-size: 36px;
-  opacity: 0.5;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  font-size: 24px;
 }
 
 /* ========== 欢迎页 ========== */
@@ -739,7 +826,8 @@ body {
   width: 72px;
   height: 72px;
   border-radius: 20px;
-  background: linear-gradient(135deg, var(--accent), #7a5cd0);
+  /* 同侧栏 logo：扁平色块字标 */
+  background: var(--accent);
   color: #fff;
   display: flex;
   align-items: center;
@@ -800,7 +888,7 @@ body {
   font-size: 12px;
   text-decoration: none;
   border: 1px solid var(--accent-soft);
-  border-radius: 10px;
+  border-radius: 999px;
   padding: 1px 8px;
   flex-shrink: 0;
 }
@@ -950,7 +1038,7 @@ body {
   z-index: 6;
   pointer-events: none;
   opacity: 0.85;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--motion-base) var(--motion-ease);
 }
 
 .zen-status-wrap.peeking {
@@ -1091,7 +1179,7 @@ body {
   width: 4px;
   border-radius: 2px;
   background: transparent;
-  transition: background 0.15s;
+  transition: background var(--motion-fast) var(--motion-ease);
 }
 
 .split-divider:hover::after,
@@ -1099,10 +1187,11 @@ body {
   background: var(--border-color);
 }
 
+/* 底色不在此声明：与 .markdown-body 是同一元素（MarkdownPreview 根），纸面 --content-bg
+   由 markdown.css 侧给出，避免同特异性双声明靠导入顺序取胜 */
 .preview-pane {
   height: 100%;
   overflow-y: auto;
-  background: var(--bg-primary);
 }
 
 .external-banner {
@@ -1137,7 +1226,7 @@ body {
 .settings-block {
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: var(--radius-card);
   padding: 18px 22px;
   margin-bottom: 16px;
   max-width: 720px;
@@ -1240,7 +1329,7 @@ body {
   flex-shrink: 0;
   display: inline-flex;
   color: var(--text-tertiary);
-  transition: transform 0.15s;
+  transition: transform var(--motion-fast) var(--motion-ease);
 }
 
 .tree-row .chevron.open {

@@ -80,7 +80,7 @@
  * 焦点常驻过滤输入框）；Esc 归 el-dialog 内建（hasModalOpen 让位链自动生效）。
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Document, Search } from '@element-plus/icons-vue'
+import { Search, FileText as Document } from 'lucide-vue-next'
 import type { TreeNode } from '@shared/types'
 import { SCRATCH_VAULT } from '@shared/types'
 import { noteDisplayName } from '@shared/validate'
@@ -432,7 +432,7 @@ function onRowClick(item: RowItem, i: number): void {
   height: 320px;
   overflow-y: auto;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   padding: 4px 0;
   background: var(--bg-secondary);
 }

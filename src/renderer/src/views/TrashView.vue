@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Trash2 as Delete, Folder, FileText as Document } from 'lucide-vue-next'
 import { useTrashStore } from '../stores/trash'
 import { useTreeStore } from '../stores/tree'
 import { useAppStore } from '../stores/app'
@@ -142,7 +143,7 @@ async function empty(): Promise<void> {
   padding: 12px 14px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   transition:
     border-color 0.18s ease,
     box-shadow 0.18s ease;

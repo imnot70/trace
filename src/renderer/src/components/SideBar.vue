@@ -1,7 +1,24 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Sort, WarningFilled } from '@element-plus/icons-vue'
+import {
+  Search,
+  Clock,
+  SquarePen as EditPen,
+  Star,
+  Share2 as Share,
+  ChevronDown as ArrowDown,
+  Plus,
+  ArrowUpDown as Sort,
+  Ellipsis as MoreFilled,
+  CircleAlert as WarningFilled,
+  Trash2 as Delete,
+  ChevronRight as ArrowRight,
+  Folder,
+  GitBranch as Connection,
+  Settings as Setting,
+  PanelLeftClose as Fold
+} from 'lucide-vue-next'
 import { useAppStore } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import { useDraftStore } from '../stores/draft'
@@ -327,6 +344,9 @@ defineProps<{ vaults?: VaultInfo[] }>()
     </div>
 
     <div class="sidebar-scroll">
+      <!-- 分组标签（FR-2.9.13 P2）：小号弱化组标题，纯视觉分组——下方各区块标题行仍是入口、
+           点击行为与原有区块标题完全一致。条件与分隔线同口径（上方全部隐藏时不显示） -->
+      <div v-if="hasQuickSections" class="grp-label">快捷入口</div>
       <!-- 常用：点击标题在主区域打开卡片网格（可在设置 → 通用 → 侧栏菜单中隐藏） -->
       <div class="side-section" v-if="app.settings.sidebarMenus.recents">
         <div

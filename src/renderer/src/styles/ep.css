@@ -1,0 +1,56 @@
+/* ==========================================================
+   Element Plus 适配层（FR-2.9.13 P1）
+   EP 出厂形态 → 应用设计语言。变量层在 themes.css（--el-* 映射），
+   本文件只做组件级精修。约束：不写业务选择器；不碰交互语义
+   （menu-hold / tooltip 禁令等见 AGENTS.md）。
+   ========================================================== */
+
+/* ---------- 按钮 ---------- */
+/* 按下微缩（自 C 琉摘选，Fluent 手感） */
+.el-button:active {
+  transform: scale(0.98);
+}
+/* 次要按钮描边比卡片 hairline 强一档（可点性可见），跟随输入框描边 */
+.el-button {
+  --el-button-border-color: var(--el-input-border-color);
+}
+
+/* ---------- 弹窗 / 消息框 ---------- */
+.el-dialog {
+  --el-dialog-border-radius: var(--radius-pop);
+}
+.el-message-box {
+  border-radius: var(--radius-pop);
+}
+
+/* ---------- 下拉菜单 / 选择器浮层（圆角条目 + 内边距，现代菜单形态） ---------- */
+.el-dropdown-menu {
+  padding: 5px;
+}
+.el-dropdown-menu__item,
+.el-select-dropdown__item {
+  border-radius: var(--radius-ctl);
+}
+
+/* ---------- message 全局提示（胶囊化） / notification 通知 ---------- */
+.el-message {
+  border-radius: 999px;
+}
+.el-notification {
+  border-radius: var(--radius-card);
+}
+
+/* ---------- 深色浮层边界（2026-10-10 用户反馈，自 main.css 迁入适配层） ----------
+   深色下弹层与近黑背景明度接近，仅靠阴影分不出边界：补 hairline 提亮描边 + 更深投影 */
+html.dark .settings-dialog,
+html.dark .el-dialog,
+html.dark .el-message-box {
+  border-color: rgba(255, 255, 255, 0.13);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 24px 64px rgba(0, 0, 0, 0.55);
+}
+html.dark .el-popper.is-light {
+  border-color: rgba(255, 255, 255, 0.13);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}

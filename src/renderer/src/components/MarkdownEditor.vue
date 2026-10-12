@@ -683,19 +683,24 @@ function resolveRelDir(noteDir: string, rel: string): string {
 }
 
 const traceTheme = EditorView.theme({
+  // 内容面 = 纸（FR-2.9.14 P3）：底色 / 墨色消费纸面变量，与预览 .markdown-body 同批换装
   '&': {
-    backgroundColor: 'var(--bg-primary)',
-    color: 'var(--text-primary)',
+    backgroundColor: 'var(--content-bg)',
+    color: 'var(--doc-ink)',
     height: '100%',
     fontSize: `${props.fontSize}px`
   },
   '.cm-scroller': {
-    fontFamily: "'JetBrains Mono', 'Fira Code', 'Sarasa Mono SC', Consolas, monospace",
-    lineHeight: '1.7',
+    // 内容字体与正文栈同步（设计 §3）：所见即所得与预览字形一致（原先等宽栈与预览两张皮）；
+    // 代码由 .lp-inline-code / 高亮令牌另行落等宽栈
+    fontFamily: 'var(--font-ui)',
+    lineHeight: '1.85',
     padding: '12px 0 40vh'
   },
   '.cm-gutters': {
-    backgroundColor: 'var(--bg-primary)',
+    // 透明：透出内容纸面（心流换纸色时既有规则已将其透明，日常态同口径），
+    // 玻璃模式下也随卡片半透明透材质
+    backgroundColor: 'transparent',
     color: 'var(--text-tertiary)',
     border: 'none'
   },

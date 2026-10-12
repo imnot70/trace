@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { X as Close, User, Plus } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app'
 import { useGitStore } from '../stores/git'
 import { resetGitAvailabilityCache } from '../stores/git'
@@ -745,8 +746,8 @@ async function resetGitSource(): Promise<void> {
                 @click="app.updateSettings({ themePreset: 'default' })"
               >
                 <div class="preset-swatches">
-                  <span class="swatch" style="background: #ffffff; border: 1px solid #e4e7ec" />
-                  <span class="swatch" style="background: #4078d3" />
+                  <span class="swatch" style="background: #ffffff; border: 1px solid rgba(28, 25, 18, 0.14)" />
+                  <span class="swatch" style="background: #4f5bd5" />
                   <span class="swatch" style="background: #d34850" />
                 </div>
                 <span class="preset-name">Trace</span>
@@ -795,6 +796,14 @@ async function resetGitSource(): Promise<void> {
             </div>
           </div>
           <div class="setting-row">
+            <span class="setting-label">衬线标题</span>
+            <el-switch
+              :model-value="app.settings.serifHeadings"
+              @update:model-value="(v: string | number | boolean) => app.updateSettings({ serifHeadings: Boolean(v) })"
+            />
+            <span class="settings-desc" style="margin: 0">文档 h1–h3 使用衬线字体（LXGW 文楷）</span>
+          </div>
+          <div class="setting-row">
             <span class="setting-label">窗口效果</span>
             <el-select
               :model-value="app.settings.windowGlassEffect"
@@ -813,7 +822,7 @@ async function resetGitSource(): Promise<void> {
             <span class="setting-label">窗口不透明度</span>
             <el-slider
               :model-value="app.settings.windowOpacity"
-              :min="50"
+              :min="75"
               :max="100"
               :step="5"
               style="flex: 1; margin-right: 16px"
@@ -824,7 +833,7 @@ async function resetGitSource(): Promise<void> {
             </span>
           </div>
           <p class="settings-desc" style="margin: 0 0 0 102px">
-            最低 50%，保证界面可读
+            最低 75%，保证界面可读
           </p>
         </div>
           </template>
@@ -1620,7 +1629,7 @@ async function resetGitSource(): Promise<void> {
   display: inline-block;
   margin-left: 8px;
   padding: 1px 8px;
-  border-radius: 10px;
+  border-radius: 999px;
   font-size: 12px;
   background: var(--bg-tertiary, var(--bg-secondary));
   color: var(--text-secondary);
@@ -1678,7 +1687,7 @@ async function resetGitSource(): Promise<void> {
   flex-direction: column;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.25);
   overflow: hidden;
 }
@@ -1746,7 +1755,7 @@ async function resetGitSource(): Promise<void> {
   text-align: left;
   padding: 7px 12px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-ctl);
   background: transparent;
   color: var(--text-secondary);
   font-size: 13px;

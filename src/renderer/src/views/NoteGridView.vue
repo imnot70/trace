@@ -1,6 +1,20 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  ChevronLeft as ArrowLeft,
+  Library as Collection,
+  Folder,
+  Clock,
+  Star,
+  SquarePen as EditPen,
+  Share2 as Share,
+  LayoutGrid as Grid,
+  List,
+  X as Close,
+  Ellipsis as MoreFilled,
+  FileText as Document
+} from 'lucide-vue-next'
 import { useAppStore, type GridSection } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
 import { useNoteActions } from '../composables/actions'
@@ -1011,7 +1025,7 @@ watch(section, () => {
   padding: 12px 14px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   cursor: pointer;
   transition:
     transform 0.18s ease,
@@ -1218,7 +1232,7 @@ watch(section, () => {
   right: 20px;
   bottom: 20px;
   width: min(45vw, 720px);
-  border-radius: 10px;
+  border-radius: var(--radius-card);
   background: var(--bg-primary);
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.18),

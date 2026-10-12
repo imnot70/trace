@@ -4,7 +4,7 @@
 
 - 跨平台：Windows / macOS / Linux（Ubuntu、Debian 系为主）
 - 数据完全本地：笔记就是 `.md` 文件，没有私有格式，随时可以用其他编辑器打开
-- 开源协议：MIT ｜ 当前版本：[v0.20.0](CHANGELOG.md)
+- 开源协议：MIT ｜ 当前版本：[v0.21.0](CHANGELOG.md)
 - 完整功能列表：[FEATURES.md](FEATURES.md)（按功能域分表）
 
 ![技术栈](https://img.shields.io/badge/Electron-44-47848f) ![Vue](https://img.shields.io/badge/Vue-3-42b883) ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6)
@@ -89,6 +89,8 @@
 
 浅色 / 深色 / 跟随系统三种模式，设置页一键切换；另有暖色 / 冷色 / 高对比度预设主题包，设置页「外观」区一键套用。也支持从 JSON 文件导入自定义主题（含浅/深两套配色），在 设置 → 外观 → 配色 中导入或删除。
 
+编辑器与预览为暖纸底色的「纸感内容面」（正文墨色、衬线标题 h1–h3、横线式表格排版），标题默认使用 LXGW 文楷，可在 设置 → 外观 → 衬线标题 关闭；纸面底色与正文墨色可经主题包 `--content-bg` / `--doc-ink` 变量覆盖。
+
 ### 插件（实验性）
 
 设置 → 插件中开启。插件为带 `manifest.json` 清单的目录，应用首次运行会自带一个示例插件作为开发模板（见[插件开发](#插件开发)）。插件运行在独立进程中、按声明的权限工作（读写笔记 / 事件 / 命令），支持 `.trace-plugin` 导入导出与应用内市场安装（含版本对比与下载校验）。开发指引见[插件开发](#插件开发)。
@@ -101,9 +103,9 @@
 
 | 平台 | 文件 | 安装方式 |
 | --- | --- | --- |
-| Ubuntu / Debian | `linux-v0.20.0-x64.deb` | `sudo dpkg -i linux-v*.deb` 或 `sudo apt install ./linux-v*.deb` |
-| 其他 Linux | `linux-v0.20.0-x64.AppImage` | `chmod +x linux-v*.AppImage && ./linux-v*.AppImage`（需 FUSE，或 `--appimage-extract` 后运行） |
-| Windows | `win-v0.20.0-x64.exe` | 双击安装，可选择安装目录 |
+| Ubuntu / Debian | `linux-v0.21.0-x64.deb` | `sudo dpkg -i linux-v*.deb` 或 `sudo apt install ./linux-v*.deb` |
+| 其他 Linux | `linux-v0.21.0-x64.AppImage` | `chmod +x linux-v*.AppImage && ./linux-v*.AppImage`（需 FUSE，或 `--appimage-extract` 后运行） |
+| Windows | `win-v0.21.0-x64.exe` | 双击安装，可选择安装目录 |
 | macOS | 暂不提供安装包 | 请自行从源码构建（见下方说明） |
 
 > macOS 需要自行构建：安装 Node.js ≥ 20 与 git 后，执行下面的「从源码构建」，在 macOS 机器上运行 `npm run dist` 即可得到 `Trace-x.y.z.dmg`（首次构建前建议先执行 `xcode-select --install` 安装命令行工具）。
@@ -129,7 +131,7 @@ npm run dist         # 按当前平台打包安装程序
 npm run dist:deb     # 只打 Ubuntu/Debian deb 包
 ```
 
-产物输出在 `dist/` 目录，命名规范为「平台-v版本-架构.扩展名」（如 `linux-v0.20.0-x64.deb`、`win-v0.20.0-x64.exe`）。
+产物输出在 `dist/` 目录，命名规范为「平台-v版本-架构.扩展名」（如 `linux-v0.21.0-x64.deb`、`win-v0.21.0-x64.exe`）。
 
 > Windows / macOS 安装包需在对应平台上执行 `npm run dist`。macOS 没有预构建安装包，Mac 用户请通过本节自行构建 DMG。
 

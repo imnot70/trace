@@ -102,7 +102,7 @@ onBeforeUnmount(() => {
   padding: 4px;
   background: var(--el-bg-color-overlay, var(--bg-primary));
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.14), 0 1px 4px rgba(0, 0, 0, 0.08);
   user-select: none;
 }
