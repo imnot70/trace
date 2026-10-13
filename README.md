@@ -4,7 +4,7 @@
 
 - 跨平台：Windows / macOS / Linux（Ubuntu、Debian 系为主）
 - 数据完全本地：笔记就是 `.md` 文件，没有私有格式，随时可以用其他编辑器打开
-- 开源协议：MIT ｜ 当前版本：[v0.21.0](CHANGELOG.md)
+- 开源协议：MIT ｜ 当前版本：[v0.22.0](CHANGELOG.md)
 - 完整功能列表：[FEATURES.md](FEATURES.md)（按功能域分表）
 
 ![技术栈](https://img.shields.io/badge/Electron-44-47848f) ![Vue](https://img.shields.io/badge/Vue-3-42b883) ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6)
@@ -77,6 +77,7 @@
 - **排序**：侧栏标签区与打标签弹窗可按默认 / 笔记数 / 最近使用排序（两处同一记忆）。
 - 笔记 `⋮` 菜单「标签…」勾选打标 / 取消（侧栏树与网格卡片均支持）；弹窗内支持搜索过滤，没有的标签**直接在弹窗里新建**（自动配色并勾选）。
 - 所见即所得模式下，frontmatter 折叠行中的标签显示为**彩色胶囊**：悬浮点 × 移除、点「＋ 标签」呼出打标签弹窗。
+- **正文 `#标签`**：正文里写 `#标签名` 即被识别（计入计数 / 筛选 / 搜索），预览单击、所见即所得 Ctrl+单击跳筛选；标签改名 / 合并 / 删除时正文同步改写。
 - 标签随笔记 frontmatter（YAML `tags` 键）存储——移动 / 重命名 / 外部编辑天然跟随，Obsidian 等工具可识别；预览不渲染 frontmatter。
 
 ### 分享为 Gist
@@ -103,9 +104,9 @@
 
 | 平台 | 文件 | 安装方式 |
 | --- | --- | --- |
-| Ubuntu / Debian | `linux-v0.21.0-x64.deb` | `sudo dpkg -i linux-v*.deb` 或 `sudo apt install ./linux-v*.deb` |
-| 其他 Linux | `linux-v0.21.0-x64.AppImage` | `chmod +x linux-v*.AppImage && ./linux-v*.AppImage`（需 FUSE，或 `--appimage-extract` 后运行） |
-| Windows | `win-v0.21.0-x64.exe` | 双击安装，可选择安装目录 |
+| Ubuntu / Debian | `linux-v0.22.0-x64.deb` | `sudo dpkg -i linux-v*.deb` 或 `sudo apt install ./linux-v*.deb` |
+| 其他 Linux | `linux-v0.22.0-x64.AppImage` | `chmod +x linux-v*.AppImage && ./linux-v*.AppImage`（需 FUSE，或 `--appimage-extract` 后运行） |
+| Windows | `win-v0.22.0-x64.exe` | 双击安装，可选择安装目录 |
 | macOS | 暂不提供安装包 | 请自行从源码构建（见下方说明） |
 
 > macOS 需要自行构建：安装 Node.js ≥ 20 与 git 后，执行下面的「从源码构建」，在 macOS 机器上运行 `npm run dist` 即可得到 `Trace-x.y.z.dmg`（首次构建前建议先执行 `xcode-select --install` 安装命令行工具）。
@@ -131,7 +132,7 @@ npm run dist         # 按当前平台打包安装程序
 npm run dist:deb     # 只打 Ubuntu/Debian deb 包
 ```
 
-产物输出在 `dist/` 目录，命名规范为「平台-v版本-架构.扩展名」（如 `linux-v0.21.0-x64.deb`、`win-v0.21.0-x64.exe`）。
+产物输出在 `dist/` 目录，命名规范为「平台-v版本-架构.扩展名」（如 `linux-v0.22.0-x64.deb`、`win-v0.22.0-x64.exe`）。
 
 > Windows / macOS 安装包需在对应平台上执行 `npm run dist`。macOS 没有预构建安装包，Mac 用户请通过本节自行构建 DMG。
 
