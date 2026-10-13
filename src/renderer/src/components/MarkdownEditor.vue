@@ -47,6 +47,7 @@ import {
 import { useTreeStore } from '../stores/tree'
 import { useEditorStore } from '../stores/editor'
 import { livePreview } from '../lib/livePreview'
+import { jumpToTagFilter } from '../lib/tagFilter'
 import { smartVerticalMove } from '../lib/livePreview/smartMove'
 import { typewriter, type TypewriterMode } from '../lib/typewriter'
 import { buildVimExtension, getVimCM, readVimMode, VIM_INPUT_EVENT } from '../lib/vimMode'
@@ -1222,6 +1223,8 @@ function buildLivePreview() {
     openNote: (target) => emit('open-note', target),
     previewNote: (target) => emit('preview-note', target),
     openExternal: (url: string) => window.open(url, '_blank', 'noopener,noreferrer'),
+    // 正文内联 #标签 Ctrl+Click 跳筛选（FR-2.6.18）：共用按名跳转（定义缺失自动注册）
+    filterByTag: (name: string) => void jumpToTagFilter(name),
     // frontmatter 标签胶囊的配色快照（FR-2.6.17）：小写名 → 定义色；未登记标签无色回退
     tagColors: Object.fromEntries(tree.tags.map((t) => [t.name.toLowerCase(), t.color]))
   })

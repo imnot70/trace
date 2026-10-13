@@ -153,6 +153,23 @@
   white-space: nowrap;
 }
 
+/* 正文内联 #标签（FR-2.6.18，只读识别）：胶囊视觉与 frontmatter 胶囊条同语言；
+ * --tag-c 由预览管道按标签定义色注入（rewriteInlineTagColors），未登记标签回退中性色 */
+.markdown-body .md-inline-tag {
+  display: inline-block;
+  padding: 0 7px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--tag-c, var(--text-tertiary)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tag-c, var(--text-tertiary)) 30%, transparent);
+  color: var(--text-primary);
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.markdown-body .md-inline-tag:hover {
+  border-color: var(--tag-c, var(--accent));
+}
+
 .markdown-body img {
   max-width: 100%;
   border-radius: 6px;

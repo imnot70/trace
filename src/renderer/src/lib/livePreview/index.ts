@@ -101,6 +101,9 @@ const clickHandler = EditorView.domEventHandlers({
     if (target.kind === 'wikilink') {
       if (altPreview) void openWikilinkByName(cfg.vault, target.name, cfg.previewNote)
       else void openWikilinkByName(cfg.vault, target.name, cfg.openNote)
+    } else if (target.kind === 'tag') {
+      // 正文 #标签（FR-2.6.18）：Ctrl/Cmd+Click 跳筛选（Alt 预览不适用——标签无预览语义）
+      cfg.filterByTag(target.name)
     } else if (/^https?:/i.test(target.url)) {
       cfg.openExternal(target.url)
     } else if (/\.md$/i.test(target.url.split('#')[0])) {
@@ -266,6 +269,14 @@ const lpTheme = EditorView.theme({
   '.lp-frontmatter-add:hover': {
     color: 'var(--accent)',
     borderColor: 'var(--accent)'
+  },
+  // 正文 #标签（FR-2.6.18）：mark 装饰只加样式不改结构；--tag-c 由装饰按定义色注入，
+  // 未登记标签回退中性——与预览 .md-inline-tag 同视觉语言
+  '.lp-inline-tag': {
+    borderRadius: '6px',
+    padding: '0 2px',
+    background: 'color-mix(in srgb, var(--tag-c, var(--text-tertiary)) 14%, transparent)',
+    color: 'var(--tag-c, var(--text-secondary))'
   }
 })
 

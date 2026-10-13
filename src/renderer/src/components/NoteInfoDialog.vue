@@ -2,8 +2,8 @@
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Copy as CopyDocument } from 'lucide-vue-next'
-import { useAppStore } from '../stores/app'
 import { useTreeStore } from '../stores/tree'
+import { jumpToTagFilter } from '../lib/tagFilter'
 import type { GitStatus, NoteInfo, TagItem } from '@shared/types'
 
 /**
@@ -22,7 +22,6 @@ const emit = defineEmits<{
   (e: 'update:visible', v: boolean): void
 }>()
 
-const app = useAppStore()
 const tree = useTreeStore()
 
 const info = ref<NoteInfo | null>(null)
@@ -62,16 +61,9 @@ watch(
   { immediate: true } // 侧栏树按需挂载，挂载时 visible 已为 true（与 TagPickerDialog 同因）
 )
 
-/** 标签胶囊点击 → 标签筛选（与 SideBar.toggleGrid('tags') 同逻辑，FR-2.6.13 多标签组合） */
-function filterByTag(tagId: string): void {
-  if (app.view.name === 'grid' && app.view.section === 'tags') {
-    const next = app.view.tagIds?.includes(tagId)
-      ? (app.view.tagIds ?? []).filter((id) => id !== tagId)
-      : [...(app.view.tagIds ?? []), tagId]
-    app.view = next.length ? { name: 'grid', section: 'tags', tagIds: next } : { name: 'welcome' }
-  } else {
-    app.view = { name: 'grid', section: 'tags', tagIds: [tagId] }
-  }
+/** 标签胶囊点击 → 标签筛选（共用跳转 lib/tagFilter，FR-2.6.18 起与正文内联标签同函数） */
+function filterByTag(tag: TagItem): void {
+  void jumpToTagFilter(tag.name)
   emit('update:visible', false)
 }
 
@@ -158,7 +150,7 @@ function capsuleStyle(color: string): Record<string, string> {
               class="tag-capsule"
               :style="capsuleStyle(t.color)"
               :title="`按标签「${t.name}」筛选`"
-              @click="filterByTag(t.id)"
+              @click="filterByTag(t)"
             >{{ t.name }}</button>
           </template>
           <span v-else-if="info" class="info-empty">—</span>

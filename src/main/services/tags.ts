@@ -1,16 +1,20 @@
 import crypto from 'node:crypto'
 import { JsonStore } from '../lib/jsonStore'
+import { logger } from '../lib/logger'
 import type { TagItem, TagStatInfo, NoteTagEntry, TreeNode } from '@shared/types'
-import { getFrontmatterTags, setFrontmatterTags } from '@shared/noteTags'
+import { getFrontmatterTags, getNoteTags, rewriteBodyTag, setFrontmatterTags } from '@shared/noteTags'
 import { pickTagColor } from '@shared/tagPalette'
 import type { FsTreeService } from './fsTree'
 
 /**
- * 标签系统（frontmatter 方案）：
+ * 标签系统（frontmatter 方案 + 正文只读识别 FR-2.6.18）：
  * - 笔记 ↔ 标签关联存储在笔记 YAML frontmatter 的 `tags` 键（共享层 noteTags.ts 读写），
  *   随文件移动 / 重命名 / 外部编辑天然跟随；
+ * - 正文 `#标签` 只读识别（D1 拍板：正文是用，frontmatter 是管）——聚合口径为二者并集
+ *   （getNoteTags），正文标签在统计扫描时自动注册定义（侧栏可见可管理）；
  * - 标签定义（名称 → 颜色）仍存应用元数据 tags.json（配色是应用级呈现，不进笔记）；
- * - 重命名 / 删除标签定义时会扫描全库改写受影响笔记的 frontmatter。
+ * - 重命名 / 删除 / 合并标签定义时扫描全库改写受影响笔记的 frontmatter **与正文**
+ *   （正文不扫写会让旧名在下一次聚合时以僵尸形态自动注册回来，D4）。
  */
 
 /** 标签组合筛选口径：all = 同时含全部标签（AND），any = 含任一标签（OR） */
@@ -113,21 +117,21 @@ export class TagsService {
     )
   }
 
-  /** 某标签下的全部笔记（全库扫描 frontmatter） */
+  /** 某标签下的全部笔记（全库扫描，frontmatter ∪ 正文并集口径） */
   async notesByTag(tagId: string): Promise<NoteRef[]> {
     const tag = this.store.get().tags.find((t) => t.id === tagId)
     if (!tag) return []
     const lower = tag.name.toLowerCase()
     const result: NoteRef[] = []
     for await (const { vault, path, content } of this.walkNotes()) {
-      if (getFrontmatterTags(content).some((n) => n.toLowerCase() === lower)) {
+      if (getNoteTags(content).some((n) => n.toLowerCase() === lower)) {
         result.push({ vault, path })
       }
     }
     return result
   }
 
-  /** 多标签组合筛选（FR-2.6.13）：match=all 取交集（同时含全部标签），any 取并集（含任一） */
+  /** 多标签组合筛选（FR-2.6.13）：match=all 取交集（同时含全部标签），any 取并集（含任一）——并集口径见 FR-2.6.18 */
   async notesByTags(tagIds: string[], match: TagMatchMode): Promise<NoteRef[]> {
     const lowers = tagIds
       .map((id) => this.store.get().tags.find((t) => t.id === id)?.name.toLowerCase())
@@ -135,7 +139,7 @@ export class TagsService {
     if (lowers.length === 0) return []
     const result: NoteRef[] = []
     for await (const { vault, path, content } of this.walkNotes()) {
-      const names = getFrontmatterTags(content).map((n) => n.toLowerCase())
+      const names = getNoteTags(content).map((n) => n.toLowerCase())
       const hits = lowers.filter((l) => names.includes(l)).length
       const ok = match === 'all' ? hits === lowers.length : hits > 0
       if (ok) result.push({ vault, path })
@@ -144,33 +148,40 @@ export class TagsService {
   }
 
   /**
-   * 标签使用统计（FR-2.6.15 / FR-2.6.16）：全库扫描一次，按标签名（大小写不敏感）聚合
-   * 笔记数与最近使用时间（笔记 mtime 的最大值）。未登记定义的 frontmatter 标签同样计入
-   * （与筛选口径一致：它们在网格中可见）；名称取首次出现的原始写法。
+   * 标签使用统计（FR-2.6.15 / FR-2.6.16 / FR-2.6.18 并集口径）：全库扫描一次，按标签名
+   * （大小写不敏感）聚合笔记数与最近使用时间（笔记 mtime 的最大值）。每篇笔记的标签 =
+   * frontmatter tags ∪ 正文 #标签（篇内去重）。未登记定义的标签同样计入并在扫描后
+   * **自动注册定义**（正文标签经此在侧栏可见可管理；名称取首次出现的原始写法）。
    */
   async tagStats(): Promise<TagStatInfo[]> {
-    const agg = new Map<string, TagStatInfo>()
+    const agg = new Map<string, { info: TagStatInfo; fromBody: boolean }>()
     for await (const { vault, path, content } of this.walkNotes()) {
       const mtime = this.fsTree.noteMtime(vault, path)
-      for (const raw of getFrontmatterTags(content)) {
+      const fmLowers = new Set(getFrontmatterTags(content).map((n) => n.toLowerCase()))
+      for (const raw of getNoteTags(content)) {
         const key = raw.toLowerCase()
         const cur = agg.get(key)
-        if (!cur) agg.set(key, { name: raw, count: 1, lastUsed: mtime })
+        if (!cur) agg.set(key, { info: { name: raw, count: 1, lastUsed: mtime }, fromBody: !fmLowers.has(key) })
         else {
-          cur.count++
-          if (mtime > cur.lastUsed) {
-            cur.lastUsed = mtime
-            cur.name = raw
+          cur.info.count++
+          if (mtime > cur.info.lastUsed) {
+            cur.info.lastUsed = mtime
+            cur.info.name = raw
           }
         }
       }
     }
-    return [...agg.values()]
+    // 正文来源的未登记标签自动注册定义（frontmatter 来源维持既有 noteTags() 读取时注册的口径不变）
+    for (const { info, fromBody } of agg.values()) {
+      if (fromBody && !this.findByName(info.name)) this.ensureDefinition(info.name)
+    }
+    return [...agg.values()].map((v) => v.info)
   }
 
   /**
    * 标签合并（FR-2.6.15）：source 的全部笔记并入 target——逐篇把 frontmatter 里的
-   * source 名（大小写不敏感）移除，没有 target 名时补上；随后删除 source 定义。
+   * source 名（大小写不敏感）移除、没有 target 名时补上，**正文 #源名 改写为 #目标名**
+   * （FR-2.6.18 并集口径，防旧名自动注册复活）；随后删除 source 定义。
    * 与删除 / 重命名同一写回管线（hash 防覆盖，YAML 解析失败的保护在 writeNoteTags 内）。
    */
   async mergeTags(sourceId: string, targetId: string): Promise<{ ok: boolean; notes?: number; error?: string }> {
@@ -186,12 +197,21 @@ export class TagsService {
     let notes = 0
     for await (const { vault, path, content } of this.walkNotes()) {
       const names = getFrontmatterTags(content)
-      if (!names.some((n) => n.toLowerCase() === srcLower)) continue
-      const removed = names.filter((n) => n.toLowerCase() !== srcLower)
-      // 已含 target（任意大小写写法）则只移除 source；否则补上定义的规范写法
-      const next = removed.some((n) => n.toLowerCase() === dstLower) ? removed : [...removed, target.name]
-      const write = await this.writeNoteTags(vault, path, () => next)
-      if (write.ok) notes++
+      const bodyUpdated = rewriteBodyTag(content, srcLower, target.name)
+      const hasFm = names.some((n) => n.toLowerCase() === srcLower)
+      if (!hasFm && bodyUpdated === content) continue
+      // 先改正文再改 frontmatter（后者只动头部、保留 body，二者不冲突）；YAML 解析失败时
+      // setFrontmatterTags 返回 null——放弃 frontmatter 改写保护原文，正文改写照常生效
+      let updated = bodyUpdated
+      if (hasFm) {
+        const removed = names.filter((n) => n.toLowerCase() !== srcLower)
+        // 已含 target（任意大小写写法）则只移除 source；否则补上定义的规范写法
+        const next = removed.some((n) => n.toLowerCase() === dstLower) ? removed : [...removed, target.name]
+        const fmUpdated = setFrontmatterTags(bodyUpdated, next)
+        if (fmUpdated !== null) updated = fmUpdated
+      }
+      const read = this.fsTree.readNote(vault, path)
+      if (read.ok && updated !== content && this.fsTree.writeNote(vault, path, updated, read.hash).ok) notes++
     }
     this.store.update((d) => {
       d.tags = d.tags.filter((t) => t.id !== sourceId)
@@ -260,23 +280,37 @@ export class TagsService {
     return write.ok ? { ok: true } : { ok: false, error: write.error ?? '写入失败' }
   }
 
+  /**
+   * 全库改写：frontmatter 里的 oldName 移除 / 换为 newName，**正文 #oldName 同步改写**
+   * （FR-2.6.18 D4：不扫写正文会让旧名在下一次聚合时自动注册回来）。
+   * 正文与 frontmatter 改写同一趟完成；YAML 解析失败时仅生效正文改写（头部原文保护）。
+   */
   private async rewriteNotes(oldName: string, newName: string | null): Promise<void> {
     const lower = oldName.toLowerCase()
     for await (const { vault, path, content } of this.walkNotes()) {
-      if (!getFrontmatterTags(content).some((n) => n.toLowerCase() === lower)) continue
-      const updated = setFrontmatterTags(
-        content,
-        getFrontmatterTags(content)
-          .filter((n) => n.toLowerCase() !== lower)
-          .concat(newName ? [newName] : [])
-      )
-      if (updated === null || updated === content) continue
+      const fmTags = getFrontmatterTags(content)
+      const hasFm = fmTags.some((n) => n.toLowerCase() === lower)
+      const bodyUpdated = rewriteBodyTag(content, lower, newName)
+      if (!hasFm && bodyUpdated === content) continue
+      let updated = bodyUpdated
+      if (hasFm) {
+        const fmUpdated = setFrontmatterTags(
+          bodyUpdated,
+          fmTags
+            .filter((n) => n.toLowerCase() !== lower)
+            .concat(newName ? [newName] : [])
+        )
+        if (fmUpdated !== null) updated = fmUpdated
+      }
+      if (updated === content) continue
       const read = this.fsTree.readNote(vault, path)
       if (read.ok) this.fsTree.writeNote(vault, path, updated, read.hash)
     }
   }
 
   /** 遍历全部笔记库的所有笔记 */
+  /** 遍历全部笔记库的所有笔记；单个库目录不可读（外部库被移除 / U 盘拔出等）只跳过该库，
+   *  不让整个标签聚合 / 筛选 / 改写挂掉（2026-10-12 冒烟实测：陈旧注册项 ENOENT 曾把 tagStats 清零） */
   private collectNoteRefs(): NoteRef[] {
     const result: NoteRef[] = []
     const walk = (vault: string, list: TreeNode[]): void => {
@@ -285,7 +319,13 @@ export class TagsService {
         else if (node.children) walk(vault, node.children)
       }
     }
-    for (const vault of this.listVaultNames()) walk(vault, this.fsTree.listTree(vault))
+    for (const vault of this.listVaultNames()) {
+      try {
+        walk(vault, this.fsTree.listTree(vault))
+      } catch (e) {
+        logger.warn(`标签扫描跳过不可读的笔记库：${vault}`, e)
+      }
+    }
     return result
   }
 

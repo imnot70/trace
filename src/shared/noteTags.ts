@@ -57,6 +57,133 @@ export function stripFrontmatter(content: string): string {
   return match ? content.slice(match[0].length) : content
 }
 
+// ---------- 正文内联 #标签（FR-2.6.18，只读识别） ----------
+
+/**
+ * 正文标签识别正则（单一定义源，识别 / 索引 / 重写 / 渲染四处共用）：
+ * `#` 后 1–64 个 Unicode 字母 / 数字 / 下划线 / 连字符；前一字符不得为
+ * 字母数字下划线（C#5、abc#d）、#（##标题、连续标签）、&（&#123; 实体）、
+ * /（URL 片段 x.com/#a、路径 a/b#c）；名称后不得紧跟同类字符（后向边界——
+ * 否则 65 字符串会在 64 处截断出一个假标签）。行首 `# ` 是 ATX 标题（井号后
+ * 有空格）天然不匹配；`#标题`（无空格）按标签识别——与 CommonMark 标题定义一致。
+ */
+export const BODY_TAG_RE = /(?<![\p{L}\p{N}_#&/-])#([\p{L}\p{N}_-]{1,64})(?![\p{L}\p{N}_-])/gu
+
+/** 识别候选归一：截除尾部 -/_ 后为空则无效（如 `#标签-，` 截为「标签」） */
+function normalizeBodyTagCandidate(raw: string): string | null {
+  const name = raw.replace(/[-_]+$/, '')
+  return name || null
+}
+
+/**
+ * 逐行扫描正文（frontmatter 已剥除）：跳过围栏代码块（``` / ~~~ 状态机），
+ * 行内码 `…` 掩码后再识别——回调收到的行文本已做行内码掩码。
+ */
+function scanTaggableLines(body: string, visit: (line: string) => void): void {
+  const lines = body.split(/\r?\n/)
+  let fenceMark: string | null = null
+  for (const line of lines) {
+    if (fenceMark) {
+      if (new RegExp(`^\\s*${fenceMark}`).test(line)) fenceMark = null
+      continue
+    }
+    const open = /^\s*(`{3,}|~{3,})/.exec(line)
+    if (open) {
+      fenceMark = open[1]
+      continue
+    }
+    visit(line)
+  }
+}
+
+/** 读取正文中的内联 #标签（唯一识别口径；篇内大小写不敏感去重，保留首现写法） */
+export function getBodyTags(content: string): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+  scanTaggableLines(stripFrontmatter(content), (line) => {
+    if (!line.includes('#')) return
+    const cleaned = line.replace(/`[^`\n]*`/g, ' ')
+    for (const m of cleaned.matchAll(BODY_TAG_RE)) {
+      const name = normalizeBodyTagCandidate(m[1])
+      if (!name) continue
+      const key = name.toLowerCase()
+      if (!seen.has(key)) {
+        seen.add(key)
+        out.push(name)
+      }
+    }
+  })
+  return out
+}
+
+/** 笔记标签并集口径（FR-2.6.18）：frontmatter tags ∪ 正文 #标签，篇内大小写不敏感去重（frontmatter 写法优先） */
+export function getNoteTags(content: string): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const tag of getFrontmatterTags(content)) {
+    const key = tag.toLowerCase()
+    if (!seen.has(key)) {
+      seen.add(key)
+      out.push(tag)
+    }
+  }
+  for (const tag of getBodyTags(content)) {
+    const key = tag.toLowerCase()
+    if (!seen.has(key)) {
+      seen.add(key)
+      out.push(tag)
+    }
+  }
+  return out
+}
+
+/**
+ * 全库改名 / 合并 / 删除时的正文扫写（FR-2.6.18 闭环正确性，D4）：
+ * 把正文里识别为 fromLower（大小写不敏感）的 #标签 改写为 #to；to 为 null 时整体移除。
+ * frontmatter 区、围栏代码块、行内码一律不触碰（行内码区间单独计算避开，掩码不落盘）。
+ * 无匹配时返回原文（调用方以引用相等判断跳过写入）。
+ */
+export function rewriteBodyTag(content: string, fromLower: string, to: string | null): string {
+  const fmMatch = FRONTMATTER_RE.exec(content)
+  const head = fmMatch ? fmMatch[0] : ''
+  const body = fmMatch ? content.slice(fmMatch[0].length) : content
+  const segments = body.split(/(\r?\n)/)
+  let fenceMark: string | null = null
+  let changed = false
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]
+    if (/^\r?\n$/.test(seg)) continue
+    if (fenceMark) {
+      if (new RegExp(`^\\s*${fenceMark}`).test(seg)) fenceMark = null
+      continue
+    }
+    const open = /^\s*(`{3,}|~{3,})/.exec(seg)
+    if (open) {
+      fenceMark = open[1]
+      continue
+    }
+    if (!seg.includes('#')) continue
+    // 行内码区间先记录，命中区间内的匹配跳过（原文改写，掩码只用于识别路径）
+    const codeSpans: [number, number][] = []
+    for (const cm of seg.matchAll(/`[^`\n]*`/g)) codeSpans.push([cm.index, cm.index + cm[0].length])
+    const inCode = (pos: number): boolean => codeSpans.some(([s, e]) => pos >= s && pos < e)
+    let result = ''
+    let last = 0
+    for (const m of seg.matchAll(BODY_TAG_RE)) {
+      const start = m.index
+      if (inCode(start)) continue
+      const name = normalizeBodyTagCandidate(m[1])
+      if (!name || name.toLowerCase() !== fromLower) continue
+      result += seg.slice(last, start)
+      if (to !== null) result += `#${to}`
+      last = start + m[0].length
+      changed = true
+    }
+    if (last > 0) segments[i] = result + seg.slice(last)
+  }
+  return changed ? head + segments.join('') : content
+}
+
 /**
  * 写入笔记 frontmatter 的 tags。
  * 返回新的完整笔记内容；已有 frontmatter 的 YAML 非法时返回 null（调用方放弃写入）。

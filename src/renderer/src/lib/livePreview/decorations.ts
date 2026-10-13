@@ -7,7 +7,7 @@ import { Decoration, EditorView, type DecorationSet } from '@codemirror/view'
 import { EditorState, Facet, StateField, type Range, type Text } from '@codemirror/state'
 import { syntaxTree } from '@codemirror/language'
 import type { SyntaxNode } from '@lezer/common'
-import { getFrontmatterTags } from '@shared/noteTags'
+import { BODY_TAG_RE, getFrontmatterTags } from '@shared/noteTags'
 import { resolveAssetUrl } from '../markdown'
 import { matchTaskMarker, type TaskMarkerMatch } from '../invisibleChars'
 import {
@@ -35,6 +35,8 @@ export interface LivePreviewConfig {
   previewNote(target: { vault: string; path: string; name: string }): void
   /** Ctrl+Click 打开外部链接 */
   openExternal(url: string): void
+  /** Ctrl+Click 正文 #标签跳筛选（FR-2.6.18，渲染端按名跳转 lib/tagFilter） */
+  filterByTag(name: string): void
   /** 标签颜色快照（FR-2.6.17 frontmatter 胶囊）：小写标签名 → 颜色；由 MarkdownEditor 从
    *  标签定义构建，定义变化经 Compartment 重配进入此处（改色后胶囊随之刷新） */
   tagColors?: Record<string, string>
@@ -48,6 +50,7 @@ export const livePreviewFacet = Facet.define<LivePreviewConfig, LivePreviewConfi
 export type ClickTarget =
   | { from: number; to: number; kind: 'wikilink'; name: string }
   | { from: number; to: number; kind: 'link'; url: string }
+  | { from: number; to: number; kind: 'tag'; name: string }
 
 export interface SimpleRange {
   from: number
@@ -543,6 +546,36 @@ export function computeInlineDecorations(
         }
       }
     }
+  }
+
+  // ---- 正文 #标签（FR-2.6.18，只读识别）：mark 装饰（不改 DOM 结构，组词安全——设计 D6）
+  //      + Ctrl+Click 目标。排除 frontmatter / 代码 / 公式 / 双链区间，口径与索引层
+  //      getBodyTags 一致（正则单一定义源 shared/noteTags.BODY_TAG_RE）
+  const bodyTagRe = new RegExp(BODY_TAG_RE.source, 'gu') // 每次调用独立 lastIndex
+  const inlineTags: (SimpleRange & { name: string })[] = []
+  for (const vis of ranges) {
+    for (let n = doc.lineAt(vis.from).number; n <= doc.lineAt(vis.to).number; n++) {
+      const line = doc.line(n)
+      if (line.to < vis.from || line.from > vis.to) continue
+      if (fmRange && line.from >= fmRange.from && line.to <= fmRange.to) continue
+      let m: RegExpExecArray | null
+      bodyTagRe.lastIndex = 0
+      while ((m = bodyTagRe.exec(line.text))) {
+        const from = line.from + m.index
+        const to = from + m[0].length
+        if (overlaps(codeRanges, from, to) || overlaps(mathRanges, from, to) || overlaps(wikilinks, from, to)) continue
+        const name = m[1].replace(/[-_]+$/, '')
+        if (!name) continue
+        inlineTags.push({ from, to, name })
+      }
+    }
+  }
+  for (const t of inlineTags) {
+    const color = cfg.tagColors?.[t.name.toLowerCase()]
+    decorations.push(
+      deco.mark({ class: 'lp-inline-tag', attributes: color ? { style: `--tag-c:${color}` } : undefined }).range(t.from, t.to)
+    )
+    targets.push({ from: t.from, to: t.to, kind: 'tag', name: t.name })
   }
 
   // ---- 双链 Widget（压过树上被误解析出的 Link 节点） ----

@@ -5,7 +5,7 @@ import MarkdownIt from 'markdown-it'
 import DOMPurify from 'dompurify'
 import texmath from 'markdown-it-texmath'
 import katex from 'katex'
-import { getFrontmatterTags } from '@shared/noteTags'
+import { BODY_TAG_RE, getFrontmatterTags } from '@shared/noteTags'
 import { matchTaskMarker } from './invisibleChars'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -159,6 +159,48 @@ md.renderer.rules.fence = (tokens, idx) => {
   return highlighted.replace('<pre', `<pre${lineAttr}`) + '\n'
 }
 
+// 正文内联 #标签（FR-2.6.18，只读识别）：渲染为胶囊 span，点击跳筛选由预览组件委托。
+// 走 core 规则而非 inline.ruler——`#` 不是 markdown-it text 规则的终止符，text 会把
+// `#标签` 连同前后文字吞进一个 text token，仿 wikilink 的 inline 规则收不到（`[[` 能
+// 工作是因为 `[` 是终止符）。只处理 text 型 children：code_inline / fence / html_* 是
+// 独立 token 类型天然排除；识别正则单一定义源 shared/noteTags.BODY_TAG_RE（前缀排除
+// C#5 / ##标题 / 实体 / URL 片段等）。相邻 text child（如转义 `\#` 产物）要带上前一字符
+// 提供 lookbehind 上下文，避免「abc\#tag」把 #tag 误识别为标签。
+md.core.ruler.push('trace_inline_tags', (state) => {
+  for (const blockToken of state.tokens) {
+    if (blockToken.type !== 'inline' || !blockToken.children) continue
+    const children = blockToken.children
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i]
+      if (child.type !== 'text' || !child.content.includes('#')) continue
+      const prev = i > 0 && children[i - 1].type === 'text' ? children[i - 1].content.slice(-1) : ''
+      const parts: { kind: 'text' | 'tag'; text: string }[] = []
+      let last = 0
+      for (const m of (prev + child.content).matchAll(BODY_TAG_RE)) {
+        const start = m.index - prev.length // 还原到 child.content 的下标
+        if (start < 0 || start > child.content.length) continue
+        const name = m[1].replace(/[-_]+$/, '')
+        if (!name) continue
+        if (start > last) parts.push({ kind: 'text', text: child.content.slice(last, start) })
+        parts.push({ kind: 'tag', text: name })
+        last = start + m[0].length - prev.length
+      }
+      if (parts.length === 0) continue
+      if (last < child.content.length) parts.push({ kind: 'text', text: child.content.slice(last) })
+      const replacement = parts.map((p) => {
+        const t = new state.Token(p.kind === 'tag' ? 'html_inline' : 'text', '', 0)
+        t.content =
+          p.kind === 'tag'
+            ? `<span class="md-inline-tag" data-tag="${escapeHtml(p.text)}">#${escapeHtml(p.text)}</span>`
+            : p.text
+        return t
+      })
+      children.splice(i, 1, ...replacement)
+      i += replacement.length - 1
+    }
+  }
+})
+
 // GFM 任务列表：列表项首行 [x] / [ ] 渲染为只读复选框（span 实现——不用 <input>，
 // 与 DOMPurify 禁用清单冲突；笔记是文件，复选框点击不回写，仅展示勾选态）。
 // 识别经 matchTaskMarker 容忍不可见字符变体（FR-2.4.24：NBSP 污染的任务行
@@ -271,6 +313,19 @@ export function frontmatterCapsuleHtml(content: string, colorOf: (name: string) 
     })
     .join('')
   return `<div class="md-frontmatter-tags" data-source-line="0"><span class="md-fm-badge">frontmatter</span>${pills}</div>`
+}
+
+/**
+ * 正文内联标签的着色（FR-2.6.18）：core 规则产出的胶囊只带 data-tag 名称，颜色在这里
+ * 由调用方（持标签定义快照）补注 `--tag-c` 变量——与 frontmatterCapsuleHtml 同为
+ * **净化后的可信替换**（名称已转义、色值来自定义表再转义）。未登记标签不加变量，
+ * CSS 回退中性色。改色即时刷新由调用方 computed 依赖标签快照天然获得。
+ */
+export function rewriteInlineTagColors(html: string, colorOf: (name: string) => string | undefined): string {
+  return html.replace(/<span class="md-inline-tag" data-tag="([^"]*)">/g, (full, name: string) => {
+    const color = colorOf(name)
+    return color ? `<span class="md-inline-tag" data-tag="${name}" style="--tag-c:${escapeHtml(color)}">` : full
+  })
 }
 
 /** 相对路径图片/资源引用改写为 trace-vault:// 协议地址（协议链接、绝对路径、锚点返回 null） */
