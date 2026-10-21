@@ -94,3 +94,20 @@ v0.21.0 UI 现代化改造后的已知残差（index 二节登记）：**玻璃�
 候选①上真机后用户确认：三键区已从「跟随系统的亮白块」变为跟随应用主题的深色带（色差方向问题解决），但**玻璃下三键区与标题条仍有拼接分界**——三键区是 DWM 实色绘制、无法透材质（系统层硬约束，Electron 无控制入口，候选②不可行），而标题条挖洞透出材质。用户拍板走**候选③（视觉收口）**：Windows 玻璃下标题条不再挖洞，`html.platform-win.glass-on .app-shell` 在标题条高度内铺实色 `--bg-secondary`（与三键区 overlay 色 / 非玻璃画布完全同值），标题条以下维持 55% 叠色透材质——整条观感统一（Win11 原生应用形态：记事本 / 资源管理器的标题栏即整条实色），材质感由内容区承担。非 Windows 玻璃（macOS vibrancy / Linux 合成器）无系统三键区，保持挖洞透材质不变。已知残差：DWM 自绘深色与 `--bg-secondary` 若存在肉眼可辨的色温差（系统侧定色，应用无法读取），需真机确认后再定是否微调条色。
 
 **真机验证：2026-10-21 用户确认通过（「观感好不少」）**——深浅主题下标题条整条（含三键区）观感统一无拼接分界，玻璃开关与显式深浅切换即时生效；DWM 自绘深色与 `--bg-secondary` 未辨出可辨色温差，无需微调条色。玻璃标题栏问题线收口。
+
+## 8. 竞品参考：语雀桌面端标题栏方案（2026-10-21 勘察，自绘路线的完整样本）
+
+> 勘察方法：反解用户本机安装的语雀 4.2.2（`resources/app.asar`，构建信息显示 Electron 30.5.1 / 蚂蚁集团），比 2022 年的公开文章更贴近现状。价值：这是「frameless + 全自绘标题栏」在成熟中文生产力应用里的完整落地样本，若将来重开「三键透材质 / caption 完全融入玻璃」的需求（WCO 路线的天花板，见 §7），本文是实现路径的现成地图。
+
+### 8.1 他们的实现（asar 反解实锤）
+
+- **窗口形态**：全部窗口 `titleBarStyle: 'hiddenInset'`（Windows 上等价 `hidden`），**整个包无任何 `titleBarOverlay`**——Windows 即完全 frameless，系统三键不存在；偏好设置右上角的最小化 / 最大化 / 关闭是**渲染层自绘 HTML 按钮**。
+- **按钮行为**：IPC 事件 `CURRENT_WINDOW.MINIMIZE` / `TOGGLE_MAXIMIZE` → 主进程 `win.minimize()` / `toggleMaximize()`；拖拽区靠 `-webkit-app-region`，类名 `__lark_drag_element__`（内部基建沿用 lark/飞书系命名）；macOS 用 `trafficLightPosition: {x:6, y:6}` 摆原生红绿灯。登录窗 `frame: isWin`（Windows 反而留框）。
+- **深浅主题窗口层**（对应其「暗黑 / 浅色 / 跟随系统」下拉，`main/init/color-theme.js`）：
+  1. `nativeTheme.themeSource = 用户主题` ——与本设计候选①完全同款；
+  2. 每窗口 `getNativeWindowHandle()` 取 hwnd，调 npm 包 **`electron-windows-titlebar`** 的 `switchDarkMode(hwnd)` / `switchLightMode(hwnd)`——按窗口改 Win32 immersive dark mode 属性（DWMWA_USE_IMMERSIVE_DARK_MODE），保证边框等系统绘制位跟随主题。
+- **公开资料**：《[语雀桌面端技术架构实践](https://developer.aliyun.com/article/1030667)》（阿里云 2022-09，架构总览）、[CSDN 转载可读版](https://blog.csdn.net/qq_32198115/article/details/126974352)、[electron-windows-titlebar（npm）](https://github.com/electron-modules/electron-windows-titlebar)。标题栏细节文章未展开，以 asar 反解为准。
+
+### 8.2 为什么语雀没有「玻璃三键」问题，以及 Trace 的取舍
+
+自绘方案下 DWM 根本不参与画 caption——按钮是 HTML 层，颜色随意、透材质随意，本设计 §7 的所有 DWM 硬约束对它不存在。代价是原生行为全要自补：hover / 按压态、Win11 贴靠布局面板（拖到最大化按钮弹出）、双击标题栏最大化、可访问性；且自绘按钮永远「长得像」而非「就是」系统按钮。**Trace 选 WCO 正是为保留这些原生行为**（§2 决策），玻璃 caption 的限制是这一决策的内生代价，已由候选①+③收口到当前系统条件下的最优形态。结论：路线不变；自绘是将来「caption 完全融入材质」的唯一路径，属于「整窗视觉 vs 原生行为」的根本取舍，非 bug 修复范畴——若立项按本文 §8.1 地图评估工时（拖拽 / 双击 / 贴靠替代 / 多窗口 DPI 适配 / 可达性，预估为人周级专项）。
