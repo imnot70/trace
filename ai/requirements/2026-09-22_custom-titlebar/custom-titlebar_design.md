@@ -111,3 +111,17 @@ v0.21.0 UI 现代化改造后的已知残差（index 二节登记）：**玻璃�
 ### 8.2 为什么语雀没有「玻璃三键」问题，以及 Trace 的取舍
 
 自绘方案下 DWM 根本不参与画 caption——按钮是 HTML 层，颜色随意、透材质随意，本设计 §7 的所有 DWM 硬约束对它不存在。代价是原生行为全要自补：hover / 按压态、Win11 贴靠布局面板（拖到最大化按钮弹出）、双击标题栏最大化、可访问性；且自绘按钮永远「长得像」而非「就是」系统按钮。**Trace 选 WCO 正是为保留这些原生行为**（§2 决策），玻璃 caption 的限制是这一决策的内生代价，已由候选①+③收口到当前系统条件下的最优形态。结论：路线不变；自绘是将来「caption 完全融入材质」的唯一路径，属于「整窗视觉 vs 原生行为」的根本取舍，非 bug 修复范畴——若立项按本文 §8.1 地图评估工时（拖拽 / 双击 / 贴靠替代 / 多窗口 DPI 适配 / 可达性，预估为人周级专项）。
+
+### 8.3 平台矩阵：自绘路线在 macOS / Linux 的真实成本（2026-10-21 补充，防踩坑）
+
+若将来立项自绘，按平台拆开看成本差异极大，**不能把 Windows 的结论外推到全平台**：
+
+- **macOS——无自绘必要，近乎零成本**：`titleBarStyle: 'hidden'` 下系统**仍然绘制原生红绿灯**（Electron 官方文档明确），业界做法（VS Code / 语雀）都是保留原生灯 + `hiddenInset` 内缩 + `trafficLightPosition` 摆位，**没有人在 mac 上自绘按钮**。自绘反而更糟：红绿灯的焦点态（激活彩色 / 失焦灰）、全屏自动隐藏、系统偏好的双击行为全要自己模拟且达不到原生质感。实际要处理的只有小事：全屏进出时 HTML 布局给悬浮红绿灯让位、「双击标题栏缩放」系统偏好与拖拽区的配合实测、坚持 `hiddenInset` 路线不碰 `transparent`（保住系统圆角与阴影）。成熟度高，风险低。
+- **Linux——自绘的主战场，坑集中地**：
+  1. **WCO 官方其实也支持 Linux**（Electron 文档明确 `titleBarOverlay` 为 Windows + Linux）——Linux 上三键甚至可以不自绘，但实现走 GTK CSD，观感跟随 GTK 主题，社区有 `symbolColor` 不生效、不同 DE 表现不一的反馈，成熟度不如 Windows；
+  2. **拖拽与边缘 resize 是硬坑**：`-webkit-app-region: drag` 在 X11 可用；**原生 Wayland** 下 frameless 的拖拽 / 边缘 resize 是 Electron 长期坑区——多数 Electron 应用默认跑 XWayland（Electron 默认 X11 后端）掩盖了问题，Ubuntu 24.04+ 默认 Wayland 的趋势下会逐渐暴露；
+  3. **失去服务端装饰（SSD）**：窗口阴影没了、圆角要 CSS 模拟——Trace 在 Linux 已踩过合成器直角轮廓残留（AGENTS 已知局限），frameless 会放大这类合成器怪癖；
+  4. **DE 偏好无法跟随**：GNOME / KDE 用户可把标题栏按钮放左边、换图标主题、自定义双击动作，自绘按钮永远是固定形态；
+  5. **测试矩阵爆炸**：GNOME / KDE × X11 / Wayland × HiDPI 缩放，组合数远超另两平台。
+- **Yuque 样本的局限**：语雀官方只有 Windows / macOS 包，没有 Linux 版——其自绘方案在 Linux 上从未被验证，**不能当作 Linux 可行性的证据**。
+- **若立项的合理形态：平台分级**——只有 Windows 存在「自绘 vs WCO」的决策点（动机 = 三键透材质）；mac 永远保留原生灯（近乎白送）；Linux 先试 WCO 或维持现状原生标题栏。自绘的真实成本集中在 Windows 单平台 + Linux 验证面。符合既有纪律（[tech_electron-platform 教训 2](../../tech/tech_electron-platform.md)：平台分支是回归重灾区，平台改动必须带硬性回归清单）。
