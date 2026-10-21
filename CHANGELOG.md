@@ -6,7 +6,7 @@
 
 ### 修复
 
-- **玻璃（Mica / Acrylic）下 WCO 三键区独立色块**（v0.21.0 残差，index 二节登记项收口，分支 `fix/glass-caption-theme-source`）：根因确认为全仓未同步 `nativeTheme.themeSource`——`backgroundMaterial` 开启时 DWM 忽略 overlay 配色，三键区深浅观感由 immersive dark mode 属性决定并跟随**系统**主题，应用深色 + 系统浅色时呈亮白色块（反差最大）。修复 = `windowEffect.syncNativeThemeSource` 把主题源与应用主题对齐（`createWindow` 初始化 + `settings:set` 主题分支；随 `nativeTheme 'updated'` 触发既有 overlay 重设），仅 Windows 生效，渲染端 `prefers-color-scheme` 消费口径不变（显式浅/深时与 App 主题一致属预期）。单测 +3（显式深/浅/系统/缺省写入与非 Windows 不触碰）；三键区观感待真机验证（DWM 绘制层 CDP 不可截取：深浅 × 系统主题四象限 + 玻璃开关）。实施记录见 [custom-titlebar 设计 §7](ai/requirements/2026-09-22_custom-titlebar/custom-titlebar_design.md)。
+- **玻璃（Mica / Acrylic）下 WCO 三键区独立色块**（v0.21.0 残差，index 二节登记项收口，分支 `fix/glass-caption-theme-source`，候选①+③两步）：**根因**＝全仓未同步 `nativeTheme.themeSource`——`backgroundMaterial` 开启时 DWM 忽略 overlay 配色，三键区深浅观感由 immersive dark mode 属性决定并跟随**系统**主题，应用深色 + 系统浅色时呈亮白色块。**候选①**＝`windowEffect.syncNativeThemeSource` 把主题源与应用主题对齐（`createWindow` 初始化 + `settings:set` 主题分支；随 `nativeTheme 'updated'` 触发既有 overlay 重设），仅 Windows 生效，渲染端 `prefers-color-scheme` 消费口径不变（显式浅/深时与 App 主题一致属预期），真机确认三键区不再出现系统浅色亮块。**候选③（用户拍板收口）**＝三键区是 DWM 实色绘制、无法透材质（系统层硬约束），标题条继续挖洞必然与之拼接出分界——Windows 玻璃下标题条不再挖洞，`html.platform-win.glass-on .app-shell` 标题条高度内铺实色 `--bg-secondary`（与三键区 overlay 色 / 非玻璃画布同值），整条观感统一（Win11 原生应用形态），材质感由内容区承担；非 Windows 玻璃保持挖洞透材质。单测 +3（主题源写入与非 Windows 不触碰）；真机验证口径：深浅 App × 系统主题四象限标题条整条无色块、玻璃开关与显式深浅切换即时生效。实施记录见 [custom-titlebar 设计 §7](ai/requirements/2026-09-22_custom-titlebar/custom-titlebar_design.md)。
 
 ## [0.22.1] - 2026-10-21
 

@@ -88,3 +88,7 @@ v0.21.0 UI 现代化改造后的已知残差（index 二节登记）：**玻璃�
 **修法（候选①，一行级）**：`windowEffect.syncNativeThemeSource(settings)` 把 `nativeTheme.themeSource` 与应用主题（`settings.theme`，`'light' | 'dark' | 'system'` 同构直赋）对齐——系统侧 caption 绘制随之跟随应用主题；调用点 = `createWindow` 初始化 + `settings:set` 主题分支（`applyOverlayTheme` 之前，随后的 `nativeTheme 'updated'` 触发 overlay 重设，候选①要求的「重设 overlay」由既有监听天然覆盖）。**仅 Windows 生效**（WCO 平台；macOS vibrancy 自按显式主题选型、Linux 无此绘制层）；渲染端 `prefers-color-scheme` 仅 `theme='system'` 时消费（`stores/app.ts`），`themeSource='system'` 行为不变，显式浅/深时与 App 主题一致属预期。
 
 **验证**：单测 +3（win32 显式深/浅/系统/缺省写入与非 Windows 不触碰），全仓回归；三键区观感须真机确认（DWM 绘制层，CDP 无法截取）——深色 App × 浅色系统、浅色 App × 深色系统、跟随系统、玻璃开关切换四象限。
+
+### 7.1 候选③落地：Windows 玻璃下标题条整条实色（2026-10-21 同日）
+
+候选①上真机后用户确认：三键区已从「跟随系统的亮白块」变为跟随应用主题的深色带（色差方向问题解决），但**玻璃下三键区与标题条仍有拼接分界**——三键区是 DWM 实色绘制、无法透材质（系统层硬约束，Electron 无控制入口，候选②不可行），而标题条挖洞透出材质。用户拍板走**候选③（视觉收口）**：Windows 玻璃下标题条不再挖洞，`html.platform-win.glass-on .app-shell` 在标题条高度内铺实色 `--bg-secondary`（与三键区 overlay 色 / 非玻璃画布完全同值），标题条以下维持 55% 叠色透材质——整条观感统一（Win11 原生应用形态：记事本 / 资源管理器的标题栏即整条实色），材质感由内容区承担。非 Windows 玻璃（macOS vibrancy / Linux 合成器）无系统三键区，保持挖洞透材质不变。已知残差：DWM 自绘深色与 `--bg-secondary` 若存在肉眼可辨的色温差（系统侧定色，应用无法读取），需真机确认后再定是否微调条色。

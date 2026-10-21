@@ -219,6 +219,21 @@ html.glass-on .app-shell {
   );
 }
 
+/* 候选③（2026-10-21，玻璃三键区色差收口）：Windows 玻璃下标题条整条实色。
+   WCO 三键区由 DWM 实色绘制（overlay 配色被材质忽略、深浅随 themeSource，
+   已由 syncNativeThemeSource 对齐应用主题）——三键区无法透材质，标题条继续
+   挖洞必然与三键区拼接出分界。改为标题条高度内实色 --bg-secondary（与三键区
+   overlay 色同源、非玻璃完全同值），整条观感统一（Win11 原生应用形态），
+   材质感由标题条以下内容区承担。非 Windows 玻璃（macOS vibrancy / Linux 合成器）
+   无系统三键区，保持挖洞透材质不变 */
+html.platform-win.glass-on .app-shell {
+  background: linear-gradient(
+    to bottom,
+    var(--bg-secondary) 0 env(titlebar-area-height, 36px),
+    color-mix(in srgb, var(--bg-secondary) 55%, transparent) env(titlebar-area-height, 36px)
+  );
+}
+
 body {
   font-family: var(--font-ui);
   font-size: 14px;
