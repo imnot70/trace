@@ -44,3 +44,14 @@
 2. **外部库不显示已关联**（菜单仍是「关联 Git 仓库」、无 git 徽标）：主进程识别正常（openExternal 返回 `git.associated`），缺口在渲染端——openAction 成功后只 `loadVaults`，**没把 git 状态写入 `tree.gitStatuses`**（徽标与菜单分流的数据源），新注册的库从未入表恒为未关联态。修复：openAction 补 `tree.refreshGitStatus(result.name)`。
 
 **验证方式（运行中实例不可扰）**：用户 dev 实例（CDP 9222）正在真机验证，不启动第二实例（`TRACE_TEST_USERDATA` 固定路径会共享 userData + 缓存锁冲突 crash，见 [tech_verification 教训 16](../../tech/tech_verification.md)）——对其做**纯只读 CDP 断言**证实两根因（`gitStatuses[note_repo]` MISSING / `.side-row-actions` 计算样式 display:none），修复后 `menuHoldCssExists=true` 佐证 vite HMR 已把 CSS 修复热更进运行中实例。**用户重启复验：两项确认解决（2026-10-09）**。
+
+## 6. 真机反馈修复（2026-10-21）：回收站对外部库 / 被监听目录的两处失效
+
+用户真机冒烟（v0.22.0 后）反馈两类删除报错，排查发现是**两个独立根因**，均属「回收站覆盖外部库」（FR-2.1.4 §1 决策）的实现缺口：
+
+1. **外部库内删除文件 / 文件夹恒报「目标不存在」**：`TrashService.put` 定位源对象按工作区库约定拼 `工作区根/库名/路径`——外部库不在工作区根下，`existsSync` 恒 false。修复 = `TrashService` 增加**库名 → 绝对路径解析器**（构造参可选 + `setVaultResolver` setter 注入，规避 trash → vaults 的构造顺序循环），index.ts 接 `vaults.vaultPath`（与 fsTree 同一分流：外部库返回注册路径，工作区库走 `resolveWithin`）；`put` / `restore` 统一经解析器定位。**还原路径同步修正**：外部库条目此前还原到 `工作区根/库名/…` 会在工作区根下误建同名目录，现在落回外部目录；`kind: 'vault'` 条目只可能来自工作区库（外部库删除=仅解除注册），保持落回工作区根、不经 `vaultPath`（防此后注册同名外部库时被解析走）。
+2. **删除工作区库 / 库内目录报 `EPERM: operation not permitted, rename …`**：**Windows 上 chokidar 5 会锁住被监听目录的 rename**——chokidar 5 对树内每个目录各开一个非递归 `fs.watch` 句柄（`handler.js` 的 `fs_watch(path, {persistent})`，非 recursive），把被监听目录 rename 进**未监听**的 `.trash` 子树即硬失败。本机（Win11 26300 / Node 24）实测矩阵：未监听对照目录 rename 正常；监听中**库内**移动（rename 到被监听目标）5/5 正常；rename 进 `.trash` 子树按 watcher 启动时序不同**确定性失败**（含 500ms 后重试）；`chokidar.unwatch(目录)` + 300ms 等待**无效**；`watcher.close()` 后恢复。修复 = `movePath` 回退条件从仅 `EXDEV` 扩为 `EXDEV / EPERM / EACCES / EBUSY`，统一走「`cpSync` 递归复制 + `rmSync` 删除」——复制只读源、删除逐项进行，不要求对目录本身的独占句柄，实测稳定；`put` 失败路径补清理残留暂存目录（条目未建立不留垃圾）。
+
+**验证**：单测 +2（外部库删除笔记/文件夹进回收站 + 还原回外部目录闭环、mock rename 抛 EPERM 验证复制回退完整搬移），全仓 615 项以 90s 口径回归全绿；另做端到端场景验证（chokidar 以 WatcherService 同配置监听工作区，调用真实 `movePath` 完成「删库入 .trash / 还原出 .trash」两向）三轮全过——该场景修复前 100% 硬失败。**用户真机复验通过（2026-10-21，[待办 #24](../requirements/index.md) 销账）**。当日用户另报一处系统级目录占用观察（资源管理器删除同一残留目录也无权限），与本次应用内修复无关，转 [long-term-watch #6](../long-term-watch.md) 观察。
+
+**教训（已登记 [tech_backend-data-git](../../tech/tech_backend-data-git.md)）**：① Windows 上「rename 进未监听子树失败、rename 到被监听目标正常」与 watcher 启动时序相关，黑盒二分结论不稳定——直接读 watcher 库源码确认句柄结构（每目录一个非递归 fs.watch）再设计缓解，比反复试组合可靠；② 缓解选型实测为准：`unwatch` / 短暂重试均无效，复制+删除才是可依赖的兜底；③ 服务内拼「库名相关路径」必须走统一解析器（`vaultPath`），`path.join(root, vault)` 这类工作区库假设在外部库特性后不再成立。

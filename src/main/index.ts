@@ -269,6 +269,8 @@ app.whenReady().then(() => {
     // 外部笔记库注册表（FR-2.1.4 打开已有笔记库）：名称 → 工作区外目录的映射
     new JsonStore(path.join(userData, 'open-vaults.json'), { vaults: [] })
   )
+  // 回收站定位源对象需感知外部库（FR-2.1.4）：VaultService 构造完成后注入库名 → 绝对路径解析
+  trash.setVaultResolver((name) => vaults.vaultPath(name))
   const vaultMeta = new VaultMetaService(
     new JsonStore(path.join(userData, 'vault-meta.json'), { descs: {} })
   )

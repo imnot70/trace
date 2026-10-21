@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { beforeEach, afterEach, describe, expect, it } from 'vitest'
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 
 /**
  * 服务层集成测试：vaults / fsTree / trash / favorites / recents
@@ -11,7 +11,7 @@ import { JsonStore } from '../src/main/lib/jsonStore'
 import { WorkspaceService } from '../src/main/services/workspace'
 import { VaultService } from '../src/main/services/vaults'
 import { FsTreeService } from '../src/main/services/fsTree'
-import { TrashService } from '../src/main/services/trash'
+import { TrashService, movePath } from '../src/main/services/trash'
 import { FavoritesService, RecentsService } from '../src/main/services/favorites'
 import { TagsService } from '../src/main/services/tags'
 import { VaultMetaService } from '../src/main/services/vaultMeta'
@@ -70,6 +70,8 @@ function buildStack() {
     new JsonStore(path.join(tmp, 'open-vaults.json'), { vaults: [] })
   )
   const fsTree = new FsTreeService((v) => vaults.vaultPath(v), trash)
+  // 与主进程 index.ts 同构：回收站定位源对象感知外部库（FR-2.1.4）
+  trash.setVaultResolver((v) => vaults.vaultPath(v))
   const favorites = new FavoritesService(new JsonStore(path.join(tmp, 'fav.json'), { items: [] }))
   const recents = new RecentsService(new JsonStore(path.join(tmp, 'rec.json'), { items: [] }))
   return { settings, workspace, trash, vaults, fsTree, favorites, recents, setTrashCap: (n: number) => { trashCap = n } }
@@ -620,6 +622,51 @@ describe('回收站', () => {
     fsTree.deleteNode('库', 'b.md', 'note')
     expect(trash.empty().ok).toBe(true)
     expect(trash.list()).toHaveLength(0)
+  })
+
+  it('外部笔记库删除笔记/文件夹：移入工作区回收站，还原回外部目录', () => {
+    const { vaults, fsTree, trash } = buildStack()
+    // 外部库注册在工作区之外（FR-2.1.4），回收站仍在工作区根 .trash/
+    const extDir = path.join(tmp, 'outside', 'cloned-repo')
+    fs.mkdirSync(path.join(extDir, '子'), { recursive: true })
+    fs.writeFileSync(path.join(extDir, 'hello.md'), '# 来自 GitHub 的笔记\n')
+    fs.writeFileSync(path.join(extDir, '子', 'inner.md'), '# 内层\n')
+    expect(vaults.openExternal(extDir)).toMatchObject({ ok: true, name: 'cloned-repo' })
+
+    // 此前源路径误拼工作区根（root/库名/…）→ 恒报「目标不存在」
+    expect(fsTree.deleteNode('cloned-repo', 'hello.md', 'note').ok).toBe(true)
+    expect(fsTree.deleteNode('cloned-repo', '子', 'dir').ok).toBe(true)
+    expect(fs.existsSync(path.join(extDir, 'hello.md'))).toBe(false)
+    expect(fs.existsSync(path.join(extDir, '子'))).toBe(false)
+    expect(trash.list()).toHaveLength(2)
+    expect(trash.list().every((e) => e.vault === 'cloned-repo')).toBe(true)
+
+    // 还原落回外部目录，不得在工作区根下误建同名目录
+    for (const entry of trash.list()) expect(trash.restore(entry.id).ok).toBe(true)
+    expect(fs.readFileSync(path.join(extDir, 'hello.md'), 'utf-8')).toContain('来自 GitHub')
+    expect(fs.existsSync(path.join(extDir, '子', 'inner.md'))).toBe(true)
+    expect(fs.existsSync(path.join(tmp, 'ws', 'cloned-repo'))).toBe(false)
+    expect(trash.list()).toHaveLength(0)
+  })
+
+  it('movePath：rename 被占用（EPERM，Windows 监听句柄锁目录）时回退复制+删除', () => {
+    const from = path.join(tmp, '占用目录')
+    fs.mkdirSync(path.join(from, '内部'), { recursive: true })
+    fs.writeFileSync(path.join(from, '内部', 'n.md'), '# n')
+    const to = path.join(tmp, '移入目标')
+    // 首次 rename 抛 EPERM（模拟目录被 chokidar 监听句柄 / 杀软占用），应回退为复制+删除完整搬移
+    const spy = vi.spyOn(fs, 'renameSync').mockImplementationOnce(() => {
+      const err = new Error("EPERM: operation not permitted, rename 'a' -> 'b'") as NodeJS.ErrnoException
+      err.code = 'EPERM'
+      throw err
+    })
+    try {
+      movePath(from, to)
+    } finally {
+      spy.mockRestore()
+    }
+    expect(fs.readFileSync(path.join(to, '内部', 'n.md'), 'utf-8')).toBe('# n')
+    expect(fs.existsSync(from)).toBe(false)
   })
 })
 

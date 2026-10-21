@@ -3,6 +3,7 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { JsonStore } from '../lib/jsonStore'
 import { noteDisplayName } from '@shared/validate'
+import { resolveWithin } from '../lib/paths'
 import { logger } from '../lib/logger'
 import type { ItemKind, TrashEntry } from '@shared/types'
 
@@ -23,8 +24,25 @@ export class TrashService {
   constructor(
     private getRoot: () => string | null,
     /** 容量上限（条目数）读取器；<= 0 表示不限制 */
-    private getMaxEntries: () => number = () => 0
+    private getMaxEntries: () => number = () => 0,
+    /** 库名 → 绝对路径解析器。外部笔记库（FR-2.1.4）注册在工作区之外，必须由
+     *  index.ts 注入 VaultService.vaultPath 才能正确定位；缺省按工作区库约定
+     *  解析（根目录下同名子目录，单测场景用）。 */
+    private resolveVault?: (name: string) => string
   ) {}
+
+  /** 注入库路径解析器（index.ts 在 VaultService 构造完成后回调，规避构造顺序循环） */
+  setVaultResolver(resolve: (name: string) => string): void {
+    this.resolveVault = resolve
+  }
+
+  /** 库的绝对路径：优先注入的解析器（覆盖外部库），否则按工作区库约定 */
+  private vaultAbs(name: string): string {
+    if (this.resolveVault) return this.resolveVault(name)
+    const root = this.getRoot()
+    if (!root) throw new Error('尚未设置工作区')
+    return resolveWithin(root, name)
+  }
 
   private ensureStore(): JsonStore<TrashIndex> | null {
     const root = this.getRoot()
@@ -55,17 +73,21 @@ export class TrashService {
     const store = this.ensureStore()
     const root = this.getRoot()
     if (!store || !root) return { ok: false, error: '尚未设置工作区' }
+    let itemDir: string | null = null
+    let moved = false // 搬移一旦落成，后续失败绝不可清理暂存目录（源已不在，只能保数据）
     try {
-      const sourceAbs =
-        opts.kind === 'vault' ? path.join(root, opts.vault) : path.join(root, opts.vault, opts.path)
+      // 外部笔记库（FR-2.1.4）不在工作区根下，必须经解析器定位（此前误拼 root/库名 → 「目标不存在」）
+      const vaultAbs = this.vaultAbs(opts.vault)
+      const sourceAbs = opts.kind === 'vault' ? vaultAbs : path.join(vaultAbs, opts.path)
       if (!fs.existsSync(sourceAbs)) return { ok: false, error: '目标不存在' }
       const id = `${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`
       const baseName = opts.kind === 'vault' ? opts.vault : path.basename(opts.path)
       // 回收站列表里笔记显示不带 .md 的名字
       const name = opts.kind === 'note' ? noteDisplayName(baseName) : baseName
-      const itemDir = path.join(root, '.trash', 'items', id)
+      itemDir = path.join(root, '.trash', 'items', id)
       fs.mkdirSync(itemDir, { recursive: true })
       movePath(sourceAbs, path.join(itemDir, baseName))
+      moved = true
       const entry: TrashEntry = {
         id,
         name,
@@ -80,6 +102,11 @@ export class TrashService {
       this.enforceCap()
       return { ok: true }
     } catch (e) {
+      // 条目未建立且搬移未发生时才清暂存目录（复制回退中途失败可能留下部分内容）；
+      // 已搬移的（源已不在）一律保留数据，宁可留下无索引条目也不丢用户文件
+      if (itemDir && !moved) {
+        try { fs.rmSync(itemDir, { recursive: true, force: true }) } catch { /* 清理失败不影响错误上报 */ }
+      }
       return { ok: false, error: e instanceof Error ? e.message : String(e) }
     }
   }
@@ -96,9 +123,12 @@ export class TrashService {
 
       let targetAbs: string
       if (entry.kind === 'vault') {
+        // 库条目只会来自工作区库（外部库删除=仅解除注册，不进回收站），始终还原回工作区根；
+        // 不走 vaultAbs——若此后注册了同名外部库，会被错误解析到外部目录
         targetAbs = path.join(root, entry.name)
       } else {
-        targetAbs = path.join(root, entry.vault, entry.path)
+        // 笔记 / 文件夹经解析器定位：外部库条目还原回外部目录（而非工作区根下误建同名目录）
+        targetAbs = path.join(this.vaultAbs(entry.vault), entry.path)
         fs.mkdirSync(path.dirname(targetAbs), { recursive: true })
       }
       if (fs.existsSync(targetAbs)) {
@@ -205,15 +235,20 @@ export class TrashService {
   }
 }
 
-/** 跨盘移动回退（FR-2.1.4 外部笔记库）：回收站的移入 / 还原走 fs.rename，跨盘（外部库在
- *  另一磁盘）会抛 EXDEV——回退为「复制 + 删除」。目录与文件统一处理 */
+/** 跨盘 / 占用回退（回收站移入 / 还原统一走此函数）：
+ *  1. EXDEV——外部笔记库（FR-2.1.4）在另一磁盘，fs.rename 跨盘必抛，回退「复制 + 删除」；
+ *  2. EPERM / EACCES / EBUSY——Windows 实测（2026-10-21）：工作区监听（chokidar 5 每目录
+ *     一个 fs.watch 句柄）会锁住被监听目录，rename 进未监听的 .trash 子树硬失败，重试与
+ *     chokidar unwatch 均无效（杀软 / 索引器瞬时占用同类）；复制 + 删除只需读源 + 逐项删，
+ *     不要求对目录本身的独占句柄，实测稳定可用。目录与文件统一处理。 */
 export function movePath(from: string, to: string): void {
   try {
     fs.renameSync(from, to)
+    return
   } catch (e) {
     const code = (e as NodeJS.ErrnoException).code
-    if (code !== 'EXDEV') throw e
-    fs.cpSync(from, to, { recursive: true })
-    fs.rmSync(from, { recursive: true, force: true })
+    if (code !== 'EXDEV' && code !== 'EPERM' && code !== 'EACCES' && code !== 'EBUSY') throw e
   }
+  fs.cpSync(from, to, { recursive: true })
+  fs.rmSync(from, { recursive: true, force: true })
 }

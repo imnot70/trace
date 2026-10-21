@@ -17,6 +17,8 @@
 
 6. **索引必须有完整生命周期**：只在启动时构建一次的索引，运行期不更新会把「显示有 bug」逼成面板被隐藏（双链索引首版教训）；watcher 挂起期（git 同步中）丢弃的变更要在 resume 后补偿重建**双链 + 搜索**索引并重发 `fs:changed`；防抖要有 max-wait 兜底（持续写入会无限推迟通知）。
 7. **工作区外的文件（如草稿 scratch）watcher 看不到**：落盘后要手动调增量索引（`search.updateFileIndex`），转正 / 删除时对应 remove。（[draft-notes 设计 §3.5](../requirements/2026-09-26_draft-notes/draft-notes_design.md)）
+7a. **Windows 上 chokidar 会锁住被监听目录的 rename，跨「监听 → 未监听」边界的搬移必须备复制+删除兜底**（2026-10-21 实测）：chokidar 5 对树内**每个目录**各开一个非递归 `fs.watch` 句柄（不是整树一个 recursive 句柄），把被监听目录 rename 进未监听子树（典型：删除进 `.trash`）会硬失败 `EPERM`——确定性复现、500ms 重试无效、`chokidar.unwatch` + 300ms 等待亦无效；而未被监听目录 rename 正常、监听树**内部**移动（rename 到被监听目标）也正常。缓解选型实测为准：`watcher.close()` 可解但代价大，**`cpSync` 递归复制 + `rmSync` 删除**只读源 + 逐项删、不要求独占句柄，是可依赖的兜底（回收站 `movePath` 对 `EXDEV / EPERM / EACCES / EBUSY` 统一回退）。排查手法教训：黑盒二分（监听配置 × 目标位置组合）结论不稳定且易误导——先读 watcher 库源码确认句柄结构（每目录一个 fs_watch），再设计缓解矩阵一次测完。（[open-vault 设计 §6](../requirements/2026-10-09_open-vault/open-vault_design.md)）
+7b. **服务内拼「库名相关路径」必须走统一解析器，不得 `path.join(root, vault)`**：外部笔记库（FR-2.1.4）注册在工作区之外，任何「库名 = 工作区根下同名子目录」的假设都会让外部库场景恒失败（回收站 `TrashService.put/restore` 曾因此对外部库删除恒报「目标不存在」、还原误建同名目录）。库名 → 绝对路径一律走 `VaultService.vaultPath`（外部库返回注册路径，工作区库走 `resolveWithin`）；构造顺序循环用 setter 注入回避（`setVaultResolver`）。（[open-vault 设计 §6](../requirements/2026-10-09_open-vault/open-vault_design.md)）
 8. **双链索引语义**：反向链接限同库、detailKey 按行内序号存取（按行号会让同行多引用互相覆盖）、索引按叶子名归属（路径形式双链不误报断链）；双链只在库内解析——跨库搜索预览后插入引用会产出永远断链的 `[[引用]]`，插入前必须校验目标库与当前库一致（已随 v0.8.8 发布）。（[wiki-link-anchor 设计 §7.2](../requirements/2026-09-12_wiki-link-anchor/wiki-link-anchor_design.md)、[draft-notes 设计 §3.5](../requirements/2026-09-26_draft-notes/draft-notes_design.md)）
 
 ## Git 同步

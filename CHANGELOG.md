@@ -2,6 +2,14 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 修复
+
+- **删除笔记 / 文件夹 / 笔记库两类报错**（2026-10-21 用户真机冒烟反馈，两根因分治）：
+  - **外部笔记库内删除文件 / 文件夹恒报「目标不存在」**（FR-2.1.4 回收站覆盖缺口）：`TrashService.put` 定位源对象时误按工作区库约定拼 `工作区根/库名/路径`——外部库注册在工作区之外，该路径恒不存在。修复 = `TrashService` 注入库名 → 绝对路径解析器（`setVaultResolver`，index.ts 接 `VaultService.vaultPath`，构造顺序循环以 setter 回避），`put` / `restore` 统一经解析器定位；还原同样受益——外部库条目还原回外部目录，不再在工作区根下误建同名目录；`kind: 'vault'` 条目（只会来自工作区库）保持落回工作区根，不受此后注册的同名外部库影响。单测 +1（外部库删除笔记/文件夹进回收站 + 还原回外部目录闭环）。
+  - **删除工作区库 / 库内目录报 `EPERM: operation not permitted, rename …`**（Windows 监听句柄锁目录）：工作区监听（chokidar 5）对树内**每个目录**持一个 `fs.watch` 句柄，把被监听目录 rename 进未监听的 `.trash` 子树会硬失败——本机实测确定性复现（500ms 重试仍失败、`chokidar.unwatch` + 300ms 等待亦无效），而未被监听的对照目录 rename 正常、监听中库内移动（rename 到被监听目标）正常。修复 = `movePath` 在 `EXDEV`（跨盘，FR-2.1.4 既有回退）之外对 `EPERM / EACCES / EBUSY` 同样回退「`cpSync` 递归复制 + `rmSync` 删除」（只需读源 + 逐项删，不要求对目录本身的独占句柄，实测稳定可用）；`put` 失败时清理残留的暂存目录。移入与还原两向均走该回退。单测 +1（mock rename 抛 EPERM 验证回退完整搬移）；两项合计全仓 615 项（gitService 按 90s Windows 口径全绿）；另以「chokidar 监听中调用真实 `movePath` 删除/还原」端到端场景三轮验证全过。教训登记 [open-vault 设计 §6](ai/requirements/2026-10-09_open-vault/open-vault_design.md) 与 [tech_backend-data-git](ai/tech/tech_backend-data-git.md)。
+
 ## [0.22.0] - 2026-10-12
 
 ### 新功能
