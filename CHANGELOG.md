@@ -2,6 +2,12 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 修复
+
+- **玻璃（Mica / Acrylic）下 WCO 三键区独立色块**（v0.21.0 残差，index 二节登记项收口，分支 `fix/glass-caption-theme-source`）：根因确认为全仓未同步 `nativeTheme.themeSource`——`backgroundMaterial` 开启时 DWM 忽略 overlay 配色，三键区深浅观感由 immersive dark mode 属性决定并跟随**系统**主题，应用深色 + 系统浅色时呈亮白色块（反差最大）。修复 = `windowEffect.syncNativeThemeSource` 把主题源与应用主题对齐（`createWindow` 初始化 + `settings:set` 主题分支；随 `nativeTheme 'updated'` 触发既有 overlay 重设），仅 Windows 生效，渲染端 `prefers-color-scheme` 消费口径不变（显式浅/深时与 App 主题一致属预期）。单测 +3（显式深/浅/系统/缺省写入与非 Windows 不触碰）；三键区观感待真机验证（DWM 绘制层 CDP 不可截取：深浅 × 系统主题四象限 + 玻璃开关）。实施记录见 [custom-titlebar 设计 §7](ai/requirements/2026-09-22_custom-titlebar/custom-titlebar_design.md)。
+
 ## [0.22.1] - 2026-10-21
 
 ### 修复
