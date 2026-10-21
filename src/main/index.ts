@@ -39,7 +39,8 @@ import {
   WikilinkService,
   applyWindowGlassEffect,
   applyOverlayTheme,
-  overlayThemeFor
+  overlayThemeFor,
+  syncNativeThemeSource
 } from './services'
 import { registerIpc } from './ipc/registerIpc'
 import type { AppSettings } from '@shared/types'
@@ -92,6 +93,9 @@ if (process.env['TRACE_CDP']) {
 
 function createWindow(): void {
   const settings = settingsService?.get()
+  // 玻璃三键区色差修复（2026-10-21）：caption 区深浅观感在材质开启时跟随主题源而非
+  // overlay 配色，建窗前先与应用主题对齐（详见 windowEffect.syncNativeThemeSource）
+  syncNativeThemeSource(settings)
 
   // 窗口形态（见 ai/requirements/2026-09-22_custom-titlebar/custom-titlebar_design.md）：
   // - macOS / Linux：原生标题栏 + 透明玻璃路径，与 0.6.x 完全一致（平台矩阵约束，零改动）

@@ -6,7 +6,7 @@ import { errMessage } from '../lib/errMessage'
 import { logger } from '../lib/logger'
 import { resolveWithin } from '../lib/paths'
 import { nativeTheme } from 'electron'
-import { readGitVersion, resolveBundledGitPath, applyWindowGlassEffect, applyOverlayTheme, prepareGistContent } from '../services'
+import { readGitVersion, resolveBundledGitPath, applyWindowGlassEffect, applyOverlayTheme, syncNativeThemeSource, prepareGistContent } from '../services'
 import { promoteDraft } from '../services/scratchPromote'
 import { copyNoteAcrossVaults } from '../services/noteCopy'
 import { SCRATCH_VAULT } from '@shared/types'
@@ -580,8 +580,10 @@ export function registerIpc(deps: IpcDeps): void {
       }
     }
 
-    // 主题变化时同步 WCO 标题栏按钮区配色（仅 Windows 生效）
+    // 主题变化时同步 WCO 标题栏按钮区配色（仅 Windows 生效）；
+    // 先同步主题源——玻璃材质开启时 caption 区深浅观感跟随主题源（见 windowEffect）
     if (patch.theme !== undefined) {
+      syncNativeThemeSource(settings)
       const win = deps.getWindow()
       if (win && !win.isDestroyed()) applyOverlayTheme(win, settings, nativeTheme.shouldUseDarkColors)
     }

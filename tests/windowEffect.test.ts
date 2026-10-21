@@ -1,12 +1,20 @@
 import { describe, expect, it, vi, afterEach } from 'vitest'
 
+// electron 在 vitest（Node）环境不可用：mock 出 nativeTheme 供 syncNativeThemeSource 断言
+vi.mock('electron', () => ({
+  nativeTheme: { themeSource: 'system' }
+}))
+
+import { nativeTheme } from 'electron'
+
 /**
  * 窗口玻璃效果应用逻辑：
  * - Windows：仅窗口不透明度（透明窗口会剥离原生标题栏，材质一律不可见）
  * - macOS：vibrancy / 关闭
  * - Linux：透明背景色（依赖桌面合成器）
+ * - 主题源同步（syncNativeThemeSource）：应用主题 → nativeTheme.themeSource（玻璃三键区色差修复）
  */
-import { applyWindowGlassEffect } from '../src/main/services/windowEffect'
+import { applyWindowGlassEffect, syncNativeThemeSource } from '../src/main/services/windowEffect'
 import type { AppSettings } from '../src/shared/types'
 
 interface MockWin {
@@ -143,5 +151,37 @@ describe('applyWindowGlassEffect · 边界', () => {
     win.isDestroyed = () => true
     applyWindowGlassEffect(win as never, settings({ windowOpacity: 50 }))
     expect(win.calls.setOpacity).toBeUndefined()
+  })
+})
+
+describe('syncNativeThemeSource · 应用主题同步主题源（玻璃三键区色差修复）', () => {
+  afterEach(() => {
+    vi.stubGlobal('process', process)
+    nativeTheme.themeSource = 'system'
+  })
+
+  it('win32：显式深色 / 浅色写入 themeSource', () => {
+    stubPlatform('win32')
+    syncNativeThemeSource(settings({ theme: 'dark' }))
+    expect(nativeTheme.themeSource).toBe('dark')
+    syncNativeThemeSource(settings({ theme: 'light' }))
+    expect(nativeTheme.themeSource).toBe('light')
+  })
+
+  it('win32：跟随系统与缺省设置均落 system', () => {
+    stubPlatform('win32')
+    syncNativeThemeSource(settings({ theme: 'system' }))
+    expect(nativeTheme.themeSource).toBe('system')
+    syncNativeThemeSource(undefined)
+    expect(nativeTheme.themeSource).toBe('system')
+  })
+
+  it('非 Windows 平台不触碰 themeSource（macOS vibrancy 自按显式主题选型，无需同步）', () => {
+    stubPlatform('darwin')
+    syncNativeThemeSource(settings({ theme: 'dark' }))
+    expect(nativeTheme.themeSource).toBe('system')
+    stubPlatform('linux')
+    syncNativeThemeSource(settings({ theme: 'dark' }))
+    expect(nativeTheme.themeSource).toBe('system')
   })
 })

@@ -1,4 +1,4 @@
-import type { BrowserWindow } from 'electron'
+import { nativeTheme, type BrowserWindow } from 'electron'
 import type { AppSettings } from '@shared/types'
 import { logger } from '../lib/logger'
 
@@ -28,6 +28,23 @@ export function applyOverlayTheme(win: BrowserWindow, settings: AppSettings, sys
   } catch {
     /* 未启用 WCO 的窗口无此能力，忽略 */
   }
+}
+
+/**
+ * 应用主题 → Chromium 主题源同步（玻璃三键区色差修复，2026-10-21）：
+ * backgroundMaterial（玻璃）开启时 DWM 忽略 overlay 配色，三键区的深浅观感改由
+ * immersive dark mode 属性决定，而该属性跟随 **系统**主题——应用深色 + 系统浅色时
+ * 三键区呈亮白色块（index 二节已知问题的根因）。把 nativeTheme.themeSource 与
+ * 应用主题对齐后，系统侧 caption 绘制跟随应用主题。
+ * 仅 Windows（WCO 平台）：macOS vibrancy 自按显式主题选型、Linux 无此绘制层；
+ * 渲染端 prefers-color-scheme 仅在 theme='system' 时消费（stores/app.ts），
+ * themeSource='system' 行为不变，显式浅/深时与 App 主题一致属预期。
+ * 调用点：createWindow 初始化 + settings:set 主题变化时。
+ * ThemeOption 与 ThemeSource 取值同构（'light' | 'dark' | 'system'），直接赋值。
+ */
+export function syncNativeThemeSource(settings: AppSettings | undefined): void {
+  if (process.platform !== 'win32') return
+  nativeTheme.themeSource = settings?.theme ?? 'system'
 }
 
 /**

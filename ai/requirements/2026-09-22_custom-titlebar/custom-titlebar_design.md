@@ -78,3 +78,19 @@ renderer
 1. **§3.3 IPC 方案简化**：未新增独立 IPC，overlay 配色由 `settings:set` 主题分支 + `nativeTheme 'updated'` 监听承载（见 §3.3 修正注）。
 2. **Win11 版本号陷阱**：Electron `getSystemVersion()` 在 Windows 11 仍返回 "10.0.x"（兼容性保留主版本号），材质支持须按 **build 号 ≥ 22000** 判定——按前缀 '10.' 判定会把 Win11 误降级（真机实测踩中并修复）。
 3. **CDP 合成事件无法驱动系统级行为**：`-webkit-app-region` 拖拽与双击最大化走原生命中测试路径，CDP 注入的合成鼠标事件不触发——自动化验证只能覆盖 WCO visible / env 值 / DOM 结构，拖动与按钮需人工确认（已由用户真机验收）。
+
+## 7. 玻璃三键区色差修复（2026-10-21，分支 `fix/glass-caption-theme-source`）
+
+v0.21.0 UI 现代化改造后的已知残差（index 二节登记）：**玻璃（Mica / Acrylic）开启时三键区呈独立色块**，深色应用 + 浅色系统主题下反差最大（亮白色块）。
+
+**根因确认**：`backgroundMaterial` 开启时 DWM **忽略 overlay 的 caption color**（v0.7.0 实施时已证实），三键区的深浅观感改由 **immersive dark mode** 窗口属性决定，而该属性跟随 **系统主题**而非应用主题——应用深色 + 系统浅色 → 系统按浅色绘制 caption 区，与深色页面割裂。非玻璃下无此问题（overlay 实色生效，v0.21.0 已对齐画布色）。
+
+**修法（候选①，一行级）**：`windowEffect.syncNativeThemeSource(settings)` 把 `nativeTheme.themeSource` 与应用主题（`settings.theme`，`'light' | 'dark' | 'system'` 同构直赋）对齐——系统侧 caption 绘制随之跟随应用主题；调用点 = `createWindow` 初始化 + `settings:set` 主题分支（`applyOverlayTheme` 之前，随后的 `nativeTheme 'updated'` 触发 overlay 重设，候选①要求的「重设 overlay」由既有监听天然覆盖）。**仅 Windows 生效**（WCO 平台；macOS vibrancy 自按显式主题选型、Linux 无此绘制层）；渲染端 `prefers-color-scheme` 仅 `theme='system'` 时消费（`stores/app.ts`），`themeSource='system'` 行为不变，显式浅/深时与 App 主题一致属预期。
+
+**验证**：单测 +3（win32 显式深/浅/系统/缺省写入与非 Windows 不触碰），全仓回归；三键区观感须真机确认（DWM 绘制层，CDP 无法截取）——深色 App × 浅色系统、浅色 App × 深色系统、跟随系统、玻璃开关切换四象限。
+
+### 7.1 候选③落地：Windows 玻璃下标题条整条实色（2026-10-21 同日）
+
+候选①上真机后用户确认：三键区已从「跟随系统的亮白块」变为跟随应用主题的深色带（色差方向问题解决），但**玻璃下三键区与标题条仍有拼接分界**——三键区是 DWM 实色绘制、无法透材质（系统层硬约束，Electron 无控制入口，候选②不可行），而标题条挖洞透出材质。用户拍板走**候选③（视觉收口）**：Windows 玻璃下标题条不再挖洞，`html.platform-win.glass-on .app-shell` 在标题条高度内铺实色 `--bg-secondary`（与三键区 overlay 色 / 非玻璃画布完全同值），标题条以下维持 55% 叠色透材质——整条观感统一（Win11 原生应用形态：记事本 / 资源管理器的标题栏即整条实色），材质感由内容区承担。非 Windows 玻璃（macOS vibrancy / Linux 合成器）无系统三键区，保持挖洞透材质不变。已知残差：DWM 自绘深色与 `--bg-secondary` 若存在肉眼可辨的色温差（系统侧定色，应用无法读取），需真机确认后再定是否微调条色。
+
+**真机验证：2026-10-21 用户确认通过（「观感好不少」）**——深浅主题下标题条整条（含三键区）观感统一无拼接分界，玻璃开关与显式深浅切换即时生效；DWM 自绘深色与 `--bg-secondary` 未辨出可辨色温差，无需微调条色。玻璃标题栏问题线收口。
